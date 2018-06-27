@@ -1,0 +1,28 @@
+name: unbeliever
+version: 0.0.1
+description: Opinionated Haskell Interoperability
+license: BSD3
+author: Andrew Cowie <andrew@operationaldynamics.com>
+maintainer: Andrew Cowie <andrew@operationaldynamics.com>
+copyright: © 2018 Operational Dynamics Consulting Pty Ltd, and Others
+tested-with: GHC == 8.2
+
+dependencies:
+  - base
+  - text
+
+library:
+  source-dirs: lib
+  exposed-modules:
+    - Haskell.Text
+
+executables:
+  experiment:
+    dependencies:
+      - unbeliever
+   
+    ghc-options: -threaded -Wall -Wwarn -fwarn-tabs
+   
+    source-dirs: tests
+    main: Experiment.hs
+                      
