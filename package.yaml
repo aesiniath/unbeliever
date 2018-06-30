@@ -9,12 +9,15 @@ tested-with: GHC == 8.2
 
 dependencies:
  - base
+ - async
  - bytestring
  - text
  - scientific
  - hashable
  - unordered-containers
  - vector
+ - transformers
+ - mtl
  - aeson
 
 library:
@@ -22,6 +25,8 @@ library:
   exposed-modules:
    - Core.Text
    - Core.Json
+   - Core.Program
+  other-modules: []
 
 executables:
   experiment:
