@@ -8,18 +8,24 @@ copyright: © 2018 Operational Dynamics Consulting Pty Ltd, and Others
 tested-with: GHC == 8.2
 
 dependencies:
-  - base
-  - text
+ - base
+ - bytestring
+ - text
+ - scientific
+ - hashable
+ - unordered-containers
+ - aeson
 
 library:
   source-dirs: lib
   exposed-modules:
-    - Haskell.Text
+   - Core.Text
+   - Core.Json
 
 executables:
   experiment:
     dependencies:
-      - unbeliever
+     - unbeliever
    
     ghc-options: -threaded -Wall -Wwarn -fwarn-tabs
    
