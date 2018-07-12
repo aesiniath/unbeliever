@@ -9,6 +9,7 @@ module Core.Json
 
 import qualified Core.Text as Core
 import qualified Data.Aeson as Aeson
+import Data.String (IsString)
 import Data.Hashable (Hashable)
 import Data.Scientific (Scientific)
 import qualified Data.Scientific as Scientific
@@ -32,7 +33,7 @@ data JsonValue
   deriving (Eq, Read, Show, Generic)
 
 newtype JsonKey = JsonKey Core.Text
-  deriving (Eq, Show, Read, Generic)
+  deriving (Eq, Show, Read, Generic, IsString)
 
 instance Hashable JsonKey
 instance Aeson.ToJSON JsonKey
