@@ -4,7 +4,6 @@
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
 --import Data.Text (Text)
-import qualified Data.Text.IO as T
 import qualified Data.ByteString.Char8 as S
 import qualified Data.HashMap.Strict as HashMap
 
@@ -23,9 +22,12 @@ program :: Program ()
 program = do
     name <- getProgramName
     write stdout name
+
     setProgramName "hello"
+
     name <- getProgramName
     write stdout name
+
     liftIO $ do
         let x = encodeToUTF8 j
         print x
@@ -34,19 +36,17 @@ program = do
         print y
         print (encodeToUTF8 y)
 
-write :: Handle -> Text -> Program ()
-write h t = liftIO $ do
-    T.hPutStrLn h (fromText t)
 
 main :: IO ()
-main = do
+main = execute program
+
 {-
+main :: IO ()
+main = do
     context <- configure $ do
-        -- blah
-        return ()
+        initLoggingToStash
+        clearScreenBeforeRunning
 
     execute' context program
 -}
-    execute program
-
 

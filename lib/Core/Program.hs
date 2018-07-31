@@ -11,6 +11,8 @@ module Core.Program
     , Program
     , setProgramName
     , getProgramName
+    , write
+    , write'
     ) where
 
 import Control.Monad (when, ap)
@@ -20,12 +22,16 @@ import Control.Monad.Reader.Class (MonadReader(..))
 import Control.Concurrent.Async (async, link)
 import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar, readMVar,
     putMVar, modifyMVar_)
+import qualified Data.ByteString as S (pack, hPut)
+import qualified Data.ByteString.Lazy as L (hPut)
+import qualified Data.Text.IO as T
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
 import System.Environment (getProgName)
 import System.Exit (ExitCode(..), exitWith)
 import System.IO.Unsafe (unsafePerformIO)
 
 import Core.Text
+import Core.System
 
 data Context = Context {
     contextProgramName :: Text,
@@ -67,8 +73,8 @@ instance Monoid Context where
 -- do-notation) or run them in parallel, but basically you should need
 -- one such object at the top of your application.
 --
--- You're best off putting your top-level Program object in a separate
--- module so you can refer to it in test suites and example snippets.
+-- You're best off putting your top-level Program action in a separate
+-- module so you can refer to it from test suites and example snippets.
 --
 newtype Program a = Program (ReaderT (MVar Context) IO a)
     deriving (Functor, Applicative, Monad, MonadIO, MonadReader (MVar Context))
@@ -116,10 +122,33 @@ setProgramName name = do
     let context' = context {
         contextProgramName = name
     }
-    liftIO (modifyMVar_ v (\_ -> return context'))
+    liftIO (modifyMVar_ v (\_ -> pure context'))
 
 getProgramName :: Program Text
 getProgramName = do
     v <- ask
     context <- liftIO (readMVar v)
     return (contextProgramName context)
+
+--
+-- | Write the supplied text to the given handle.
+--
+-- Common use is debugging:
+--
+-- >     write stdout "Beginning now"
+--
+write :: Handle -> Text -> Program ()
+write h t = liftIO $ do
+    T.hPutStrLn h (fromText t)
+
+--
+-- | Write the supplied bytes to the given handle
+-- (in contrast to 'write' we don't output a trailing newline)
+--
+write' :: Handle -> Bytes -> Program ()
+write' h b = liftIO $ do
+    case b of
+        StrictBytes b' -> S.hPut h b'
+        LazyBytes l' -> L.hPut h l'
+        ListBytes xs -> S.hPut h (S.pack xs) -- wrong
+
