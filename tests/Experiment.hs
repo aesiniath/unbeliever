@@ -11,8 +11,9 @@ import Core.Text
 import Core.Json
 import Core.Program
 import Core.System
+import Core.Render
 
-k = JsonKey "name"
+k = JsonKey "intro"
 v = JsonString "Hello"
 j = JsonObject (HashMap.fromList [(k, v)])
 
@@ -27,6 +28,8 @@ program = do
 
     name <- getProgramName
     write stdout name
+
+    write stdout (render $ show k)
 
     liftIO $ do
         let x = encodeToUTF8 j

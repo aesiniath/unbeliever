@@ -27,6 +27,7 @@ library:
    - Core.Json
    - Core.Program
    - Core.System
+   - Core.Render
   other-modules: []
 
 executables:

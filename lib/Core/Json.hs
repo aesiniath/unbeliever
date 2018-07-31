@@ -10,7 +10,6 @@ module Core.Json
     , JsonKey(..)
     ) where
 
-import qualified Core.Text as Core
 import qualified Data.Aeson as Aeson
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
@@ -23,6 +22,9 @@ import Data.String (IsString)
 import qualified Data.Text as T (Text)
 import qualified Data.Vector as V
 import GHC.Generics
+
+import qualified Core.Text as Core
+import qualified Core.Render as Core
 
 encodeToUTF8 :: JsonValue -> Core.Bytes
 encodeToUTF8 = Core.StrictBytes . S.concat . L.toChunks . Aeson.encode . intoAeson
@@ -69,7 +71,7 @@ intoAeson value = case value of
 
 newtype JsonKey
     = JsonKey Core.Text
-    deriving (Eq, Show, Read, Generic, IsString)
+    deriving (Eq, Show, Read, Generic, IsString, Core.Render)
 
 unJsonKey :: JsonKey -> Core.Text
 unJsonKey (JsonKey t) = t
