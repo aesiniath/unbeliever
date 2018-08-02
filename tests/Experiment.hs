@@ -29,7 +29,7 @@ program = do
     name <- getProgramName
     write stdout name
 
-    write stdout (render $ show k)
+    write stdout (render k)
 
     liftIO $ do
         let x = encodeToUTF8 j

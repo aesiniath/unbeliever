@@ -19,7 +19,7 @@ import Data.Hashable (Hashable)
 import Data.Scientific (Scientific)
 import qualified Data.Scientific as Scientific
 import Data.String (IsString)
-import qualified Data.Text as T (Text)
+import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics
 
@@ -71,12 +71,15 @@ intoAeson value = case value of
 
 newtype JsonKey
     = JsonKey Core.Text
-    deriving (Eq, Show, Read, Generic, IsString, Core.Render)
+    deriving (Eq, Show, Read, Generic, IsString)
 
 unJsonKey :: JsonKey -> Core.Text
 unJsonKey (JsonKey t) = t
 
 instance Hashable JsonKey
+
+instance Core.Render JsonKey where
+    render (JsonKey t) = Core.intoText (T.concat ["\"", Core.fromText t, "\""])
 
 instance Aeson.ToJSON Core.Text where
     toJSON (Core.UTF8 b') = error "No coding"
