@@ -82,10 +82,9 @@ instance Core.Render JsonKey where
     render (JsonKey t) = Core.intoText (T.concat ["\"", Core.fromText t, "\""])
 
 instance Aeson.ToJSON Core.Text where
-    toJSON (Core.UTF8 b') = error "No coding"
-    toJSON (Core.StrictText t) = Aeson.toJSON t
+    toJSON b' = Aeson.toJSON (Core.fromText b' :: T.Text) -- BAD
 
-instance Core.Unicode JsonKey where
+instance Core.Textual JsonKey where
     fromText t = Core.fromText t
     intoText x = Core.intoText x
 
