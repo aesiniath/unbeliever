@@ -3,6 +3,14 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+{-
+    As currently implemented this module, in conjunction with
+    Core.Text, is the opposite of efficient. The idea right now is to
+    experiment with the surface API. If it stabilizes, then the fact
+    that our string objects are already in UTF-8 will make for a very
+    efficient emitter.
+-}
+
 module Core.Json
     ( encodeToUTF8
     , decodeFromUTF8
@@ -13,6 +21,7 @@ module Core.Json
 import qualified Data.Aeson as Aeson
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
+import Data.Coerce
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable (Hashable)
@@ -23,14 +32,14 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics
 
-import qualified Core.Text as Core
-import qualified Core.Render as Core
+import Core.Text (Text, Bytes(StrictBytes), Textual, intoText, fromText)
+import Core.Render (Render, render)
 
-encodeToUTF8 :: JsonValue -> Core.Bytes
-encodeToUTF8 = Core.StrictBytes . S.concat . L.toChunks . Aeson.encode . intoAeson
+encodeToUTF8 :: JsonValue -> Bytes
+encodeToUTF8 = StrictBytes . S.concat . L.toChunks . Aeson.encode . intoAeson
 
-decodeFromUTF8 :: Core.Bytes -> Maybe JsonValue
-decodeFromUTF8 (Core.StrictBytes b') =
+decodeFromUTF8 :: Bytes -> Maybe JsonValue
+decodeFromUTF8 (StrictBytes b') =
   let
     x :: Maybe Aeson.Value
     x = Aeson.decodeStrict' b'
@@ -40,7 +49,7 @@ decodeFromUTF8 (Core.StrictBytes b') =
 data JsonValue
     = JsonObject (HashMap JsonKey JsonValue)
     | JsonArray [JsonValue]
-    | JsonString Core.Text
+    | JsonString Text
     | JsonNumber Scientific
     | JsonBool Bool
     | JsonNull
@@ -51,7 +60,7 @@ intoAeson value = case value of
     JsonObject xm ->
         let
             kvs = HashMap.toList xm
-            tvs = fmap (\(k, v) -> (Core.fromText (unJsonKey k), intoAeson v)) kvs
+            tvs = fmap (\(k, v) -> (fromText (coerce k), intoAeson v)) kvs
             tvm :: HashMap T.Text Aeson.Value
             tvm = HashMap.fromList tvs
         in
@@ -63,30 +72,27 @@ intoAeson value = case value of
         in
             Aeson.Array (V.fromList vs)
 
-    JsonString x -> Aeson.String (Core.fromText x)
+    JsonString x -> Aeson.String (fromText x)
     JsonNumber x -> Aeson.Number x
     JsonBool x -> Aeson.Bool x
     JsonNull -> Aeson.Null
 
 
 newtype JsonKey
-    = JsonKey Core.Text
+    = JsonKey Text
     deriving (Eq, Show, Read, Generic, IsString)
-
-unJsonKey :: JsonKey -> Core.Text
-unJsonKey (JsonKey t) = t
 
 instance Hashable JsonKey
 
-instance Core.Render JsonKey where
-    render (JsonKey t) = Core.intoText (T.concat ["\"", Core.fromText t, "\""])
+instance Render JsonKey where
+    render (JsonKey t) = intoText (T.concat ["\"", fromText t, "\""])
 
-instance Aeson.ToJSON Core.Text where
-    toJSON b' = Aeson.toJSON (Core.fromText b' :: T.Text) -- BAD
+instance Aeson.ToJSON Text where
+    toJSON b' = Aeson.toJSON (fromText b' :: T.Text) -- BAD
 
-instance Core.Textual JsonKey where
-    fromText t = Core.fromText t
-    intoText x = Core.intoText x
+instance Textual JsonKey where
+    fromText t = coerce t
+    intoText x = coerce x
 
 
 fromAeson :: Aeson.Value -> JsonValue
@@ -94,7 +100,7 @@ fromAeson value = case value of
     Aeson.Object o ->
         let
             tvs = HashMap.toList o
-            kvs = fmap (\(k, v) -> (JsonKey (Core.intoText k), fromAeson v)) tvs
+            kvs = fmap (\(k, v) -> (JsonKey (intoText k), fromAeson v)) tvs
 
             kvm :: HashMap JsonKey JsonValue
             kvm = HashMap.fromList kvs
@@ -102,7 +108,7 @@ fromAeson value = case value of
             JsonObject kvm
 
     Aeson.Array v -> JsonArray (fmap fromAeson (V.toList v))
-    Aeson.String t -> JsonString (Core.intoText t)
+    Aeson.String t -> JsonString (intoText t)
     Aeson.Number n -> JsonNumber n
     Aeson.Bool x -> JsonBool x
     Aeson.Null -> JsonNull
