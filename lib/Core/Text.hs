@@ -4,7 +4,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 module Core.Text
-    ( Text
+    ( Text(..)
     , Bytes(..)
     , fromBytes
     , Textual(..)

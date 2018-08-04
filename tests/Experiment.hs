@@ -19,6 +19,8 @@ j = JsonObject (HashMap.fromList [(k, v)])
 
 b = StrictBytes (S.pack "{\"cost\": 4500}")
 
+r = JsonArray [JsonBool False, JsonNull, JsonNumber 42]
+
 program :: Program ()
 program = do
     name <- getProgramName
@@ -38,7 +40,11 @@ program = do
         let (Just y) = decodeFromUTF8 b
         print y
         print (encodeToUTF8 y)
+        print r
+        print (encodeToUTF8 r)
 
+    write stdout (render j)
+    write stdout (render r)
 
 main :: IO ()
 main = execute program

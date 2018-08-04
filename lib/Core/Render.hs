@@ -10,6 +10,7 @@ module Core.Render (
     underline
 ) where
 
+import qualified Data.ByteString.Char8 as C
 import Data.List (foldl')
 import Data.Monoid ((<>))
 import qualified Data.Text as T
@@ -23,6 +24,9 @@ class Render a where
 
 instance Render Text where
     render x = x
+
+instance Render [Text] where
+    render ts = UTF8 (C.concat (fmap fromText ts))
 
 instance Render [Char] where
     render cs = intoText cs
