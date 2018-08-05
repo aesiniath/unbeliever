@@ -45,6 +45,9 @@ data Context = Context {
     Change to global quit semaphore, reachable anywhere?
 -}
 
+instance Semigroup Context where
+    (<>) = mappend
+
 instance Monoid Context where
     mempty = Context {
         contextProgramName = "",

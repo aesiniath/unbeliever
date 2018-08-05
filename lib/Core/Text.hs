@@ -32,6 +32,9 @@ instance Hashable Text
 instance IsString Text where
     fromString = UTF8 . T.encodeUtf8 . T.pack
 
+instance Semigroup Text where
+    (<>) = mappend
+
 instance Monoid Text where
     mempty = UTF8 S.empty
     mappend (UTF8 b1') (UTF8 b2') = UTF8 (S.append b1' b2')
