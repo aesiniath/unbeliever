@@ -23,6 +23,7 @@ import Control.Concurrent.Async (async, link)
 import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar, readMVar,
     putMVar, modifyMVar_)
 import qualified Data.ByteString as S (pack, hPut)
+import qualified Data.ByteString.Char8 as C (singleton)
 import qualified Data.ByteString.Lazy as L (hPut)
 import qualified Data.Text.IO as T
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
@@ -36,6 +37,7 @@ import Core.System
 data Context = Context {
     contextProgramName :: Text,
     contextExitSemaphore :: MVar ExitCode
+--  contextLogger :: Streamly Thing
 }
 
 {-
@@ -139,7 +141,9 @@ getProgramName = do
 --
 write :: Handle -> Text -> Program ()
 write h t = liftIO $ do
-    T.hPutStrLn h (fromText t)
+--  T.hPutStrLn h (fromText t)
+    S.hPut h (fromText t)
+    S.hPut h (C.singleton '\n')
 
 --
 -- | Write the supplied bytes to the given handle
@@ -147,8 +151,5 @@ write h t = liftIO $ do
 --
 write' :: Handle -> Bytes -> Program ()
 write' h b = liftIO $ do
-    case b of
-        StrictBytes b' -> S.hPut h b'
-        LazyBytes l' -> L.hPut h l'
-        ListBytes xs -> S.hPut h (S.pack xs) -- wrong
+        S.hPut h (fromBytes b)
 

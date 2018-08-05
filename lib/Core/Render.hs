@@ -10,6 +10,7 @@ module Core.Render (
     underline
 ) where
 
+import qualified Data.ByteString.Char8 as C
 import Data.List (foldl')
 import Data.Monoid ((<>))
 import qualified Data.Text as T
@@ -24,8 +25,11 @@ class Render a where
 instance Render Text where
     render x = x
 
+instance Render [Text] where
+    render ts = UTF8 (C.concat (fmap fromText ts))
+
 instance Render [Char] where
-    render cs = (StrictText . T.pack) cs
+    render cs = intoText cs
 
 --
 -- | Render "a" or "an" in front of a word depending on English's idea of
@@ -42,7 +46,7 @@ indefinite t =
         then T.empty
         else T.append article text
   in
-    StrictText result
+    intoText result
 
 --
 -- | Often the input text represents a paragraph, but does not have any
@@ -55,7 +59,7 @@ wrap margin text =
   let
     built = wrapHelper margin (T.words (fromText text))
   in
-    StrictText (L.toStrict (T.toLazyText built))
+    intoText (L.toStrict (T.toLazyText built))
 
 wrapHelper :: Int -> [T.Text] -> T.Builder
 wrapHelper _ [] = ""
@@ -80,5 +84,5 @@ underline level title =
     text = fromText title
     line = T.map (\_ -> level) text
   in
-    StrictText line
+    intoText line
 

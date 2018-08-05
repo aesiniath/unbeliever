@@ -6,11 +6,12 @@
 module Core.Text
     ( Text(..)
     , Bytes(..)
-    , Unicode(..)
+    , fromBytes
+    , Textual(..)
     ) where
 
-import qualified Data.ByteString as S (ByteString, unpack)
-import qualified Data.ByteString.Lazy as L (ByteString, unpack)
+import qualified Data.ByteString as S (ByteString, unpack, empty, append)
+import qualified Data.ByteString.Lazy as L (ByteString, unpack, fromStrict, toStrict)
 import Data.String (IsString(..))
 import qualified Data.Text as T (Text, pack, unpack)
 import qualified Data.Text.Encoding as T (decodeUtf8, encodeUtf8)
@@ -24,54 +25,67 @@ import GHC.Generics (Generic)
 
 data Text
     = UTF8 S.ByteString
-    | StrictText T.Text
     deriving (Eq, Read, Show, Generic)
 
 instance Hashable Text
 
 instance IsString Text where
-    fromString = StrictText . T.pack
+    fromString = UTF8 . T.encodeUtf8 . T.pack
 
-{-
-    | Stream m Chunk???
-    | Rope?
--}
+instance Monoid Text where
+    mempty = UTF8 S.empty
+    mappend (UTF8 b1') (UTF8 b2') = UTF8 (S.append b1' b2')
+
 --  fromString :: IsString a => String -> a
---  fromUnicode :: Text -> a
-class Unicode a where
+--  fromTextual :: Text -> a
+
+--
+-- | Machinery to interpret a type as containing valid UTF-8 that can be
+-- represented as a Text object.
+--
+class Textual a where
     fromText :: Text -> a
     intoText :: a -> Text
 
-instance Unicode Text where
+instance Textual Text where
     fromText = id
     intoText = id
 
-instance Unicode T.Text where
-    fromText x =
-        case x of
-            (UTF8 b') -> T.decodeUtf8 b'
-            (StrictText t) -> t
-    intoText t = StrictText t
+instance Textual T.Text where
+    fromText (UTF8 b') = T.decodeUtf8 b'
+    intoText t = UTF8 (T.encodeUtf8 t)
 
-instance Unicode S.ByteString where
-    fromText x =
-        case x of
-            (UTF8 b') -> b'
-            (StrictText t) -> T.encodeUtf8 t
-    intoText b' = UTF8 b'
+instance Textual S.ByteString where
+    fromText (UTF8 b') = b'
+    intoText b' = UTF8 (T.encodeUtf8 (T.decodeUtf8 b'))
 
-instance Unicode [Char] where
-    fromText x =
-        case x of
-            (UTF8 b') -> T.unpack (T.decodeUtf8 b')
-            (StrictText t) -> T.unpack t
-    intoText cs = StrictText (T.pack cs)
+instance Textual [Char] where
+    fromText (UTF8 b') = T.unpack (T.decodeUtf8 b')
+    intoText cs = UTF8 (T.encodeUtf8 (T.pack cs))
 
 data Bytes
     = StrictBytes S.ByteString
     | LazyBytes L.ByteString
     | ListBytes [Word8]
     deriving (Show, Eq)
+
+--
+-- Conversion to and from various types containing binary data into our
+-- convenience Bytes type.
+--
+class Binary a where
+    fromBytes :: Bytes -> a
+    intoBytes :: a -> Bytes
+
+instance Binary S.ByteString where
+    fromBytes (StrictBytes b') = b'
+    intoBytes b' = StrictBytes b'
+
+instance Binary L.ByteString where
+    fromBytes (StrictBytes b') = L.fromStrict b'
+    intoBytes b' = StrictBytes (L.toStrict b')      -- expensive
+
+
 {-
 instance Show Bytes where
     show x = case x of
