@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveFunctor #-}
@@ -15,6 +16,9 @@ module Core.Program
     , write'
     ) where
 
+import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
+import Data.Hourglass (timePrint, TimeFormatElem(..))
+--import Time.System (timezoneCurrent)
 import Control.Monad (when, ap)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Reader (ReaderT(..))
@@ -27,17 +31,22 @@ import qualified Data.ByteString.Char8 as C (singleton)
 import qualified Data.ByteString.Lazy as L (hPut)
 import qualified Data.Text.IO as T
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
+import Streamly (runStream, SerialT, wAsyncly)
+import Streamly (WAsyncT, adapt) -- FIXME
+import qualified Streamly.Prelude as Streamly
 import System.Environment (getProgName)
 import System.Exit (ExitCode(..), exitWith)
 import System.IO.Unsafe (unsafePerformIO)
 
 import Core.Text
 import Core.System
+import Core.Logging
+import Core.Render
 
 data Context = Context {
-    contextProgramName :: Text,
-    contextExitSemaphore :: MVar ExitCode
---  contextLogger :: Streamly Thing
+      contextProgramName :: Text
+    , contextExitSemaphore :: MVar ExitCode
+    , contextLogger :: SerialT IO Text
 }
 
 {-
@@ -50,12 +59,14 @@ instance Semigroup Context where
 
 instance Monoid Context where
     mempty = Context {
-        contextProgramName = "",
-        contextExitSemaphore = unsafePerformIO newEmptyMVar
+          contextProgramName = ""
+        , contextExitSemaphore = unsafePerformIO newEmptyMVar
+        , contextLogger = Streamly.nil
     }
     mappend one two = Context {
-        contextProgramName = (contextProgramName two),
-        contextExitSemaphore = (contextExitSemaphore two)
+          contextProgramName = (contextProgramName two)
+        , contextExitSemaphore = (contextExitSemaphore two)
+        , contextLogger = wAsyncly (adapt (contextLogger one) <> adapt (contextLogger two))
     }
 
 --
@@ -87,6 +98,28 @@ newtype Program a = Program (ReaderT (MVar Context) IO a)
 unwrapProgram :: Program a -> ReaderT (MVar Context) IO a
 unwrapProgram (Program reader) = reader
 
+instance MonadLog Text Program where
+    logMessage severity message =
+      let
+        formatTime t = intoText (timePrint
+            [ Format_Hour
+            , Format_Text ':'
+            , Format_Minute
+            , Format_Text ':'
+            , Format_Second
+            , Format_Text '.'
+            , Format_Precision 1
+            , Format_Text 'Z'
+            ] t)
+      in do
+        t <- liftIO getCurrentTimeNanoseconds
+
+        let line = formatTime t <> " " <> render severity <> " " <> render message
+        write stdout line
+
+instance Render TimeStamp where
+    render t = intoText (show t)
+
 executeAction :: Context -> Program a -> IO a
 executeAction context (Program reader) = do
     v <- newMVar context
@@ -106,7 +139,9 @@ execute program = do
     name <- getProgName
     quit <- newEmptyMVar
 
-    let context = Context (intoText name) quit
+    let logger = Streamly.nil
+
+    let context = Context (intoText name) quit logger
 
     -- set up terminator
     async $ do

@@ -19,6 +19,8 @@ dependencies:
  - transformers
  - mtl
  - aeson
+ - chronologique
+ - streamly
 
 library:
   source-dirs: lib
@@ -28,6 +30,7 @@ library:
    - Core.Program
    - Core.System
    - Core.Render
+   - Core.Logging
   other-modules: []
 
 executables:
