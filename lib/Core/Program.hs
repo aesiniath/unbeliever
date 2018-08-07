@@ -14,11 +14,12 @@ module Core.Program
     , getProgramName
     , write
     , write'
+    , debug2
     ) where
 
 import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
-import Data.Hourglass (timePrint, TimeFormatElem(..))
---import Time.System (timezoneCurrent)
+import Data.Hourglass (timePrint, localTimePrint, localTimeSetTimezone, localTimeFromGlobal, TimeFormatElem(..))
+import Time.System (timezoneCurrent)
 import Control.Monad (when, ap)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Reader (ReaderT(..))
@@ -29,6 +30,7 @@ import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar, readMVar,
 import qualified Data.ByteString as S (pack, hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
 import qualified Data.ByteString.Lazy as L (hPut)
+import Data.Fixed
 import qualified Data.Text.IO as T
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
 import Streamly (runStream, SerialT, wAsyncly)
@@ -46,6 +48,7 @@ import Core.Render
 data Context = Context {
       contextProgramName :: Text
     , contextExitSemaphore :: MVar ExitCode
+    , contextStartTime :: TimeStamp
     , contextLogger :: SerialT IO Text
 }
 
@@ -61,11 +64,13 @@ instance Monoid Context where
     mempty = Context {
           contextProgramName = ""
         , contextExitSemaphore = unsafePerformIO newEmptyMVar
+        , contextStartTime = unsafePerformIO getCurrentTimeNanoseconds
         , contextLogger = Streamly.nil
     }
     mappend one two = Context {
           contextProgramName = (contextProgramName two)
         , contextExitSemaphore = (contextExitSemaphore two)
+        , contextStartTime = contextStartTime one
         , contextLogger = wAsyncly (adapt (contextLogger one) <> adapt (contextLogger two))
     }
 
@@ -138,10 +143,11 @@ execute program = do
 
     name <- getProgName
     quit <- newEmptyMVar
+    start <- getCurrentTimeNanoseconds
 
     let logger = Streamly.nil
 
-    let context = Context (intoText name) quit logger
+    let context = Context (intoText name) quit start logger
 
     -- set up terminator
     async $ do
@@ -191,3 +197,48 @@ write' :: Handle -> Bytes -> Program ()
 write' h b = liftIO $ do
         S.hPut h (fromBytes b)
 
+
+debug2 :: Text -> Program ()
+debug2 message = do
+    v <- ask
+    context <- liftIO (readMVar v)
+    let start = contextStartTime context
+
+    t <- liftIO getCurrentTimeNanoseconds
+
+    let begin = unTimeStamp start
+    let now = unTimeStamp t
+
+    zone <- liftIO timezoneCurrent
+    let stamp = localTimePrint
+            [ Format_Hour
+            , Format_Text ':'
+            , Format_Minute
+            , Format_Text ':'
+            , Format_Second
+            ] $ localTimeSetTimezone zone (localTimeFromGlobal t)
+
+    let stampZ = timePrint
+            [ Format_Hour
+            , Format_Text ':'
+            , Format_Minute
+            , Format_Text ':'
+            , Format_Second
+--          , Format_Text '.'
+--          , Format_Precision 1
+            , Format_Text 'Z'
+            ] t
+
+    -- I hate doing math in Haskell
+    let elapsed = fromRational (toRational (now - begin) / 1e9) :: Fixed E6
+
+    let line = mconcat
+            [ intoText stampZ
+            , " ("
+            , render (show elapsed)
+            , ") "
+            , render Debug
+            , " "
+            , render message
+            ]
+    write stdout line
