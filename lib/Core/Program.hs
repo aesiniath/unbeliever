@@ -235,10 +235,23 @@ debug2 message = do
     let line = mconcat
             [ intoText stampZ
             , " ("
-            , render (show elapsed)
+            , padWithZeros 11 (show elapsed)
             , ") "
-            , render Debug
-            , " "
             , render message
             ]
     write stdout line
+
+--
+-- | Utility function to prepend \'0\' characters to a string representing a
+-- number.
+--
+{-
+    Cloned from **locators** package Data.Locators.Hashes, BSD3 licence
+-}
+padWithZeros :: Int -> String -> Text
+padWithZeros digits str =
+    intoText (pad ++ str)
+  where
+    pad = take len (replicate digits '0')
+    len = digits - length str
+
