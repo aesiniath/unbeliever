@@ -58,21 +58,12 @@ data Context = Context {
 -}
 
 instance Semigroup Context where
-    (<>) = mappend
-
-instance Monoid Context where
-    mempty = Context {
-          contextProgramName = ""
-        , contextExitSemaphore = unsafePerformIO newEmptyMVar
-        , contextStartTime = unsafePerformIO getCurrentTimeNanoseconds
-        , contextLogger = unsafePerformIO newTChanIO
-    }
-    mappend one two = Context {
+    (<>) one two = Context {
           contextProgramName = (contextProgramName two)
-        , contextExitSemaphore = (contextExitSemaphore two)
+        , contextExitSemaphore = (contextExitSemaphore one)
         , contextStartTime = contextStartTime one
-        , contextLogger = contextLogger one -- TODO
-    }
+        , contextLogger = contextLogger one
+        }
 
 --
 -- The type of a top-level Prgoram.
