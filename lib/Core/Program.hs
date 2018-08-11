@@ -20,7 +20,9 @@ module Core.Program
 import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
 import Data.Hourglass (timePrint, localTimePrint, localTimeSetTimezone, localTimeFromGlobal, TimeFormatElem(..))
 import Time.System (timezoneCurrent)
-import Control.Monad (when, ap)
+import Control.Concurrent.STM (atomically)
+import Control.Concurrent.STM.TChan (TChan, newTChanIO, readTChan, writeTChan)
+import Control.Monad (when, forever)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Reader (ReaderT(..))
 import Control.Monad.Reader.Class (MonadReader(..))
@@ -33,8 +35,6 @@ import qualified Data.ByteString.Lazy as L (hPut)
 import Data.Fixed
 import qualified Data.Text.IO as T
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
-import Streamly (runStream, SerialT, wAsyncly)
-import Streamly (WAsyncT, adapt) -- FIXME
 import qualified Streamly.Prelude as Streamly
 import System.Environment (getProgName)
 import System.Exit (ExitCode(..), exitWith)
@@ -49,7 +49,7 @@ data Context = Context {
       contextProgramName :: Text
     , contextExitSemaphore :: MVar ExitCode
     , contextStartTime :: TimeStamp
-    , contextLogger :: SerialT IO Text
+    , contextLogger :: TChan Text
 }
 
 {-
@@ -65,13 +65,13 @@ instance Monoid Context where
           contextProgramName = ""
         , contextExitSemaphore = unsafePerformIO newEmptyMVar
         , contextStartTime = unsafePerformIO getCurrentTimeNanoseconds
-        , contextLogger = Streamly.nil
+        , contextLogger = unsafePerformIO newTChanIO
     }
     mappend one two = Context {
           contextProgramName = (contextProgramName two)
         , contextExitSemaphore = (contextExitSemaphore two)
         , contextStartTime = contextStartTime one
-        , contextLogger = wAsyncly (adapt (contextLogger one) <> adapt (contextLogger two))
+        , contextLogger = contextLogger one -- TODO
     }
 
 --
@@ -144,10 +144,13 @@ execute program = do
     name <- getProgName
     quit <- newEmptyMVar
     start <- getCurrentTimeNanoseconds
+    chan <- newTChanIO
 
-    let logger = Streamly.nil
+    let context = Context (intoText name) quit start chan
 
-    let context = Context (intoText name) quit start logger
+    -- set up debug logger
+    async $ do
+        outputDebugMessages start chan
 
     -- set up terminator
     async $ do
@@ -197,18 +200,16 @@ write' :: Handle -> Bytes -> Program ()
 write' h b = liftIO $ do
         S.hPut h (fromBytes b)
 
-
 debug2 :: Text -> Program ()
 debug2 message = do
     v <- ask
     context <- liftIO (readMVar v)
-    let start = contextStartTime context
+    let chan = contextLogger context
 
-    t <- liftIO getCurrentTimeNanoseconds
+    liftIO (atomically (writeTChan chan message))
 
-    let begin = unTimeStamp start
-    let now = unTimeStamp t
 
+{-
     zone <- liftIO timezoneCurrent
     let stamp = localTimePrint
             [ Format_Hour
@@ -217,29 +218,34 @@ debug2 message = do
             , Format_Text ':'
             , Format_Second
             ] $ localTimeSetTimezone zone (localTimeFromGlobal t)
+-}
 
-    let stampZ = timePrint
-            [ Format_Hour
-            , Format_Text ':'
-            , Format_Minute
-            , Format_Text ':'
-            , Format_Second
---          , Format_Text '.'
---          , Format_Precision 1
-            , Format_Text 'Z'
-            ] t
+formatDebugMessage :: TimeStamp -> TimeStamp -> Text -> Text
+formatDebugMessage start now message =
+  let
+    start' = unTimeStamp start
+    now' = unTimeStamp now
+    stampZ = timePrint
+        [ Format_Hour
+        , Format_Text ':'
+        , Format_Minute
+        , Format_Text ':'
+        , Format_Second
+--      , Format_Text '.'
+--      , Format_Precision 1
+        , Format_Text 'Z'
+        ] now
 
     -- I hate doing math in Haskell
-    let elapsed = fromRational (toRational (now - begin) / 1e9) :: Fixed E6
-
-    let line = mconcat
-            [ intoText stampZ
-            , " ("
-            , padWithZeros 11 (show elapsed)
-            , ") "
-            , render message
-            ]
-    write stdout line
+    elapsed = fromRational (toRational (now' - start') / 1e9) :: Fixed E6
+  in
+    mconcat
+        [ intoText stampZ
+        , " ("
+        , padWithZeros 11 (show elapsed)
+        , ") "
+        , render message
+        ]
 
 --
 -- | Utility function to prepend \'0\' characters to a string representing a
@@ -254,4 +260,17 @@ padWithZeros digits str =
   where
     pad = take len (replicate digits '0')
     len = digits - length str
+
+
+outputDebugMessages :: TimeStamp -> TChan Text -> IO ()
+outputDebugMessages start chan = do
+    forever $ do
+        message <- atomically (readTChan chan)
+
+        now <- getCurrentTimeNanoseconds
+
+        let result = formatDebugMessage start now message
+
+        S.hPut stdout (fromText result)
+        S.hPut stdout (C.singleton '\n')
 
