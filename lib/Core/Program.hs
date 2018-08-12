@@ -18,27 +18,27 @@ module Core.Program
     ) where
 
 import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
-import Data.Hourglass (timePrint, localTimePrint, localTimeSetTimezone, localTimeFromGlobal, TimeFormatElem(..))
-import Time.System (timezoneCurrent)
-import Control.Concurrent.STM (atomically)
-import Control.Concurrent.STM.TChan (TChan, newTChanIO, readTChan, writeTChan)
+import Control.Concurrent.Async (async, link, cancel)
+import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar, readMVar,
+    putMVar, modifyMVar_)
+import Control.Concurrent.STM (atomically, check)
+import Control.Concurrent.STM.TChan (TChan, newTChanIO, readTChan,
+    writeTChan, isEmptyTChan)
 import Control.Monad (when, forever)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Reader (ReaderT(..))
 import Control.Monad.Reader.Class (MonadReader(..))
-import Control.Concurrent.Async (async, link)
-import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar, readMVar,
-    putMVar, modifyMVar_)
 import qualified Data.ByteString as S (pack, hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
 import qualified Data.ByteString.Lazy as L (hPut)
 import Data.Fixed
+import Data.Hourglass (timePrint, localTimePrint, localTimeSetTimezone, localTimeFromGlobal, TimeFormatElem(..))
 import qualified Data.Text.IO as T
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
-import qualified Streamly.Prelude as Streamly
 import System.Environment (getProgName)
 import System.Exit (ExitCode(..), exitWith)
 import System.IO.Unsafe (unsafePerformIO)
+import Time.System (timezoneCurrent)
 
 import Core.Text
 import Core.System
@@ -49,6 +49,7 @@ data Context = Context {
       contextProgramName :: Text
     , contextExitSemaphore :: MVar ExitCode
     , contextStartTime :: TimeStamp
+    , contextOutput :: TChan Text
     , contextLogger :: TChan Text
 }
 
@@ -62,6 +63,7 @@ instance Semigroup Context where
           contextProgramName = (contextProgramName two)
         , contextExitSemaphore = (contextExitSemaphore one)
         , contextStartTime = contextStartTime one
+        , contextOutput = contextOutput one
         , contextLogger = contextLogger one
         }
 
@@ -111,7 +113,7 @@ instance MonadLog Text Program where
         t <- liftIO getCurrentTimeNanoseconds
 
         let line = formatTime t <> " " <> render severity <> " " <> render message
-        write stdout line
+        write line
 
 instance Render TimeStamp where
     render t = intoText (show t)
@@ -135,21 +137,36 @@ execute program = do
     name <- getProgName
     quit <- newEmptyMVar
     start <- getCurrentTimeNanoseconds
-    chan <- newTChanIO
+    output <- newTChanIO
+    logger <- newTChanIO
 
-    let context = Context (intoText name) quit start chan
+    let context = Context (intoText name) quit start output logger
+
+    -- set up standard output
+    async $ do
+        processStandardOutput output
 
     -- set up debug logger
     async $ do
-        outputDebugMessages start chan
+        processDebugMessages start output logger
 
-    -- set up terminator
+    -- run program
     async $ do
-        code <- readMVar quit
-        exitWith code
+        executeAction context program
+        putMVar quit ExitSuccess
 
-    executeAction context program
-    return ()
+    code <- readMVar quit
+
+    -- drain message queues
+    atomically $ do
+        done2 <- isEmptyTChan logger
+        check done2
+
+        done1 <- isEmptyTChan output
+        check done1
+
+    hFlush stdout
+    exitWith code
 
 --
 --
@@ -171,17 +188,19 @@ getProgramName = do
     return (contextProgramName context)
 
 --
--- | Write the supplied text to the given handle.
+-- | Write the supplied text to stdout
 --
 -- Common use is debugging:
 --
--- >     write stdout "Beginning now"
+-- >     write "Beginning now"
 --
-write :: Handle -> Text -> Program ()
-write h t = liftIO $ do
---  T.hPutStrLn h (fromText t)
-    S.hPut h (fromText t)
-    S.hPut h (C.singleton '\n')
+write :: Text -> Program ()
+write t = do
+    v <- ask
+    context <- liftIO (readMVar v)
+    let output = contextOutput context
+
+    liftIO (atomically (writeTChan output t))
 
 --
 -- | Write the supplied bytes to the given handle
@@ -253,15 +272,22 @@ padWithZeros digits str =
     len = digits - length str
 
 
-outputDebugMessages :: TimeStamp -> TChan Text -> IO ()
-outputDebugMessages start chan = do
+processDebugMessages :: TimeStamp -> TChan Text -> TChan Text -> IO ()
+processDebugMessages start output logger = do
     forever $ do
-        message <- atomically (readTChan chan)
+        message <- atomically (readTChan logger)
 
         now <- getCurrentTimeNanoseconds
 
         let result = formatDebugMessage start now message
 
-        S.hPut stdout (fromText result)
+        atomically (writeTChan output result)
+
+processStandardOutput :: TChan Text -> IO ()
+processStandardOutput output = do
+    forever $ do
+        message <- atomically (readTChan output)
+
+        S.hPut stdout (fromText message)
         S.hPut stdout (C.singleton '\n')
 

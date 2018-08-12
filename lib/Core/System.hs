@@ -9,10 +9,11 @@ module Core.System
     ( liftIO
     , Handle
     , stdin, stdout, stderr
+    , hFlush
     , unsafePerformIO
     ) where
 
 import Control.Monad.IO.Class (liftIO)
-import System.IO (Handle, stdin, stdout, stderr)
+import System.IO (Handle, stdin, stdout, stderr, hFlush)
 import System.IO.Unsafe (unsafePerformIO)
 

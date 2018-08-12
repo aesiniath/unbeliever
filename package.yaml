@@ -19,8 +19,9 @@ dependencies:
  - transformers
  - mtl
  - aeson
+ - hourglass
  - chronologique
- - streamly
+ - stm
 
 library:
   source-dirs: lib
