@@ -42,7 +42,6 @@ import Time.System (timezoneCurrent)
 
 import Core.Text
 import Core.System
-import Core.Logging
 import Core.Render
 
 data Context = Context {
@@ -50,8 +49,12 @@ data Context = Context {
     , contextExitSemaphore :: MVar ExitCode
     , contextStartTime :: TimeStamp
     , contextOutput :: TChan Text
-    , contextLogger :: TChan Text
+    , contextLogger :: TChan Message
 }
+
+data Message = Message TimeStamp Nature Text
+
+data Nature = Output | Debug
 
 {-
     FIXME
@@ -96,25 +99,6 @@ newtype Program a = Program (ReaderT (MVar Context) IO a)
 unwrapProgram :: Program a -> ReaderT (MVar Context) IO a
 unwrapProgram (Program reader) = reader
 
-instance MonadLog Text Program where
-    logMessage severity message =
-      let
-        formatTime t = intoText (timePrint
-            [ Format_Hour
-            , Format_Text ':'
-            , Format_Minute
-            , Format_Text ':'
-            , Format_Second
-            , Format_Text '.'
-            , Format_Precision 1
-            , Format_Text 'Z'
-            ] t)
-      in do
-        t <- liftIO getCurrentTimeNanoseconds
-
-        let line = formatTime t <> " " <> render severity <> " " <> render message
-        write line
-
 instance Render TimeStamp where
     render t = intoText (show t)
 
@@ -148,7 +132,7 @@ execute program = do
 
     -- set up debug logger
     async $ do
-        processDebugMessages start output logger
+        processDebugMessages logger
 
     -- run program
     async $ do
@@ -190,17 +174,18 @@ getProgramName = do
 --
 -- | Write the supplied text to stdout
 --
--- Common use is debugging:
+-- This is for normal program output.
 --
 -- >     write "Beginning now"
 --
 write :: Text -> Program ()
-write t = do
+write text = do
     v <- ask
-    context <- liftIO (readMVar v)
-    let output = contextOutput context
+    liftIO $ do
+        context <- readMVar v
+        let chan = contextOutput context
 
-    liftIO (atomically (writeTChan output t))
+        atomically (writeTChan chan text)
 
 --
 -- | Write the supplied bytes to the given handle
@@ -211,13 +196,21 @@ write' h b = liftIO $ do
         S.hPut h (fromBytes b)
 
 debug2 :: Text -> Program ()
-debug2 message = do
+debug2 text = do
     v <- ask
-    context <- liftIO (readMVar v)
-    let chan = contextLogger context
+    liftIO $ do
+        context <- readMVar v
+        let start = contextStartTime context
+        let output = contextOutput context
+        let logger = contextLogger context
 
-    liftIO (atomically (writeTChan chan message))
+        now <- getCurrentTimeNanoseconds
 
+        let result = formatDebugMessage start now text
+
+        atomically $ do
+            writeTChan output result
+            writeTChan logger (Message now Debug result)
 
 {-
     zone <- liftIO timezoneCurrent
@@ -272,22 +265,22 @@ padWithZeros digits str =
     len = digits - length str
 
 
-processDebugMessages :: TimeStamp -> TChan Text -> TChan Text -> IO ()
-processDebugMessages start output logger = do
+processDebugMessages :: TChan Message -> IO ()
+processDebugMessages logger = do
     forever $ do
         message <- atomically (readTChan logger)
+ 
+        -- TODO do something with message
 
-        now <- getCurrentTimeNanoseconds
+        return ()
 
-        let result = formatDebugMessage start now message
-
-        atomically (writeTChan output result)
 
 processStandardOutput :: TChan Text -> IO ()
 processStandardOutput output = do
     forever $ do
-        message <- atomically (readTChan output)
+        text <- atomically (readTChan output)
 
-        S.hPut stdout (fromText message)
+        S.hPut stdout (fromText text)
         S.hPut stdout (C.singleton '\n')
+
 
