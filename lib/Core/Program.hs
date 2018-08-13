@@ -232,8 +232,9 @@ output h b = liftIO $ do
 -- > 13:05:55Z (0000.000019) Starting...
 --
 -- appearing on stdout /and/ the message being sent down the logging
--- channel. The output string is time, in UTC, and time since startup,
--- shown to in microseconds.
+-- channel. The output string is current time in UTC, and time elapsed
+-- since startup shown to the nearest millisecond (timestamps are to
+-- nanosecond precision, but they're not much use in debugging)
 --
 debug :: Text -> Program ()
 debug text = do
@@ -280,12 +281,12 @@ formatDebugMessage start now message =
         ] now
 
     -- I hate doing math in Haskell
-    elapsed = fromRational (toRational (now' - start') / 1e9) :: Fixed E6
+    elapsed = fromRational (toRational (now' - start') / 1e9) :: Fixed E3
   in
     mconcat
         [ intoText stampZ
         , " ("
-        , padWithZeros 11 (show elapsed)
+        , padWithZeros 9 (show elapsed)
         , ") "
         , render message
         ]
