@@ -14,8 +14,8 @@ module Core.Program
     , setProgramName
     , getProgramName
     , write
-    , write'
-    , debug2
+    , writeS
+    , debug
     ) where
 
 import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
@@ -190,7 +190,7 @@ getProgramName = do
     return (contextProgramName context)
 
 --
--- | Write the supplied text to stdout
+-- | Write the supplied text to stdout.
 --
 -- This is for normal program output.
 --
@@ -206,15 +206,37 @@ write text = do
         atomically (writeTChan chan text)
 
 --
+-- | Call 'show' on the supplied argument and write the resultant
+-- text to stdout.
+--
+-- This is the equivalent of 'print' from base.
+--
+writeS :: Show a => a -> Program ()
+writeS = write . intoText . show
+
+--
 -- | Write the supplied bytes to the given handle
 -- (in contrast to 'write' we don't output a trailing newline)
 --
-write' :: Handle -> Bytes -> Program ()
-write' h b = liftIO $ do
+output :: Handle -> Bytes -> Program ()
+output h b = liftIO $ do
         S.hPut h (fromBytes b)
 
-debug2 :: Text -> Program ()
-debug2 text = do
+--
+-- | Output a debugging message. This:
+--
+-- >    debug "Starting..."
+--
+-- Will result in
+--
+-- > 13:05:55Z (0000.000019) Starting...
+--
+-- appearing on stdout /and/ the message being sent down the logging
+-- channel. The output string is time, in UTC, and time since startup,
+-- shown to in microseconds.
+--
+debug :: Text -> Program ()
+debug text = do
     v <- ask
     liftIO $ do
         context <- readMVar v

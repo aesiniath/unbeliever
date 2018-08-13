@@ -4,6 +4,8 @@
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
 --import Data.Text (Text)
+import Control.Concurrent (threadDelay)
+import Control.Monad (replicateM_)
 import qualified Data.ByteString.Char8 as S
 import qualified Data.HashMap.Strict as HashMap
 
@@ -23,28 +25,35 @@ r = JsonArray [JsonBool False, JsonNull, JsonNumber 42]
 
 program :: Program ()
 program = do
+    debug "Starting..."
     name <- getProgramName
-    write stdout name
+    debug name
 
     setProgramName "hello"
 
     name <- getProgramName
-    write stdout name
+    debug name
 
-    write stdout (render k)
+    write (render k)
 
-    liftIO $ do
-        let x = encodeToUTF8 j
-        print x
+    let x = encodeToUTF8 j
+    writeS x
 
-        let (Just y) = decodeFromUTF8 b
-        print y
-        print (encodeToUTF8 y)
-        print r
-        print (encodeToUTF8 r)
+    let (Just y) = decodeFromUTF8 b
+    writeS y
+    writeS (encodeToUTF8 y)
+    writeS r
+    writeS (encodeToUTF8 r)
 
-    write stdout (render j)
-    write stdout (render r)
+    write (render j)
+    write (render r)
+
+    replicateM_ 5 $ do
+        liftIO $ threadDelay 500000
+        debug "tick"
+
+    debug "Brr! It's cold"
+    terminate 0
 
 main :: IO ()
 main = execute program
