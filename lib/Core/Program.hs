@@ -10,6 +10,7 @@
 module Core.Program
     ( execute
     , Program
+    , terminate
     , setProgramName
     , getProgramName
     , write
@@ -152,6 +153,23 @@ execute program = do
     hFlush stdout
     exitWith code
 
+--
+-- | Safely exit the program with the supplied exit code. Current
+-- output and debug queues will be flushed, and then the process will
+-- terminate.
+--
+terminate :: Int -> Program ()
+terminate code =
+  let
+    exit = case code of
+        0 -> ExitSuccess
+        _ -> ExitFailure code
+  in do
+    v <- ask
+    liftIO $ do
+        context <- readMVar v
+        let quit = contextExitSemaphore context
+        putMVar quit exit
 --
 --
 -- | Override the program name used for logging, etc
