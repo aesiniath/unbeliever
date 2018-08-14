@@ -8,20 +8,20 @@ copyright: © 2018 Operational Dynamics Consulting Pty Ltd, and Others
 tested-with: GHC == 8.2
 
 dependencies:
- - base
+ - aeson
  - async
+ - base
  - bytestring
- - text
- - scientific
+ - chronologique
  - hashable
+ - hourglass
+ - mtl
+ - scientific
+ - stm
+ - text
+ - transformers
  - unordered-containers
  - vector
- - transformers
- - mtl
- - aeson
- - hourglass
- - chronologique
- - stm
 
 library:
   source-dirs: lib
