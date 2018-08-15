@@ -17,10 +17,13 @@ module Core.Program
     , write
     , writeS
     , debug
+    , fork
+    , sleep
     ) where
 
 import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
-import Control.Concurrent.Async (async, link, cancel)
+import Control.Concurrent (threadDelay)
+import Control.Concurrent.Async (Async, async, link, cancel)
 import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar, readMVar,
     putMVar, modifyMVar_)
 import Control.Concurrent.STM (atomically, check)
@@ -359,4 +362,37 @@ processStandardOutput output = do
 
         S.hPut stdout (fromText text)
         S.hPut stdout (C.singleton '\n')
+
+--
+-- Fork a thread
+-- TODO change Async to a wrapper called Thread
+-- TODO documentation HERE
+--
+fork :: Program a -> Program (Async a)
+fork program = do
+    v <- ask
+    liftIO $ do
+        context <- readMVar v
+        a <- async $ do
+            executeAction context program
+        link a
+        return a
+
+--
+-- | Pause the current thread for the given number of seconds. For
+-- example, to delay a second and a half, do:
+--
+-- >     sleep 1.5
+--
+-- (this wraps base's 'threadDelay')
+--
+{-
+    FIXME is this the right type, given we want to avoid type default warnings?
+-}
+sleep :: Rational -> Program () 
+sleep seconds =
+  let
+    us = floor (toRational (seconds * 1e6))
+  in
+    liftIO $ threadDelay us
 
