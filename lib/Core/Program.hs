@@ -25,7 +25,10 @@ import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar, readMVar,
 import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.STM.TChan (TChan, newTChanIO, readTChan,
     writeTChan, isEmptyTChan)
+import Control.Exception.Safe (Exception, catchAny, displayException)
+import qualified Control.Exception.Safe as Safe (throw)
 import Control.Monad (when, forever)
+import qualified Control.Monad.Catch as Original (MonadThrow(throwM))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Reader (ReaderT(..))
 import Control.Monad.Reader.Class (MonadReader(..))
@@ -103,6 +106,16 @@ unwrapProgram (Program reader) = reader
 instance Render TimeStamp where
     render t = intoText (show t)
 
+--
+-- This is complicated. The **safe-exceptions** library exports a
+-- `throwM` which is not the `throwM` class method from MonadThrow.
+-- See https://github.com/fpco/safe-exceptions/issues/31 for
+-- discussion. Not sure if this is right, but Program needs a
+-- MonadThrow instance.
+--
+instance Original.MonadThrow Program where
+    throwM = liftIO . Safe.throw
+
 executeAction :: Context -> Program a -> IO a
 executeAction context (Program reader) = do
     v <- newMVar context
@@ -137,8 +150,17 @@ execute program = do
 
     -- run program
     async $ do
-        executeAction context program
-        putMVar quit ExitSuccess
+        catchAny
+            -- execute actual "main"
+            (do
+                executeAction context program
+                putMVar quit ExitSuccess
+            )
+            -- if an exception escapes, we'll catch it here
+            (\e -> do
+                executeAction context (debug (intoText (displayException e)))
+                putMVar quit (ExitFailure 127)
+            )
 
     code <- readMVar quit
 
@@ -170,6 +192,7 @@ terminate code =
         context <- readMVar v
         let quit = contextExitSemaphore context
         putMVar quit exit
+
 --
 --
 -- | Override the program name used for logging, etc
@@ -323,5 +346,4 @@ processStandardOutput output = do
 
         S.hPut stdout (fromText text)
         S.hPut stdout (C.singleton '\n')
-
 

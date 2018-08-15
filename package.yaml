@@ -13,9 +13,11 @@ dependencies:
  - base
  - bytestring
  - chronologique
+ - exceptions
  - hashable
  - hourglass
  - mtl
+ - safe-exceptions
  - scientific
  - stm
  - text
