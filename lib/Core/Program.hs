@@ -41,7 +41,7 @@ import qualified Data.ByteString as S (pack, hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
 import qualified Data.ByteString.Lazy as L (hPut)
 import Data.Fixed
-import Data.Hourglass (timePrint, localTimePrint, localTimeSetTimezone, localTimeFromGlobal, TimeFormatElem(..))
+import Data.Hourglass (timePrint, TimeFormatElem(..))
 import qualified Data.Text.IO as T
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
 import System.Environment (getProgName)
@@ -262,7 +262,8 @@ output h b = liftIO $ do
 -- appearing on stdout /and/ the message being sent down the logging
 -- channel. The output string is current time in UTC, and time elapsed
 -- since startup shown to the nearest millisecond (timestamps are to
--- nanosecond precision, but they're not much use in debugging)
+-- nanosecond precision, but you don't need that kind of resolution in
+-- in ordinary debugging)
 --
 debug :: Text -> Program ()
 debug text = do
@@ -281,27 +282,8 @@ debug text = do
             writeTChan output result
             writeTChan logger (Message now Debug result)
 
-{-
 debugS :: Show a => a -> Program ()
 debugS = debug . intoText . show
-
-critical :: Text -> Program ()
-critical = logMessage Critical 
-
-criticalE :: Exception e => e -> Program ()
-criticalE = critical . intoText . displayException
--}
-
-{-
-    zone <- liftIO timezoneCurrent
-    let stamp = localTimePrint
-            [ Format_Hour
-            , Format_Text ':'
-            , Format_Minute
-            , Format_Text ':'
-            , Format_Second
-            ] $ localTimeSetTimezone zone (localTimeFromGlobal t)
--}
 
 formatDebugMessage :: TimeStamp -> TimeStamp -> Text -> Text
 formatDebugMessage start now message =
@@ -314,8 +296,6 @@ formatDebugMessage start now message =
         , Format_Minute
         , Format_Text ':'
         , Format_Second
---      , Format_Text '.'
---      , Format_Precision 1
         , Format_Text 'Z'
         ] now
 

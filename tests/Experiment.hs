@@ -3,6 +3,7 @@
 {-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+{-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
 --import Data.Text (Text)
 import Control.Concurrent (threadDelay)
