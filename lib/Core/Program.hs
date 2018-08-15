@@ -4,6 +4,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
@@ -25,7 +26,8 @@ import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar, readMVar,
 import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.STM.TChan (TChan, newTChanIO, readTChan,
     writeTChan, isEmptyTChan)
-import Control.Exception.Safe (Exception, catchAny, displayException)
+import Control.Exception.Safe (SomeException, catchAsync,
+    Exception(displayException))
 import qualified Control.Exception.Safe as Safe (throw)
 import Control.Monad (when, forever)
 import qualified Control.Monad.Catch as Original (MonadThrow(throwM))
@@ -150,14 +152,14 @@ execute program = do
 
     -- run program
     async $ do
-        catchAny
+        catchAsync
             -- execute actual "main"
             (do
                 executeAction context program
                 putMVar quit ExitSuccess
             )
             -- if an exception escapes, we'll catch it here
-            (\e -> do
+            (\(e :: SomeException) -> do
                 executeAction context (debug (intoText (displayException e)))
                 putMVar quit (ExitFailure 127)
             )
@@ -213,7 +215,7 @@ getProgramName = do
     return (contextProgramName context)
 
 --
--- | Write the supplied text to stdout.
+-- | Write the supplied text to @stdout@.
 --
 -- This is for normal program output.
 --
@@ -230,9 +232,9 @@ write text = do
 
 --
 -- | Call 'show' on the supplied argument and write the resultant
--- text to stdout.
+-- text to @stdout@.
 --
--- This is the equivalent of 'print' from base.
+-- (This is the equivalent of 'print' from base)
 --
 writeS :: Show a => a -> Program ()
 writeS = write . intoText . show
@@ -275,6 +277,17 @@ debug text = do
         atomically $ do
             writeTChan output result
             writeTChan logger (Message now Debug result)
+
+{-
+debugS :: Show a => a -> Program ()
+debugS = debug . intoText . show
+
+critical :: Text -> Program ()
+critical = logMessage Critical 
+
+criticalE :: Exception e => e -> Program ()
+criticalE = critical . intoText . displayException
+-}
 
 {-
     zone <- liftIO timezoneCurrent
