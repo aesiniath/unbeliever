@@ -2,6 +2,7 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
 --import Data.Text (Text)
 import Control.Concurrent (threadDelay)
@@ -22,6 +23,11 @@ j = JsonObject (HashMap.fromList [(k, v)])
 b = StrictBytes (S.pack "{\"cost\": 4500}")
 
 r = JsonArray [JsonBool False, JsonNull, JsonNumber 42]
+
+data Boom = Boom
+    deriving Show
+
+instance Exception Boom
 
 program :: Program ()
 program = do
@@ -48,9 +54,16 @@ program = do
     write (render j)
     write (render r)
 
+    debug "Clock..."
+
+    fork $ do
+        sleep 1.5
+        throw Boom
+
     replicateM_ 5 $ do
-        liftIO $ threadDelay 500000
+        sleep 0.5
         debug "tick"
+
 
     debug "Brr! It's cold"
     terminate 0
