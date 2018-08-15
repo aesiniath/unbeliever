@@ -11,8 +11,13 @@ module Core.System
     , stdin, stdout, stderr
     , hFlush
     , unsafePerformIO
+    , Exception(..)
+    , throw
+    , bracket
+    , catch
     ) where
 
+import Control.Exception.Safe (Exception, throw, bracket, catch)
 import Control.Monad.IO.Class (liftIO)
 import System.IO (Handle, stdin, stdout, stderr, hFlush)
 import System.IO.Unsafe (unsafePerformIO)
