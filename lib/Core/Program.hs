@@ -23,7 +23,8 @@ module Core.Program
 
 import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
 import Control.Concurrent (threadDelay)
-import Control.Concurrent.Async (Async, async, link, cancel)
+import Control.Concurrent.Async (Async, async, link, cancel,
+    ExceptionInLinkedThread(..))
 import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar, readMVar,
     putMVar, modifyMVar_)
 import Control.Concurrent.STM (atomically, check)
@@ -33,7 +34,8 @@ import Control.Exception.Safe (SomeException, catchAsync,
     Exception(displayException))
 import qualified Control.Exception.Safe as Safe (throw)
 import Control.Monad (when, forever)
-import qualified Control.Monad.Catch as Original (MonadThrow(throwM))
+import qualified Control.Monad.Catch as Original (MonadThrow(throwM),
+    catches, Handler(..))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Reader (ReaderT(..))
 import Control.Monad.Reader.Class (MonadReader(..))
@@ -121,10 +123,37 @@ instance Render TimeStamp where
 instance Original.MonadThrow Program where
     throwM = liftIO . Safe.throw
 
-executeAction :: Context -> Program a -> IO a
-executeAction context (Program reader) = do
+runProgram :: Context -> Program a -> IO a
+runProgram context (Program reader) = do
     v <- newMVar context
     runReaderT reader v
+
+
+-- execute actual "main"
+executeAction :: Context -> Program a -> IO ()
+executeAction context program =
+  let
+    quit = contextExitSemaphore context
+  in do
+    runProgram context program
+    putMVar quit ExitSuccess
+
+
+
+-- if an exception escapes, we'll catch it here
+escapeHandlers :: Context -> [Original.Handler IO ()]
+escapeHandlers context = [
+    Original.Handler (\ (ExceptionInLinkedThread _ e) -> bail context e)
+    ]
+
+bail :: Exception e => Context -> e -> IO ()
+bail context e =
+  let
+    quit = contextExitSemaphore context
+  in do
+    runProgram context (debug (intoText (displayException e)))
+    putMVar quit (ExitFailure 127)
+
 
 --
 -- | Embelish a program with useful behaviours.
@@ -153,19 +182,11 @@ execute program = do
     async $ do
         processDebugMessages logger
 
-    -- run program
+    -- run actual program, ensuring to trap uncaught exceptions
     async $ do
-        catchAsync
-            -- execute actual "main"
-            (do
-                executeAction context program
-                putMVar quit ExitSuccess
-            )
-            -- if an exception escapes, we'll catch it here
-            (\(e :: SomeException) -> do
-                executeAction context (debug (intoText (displayException e)))
-                putMVar quit (ExitFailure 127)
-            )
+        Original.catches
+            (executeAction context program)
+            (escapeHandlers context)
 
     code <- readMVar quit
 
@@ -354,7 +375,7 @@ fork program = do
     liftIO $ do
         context <- readMVar v
         a <- async $ do
-            executeAction context program
+            runProgram context program
         link a
         return a
 
