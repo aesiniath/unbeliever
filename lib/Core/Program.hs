@@ -30,11 +30,10 @@ import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar, readMVar,
 import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.STM.TChan (TChan, newTChanIO, readTChan,
     writeTChan, isEmptyTChan)
-import Control.Exception.Safe
-import qualified Control.Exception.Safe as Safe (throw)
+import Control.Exception.Safe (SomeException, Exception(displayException))
+import qualified Control.Exception.Safe as Safe (throw, catchesAsync)
 import Control.Monad (when, forever)
-import qualified Control.Monad.Catch (MonadThrow(throwM), SomeException,
-    Exception(displayException), catches, Handler(..))
+import Control.Monad.Catch (MonadThrow(throwM), Handler(..))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Reader (ReaderT(..))
 import Control.Monad.Reader.Class (MonadReader(..))
@@ -190,7 +189,7 @@ execute program = do
 
     -- run actual program, ensuring to trap uncaught exceptions
     async $ do
-        catches
+        Safe.catchesAsync
             (executeAction context program)
             (escapeHandlers context)
 
