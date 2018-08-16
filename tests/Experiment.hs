@@ -59,6 +59,7 @@ program = do
 
     fork $ do
         sleep 1.5
+        debug "Wakey wakey"
         throw Boom
 
     replicateM_ 5 $ do

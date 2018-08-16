@@ -140,7 +140,7 @@ executeAction context program =
     putMVar quit ExitSuccess
 
 {-
-    If an exception escapes, we'll catch it here. the displayException
+    If an exception escapes, we'll catch it here. The displayException
     value for some exceptions is really quit unhelpful, so we pattern
     match the wrapping gumpf away for cases as we encounter them. The
     final entry is the catch-all.
