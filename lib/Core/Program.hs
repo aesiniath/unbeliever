@@ -30,12 +30,11 @@ import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar, readMVar,
 import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.STM.TChan (TChan, newTChanIO, readTChan,
     writeTChan, isEmptyTChan)
-import Control.Exception.Safe (SomeException, catchAsync,
-    Exception(displayException))
+import Control.Exception.Safe
 import qualified Control.Exception.Safe as Safe (throw)
 import Control.Monad (when, forever)
-import qualified Control.Monad.Catch as Original (MonadThrow(throwM),
-    catches, Handler(..))
+import qualified Control.Monad.Catch (MonadThrow(throwM), SomeException,
+    Exception(displayException), catches, Handler(..))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Reader (ReaderT(..))
 import Control.Monad.Reader.Class (MonadReader(..))
@@ -117,10 +116,13 @@ instance Render TimeStamp where
     This is complicated. The **safe-exceptions** library exports a
     `throwM` which is not the `throwM` class method from MonadThrow.
     See https://github.com/fpco/safe-exceptions/issues/31 for
-    discussion. Not sure if this is right, but Program needs a
-    MonadThrow instance.
+    discussion. In any event, the re-exports flow back to
+    Control.Monad.Catch from **exceptions** and Control.Exceptions in
+    **base**. In _this_ module, we need to catch everything (including
+    asynchronous exceptions); elsewhere we will use and wrap/export
+    **safe-exceptions**'s variants of the functions.
 -}
-instance Original.MonadThrow Program where
+instance MonadThrow Program where
     throwM = liftIO . Safe.throw
 
 runProgram :: Context -> Program a -> IO a
@@ -144,10 +146,10 @@ executeAction context program =
     match the wrapping gumpf away for cases as we encounter them. The
     final entry is the catch-all.
 -}
-escapeHandlers :: Context -> [Original.Handler IO ()]
+escapeHandlers :: Context -> [Handler IO ()]
 escapeHandlers context = [
-    Original.Handler (\ (ExceptionInLinkedThread _ e) -> bail context e)
-  , Original.Handler (\ (e :: SomeException) -> bail context e)
+    Handler (\ (ExceptionInLinkedThread _ e) -> bail context e)
+  , Handler (\ (e :: SomeException) -> bail context e)
   ]
 
 bail :: Exception e => Context -> e -> IO ()
@@ -188,7 +190,7 @@ execute program = do
 
     -- run actual program, ensuring to trap uncaught exceptions
     async $ do
-        Original.catches
+        catches
             (executeAction context program)
             (escapeHandlers context)
 
