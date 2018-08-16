@@ -113,13 +113,13 @@ unwrapProgram (Program reader) = reader
 instance Render TimeStamp where
     render t = intoText (show t)
 
---
--- This is complicated. The **safe-exceptions** library exports a
--- `throwM` which is not the `throwM` class method from MonadThrow.
--- See https://github.com/fpco/safe-exceptions/issues/31 for
--- discussion. Not sure if this is right, but Program needs a
--- MonadThrow instance.
---
+{-
+    This is complicated. The **safe-exceptions** library exports a
+    `throwM` which is not the `throwM` class method from MonadThrow.
+    See https://github.com/fpco/safe-exceptions/issues/31 for
+    discussion. Not sure if this is right, but Program needs a
+    MonadThrow instance.
+-}
 instance Original.MonadThrow Program where
     throwM = liftIO . Safe.throw
 
@@ -138,9 +138,12 @@ executeAction context program =
     runProgram context program
     putMVar quit ExitSuccess
 
-
-
--- if an exception escapes, we'll catch it here
+{-
+    If an exception escapes, we'll catch it here. the displayException
+    value for some exceptions is really quit unhelpful, so we pattern
+    match the wrapping gumpf away for cases as we encounter them. The
+    final entry is the catch-all.
+-}
 escapeHandlers :: Context -> [Original.Handler IO ()]
 escapeHandlers context = [
     Original.Handler (\ (ExceptionInLinkedThread _ e) -> bail context e)
@@ -367,9 +370,11 @@ processStandardOutput output = do
 
 --
 -- Fork a thread
--- TODO change Async to a wrapper called Thread
--- TODO documentation HERE
 --
+{-
+    TODO change Async to a wrapper called Thread
+    TODO documentation HERE
+-}
 fork :: Program a -> Program (Async a)
 fork program = do
     v <- ask
