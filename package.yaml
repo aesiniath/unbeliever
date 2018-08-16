@@ -17,6 +17,8 @@ dependencies:
  - hashable
  - hourglass
  - mtl
+ - prettyprinter
+ - prettyprinter-ansi-terminal
  - safe-exceptions
  - scientific
  - stm

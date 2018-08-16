@@ -28,6 +28,11 @@ import Data.Foldable (foldl')
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable (Hashable)
+import Data.Text.Prettyprint.Doc (Doc, Pretty(..), viaShow, dquotes, comma,
+    punctuate, brackets, braces, emptyDoc, hsep, vsep, (<+>), indent,
+    lbrace, rbrace, line)
+import Data.Text.Prettyprint.Doc.Util (reflow)
+import Data.Text.Prettyprint.Doc.Render.Terminal (AnsiStyle)
 import Data.Scientific (Scientific)
 import qualified Data.Scientific as Scientific
 import Data.String (IsString)
@@ -154,4 +159,39 @@ renderValue value = case value of
         False -> UTF8 "false"
     JsonNull -> UTF8 "null"
 {-# INLINEABLE renderValue #-}
+
+instance Pretty JsonKey where
+    pretty (JsonKey t) = dquotes (pretty (fromText t :: T.Text))
+
+instance Pretty JsonValue where
+    pretty = prettyValue
+
+prettyValue :: JsonValue -> Doc ann
+prettyValue value = case value of
+    JsonObject xm ->
+        let
+            pairs = HashMap.toList xm
+            entries = fmap (\(k, v) -> pretty k <> ":" <+> clear v <> pretty v) pairs
+
+            clear value = case value of
+                (JsonObject _)  -> line
+                _               -> emptyDoc
+        in
+            if length entries == 0
+                then braces emptyDoc
+                else lbrace <> line <> (indent 4 (vsep (punctuate comma entries))) <> line <> rbrace
+
+    JsonArray xs ->
+        let
+            entries = fmap pretty xs
+        in
+            brackets (hsep (punctuate comma entries))
+
+    JsonString x -> dquotes (pretty (fromText x :: T.Text))
+    JsonNumber x -> viaShow x
+    JsonBool x -> case x of
+        True -> "true"
+        False -> "false"
+    JsonNull -> "null"
+{-# INLINEABLE prettyValue #-}
 
