@@ -144,7 +144,8 @@ executeAction context program =
 escapeHandlers :: Context -> [Original.Handler IO ()]
 escapeHandlers context = [
     Original.Handler (\ (ExceptionInLinkedThread _ e) -> bail context e)
-    ]
+  , Original.Handler (\ (e :: SomeException) -> bail context e)
+  ]
 
 bail :: Exception e => Context -> e -> IO ()
 bail context e =
