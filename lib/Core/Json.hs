@@ -30,7 +30,8 @@ import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable (Hashable)
 import Data.Text.Prettyprint.Doc (Doc, Pretty(..), viaShow, dquotes, comma,
     punctuate, brackets, braces, emptyDoc, hsep, vsep, (<+>), indent,
-    lbrace, rbrace, line, sep)
+    lbrace, rbrace, line, sep, layoutPretty, defaultLayoutOptions)
+import Data.Text.Prettyprint.Doc.Render.Text (renderStrict)
 import Data.Text.Prettyprint.Doc.Util (reflow)
 import Data.Text.Prettyprint.Doc.Render.Terminal (AnsiStyle)
 import Data.Scientific (Scientific)
@@ -123,42 +124,8 @@ fromAeson value = case value of
 
 
 instance Render JsonValue where
-    render = renderValue
+    render = intoText . renderStrict . layoutPretty defaultLayoutOptions . prettyValue
 
-renderValue :: JsonValue -> Text
-renderValue value = case value of
-    JsonObject xm ->
-        let
-            kvs = HashMap.toList xm
-            pairs = fmap (\(k, v) -> (render k, render v)) kvs
-            entries = fmap (\(k, v) -> S.concat ["    ", fromText k, ": ", fromText v]) pairs
-        in
-            if length entries == 0
-                then UTF8 "{}"
-                else UTF8 $ S.concat
-                    [ "{\n"
-                    , C.intercalate ",\n" entries
-                    , "\n}\n"
-                    ]
-
-    JsonArray xs ->
-        let
-            ts = fmap render xs
-            entries = fmap fromText ts
-        in
-            UTF8 $ S.concat
-                    [ "["
-                    , C.intercalate ", " entries
-                    , "]\n"
-                    ]
-
-    JsonString x -> UTF8 (S.concat ["\"", fromText x, "\""])
-    JsonNumber x -> UTF8 (C.pack (show x)) -- FIXME
-    JsonBool x -> case x of
-        True -> UTF8 "true"
-        False -> UTF8 "false"
-    JsonNull -> UTF8 "null"
-{-# INLINEABLE renderValue #-}
 
 instance Pretty JsonKey where
     pretty (JsonKey t) = dquotes (pretty (fromText t :: T.Text))
