@@ -10,6 +10,8 @@ import Control.Concurrent (threadDelay)
 import Control.Monad (replicateM_)
 import qualified Data.ByteString.Char8 as S
 import qualified Data.HashMap.Strict as HashMap
+import Data.Text.Prettyprint.Doc (layoutPretty, defaultLayoutOptions, Pretty(..))
+import Data.Text.Prettyprint.Doc.Render.Text (renderStrict)
 
 import Core.Text
 import Core.Json
@@ -19,7 +21,15 @@ import Core.Render
 
 k = JsonKey "intro"
 v = JsonString "Hello"
-j = JsonObject (HashMap.fromList [(k, v)])
+
+j = JsonObject (HashMap.fromList
+        [ (k1, v1)
+        , (JsonKey "song", JsonString "Thriller")
+        , (JsonKey "other", JsonString "A very long name for the \"shadow of the moon.")
+        , (JsonKey "four", JsonObject (HashMap.fromList
+                [ (JsonKey "n1", r)
+                ]))
+        ])
 
 b = StrictBytes (S.pack "{\"cost\": 4500}")
 
