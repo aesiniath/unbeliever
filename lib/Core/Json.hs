@@ -30,7 +30,7 @@ import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable (Hashable)
 import Data.Text.Prettyprint.Doc (Doc, Pretty(..), viaShow, dquotes, comma,
     punctuate, brackets, braces, emptyDoc, hsep, vsep, (<+>), indent,
-    lbrace, rbrace, line, sep, layoutPretty, defaultLayoutOptions)
+    lbrace, rbrace, line, sep, layoutPretty, defaultLayoutOptions, hcat)
 import Data.Text.Prettyprint.Doc.Render.Text (renderStrict)
 import Data.Text.Prettyprint.Doc.Util (reflow)
 import Data.Text.Prettyprint.Doc.Render.Terminal (AnsiStyle)
@@ -154,11 +154,21 @@ prettyValue value = case value of
         in
             brackets (sep (punctuate comma entries))
 
-    JsonString x -> dquotes (pretty (fromText x :: T.Text))
+    JsonString x -> dquotes (escapeText x)
     JsonNumber x -> viaShow x
     JsonBool x -> case x of
         True -> "true"
         False -> "false"
     JsonNull -> "null"
 {-# INLINEABLE prettyValue #-}
+
+escapeText :: Text -> Doc ann
+escapeText text =
+  let
+    t = fromText text :: T.Text
+    ts = T.split (== '"') t
+    ds = fmap pretty ts
+  in
+    hcat (punctuate "\\\"" ds)
+{-# INLINEABLE escapeText #-}
 
