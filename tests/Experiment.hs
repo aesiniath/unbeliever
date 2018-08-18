@@ -23,9 +23,9 @@ k = JsonKey "intro"
 v = JsonString "Hello"
 
 j = JsonObject (HashMap.fromList
-        [ (k1, v1)
+        [ (k, v)
         , (JsonKey "song", JsonString "Thriller")
-        , (JsonKey "other", JsonString "A very long name for the \"shadow of the moon.")
+        , (JsonKey "other", JsonString "A very long name for the \"shadow of the moon\".")
         , (JsonKey "four", JsonObject (HashMap.fromList
                 [ (JsonKey "n1", r)
                 ]))
@@ -59,7 +59,8 @@ program = do
     let (Just y) = decodeFromUTF8 b
     writeS y
     writeS (encodeToUTF8 y)
-    writeS r
+--  writeS j
+--  writeS r
     writeS (encodeToUTF8 r)
 
     write (render j)
