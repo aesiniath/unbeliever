@@ -1,2 +1,2 @@
-resolver: lts-12.5
+resolver: lts-12.6
 allow-newer: true
