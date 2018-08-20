@@ -28,10 +28,12 @@ import Data.Foldable (foldl')
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable (Hashable)
-import Data.Text.Prettyprint.Doc (Doc, Pretty(..), viaShow, dquotes, comma,
-    punctuate, brackets, braces, emptyDoc, hsep, vsep, (<+>), indent,
-    lbrace, rbrace, line, sep, layoutPretty, defaultLayoutOptions, hcat)
-import Data.Text.Prettyprint.Doc.Render.Text (renderStrict)
+import Data.Text.Prettyprint.Doc (Doc, Pretty(..), viaShow, dquote, comma,
+    punctuate, lbracket, rbracket, emptyDoc, hsep, vsep, (<+>), indent,
+    lbrace, rbrace, line, sep, layoutPretty, defaultLayoutOptions, hcat,
+    annotate, unAnnotate, reAnnotateS)
+import Data.Text.Prettyprint.Doc.Render.Terminal (renderStrict,
+    color, colorDull, Color(..))
 import Data.Text.Prettyprint.Doc.Util (reflow)
 import Data.Text.Prettyprint.Doc.Render.Terminal (AnsiStyle)
 import Data.Scientific (Scientific)
@@ -122,53 +124,92 @@ fromAeson value = case value of
     Aeson.Bool x -> JsonBool x
     Aeson.Null -> JsonNull
 
+{-
+    Pretty printing
+-}
+
+data JsonToken
+    = SymbolToken
+    | QuoteToken
+    | KeyToken
+    | StringToken
+    | EscapeToken
+    | NumberToken
+    | BooleanToken
+    | LiteralToken
 
 instance Render JsonValue where
-    render = intoText . renderStrict . layoutPretty defaultLayoutOptions . prettyValue
+    render = intoText . renderStrict . reAnnotateS colourize
+              . layoutPretty defaultLayoutOptions . prettyValue
+
+colourize :: JsonToken -> AnsiStyle
+colourize token = case token of
+    SymbolToken -> color Black
+    QuoteToken -> color Black
+    KeyToken -> color Blue
+    StringToken -> colorDull Cyan
+    EscapeToken -> colorDull Yellow
+    NumberToken -> colorDull Green
+    BooleanToken -> color Magenta
+    LiteralToken -> colorDull Blue
 
 
 instance Pretty JsonKey where
-    pretty (JsonKey t) = dquotes (pretty (fromText t :: T.Text))
+    pretty = unAnnotate . prettyKey
+
+prettyKey :: JsonKey -> Doc JsonToken
+prettyKey (JsonKey t) =
+    annotate QuoteToken dquote <>
+    annotate KeyToken (pretty (fromText t :: T.Text)) <>
+    annotate QuoteToken dquote
 
 instance Pretty JsonValue where
-    pretty = prettyValue
+    pretty = unAnnotate . prettyValue
 
-prettyValue :: JsonValue -> Doc ann
+prettyValue :: JsonValue -> Doc JsonToken
 prettyValue value = case value of
     JsonObject xm ->
         let
             pairs = HashMap.toList xm
-            entries = fmap (\(k, v) -> pretty k <> ":" <+> clear v (pretty v)) pairs
+            entries = fmap (\(k, v) -> (prettyKey k) <> annotate SymbolToken ":" <+> clear v (prettyValue v)) pairs
 
             clear value doc = case value of
                 (JsonObject _)  -> line <> doc
                 _               -> doc
         in
             if length entries == 0
-                then lbrace <> rbrace
-                else lbrace <> line <> (indent 4 (vsep (punctuate comma entries))) <> line <> rbrace
+                then annotate SymbolToken (lbrace <> rbrace)
+                else annotate SymbolToken lbrace <> line <> indent 4 (vsep (punctuate (annotate SymbolToken comma) entries)) <> line <> annotate SymbolToken rbrace
 
     JsonArray xs ->
         let
-            entries = fmap pretty xs
+            entries = fmap prettyValue xs
         in
-            brackets (sep (punctuate comma entries))
+            annotate SymbolToken lbracket <>
+            sep (punctuate (annotate SymbolToken comma) entries) <>
+            annotate SymbolToken rbracket
 
-    JsonString x -> dquotes (escapeText x)
-    JsonNumber x -> viaShow x
+    JsonString x ->
+            annotate QuoteToken dquote <>
+            annotate StringToken (escapeText x) <>
+            annotate QuoteToken dquote
+
+    JsonNumber x -> annotate NumberToken (viaShow x)
+
     JsonBool x -> case x of
-        True -> "true"
-        False -> "false"
-    JsonNull -> "null"
+        True -> annotate BooleanToken "true"
+        False -> annotate BooleanToken "false"
+
+    JsonNull -> annotate LiteralToken "null"
 {-# INLINEABLE prettyValue #-}
 
-escapeText :: Text -> Doc ann
+escapeText :: Text -> Doc JsonToken
 escapeText text =
   let
     t = fromText text :: T.Text
     ts = T.split (== '"') t
     ds = fmap pretty ts
   in
-    hcat (punctuate "\\\"" ds)
+    hcat (punctuate (annotate EscapeToken "\\\"") ds)
 {-# INLINEABLE escapeText #-}
 

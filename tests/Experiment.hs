@@ -64,7 +64,6 @@ program = do
     writeS (encodeToUTF8 r)
 
     write (render j)
-    write (render r)
 
     debug "Clock..."
 
