@@ -17,6 +17,8 @@ module Core.Json
     , decodeFromUTF8
     , JsonValue(..)
     , JsonKey(..)
+    , prettyKey
+    , prettyValue
     ) where
 
 import qualified Data.Aeson as Aeson
@@ -28,6 +30,15 @@ import Data.Foldable (foldl')
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable (Hashable)
+import Data.Text.Prettyprint.Doc (Doc, Pretty(..), viaShow, dquote, comma,
+    punctuate, lbracket, rbracket, emptyDoc, hsep, vsep, (<+>), indent,
+    lbrace, rbrace, line, sep, layoutPretty, defaultLayoutOptions, hcat,
+    annotate, unAnnotate, reAnnotateS, line', group, nest, hang,
+    LayoutOptions(..), PageWidth(..))
+import Data.Text.Prettyprint.Doc.Render.Terminal (renderStrict,
+    color, colorDull, Color(..))
+import Data.Text.Prettyprint.Doc.Util (reflow)
+import Data.Text.Prettyprint.Doc.Render.Terminal (AnsiStyle)
 import Data.Scientific (Scientific)
 import qualified Data.Scientific as Scientific
 import Data.String (IsString)
@@ -116,42 +127,104 @@ fromAeson value = case value of
     Aeson.Bool x -> JsonBool x
     Aeson.Null -> JsonNull
 
+{-
+    Pretty printing
+-}
+
+data JsonToken
+    = SymbolToken
+    | QuoteToken
+    | KeyToken
+    | StringToken
+    | EscapeToken
+    | NumberToken
+    | BooleanToken
+    | LiteralToken
 
 instance Render JsonValue where
-    render = renderValue
+    render = intoText . renderStrict . reAnnotateS colourize
+              . layoutPretty defaultLayoutOptions . prettyValue
 
-renderValue :: JsonValue -> Text
-renderValue value = case value of
+{-
+    Ugh. If you want to experiment with narrower output, then:
+
+              . layoutPretty (LayoutOptions {layoutPageWidth = AvailablePerLine 15 1.0}) . prettyValue
+-}
+
+colourize :: JsonToken -> AnsiStyle
+colourize token = case token of
+    SymbolToken -> color Black
+    QuoteToken -> color Black
+    KeyToken -> color Blue
+    StringToken -> colorDull Cyan
+    EscapeToken -> colorDull Yellow
+    NumberToken -> colorDull Green
+    BooleanToken -> color Magenta
+    LiteralToken -> colorDull Blue
+
+
+instance Pretty JsonKey where
+    pretty = unAnnotate . prettyKey
+
+prettyKey :: JsonKey -> Doc JsonToken
+prettyKey (JsonKey t) =
+    annotate QuoteToken dquote <>
+    annotate KeyToken (pretty (fromText t :: T.Text)) <>
+    annotate QuoteToken dquote
+
+instance Pretty JsonValue where
+    pretty = unAnnotate . prettyValue
+
+prettyValue :: JsonValue -> Doc JsonToken
+prettyValue value = case value of
     JsonObject xm ->
         let
-            kvs = HashMap.toList xm
-            pairs = fmap (\(k, v) -> (render k, render v)) kvs
-            entries = fmap (\(k, v) -> S.concat ["    ", fromText k, ": ", fromText v]) pairs
+            pairs = HashMap.toList xm
+            entries = fmap (\(k, v) -> (prettyKey k) <> annotate SymbolToken ":" <+> clear v (prettyValue v)) pairs
+
+            clear value doc = case value of
+                (JsonObject _)  -> line <> doc
+                (JsonArray _)   -> group doc
+                _               -> doc
         in
             if length entries == 0
-                then UTF8 "{}"
-                else UTF8 $ S.concat
-                    [ "{\n"
-                    , C.intercalate ",\n" entries
-                    , "\n}\n"
-                    ]
+                then annotate SymbolToken (lbrace <> rbrace)
+                else annotate SymbolToken lbrace <> line <> indent 4 (vsep (punctuate (annotate SymbolToken comma) entries)) <> line <> annotate SymbolToken rbrace
 
     JsonArray xs ->
         let
-            ts = fmap render xs
-            entries = fmap fromText ts
+            entries = fmap prettyValue xs
         in
-            UTF8 $ S.concat
-                    [ "["
-                    , C.intercalate ", " entries
-                    , "]\n"
-                    ]
+            line' <>
+            nest 4 (
+                annotate SymbolToken lbracket <>    -- first line not indented
+                line' <>
+                sep (punctuate (annotate SymbolToken comma) entries)
+            ) <>
+            line' <>
+            annotate SymbolToken rbracket
 
-    JsonString x -> UTF8 (S.concat ["\"", fromText x, "\""])
-    JsonNumber x -> UTF8 (C.pack (show x)) -- FIXME
+    JsonString x ->
+            annotate QuoteToken dquote <>
+            annotate StringToken (escapeText x) <>
+            annotate QuoteToken dquote
+
+    JsonNumber x -> annotate NumberToken (viaShow x)
+
     JsonBool x -> case x of
-        True -> UTF8 "true"
-        False -> UTF8 "false"
-    JsonNull -> UTF8 "null"
-{-# INLINEABLE renderValue #-}
+        True -> annotate BooleanToken "true"
+        False -> annotate BooleanToken "false"
+
+    JsonNull -> annotate LiteralToken "null"
+{-# INLINEABLE prettyValue #-}
+
+escapeText :: Text -> Doc JsonToken
+escapeText text =
+  let
+    t = fromText text :: T.Text
+    ts = T.split (== '"') t
+    ds = fmap pretty ts
+  in
+    hcat (punctuate (annotate EscapeToken "\\\"") ds)
+{-# INLINEABLE escapeText #-}
 

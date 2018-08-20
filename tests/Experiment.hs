@@ -10,6 +10,8 @@ import Control.Concurrent (threadDelay)
 import Control.Monad (replicateM_)
 import qualified Data.ByteString.Char8 as S
 import qualified Data.HashMap.Strict as HashMap
+import Data.Text.Prettyprint.Doc (layoutPretty, defaultLayoutOptions, Pretty(..))
+import Data.Text.Prettyprint.Doc.Render.Text (renderStrict)
 
 import Core.Text
 import Core.Json
@@ -19,7 +21,15 @@ import Core.Render
 
 k = JsonKey "intro"
 v = JsonString "Hello"
-j = JsonObject (HashMap.fromList [(k, v)])
+
+j = JsonObject (HashMap.fromList
+        [ (k, v)
+        , (JsonKey "song", JsonString "Thriller")
+        , (JsonKey "other", JsonString "A very long name for the \"shadow of the moon\".")
+        , (JsonKey "four", JsonObject (HashMap.fromList
+                [ (JsonKey "n1", r)
+                ]))
+        ])
 
 b = StrictBytes (S.pack "{\"cost\": 4500}")
 
@@ -49,11 +59,9 @@ program = do
     let (Just y) = decodeFromUTF8 b
     writeS y
     writeS (encodeToUTF8 y)
-    writeS r
     writeS (encodeToUTF8 r)
 
     write (render j)
-    write (render r)
 
     debug "Clock..."
 
@@ -69,6 +77,7 @@ program = do
 
     debug "Brr! It's cold"
     terminate 0
+
 
 main :: IO ()
 main = execute program
