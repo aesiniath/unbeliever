@@ -30,6 +30,7 @@ import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar, readMVar,
 import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.STM.TChan (TChan, newTChanIO, readTChan,
     writeTChan, isEmptyTChan)
+import Control.Exception (throwIO)
 import Control.Exception.Safe (SomeException, Exception(displayException))
 import qualified Control.Exception.Safe as Safe (throw, catchesAsync)
 import Control.Monad (when, forever)
@@ -203,8 +204,11 @@ execute program = do
         done1 <- isEmptyTChan output
         check done1
 
+    -- exiting this way avoids "Exception: ExitSuccess" noise in GHCi
     hFlush stdout
-    exitWith code
+    if code == ExitSuccess
+        then return ()
+        else (throwIO code)
 
 --
 -- | Safely exit the program with the supplied exit code. Current
