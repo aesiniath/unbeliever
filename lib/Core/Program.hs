@@ -54,12 +54,30 @@ import Core.Text
 import Core.System
 import Core.Render
 
+{-
+    The fieldNameFrom idiom is an experiment. Looks very strange,
+    certainly, here in the record type definition and when setting
+    fields, but for the common case of getting a value out of the
+    record, a call like
+
+        fieldNameFrom context
+
+    isn't bad at all, and no worse than the leading underscore
+    convention.
+
+        _fieldName context
+
+     (I would argue better, since _ is already so overloaded as the
+     wildcard symbol in Haskell). Either way, the point is to avoid a
+     bare fieldName because so often you have want to be able to use
+     that field name as a local variable name.
+-}
 data Context = Context {
-      contextProgramName :: Text
-    , contextExitSemaphore :: MVar ExitCode
-    , contextStartTime :: TimeStamp
-    , contextOutput :: TChan Text
-    , contextLogger :: TChan Message
+      programNameFrom :: Text
+    , exitSemaphoreFrom :: MVar ExitCode
+    , startTimeFrom :: TimeStamp
+    , outputChannelFrom :: TChan Text
+    , loggerChannelFrom :: TChan Message
 }
 
 data Message = Message TimeStamp Nature Text
@@ -73,11 +91,11 @@ data Nature = Output | Debug
 
 instance Semigroup Context where
     (<>) one two = Context {
-          contextProgramName = (contextProgramName two)
-        , contextExitSemaphore = (contextExitSemaphore one)
-        , contextStartTime = contextStartTime one
-        , contextOutput = contextOutput one
-        , contextLogger = contextLogger one
+          programNameFrom = (programNameFrom two)
+        , exitSemaphoreFrom = (exitSemaphoreFrom one)
+        , startTimeFrom = startTimeFrom one
+        , outputChannelFrom = outputChannelFrom one
+        , loggerChannelFrom = loggerChannelFrom one
         }
 
 --
@@ -135,7 +153,7 @@ runProgram context (Program reader) = do
 executeAction :: Context -> Program a -> IO ()
 executeAction context program =
   let
-    quit = contextExitSemaphore context
+    quit = exitSemaphoreFrom context
   in do
     runProgram context program
     putMVar quit ExitSuccess
@@ -155,7 +173,7 @@ escapeHandlers context = [
 bail :: Exception e => Context -> e -> IO ()
 bail context e =
   let
-    quit = contextExitSemaphore context
+    quit = exitSemaphoreFrom context
   in do
     runProgram context (debug (intoText (displayException e)))
     putMVar quit (ExitFailure 127)
@@ -225,7 +243,7 @@ terminate code =
     v <- ask
     liftIO $ do
         context <- readMVar v
-        let quit = contextExitSemaphore context
+        let quit = exitSemaphoreFrom context
         putMVar quit exit
 
 --
@@ -237,7 +255,7 @@ setProgramName name = do
     v <- ask
     context <- liftIO (readMVar v)
     let context' = context {
-        contextProgramName = name
+        programNameFrom = name
     }
     liftIO (modifyMVar_ v (\_ -> pure context'))
 
@@ -245,7 +263,7 @@ getProgramName :: Program Text
 getProgramName = do
     v <- ask
     context <- liftIO (readMVar v)
-    return (contextProgramName context)
+    return (programNameFrom context)
 
 --
 -- | Write the supplied text to @stdout@.
@@ -259,7 +277,7 @@ write text = do
     v <- ask
     liftIO $ do
         context <- readMVar v
-        let chan = contextOutput context
+        let chan = outputChannelFrom context
 
         atomically (writeTChan chan text)
 
@@ -300,9 +318,9 @@ debug text = do
     v <- ask
     liftIO $ do
         context <- readMVar v
-        let start = contextStartTime context
-        let output = contextOutput context
-        let logger = contextLogger context
+        let start = startTimeFrom context
+        let output = outputChannelFrom context
+        let logger = loggerChannelFrom context
 
         now <- getCurrentTimeNanoseconds
 
