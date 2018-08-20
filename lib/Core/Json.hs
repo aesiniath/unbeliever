@@ -17,6 +17,8 @@ module Core.Json
     , decodeFromUTF8
     , JsonValue(..)
     , JsonKey(..)
+    , prettyKey
+    , prettyValue
     ) where
 
 import qualified Data.Aeson as Aeson
@@ -31,7 +33,8 @@ import Data.Hashable (Hashable)
 import Data.Text.Prettyprint.Doc (Doc, Pretty(..), viaShow, dquote, comma,
     punctuate, lbracket, rbracket, emptyDoc, hsep, vsep, (<+>), indent,
     lbrace, rbrace, line, sep, layoutPretty, defaultLayoutOptions, hcat,
-    annotate, unAnnotate, reAnnotateS)
+    annotate, unAnnotate, reAnnotateS, line', group, nest, hang,
+    LayoutOptions(..), PageWidth(..))
 import Data.Text.Prettyprint.Doc.Render.Terminal (renderStrict,
     color, colorDull, Color(..))
 import Data.Text.Prettyprint.Doc.Util (reflow)
@@ -142,6 +145,12 @@ instance Render JsonValue where
     render = intoText . renderStrict . reAnnotateS colourize
               . layoutPretty defaultLayoutOptions . prettyValue
 
+{-
+    Ugh. If you want to experiment with narrower output, then:
+
+              . layoutPretty (LayoutOptions {layoutPageWidth = AvailablePerLine 15 1.0}) . prettyValue
+-}
+
 colourize :: JsonToken -> AnsiStyle
 colourize token = case token of
     SymbolToken -> color Black
@@ -175,6 +184,7 @@ prettyValue value = case value of
 
             clear value doc = case value of
                 (JsonObject _)  -> line <> doc
+                (JsonArray _)   -> group doc
                 _               -> doc
         in
             if length entries == 0
@@ -185,8 +195,13 @@ prettyValue value = case value of
         let
             entries = fmap prettyValue xs
         in
-            annotate SymbolToken lbracket <>
-            sep (punctuate (annotate SymbolToken comma) entries) <>
+            line' <>
+            nest 4 (
+                annotate SymbolToken lbracket <>    -- first line not indented
+                line' <>
+                sep (punctuate (annotate SymbolToken comma) entries)
+            ) <>
+            line' <>
             annotate SymbolToken rbracket
 
     JsonString x ->
