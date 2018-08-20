@@ -59,8 +59,6 @@ program = do
     let (Just y) = decodeFromUTF8 b
     writeS y
     writeS (encodeToUTF8 y)
---  writeS j
---  writeS r
     writeS (encodeToUTF8 r)
 
     write (render j)
@@ -79,6 +77,7 @@ program = do
 
     debug "Brr! It's cold"
     terminate 0
+
 
 main :: IO ()
 main = execute program
