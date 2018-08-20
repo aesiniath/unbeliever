@@ -30,7 +30,7 @@ import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar, readMVar,
 import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.STM.TChan (TChan, newTChanIO, readTChan,
     writeTChan, isEmptyTChan)
-import Control.Exception (throwIO)
+import qualified Control.Exception as Base (throwIO)
 import Control.Exception.Safe (SomeException, Exception(displayException))
 import qualified Control.Exception.Safe as Safe (throw, catchesAsync)
 import Control.Monad (when, forever)
@@ -166,9 +166,17 @@ executeAction context program =
 -}
 escapeHandlers :: Context -> [Handler IO ()]
 escapeHandlers context = [
-    Handler (\ (ExceptionInLinkedThread _ e) -> bail context e)
+    Handler (\ (exit :: ExitCode) -> done context exit)
+  , Handler (\ (ExceptionInLinkedThread _ e) -> bail context e)
   , Handler (\ (e :: SomeException) -> bail context e)
   ]
+
+done :: Context -> ExitCode -> IO ()
+done context exit =
+  let
+    quit = exitSemaphoreFrom context
+  in do
+    putMVar quit exit
 
 bail :: Exception e => Context -> e -> IO ()
 bail context e =
@@ -226,7 +234,7 @@ execute program = do
     hFlush stdout
     if code == ExitSuccess
         then return ()
-        else (throwIO code)
+        else (Base.throwIO code)
 
 --
 -- | Safely exit the program with the supplied exit code. Current
@@ -241,10 +249,7 @@ terminate code =
         _ -> ExitFailure code
   in do
     v <- ask
-    liftIO $ do
-        context <- readMVar v
-        let quit = exitSemaphoreFrom context
-        putMVar quit exit
+    liftIO (Safe.throw exit)
 
 --
 --
