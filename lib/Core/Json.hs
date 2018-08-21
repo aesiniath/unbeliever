@@ -99,7 +99,8 @@ newtype JsonKey
 instance Hashable JsonKey
 
 instance Render JsonKey where
-    render (JsonKey t) = intoText (T.concat ["\"", fromText t, "\""])
+    render = intoText . renderStrict . reAnnotateS colourize
+              . layoutPretty defaultLayoutOptions . prettyKey
 
 instance Aeson.ToJSON Text where
     toJSON b' = Aeson.toJSON (fromText b' :: T.Text) -- BAD
