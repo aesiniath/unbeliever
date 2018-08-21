@@ -208,20 +208,22 @@ execute program = do
     let context = Context (intoText name) quit start output logger
 
     -- set up standard output
-    async $ do
+    o <- async $ do
         processStandardOutput output
 
     -- set up debug logger
-    async $ do
+    l <- async $ do
         processDebugMessages logger
 
     -- run actual program, ensuring to trap uncaught exceptions
-    async $ do
+    m <- async $ do
         Safe.catchesAsync
             (executeAction context program)
             (escapeHandlers context)
 
     code <- readMVar quit
+
+    cancel m
 
     -- drain message queues
     atomically $ do
@@ -230,6 +232,9 @@ execute program = do
 
         done1 <- isEmptyTChan output
         check done1
+
+    cancel l
+    cancel o
 
     -- exiting this way avoids "Exception: ExitSuccess" noise in GHCi
     hFlush stdout
