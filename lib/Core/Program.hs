@@ -16,14 +16,16 @@ module Core.Program
     , getProgramName
     , write
     , writeS
+    , event
     , debug
+    , debugS
     , fork
     , sleep
     ) where
 
 import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
-import Control.Concurrent (threadDelay)
-import Control.Concurrent.Async (Async, async, link, cancel,
+import Control.Concurrent (yield, threadDelay)
+import Control.Concurrent.Async (Async, async, link, cancel, wait,
     ExceptionInLinkedThread(..))
 import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar, readMVar,
     putMVar, modifyMVar_)
@@ -81,9 +83,9 @@ data Context = Context {
     , loggerChannelFrom :: TChan Message
 }
 
-data Message = Message TimeStamp Nature Text
+data Message = Message TimeStamp Nature Text (Maybe Text)
 
-data Nature = Output | Debug
+data Nature = Output | Status | Debug
 
 {-
     FIXME
@@ -185,7 +187,7 @@ bail context e =
   let
     quit = exitSemaphoreFrom context
   in do
-    runProgram context (debug (intoText (displayException e)))
+    runProgram context (event (intoText (displayException e)))
     putMVar quit (ExitFailure 127)
 
 
@@ -311,22 +313,58 @@ output h b = liftIO $ do
         S.hPut h (fromBytes b)
 
 --
--- | Output a debugging message. This:
+-- | Note a significant event, state transition, status, or debugging
+-- message. This:
 --
--- >    debug "Starting..."
+-- >    event "Starting..."
 --
--- Will result in
+-- will result in
 --
--- > 13:05:55Z (0000.000019) Starting...
+-- > 13:05:55Z (0000.001) Starting...
 --
 -- appearing on stdout /and/ the message being sent down the logging
 -- channel. The output string is current time in UTC, and time elapsed
--- since startup shown to the nearest millisecond (timestamps are to
+-- since startup shown to the nearest millisecond (our timestamps are to
 -- nanosecond precision, but you don't need that kind of resolution in
--- in ordinary debugging)
+-- in ordinary debugging).
+-- 
+-- Event messages will be logged at @Info@ level severity.
 --
-debug :: Text -> Program ()
-debug text = do
+event :: Text -> Program ()
+event text = do
+    now <- liftIO getCurrentTimeNanoseconds
+
+    putMessage (Message now Status text Nothing)
+
+--
+-- | Output a debugging message formed from a label and a value. This
+-- is like 'event' above but for the (rather common) case of needing
+-- to inspect or record the value of a variable when debugging code.
+-- This:
+--
+-- >    setProgramName "hello"
+-- >    name <- getProgramName
+-- >    debug "programName" name
+--
+-- will result in
+--
+-- > 13:05:58Z (0003.141) programName: hello
+--
+-- appearing on stdout /and/ the message being sent down the logging
+-- channel, assuming these actions executed about three seconds after
+-- program start.
+--
+-- Debug messages will be logged at @Debug@ level severity.
+--
+debug :: Text -> Text -> Program ()
+debug label value = do
+    now <- liftIO getCurrentTimeNanoseconds
+
+    putMessage (Message now Debug label (Just value))
+
+
+putMessage :: Message -> Program ()
+putMessage message@(Message now nature text potentialValue) = do
     v <- ask
     liftIO $ do
         context <- readMVar v
@@ -336,17 +374,19 @@ debug text = do
 
         now <- getCurrentTimeNanoseconds
 
-        let result = formatDebugMessage start now text
+        let result = case potentialValue of
+                Just value -> formatLogMessage start now (text <> " = " <> value)
+                Nothing -> formatLogMessage start now text
 
         atomically $ do
             writeTChan output result
-            writeTChan logger (Message now Debug result)
+            writeTChan logger message
 
-debugS :: Show a => a -> Program ()
-debugS = debug . intoText . show
+debugS :: Show a => Text -> a -> Program ()
+debugS label value = debug label (intoText (show value))
 
-formatDebugMessage :: TimeStamp -> TimeStamp -> Text -> Text
-formatDebugMessage start now message =
+formatLogMessage :: TimeStamp -> TimeStamp -> Text -> Text
+formatLogMessage start now message =
   let
     start' = unTimeStamp start
     now' = unTimeStamp now
