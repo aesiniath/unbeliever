@@ -22,6 +22,7 @@ dependencies:
  - safe-exceptions
  - scientific
  - stm
+ - terminal-size
  - text
  - transformers
  - unordered-containers

@@ -45,6 +45,7 @@ import Data.Fixed
 import Data.Hourglass (timePrint, TimeFormatElem(..))
 import qualified Data.Text.IO as T
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
+import System.Console.Terminal.Size (Window(..), size, hSize)
 import System.Environment (getProgName)
 import System.Exit (ExitCode(..), exitWith)
 import System.IO.Unsafe (unsafePerformIO)
@@ -393,6 +394,13 @@ processDebugMessages logger = do
 
         return ()
 
+getConsoleWidth :: IO (Int)
+getConsoleWidth = do
+    window <- size
+    let width =  case window of
+            Just (Window _ w) -> w
+            Nothing -> 80
+    return width
 
 processStandardOutput :: TChan Text -> IO ()
 processStandardOutput output = do
