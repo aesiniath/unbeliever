@@ -16,14 +16,16 @@ module Core.Program
     , getProgramName
     , write
     , writeS
+    , event
     , debug
+    , debugS
     , fork
     , sleep
     ) where
 
 import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
-import Control.Concurrent (threadDelay)
-import Control.Concurrent.Async (Async, async, link, cancel,
+import Control.Concurrent (yield, threadDelay)
+import Control.Concurrent.Async (Async, async, link, cancel, wait,
     ExceptionInLinkedThread(..))
 import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar, readMVar,
     putMVar, modifyMVar_)
@@ -45,6 +47,7 @@ import Data.Fixed
 import Data.Hourglass (timePrint, TimeFormatElem(..))
 import qualified Data.Text.IO as T
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
+import System.Console.Terminal.Size (Window(..), size, hSize)
 import System.Environment (getProgName)
 import System.Exit (ExitCode(..), exitWith)
 import System.IO.Unsafe (unsafePerformIO)
@@ -76,13 +79,14 @@ data Context = Context {
       programNameFrom :: Text
     , exitSemaphoreFrom :: MVar ExitCode
     , startTimeFrom :: TimeStamp
+    , terminalWidthFrom :: Int
     , outputChannelFrom :: TChan Text
     , loggerChannelFrom :: TChan Message
 }
 
-data Message = Message TimeStamp Nature Text
+data Message = Message TimeStamp Nature Text (Maybe Text)
 
-data Nature = Output | Debug
+data Nature = Output | Event | Debug
 
 {-
     FIXME
@@ -94,6 +98,7 @@ instance Semigroup Context where
           programNameFrom = (programNameFrom two)
         , exitSemaphoreFrom = (exitSemaphoreFrom one)
         , startTimeFrom = startTimeFrom one
+        , terminalWidthFrom = terminalWidthFrom two
         , outputChannelFrom = outputChannelFrom one
         , loggerChannelFrom = loggerChannelFrom one
         }
@@ -184,7 +189,7 @@ bail context e =
   let
     quit = exitSemaphoreFrom context
   in do
-    runProgram context (debug (intoText (displayException e)))
+    runProgram context (event (intoText (displayException e)))
     putMVar quit (ExitFailure 127)
 
 
@@ -202,10 +207,11 @@ execute program = do
     name <- getProgName
     quit <- newEmptyMVar
     start <- getCurrentTimeNanoseconds
+    width <- getConsoleWidth
     output <- newTChanIO
     logger <- newTChanIO
 
-    let context = Context (intoText name) quit start output logger
+    let context = Context (intoText name) quit start width output logger
 
     -- set up standard output
     o <- async $ do
@@ -310,42 +316,84 @@ output h b = liftIO $ do
         S.hPut h (fromBytes b)
 
 --
--- | Output a debugging message. This:
+-- | Note a significant event, state transition, status, or debugging
+-- message. This:
 --
--- >    debug "Starting..."
+-- >    event "Starting..."
 --
--- Will result in
+-- will result in
 --
--- > 13:05:55Z (0000.000019) Starting...
+-- > 13:05:55Z (0000.001) Starting...
 --
 -- appearing on stdout /and/ the message being sent down the logging
 -- channel. The output string is current time in UTC, and time elapsed
--- since startup shown to the nearest millisecond (timestamps are to
+-- since startup shown to the nearest millisecond (our timestamps are to
 -- nanosecond precision, but you don't need that kind of resolution in
--- in ordinary debugging)
+-- in ordinary debugging).
+-- 
+-- Messages sent to syslog will be logged at @Info@ level severity.
 --
-debug :: Text -> Program ()
-debug text = do
+event :: Text -> Program ()
+event text = do
+    now <- liftIO getCurrentTimeNanoseconds
+    putMessage (Message now Event text Nothing)
+
+--
+-- | Output a debugging message formed from a label and a value. This
+-- is like 'event' above but for the (rather common) case of needing
+-- to inspect or record the value of a variable when debugging code.
+-- This:
+--
+-- >    setProgramName "hello"
+-- >    name <- getProgramName
+-- >    debug "programName" name
+--
+-- will result in
+--
+-- > 13:05:58Z (0003.141) programName: hello
+--
+-- appearing on stdout /and/ the message being sent down the logging
+-- channel, assuming these actions executed about three seconds after
+-- program start.
+--
+-- Messages sent to syslog will be logged at @Debug@ level severity.
+--
+debug :: Text -> Text -> Program ()
+debug label value = do
+    now <- liftIO getCurrentTimeNanoseconds
+    putMessage (Message now Debug label (Just value))
+
+
+putMessage :: Message -> Program ()
+putMessage message@(Message now nature text potentialValue) = do
     v <- ask
     liftIO $ do
         context <- readMVar v
         let start = startTimeFrom context
+        let width = terminalWidthFrom context
         let output = outputChannelFrom context
         let logger = loggerChannelFrom context
 
         now <- getCurrentTimeNanoseconds
 
-        let result = formatDebugMessage start now text
+        let display = case potentialValue of
+                Just value ->
+                    if contains '\n' value
+                        then text <> " =\n" <> value
+                        else text <> " = " <> value
+                Nothing -> text
+
+        let result = formatLogMessage start now display
 
         atomically $ do
             writeTChan output result
-            writeTChan logger (Message now Debug result)
+            writeTChan logger message
 
-debugS :: Show a => a -> Program ()
-debugS = debug . intoText . show
+debugS :: Show a => Text -> a -> Program ()
+debugS label value = debug label (intoText (show value))
 
-formatDebugMessage :: TimeStamp -> TimeStamp -> Text -> Text
-formatDebugMessage start now message =
+formatLogMessage :: TimeStamp -> TimeStamp -> Text -> Text
+formatLogMessage start now message =
   let
     start' = unTimeStamp start
     now' = unTimeStamp now
@@ -366,7 +414,7 @@ formatDebugMessage start now message =
         , " ("
         , padWithZeros 9 (show elapsed)
         , ") "
-        , render message
+        , message
         ]
 
 --
@@ -393,6 +441,13 @@ processDebugMessages logger = do
 
         return ()
 
+getConsoleWidth :: IO (Int)
+getConsoleWidth = do
+    window <- size
+    let width =  case window of
+            Just (Window _ w) -> w
+            Nothing -> 80
+    return width
 
 processStandardOutput :: TChan Text -> IO ()
 processStandardOutput output = do

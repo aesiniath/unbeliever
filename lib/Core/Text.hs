@@ -5,12 +5,14 @@
 
 module Core.Text
     ( Text(..)
+    , contains
     , Bytes(..)
     , fromBytes
     , Textual(..)
     ) where
 
 import qualified Data.ByteString as S (ByteString, unpack, empty, append)
+import qualified Data.ByteString.Char8 as C (elem)
 import qualified Data.ByteString.Lazy as L (ByteString, unpack, fromStrict, toStrict)
 import Data.String (IsString(..))
 import qualified Data.Text as T (Text, pack, unpack)
@@ -65,6 +67,19 @@ instance Textual S.ByteString where
 instance Textual [Char] where
     fromText (UTF8 b') = T.unpack (T.decodeUtf8 b')
     intoText cs = UTF8 (T.encodeUtf8 (T.pack cs))
+
+--
+-- | Does this Text contain this character?
+--
+-- We've used it to ask whether there are newlines present, for
+-- example:
+--
+-- >    if contains '\n' text
+-- >        then handleComplexCase
+-- >        else keepItSimple
+--
+contains :: Char -> Text -> Bool
+contains c (UTF8 b') = C.elem c b'
 
 data Bytes
     = StrictBytes S.ByteString

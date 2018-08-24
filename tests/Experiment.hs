@@ -42,16 +42,18 @@ instance Exception Boom
 
 program :: Program ()
 program = do
-    debug "Starting..."
+    event "Starting..."
+
     name <- getProgramName
-    debug name
+    debug "programName" name
 
     setProgramName "hello"
 
     name <- getProgramName
-    debug name
+    debug "programName" name
 
-    write (render k)
+    debug "key" (render k)
+    event "Now for some values..."
 
     let x = encodeToUTF8 j
     writeS x
@@ -61,21 +63,21 @@ program = do
     writeS (encodeToUTF8 y)
     writeS (encodeToUTF8 r)
 
-    write (render j)
+    debug "packet" (render j)
 
-    debug "Clock..."
+    event "Clock..."
 
     fork $ do
         sleep 1.5
-        debug "Wakey wakey"
+        event "Wakey wakey"
         throw Boom
 
     replicateM_ 5 $ do
         sleep 0.5
-        debug "tick"
+        event "tick"
 
 
-    debug "Brr! It's cold"
+    event "Brr! It's cold"
     terminate 0
 
 
