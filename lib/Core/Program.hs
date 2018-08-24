@@ -228,8 +228,7 @@ execute program = do
             (escapeHandlers context)
 
     code <- readMVar quit
-
-    cancel m
+    wait m -- instead of cancel
 
     -- drain message queues
     atomically $ do
@@ -239,11 +238,12 @@ execute program = do
         done1 <- isEmptyTChan output
         check done1
 
+    hFlush stdout
+
     cancel l
     cancel o
 
     -- exiting this way avoids "Exception: ExitSuccess" noise in GHCi
-    hFlush stdout
     if code == ExitSuccess
         then return ()
         else (Base.throwIO code)
