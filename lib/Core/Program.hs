@@ -333,7 +333,6 @@ output h b = liftIO $ do
 event :: Text -> Program ()
 event text = do
     now <- liftIO getCurrentTimeNanoseconds
-
     putMessage (Message now Status text Nothing)
 
 --
@@ -359,7 +358,6 @@ event text = do
 debug :: Text -> Text -> Program ()
 debug label value = do
     now <- liftIO getCurrentTimeNanoseconds
-
     putMessage (Message now Debug label (Just value))
 
 
@@ -374,9 +372,14 @@ putMessage message@(Message now nature text potentialValue) = do
 
         now <- getCurrentTimeNanoseconds
 
-        let result = case potentialValue of
-                Just value -> formatLogMessage start now (text <> " = " <> value)
-                Nothing -> formatLogMessage start now text
+        let display = case potentialValue of
+                Just value ->
+                    if contains '\n' value
+                        then text <> " =\n" <> value
+                        else text <> " = " <> value
+                Nothing -> text
+
+        let result = formatLogMessage start now display
 
         atomically $ do
             writeTChan output result
@@ -407,7 +410,7 @@ formatLogMessage start now message =
         , " ("
         , padWithZeros 9 (show elapsed)
         , ") "
-        , render message
+        , message
         ]
 
 --
