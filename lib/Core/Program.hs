@@ -79,13 +79,14 @@ data Context = Context {
       programNameFrom :: Text
     , exitSemaphoreFrom :: MVar ExitCode
     , startTimeFrom :: TimeStamp
+    , terminalWidthFrom :: Int
     , outputChannelFrom :: TChan Text
     , loggerChannelFrom :: TChan Message
 }
 
 data Message = Message TimeStamp Nature Text (Maybe Text)
 
-data Nature = Output | Status | Debug
+data Nature = Output | Event | Debug
 
 {-
     FIXME
@@ -97,6 +98,7 @@ instance Semigroup Context where
           programNameFrom = (programNameFrom two)
         , exitSemaphoreFrom = (exitSemaphoreFrom one)
         , startTimeFrom = startTimeFrom one
+        , terminalWidthFrom = terminalWidthFrom two
         , outputChannelFrom = outputChannelFrom one
         , loggerChannelFrom = loggerChannelFrom one
         }
@@ -205,10 +207,11 @@ execute program = do
     name <- getProgName
     quit <- newEmptyMVar
     start <- getCurrentTimeNanoseconds
+    width <- getConsoleWidth
     output <- newTChanIO
     logger <- newTChanIO
 
-    let context = Context (intoText name) quit start output logger
+    let context = Context (intoText name) quit start width output logger
 
     -- set up standard output
     o <- async $ do
@@ -328,12 +331,12 @@ output h b = liftIO $ do
 -- nanosecond precision, but you don't need that kind of resolution in
 -- in ordinary debugging).
 -- 
--- Event messages will be logged at @Info@ level severity.
+-- Messages sent to syslog will be logged at @Info@ level severity.
 --
 event :: Text -> Program ()
 event text = do
     now <- liftIO getCurrentTimeNanoseconds
-    putMessage (Message now Status text Nothing)
+    putMessage (Message now Event text Nothing)
 
 --
 -- | Output a debugging message formed from a label and a value. This
@@ -353,7 +356,7 @@ event text = do
 -- channel, assuming these actions executed about three seconds after
 -- program start.
 --
--- Debug messages will be logged at @Debug@ level severity.
+-- Messages sent to syslog will be logged at @Debug@ level severity.
 --
 debug :: Text -> Text -> Program ()
 debug label value = do
@@ -367,6 +370,7 @@ putMessage message@(Message now nature text potentialValue) = do
     liftIO $ do
         context <- readMVar v
         let start = startTimeFrom context
+        let width = terminalWidthFrom context
         let output = outputChannelFrom context
         let logger = loggerChannelFrom context
 
