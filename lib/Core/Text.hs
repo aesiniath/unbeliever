@@ -8,6 +8,7 @@ module Core.Text
     , contains
     , Bytes(..)
     , fromBytes
+    , intoBytes
     , Textual(..)
     ) where
 
