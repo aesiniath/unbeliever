@@ -7,14 +7,11 @@ module Core.Program.Logging
     (
         putMessage
       , getConsoleWidth
-      , processStandardOutput
-      , processDebugMessages
     ) where
 
 import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
 import Control.Concurrent.STM (atomically)
-import Control.Concurrent.STM.TChan (TChan, readTChan, writeTChan)
-import Control.Monad (forever)
+import Control.Concurrent.STM.TChan (TChan, writeTChan)
 import qualified Data.ByteString as S (pack, hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
@@ -103,13 +100,6 @@ padWithZeros digits str =
     len = digits - length str
 
 
-processDebugMessages :: TChan Message -> IO ()
-processDebugMessages logger = do
-    forever $ do
-        Message now severity text potentialValue <- atomically (readTChan logger)
-        
-        return ()
-
 getConsoleWidth :: IO (Int)
 getConsoleWidth = do
     window <- size
@@ -117,12 +107,3 @@ getConsoleWidth = do
             Just (Window _ w) -> w
             Nothing -> 80
     return width
-
-processStandardOutput :: TChan Text -> IO ()
-processStandardOutput output = do
-    forever $ do
-        text <- atomically (readTChan output)
-
-        S.hPut stdout (fromText text)
-        S.hPut stdout (C.singleton '\n')
-

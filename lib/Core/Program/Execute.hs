@@ -34,7 +34,7 @@ import Control.Concurrent.STM.TChan (TChan, newTChanIO, readTChan,
 import qualified Control.Exception as Base (throwIO)
 import Control.Exception.Safe (SomeException, Exception(displayException))
 import qualified Control.Exception.Safe as Safe (throw, catchesAsync)
-import Control.Monad (when)
+import Control.Monad (when, forever)
 import Control.Monad.Catch (MonadThrow(throwM), Handler(..))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Reader (ReaderT(..))
@@ -43,9 +43,7 @@ import qualified Data.ByteString as S (pack, hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
 import qualified Data.ByteString.Lazy as L (hPut)
 import Data.Hourglass (timePrint, TimeFormatElem(..))
-import qualified Data.Text.IO as T
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
-import System.Console.Terminal.Size (Window(..), size, hSize)
 import System.Environment (getProgName)
 import System.Exit (ExitCode(..), exitWith)
 import System.IO.Unsafe (unsafePerformIO)
@@ -142,8 +140,9 @@ bail :: Exception e => Context -> e -> IO ()
 bail context e =
   let
     quit = exitSemaphoreFrom context
+    text = intoText (displayException e)
   in do
-    runProgram context (event (intoText (displayException e)))
+    runProgram context (event text)
     putMVar quit (ExitFailure 127)
 
 
@@ -203,6 +202,24 @@ execute program = do
         then return ()
         else (Base.throwIO code)
 
+
+
+processStandardOutput :: TChan Text -> IO ()
+processStandardOutput output = do
+    forever $ do
+        text <- atomically (readTChan output)
+
+        S.hPut stdout (fromText text)
+        S.hPut stdout (C.singleton '\n')
+
+
+processDebugMessages :: TChan Message -> IO ()
+processDebugMessages logger = do
+    forever $ do
+        Message now severity text potentialValue <- atomically (readTChan logger)
+
+        return ()
+
 --
 -- | Safely exit the program with the supplied exit code. Current
 -- output and debug queues will be flushed, and then the process will
@@ -217,6 +234,7 @@ terminate code =
   in do
     v <- ask
     liftIO (Safe.throw exit)
+
 
 --
 --
