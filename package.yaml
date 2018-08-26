@@ -37,7 +37,9 @@ library:
    - Core.System
    - Core.Render
   other-modules:
-   - Core.Logging
+   - Core.Program.Context
+   - Core.Program.Execute
+   - Core.Program.Logging
 
 executables:
   experiment:
