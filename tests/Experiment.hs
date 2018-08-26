@@ -53,7 +53,7 @@ program = do
     debug "programName" name
 
     debug "key" (render k)
-    event "Now for some values..."
+    event "Verify internal values"
 
     let x = encodeToUTF8 j
     writeS x

@@ -50,4 +50,18 @@ executables:
    
     source-dirs: tests
     main: Experiment.hs
-                      
+    other-modules: []
+
+tests:
+  check:
+    dependencies:
+     - hspec
+     - unbeliever
+
+    ghc-options: -threaded -Wall -Wwarn -fwarn-tabs
+
+    source-dirs: tests
+    main: TestSuite.hs
+    other-modules:
+     - CheckJsonWrapper
+

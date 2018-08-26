@@ -21,7 +21,6 @@ import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.Fixed
 import Data.Hourglass (timePrint, TimeFormatElem(..))
 import System.Console.Terminal.Size (Window(..), size, hSize)
-import System.Posix.Syslog (syslog, Priority(..))
 import Time.System (timezoneCurrent)
 
 import Core.Text

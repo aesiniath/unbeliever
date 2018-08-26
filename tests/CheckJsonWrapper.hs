@@ -1,11 +1,11 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+
 module CheckJsonWrapper where
 
-import qualified Data.Aeson as Aeson
 import qualified Data.ByteString.Char8 as C
-import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Strict as HashMap
 import Test.Hspec
-import Test.QuickCheck
 
 import Core.Text
 import Core.Json
@@ -46,10 +46,3 @@ checkJsonWrapper = do
 
         it "complex JSON Object round trips" $ do
             decodeFromUTF8 (encodeToUTF8 j2) `shouldBe` Just j2
-
-
-{-
-        it "a JsonKey should be wrapped in quotes" $ do
-            True `shouldBe` True
-            fromBytes (encodeToUTF8 (JsonKey "intro")) `shouldBe` C.pack "\"intro\""
--}

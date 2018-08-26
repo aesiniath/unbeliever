@@ -1,7 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Main where
-
 import Test.Hspec
 
 import CheckJsonWrapper
