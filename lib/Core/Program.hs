@@ -238,6 +238,7 @@ execute program = do
         done1 <- isEmptyTChan output
         check done1
 
+    threadDelay 100 -- instead of yield
     hFlush stdout
 
     cancel l
