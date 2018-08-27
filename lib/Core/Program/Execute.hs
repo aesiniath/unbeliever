@@ -25,7 +25,7 @@ module Core.Program.Execute
 import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
 import Control.Concurrent (yield, threadDelay)
 import Control.Concurrent.Async (Async, async, link, cancel, wait,
-    ExceptionInLinkedThread(..))
+    ExceptionInLinkedThread(..), AsyncCancelled)
 import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar, readMVar,
     putMVar, modifyMVar_)
 import Control.Concurrent.STM (atomically, check)
@@ -125,33 +125,65 @@ executeAction context program =
 -}
 escapeHandlers :: Context -> [Handler IO ()]
 escapeHandlers context = [
-    Handler (\ (exit :: ExitCode) -> done context exit)
-  , Handler (\ (ExceptionInLinkedThread _ e) -> bail context e)
-  , Handler (\ (e :: SomeException) -> bail context e)
+    Handler (\ (exit :: ExitCode) -> done exit)
+  , Handler (\ (e :: AsyncCancelled) -> pass)
+  , Handler (\ (ExceptionInLinkedThread _ e) -> bail e)
+  , Handler (\ (e :: SomeException) -> bail e)
   ]
-
-done :: Context -> ExitCode -> IO ()
-done context exit =
-  let
+  where
     quit = exitSemaphoreFrom context
-  in do
-    putMVar quit exit
 
-bail :: Exception e => Context -> e -> IO ()
-bail context e =
-  let
-    quit = exitSemaphoreFrom context
-    text = intoText (displayException e)
-  in do
-    runProgram context (event text)
-    putMVar quit (ExitFailure 127)
+    pass :: IO ()
+    pass = return ()
+
+    done :: ExitCode -> IO ()
+    done exit = do
+        putMVar quit exit
+
+    bail :: Exception e => e -> IO ()
+    bail e =
+      let
+        text = intoText (displayException e)
+      in do
+        runProgram context (event text)
+        putMVar quit (ExitFailure 127)
 
 
 --
 -- | Embelish a program with useful behaviours.
 --
--- Sets number of capabilities (heavy weight operating system threads used to
--- run Haskell green threads) to the number of CPU cores available.
+-- Sets number of capabilities (heavy-weight operating system threads
+-- used to run Haskell green threads) to the number of CPU cores
+-- available.
+--
+-- Install signal handlers to properly terminate the program
+-- performing cleanup as necessary.
+--
+-- /Logging and output/
+--
+-- The Program monad provides functions for both normal output and
+-- debug logging. A common annoyance when building command line
+-- tools and daemons is getting program output to stdout and debug
+-- messages interleaved, made even worse when error messages written to
+-- stderr land in the same console. To avoid this, when using the
+-- Program monad all output is sent through the same channel. This
+-- includes both normal output and log messages.
+--
+-- /Exceptions/
+--
+-- Ideally your code should handle (and not leak) exceptions, as is
+-- good practice anywhere in the Haskell ecosystem. As a measure of
+-- last resort however, any exceptions thrown (and not caught) by your
+-- program will be caught here, logged for debugging, and then the
+-- Program will exit.
+--
+-- /Customizing the execution context/
+--
+-- This function will run your Program in a basic 'Context'
+-- initialized with appropriate defaults. While some settings can be
+-- changed at runtime, if you need to replace (for example) the
+-- logging subsystem you can run your program using 'configure' and
+-- then 'execute\''.
 --
 execute :: Program a -> IO ()
 execute program = do
@@ -186,7 +218,7 @@ execute program = do
             (escapeHandlers context)
 
     code <- readMVar quit
-    wait m -- instead of cancel
+    cancel m
 
     -- drain message queues
     atomically $ do
