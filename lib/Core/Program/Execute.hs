@@ -152,9 +152,12 @@ escapeHandlers context = [
 --
 -- | Embelish a program with useful behaviours.
 --
+-- /Runtime/
+--
 -- Sets number of capabilities (heavy-weight operating system threads
--- used to run Haskell green threads) to the number of CPU cores
--- available.
+-- used by the GHC runtime to run Haskell green threads) to the number
+-- of CPU cores available (the default is 1 capability only, which is
+-- a bit silly on a multicore system).
 --
 -- Install signal handlers to properly terminate the program
 -- performing cleanup as necessary.
@@ -173,9 +176,9 @@ escapeHandlers context = [
 --
 -- Ideally your code should handle (and not leak) exceptions, as is
 -- good practice anywhere in the Haskell ecosystem. As a measure of
--- last resort however, any exceptions thrown (and not caught) by your
--- program will be caught here, logged for debugging, and then the
--- Program will exit.
+-- last resort however, if an exception is thrown (and not caught) by
+-- your program it will be caught here, logged for debugging, and then
+-- your Program will exit.
 --
 -- /Customizing the execution context/
 --
@@ -183,7 +186,7 @@ escapeHandlers context = [
 -- initialized with appropriate defaults. While some settings can be
 -- changed at runtime, if you need to replace (for example) the
 -- logging subsystem you can run your program using 'configure' and
--- then 'execute\''.
+-- then 'execute''.
 --
 execute :: Program a -> IO ()
 execute program = do
