@@ -54,6 +54,7 @@ import Core.System
 import Core.Render
 import Core.Program.Context
 import Core.Program.Logging
+import Core.Program.Signal
 
 --
 -- The type of a top-level Prgoram.
@@ -173,6 +174,10 @@ execute program = do
     -- set up debug logger
     l <- async $ do
         processDebugMessages logger
+
+    -- set up signal handlers
+    s <- async $ do
+        setupSignalHandlers quit
 
     -- run actual program, ensuring to trap uncaught exceptions
     m <- async $ do

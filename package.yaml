@@ -26,6 +26,7 @@ dependencies:
  - text
  - transformers
  - unordered-containers
+ - unix
  - vector
 
 library:
@@ -40,6 +41,7 @@ library:
    - Core.Program.Context
    - Core.Program.Execute
    - Core.Program.Logging
+   - Core.Program.Signal
 
 executables:
   experiment:
@@ -51,6 +53,8 @@ executables:
     source-dirs: tests
     main: Experiment.hs
     other-modules: []
+
+    ghc-prof-options: -fprof-auto
 
 tests:
   check:
