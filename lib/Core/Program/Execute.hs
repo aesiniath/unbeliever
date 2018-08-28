@@ -156,8 +156,8 @@ escapeHandlers context = [
 --
 -- Sets number of capabilities (heavy-weight operating system threads
 -- used by the GHC runtime to run Haskell green threads) to the number
--- of CPU cores available (the default is 1 capability only, which is
--- a bit silly on a multicore system).
+-- of CPU cores available (for some reason the default is 1 capability
+-- only, which is a bit silly on a multicore system).
 --
 -- Install signal handlers to properly terminate the program
 -- performing cleanup as necessary.
@@ -169,7 +169,7 @@ escapeHandlers context = [
 -- tools and daemons is getting program output to stdout and debug
 -- messages interleaved, made even worse when error messages written to
 -- stderr land in the same console. To avoid this, when using the
--- Program monad all output is sent through the same channel. This
+-- Program monad all output is sent through a single channel. This
 -- includes both normal output and log messages.
 --
 -- /Exceptions/
@@ -366,7 +366,7 @@ event text = do
 --
 -- will result in
 --
--- > 13:05:58Z (0003.141) programName: hello
+-- > 13:05:58Z (0003.141) programName = hello
 --
 -- appearing on stdout /and/ the message being sent down the logging
 -- channel, assuming these actions executed about three seconds after
