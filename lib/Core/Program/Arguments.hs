@@ -26,17 +26,17 @@ data Config =
 
 type ShortName = Char
 
-newtype LongName = LongName String
+newtype ParameterName = ParameterName String
     deriving (Show, IsString)
 
-data Option = Option LongName (Maybe ShortName) Text
+data Option = Option ParameterName (Maybe ShortName) Text
 
-data Argument = Argument LongName
+data Argument = Argument ParameterName
 
 newtype ParameterValue = ParameterValue String -- ugh
     deriving Show
 
-type Parameters = [(LongName, ParameterValue)]
+type Parameters = [(ParameterName, ParameterValue)]
 
 minimalConfig :: Config
 minimalConfig = 
@@ -67,6 +67,6 @@ example =
 -}
 
 
---parseCommandLine :: CommandLine -> [String] -> [(LongName, ParameterValue)]
+--parseCommandLine :: CommandLine -> [String] -> [(ParameterName, ParameterValue)]
 parseCommandLine :: Config -> [String] -> Parameters
-parseCommandLine config raw = [(LongName "verbose", ParameterValue "2")]
+parseCommandLine config raw = [(ParameterName "verbose", ParameterValue "2")]

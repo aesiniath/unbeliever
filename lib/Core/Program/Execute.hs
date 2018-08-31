@@ -193,12 +193,6 @@ escapeHandlers context = [
 execute :: Program a -> IO ()
 execute program = do
     let config = minimalConfig
-    executeWith config program
-
-executeWith :: Config -> Program a -> IO ()
-executeWith config program = do
-    -- command line +RTS -Nn -RTS value
-    when (numCapabilities == 1) (getNumProcessors >>= setNumCapabilities)
 
     name <- getProgName
     parameters <- handleCommandLine config
@@ -217,6 +211,17 @@ executeWith config program = do
         , outputChannelFrom = output
         , loggerChannelFrom = logger
     }
+
+    executeWith context program
+
+executeWith :: Context -> Program a -> IO ()
+executeWith context program = do
+    -- command line +RTS -Nn -RTS value
+    when (numCapabilities == 1) (getNumProcessors >>= setNumCapabilities)
+
+    let quit = exitSemaphoreFrom context
+        output = outputChannelFrom context
+        logger = loggerChannelFrom context
 
     -- set up standard output
     o <- async $ do
@@ -440,8 +445,8 @@ sleep seconds =
 
 handleCommandLine :: Config -> IO Parameters
 handleCommandLine config = do
-    raw <- getArgs
-    let parameters = parseCommandLine config raw
+    argv <- getArgs
+    let parameters = parseCommandLine config argv
     -- TODO DO SOMETHING
     return parameters
 
