@@ -13,6 +13,7 @@ module Core.Program.Execute
     , terminate
     , setProgramName
     , getProgramName
+    , getCommandLine
     , write
     , writeS
     , event
@@ -44,7 +45,7 @@ import qualified Data.ByteString.Char8 as C (singleton)
 import qualified Data.ByteString.Lazy as L (hPut)
 import Data.Hourglass (timePrint, TimeFormatElem(..))
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
-import System.Environment (getProgName)
+import System.Environment (getArgs, getProgName)
 import System.Exit (ExitCode(..), exitWith)
 import System.IO.Unsafe (unsafePerformIO)
 import Time.System (timezoneCurrent)
@@ -55,6 +56,7 @@ import Core.Render
 import Core.Program.Context
 import Core.Program.Logging
 import Core.Program.Signal
+import Core.Program.Arguments
 
 --
 -- The type of a top-level Prgoram.
@@ -193,14 +195,25 @@ execute program = do
     -- command line +RTS -Nn -RTS value
     when (numCapabilities == 1) (getNumProcessors >>= setNumCapabilities)
 
+    let config = minimalConfig -- FIXME
+
     name <- getProgName
+    parameters <- handleCommandLine config
     quit <- newEmptyMVar
     start <- getCurrentTimeNanoseconds
     width <- getConsoleWidth
     output <- newTChanIO
     logger <- newTChanIO
 
-    let context = Context (intoText name) quit start width output logger
+    let context = Context {
+          programNameFrom = (intoText name)
+        , commandLineFrom = parameters
+        , exitSemaphoreFrom = quit
+        , startTimeFrom = start
+        , terminalWidthFrom = width
+        , outputChannelFrom = output
+        , loggerChannelFrom = logger
+    }
 
     -- set up standard output
     o <- async $ do
@@ -421,3 +434,18 @@ sleep seconds =
   in
     liftIO $ threadDelay us
 
+
+handleCommandLine :: Config -> IO Parameters
+handleCommandLine config = do
+    raw <- getArgs
+    let parameters = parseCommandLine config raw
+    -- TODO DO SOMETHING
+    return parameters
+
+
+getCommandLine :: Program (Parameters)
+getCommandLine = do
+    v <- ask
+    liftIO $ do
+        context <- readMVar v
+        return (commandLineFrom context)

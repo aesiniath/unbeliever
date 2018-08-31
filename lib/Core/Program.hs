@@ -14,6 +14,7 @@ module Core.Program
     , terminate
     , setProgramName
     , getProgramName
+    , getCommandLine
     , write
     , writeS
     , event

@@ -44,6 +44,9 @@ program :: Program ()
 program = do
     event "Starting..."
 
+    params <- getCommandLine
+    debugS "params" params
+
     name <- getProgramName
     debug "programName" name
 

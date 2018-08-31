@@ -20,6 +20,7 @@ import System.Exit (ExitCode)
 import Core.Text
 import Core.System
 import Core.Render
+import Core.Program.Arguments
 
 {-
     The fieldNameFrom idiom is an experiment. Looks very strange,
@@ -41,6 +42,7 @@ import Core.Render
 -}
 data Context = Context {
       programNameFrom :: Text
+    , commandLineFrom :: Parameters
     , exitSemaphoreFrom :: MVar ExitCode
     , startTimeFrom :: TimeStamp
     , terminalWidthFrom :: Int
@@ -60,6 +62,7 @@ data Nature = Output | Event | Debug
 instance Semigroup Context where
     (<>) one two = Context {
           programNameFrom = (programNameFrom two)
+        , commandLineFrom = (commandLineFrom one)
         , exitSemaphoreFrom = (exitSemaphoreFrom one)
         , startTimeFrom = startTimeFrom one
         , terminalWidthFrom = terminalWidthFrom two

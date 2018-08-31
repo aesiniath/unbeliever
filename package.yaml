@@ -15,6 +15,7 @@ dependencies:
  - chronologique
  - exceptions
  - hashable
+ - here
  - hourglass
  - mtl
  - prettyprinter
@@ -38,6 +39,7 @@ library:
    - Core.System
    - Core.Render
   other-modules:
+   - Core.Program.Arguments
    - Core.Program.Context
    - Core.Program.Execute
    - Core.Program.Logging
