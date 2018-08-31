@@ -188,14 +188,17 @@ escapeHandlers context = [
 -- initialized with appropriate defaults. While some settings can be
 -- changed at runtime, if you need to replace (for example) the
 -- logging subsystem you can run your program using 'configure' and
--- then 'execute''.
+-- then 'executeWith'.
 --
 execute :: Program a -> IO ()
 execute program = do
+    let config = minimalConfig
+    executeWith config program
+
+executeWith :: Config -> Program a -> IO ()
+executeWith config program = do
     -- command line +RTS -Nn -RTS value
     when (numCapabilities == 1) (getNumProcessors >>= setNumCapabilities)
-
-    let config = minimalConfig -- FIXME
 
     name <- getProgName
     parameters <- handleCommandLine config
