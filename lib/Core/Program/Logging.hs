@@ -6,7 +6,6 @@
 module Core.Program.Logging
     (
         putMessage
-      , getConsoleWidth
     ) where
 
 import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
@@ -17,7 +16,6 @@ import qualified Data.ByteString.Char8 as C (singleton)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.Fixed
 import Data.Hourglass (timePrint, TimeFormatElem(..))
-import System.Console.Terminal.Size (Window(..), size, hSize)
 import Time.System (timezoneCurrent)
 
 import Core.Text
@@ -99,11 +97,3 @@ padWithZeros digits str =
     pad = take len (replicate digits '0')
     len = digits - length str
 
-
-getConsoleWidth :: IO (Int)
-getConsoleWidth = do
-    window <- size
-    let width =  case window of
-            Just (Window _ w) -> w
-            Nothing -> 80
-    return width

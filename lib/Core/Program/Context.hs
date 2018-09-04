@@ -8,19 +8,23 @@
 module Core.Program.Context
     ( 
         Context(..)
+      , configure
       , Message(..)
       , Nature(..)
+      , getConsoleWidth
     ) where
 
-import Chrono.TimeStamp (TimeStamp)
-import Control.Concurrent.MVar (MVar)
-import Control.Concurrent.STM.TChan (TChan)
+import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
+import Control.Concurrent.MVar (MVar, newEmptyMVar)
+import Control.Concurrent.STM.TChan (TChan, newTChanIO)
+import System.Console.Terminal.Size (Window(..), size, hSize)
+import System.Environment (getArgs, getProgName)
 import System.Exit (ExitCode)
 
 import Core.Text
 import Core.System
 import Core.Render
-import Core.Program.Arguments
+import Core.Program.Arguments (Config, Parameters, parseCommandLine)
 
 {-
     The fieldNameFrom idiom is an experiment. Looks very strange,
@@ -69,4 +73,45 @@ instance Semigroup Context where
         , outputChannelFrom = outputChannelFrom one
         , loggerChannelFrom = loggerChannelFrom one
         }
+
+configure :: Config -> IO Context
+configure config = do
+    start <- getCurrentTimeNanoseconds
+
+    name <- getProgName
+    parameters <- handleCommandLine config
+    quit <- newEmptyMVar
+    width <- getConsoleWidth
+    output <- newTChanIO
+    logger <- newTChanIO
+
+    return $ Context {
+          programNameFrom = (intoText name)
+        , commandLineFrom = parameters
+        , exitSemaphoreFrom = quit
+        , startTimeFrom = start
+        , terminalWidthFrom = width
+        , outputChannelFrom = output
+        , loggerChannelFrom = logger
+    }
+
+
+--
+-- | Probe the width of the terminal, in characters. If it fails to retrieve,
+-- for whatever reason, return a default of 80 characters wide.
+--
+getConsoleWidth :: IO (Int)
+getConsoleWidth = do
+    window <- size
+    let width =  case window of
+            Just (Window _ w) -> w
+            Nothing -> 80
+    return width
+
+handleCommandLine :: Config -> IO Parameters
+handleCommandLine config = do
+    argv <- getArgs
+    let parameters = parseCommandLine config argv
+    -- TODO DO SOMETHING
+    return parameters
 

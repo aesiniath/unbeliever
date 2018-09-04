@@ -45,7 +45,6 @@ import qualified Data.ByteString.Char8 as C (singleton)
 import qualified Data.ByteString.Lazy as L (hPut)
 import Data.Hourglass (timePrint, TimeFormatElem(..))
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
-import System.Environment (getArgs, getProgName)
 import System.Exit (ExitCode(..), exitWith)
 import System.IO.Unsafe (unsafePerformIO)
 import Time.System (timezoneCurrent)
@@ -192,26 +191,7 @@ escapeHandlers context = [
 --
 execute :: Program a -> IO ()
 execute program = do
-    let config = minimalConfig
-
-    name <- getProgName
-    parameters <- handleCommandLine config
-    quit <- newEmptyMVar
-    start <- getCurrentTimeNanoseconds
-    width <- getConsoleWidth
-    output <- newTChanIO
-    logger <- newTChanIO
-
-    let context = Context {
-          programNameFrom = (intoText name)
-        , commandLineFrom = parameters
-        , exitSemaphoreFrom = quit
-        , startTimeFrom = start
-        , terminalWidthFrom = width
-        , outputChannelFrom = output
-        , loggerChannelFrom = logger
-    }
-
+    context <- configure baselineConfig
     executeWith context program
 
 executeWith :: Context -> Program a -> IO ()
@@ -441,14 +421,6 @@ sleep seconds =
     us = floor (toRational (seconds * 1e6))
   in
     liftIO $ threadDelay us
-
-
-handleCommandLine :: Config -> IO Parameters
-handleCommandLine config = do
-    argv <- getArgs
-    let parameters = parseCommandLine config argv
-    -- TODO DO SOMETHING
-    return parameters
 
 
 getCommandLine :: Program (Parameters)
