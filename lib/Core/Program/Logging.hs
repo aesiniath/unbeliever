@@ -8,7 +8,7 @@ module Core.Program.Logging
         putMessage
     ) where
 
-import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
+import Chrono.TimeStamp (TimeStamp(..))
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TChan (TChan, writeTChan)
 import qualified Data.ByteString as S (pack, hPut)
@@ -41,8 +41,6 @@ putMessage context message@(Message now nature text potentialValue) = do
     let width = terminalWidthFrom context
     let output = outputChannelFrom context
     let logger = loggerChannelFrom context
-
-    now <- getCurrentTimeNanoseconds
 
     let display = case potentialValue of
             Just value ->
