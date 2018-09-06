@@ -38,8 +38,8 @@ library:
    - Core.Program
    - Core.System
    - Core.Render
-  other-modules:
    - Core.Program.Arguments
+  other-modules:
    - Core.Program.Context
    - Core.Program.Execute
    - Core.Program.Logging
@@ -66,8 +66,10 @@ tests:
 
     ghc-options: -threaded -Wall -Wwarn -fwarn-tabs
 
-    source-dirs: tests
+    source-dirs:
+     - tests
     main: TestSuite.hs
     other-modules:
+     - CheckArgumentsParsing
      - CheckJsonWrapper
 
