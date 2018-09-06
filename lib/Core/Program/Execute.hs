@@ -9,6 +9,7 @@
 
 module Core.Program.Execute
     ( execute
+    , executeWith
     , Program
     , terminate
     , setProgramName

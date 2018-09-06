@@ -17,6 +17,7 @@ module Core.Program.Context
 import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
 import Control.Concurrent.MVar (MVar, newEmptyMVar)
 import Control.Concurrent.STM.TChan (TChan, newTChanIO)
+import Control.Exception.Safe (throwString)
 import System.Console.Terminal.Size (Window(..), size, hSize)
 import System.Environment (getArgs, getProgName)
 import System.Exit (ExitCode)
@@ -85,7 +86,7 @@ configure config = do
     output <- newTChanIO
     logger <- newTChanIO
 
-    return $ Context {
+    return $! Context {
           programNameFrom = (intoText name)
         , commandLineFrom = parameters
         , exitSemaphoreFrom = quit
@@ -111,7 +112,8 @@ getConsoleWidth = do
 handleCommandLine :: Config -> IO Parameters
 handleCommandLine config = do
     argv <- getArgs
-    let parameters = parseCommandLine config argv
-    -- TODO DO SOMETHING
-    return parameters
+    let result = parseCommandLine config argv
+    case result of
+        Left err -> throwString err
+        Right parameters -> return parameters
 
