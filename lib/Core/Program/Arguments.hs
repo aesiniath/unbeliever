@@ -36,6 +36,8 @@ module Core.Program.Arguments
 
 import Control.Exception.Safe (Exception(displayException))
 import Data.Hashable (Hashable)
+import Data.HashMap.Strict (HashMap)
+import qualified Data.HashMap.Strict as HashMap
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as HashSet
 import qualified Data.List as List
@@ -133,7 +135,7 @@ For options valid in this program, please see --help.
         |]
           in
             one ++ two
-        UnknownOption name -> "Sorry, option '--" ++ name ++ "' not recognized."
+        UnknownOption name -> "Sorry, option '" ++ name ++ "' not recognized."
         MissingArgument (LongName name) -> "Mandatory argument '" ++ name ++ "' missing."
 
 
@@ -153,7 +155,8 @@ parseCommandLine config argv = case config of
     Simple options ->
       let
         valids = extractValidNames options
-        result = parsePossibleOptions valids possibles
+        shorts = extractShortNames options
+        result = parsePossibleOptions valids shorts possibles
       in
         case result of
             Left err -> Left err
@@ -173,9 +176,10 @@ parseCommandLine config argv = case config of
 
 parsePossibleOptions
     :: HashSet LongName
+    -> HashMap ShortName LongName
     -> [String]
     -> Either InvalidCommandLine [(LongName,ParameterValue)]
-parsePossibleOptions valids args = mapM f args
+parsePossibleOptions valids shorts args = mapM f args
   where
     f arg = case arg of
         ('-':'-':name) -> considerLongOption name
@@ -192,11 +196,13 @@ parsePossibleOptions valids args = mapM f args
       in
         if HashSet.member candidate valids
             then Right (candidate,ParameterValue value')
-            else Left (UnknownOption name)
+            else Left (UnknownOption ("--" ++ name))
 
     considerShortOption :: Char -> Either InvalidCommandLine (LongName,ParameterValue)
-    considerShortOption _ = Left (error "TODO") -- FIXME
-
+    considerShortOption c =
+        case HashMap.lookup c shorts of
+            Just name -> Right (name,ParameterValue "") -- FIXME
+            Nothing -> Left (UnknownOption ['-',c])
 
 --  fold [Options] into HashSet LongName
 extractValidNames :: [Options] -> HashSet LongName
@@ -205,4 +211,13 @@ extractValidNames options =
   where
     f :: Options -> HashSet LongName -> HashSet LongName
     f (Option longname _ _) valids = HashSet.insert longname valids
+
+extractShortNames :: [Options] -> HashMap ShortName LongName
+extractShortNames options =
+    foldr f HashMap.empty options
+  where
+    f :: Options -> HashMap ShortName LongName -> HashMap ShortName LongName
+    f (Option longname shortname _) shorts = case shortname of
+        Just shortchar -> HashMap.insert shortchar longname shorts
+        Nothing -> shorts
 
