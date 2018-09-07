@@ -31,9 +31,10 @@ module Core.Program.Arguments
       , Variables(..)
       , Description
       , parseCommandLine
+      , InvalidCommandLine(..)
     ) where
 
-import Control.Exception.Safe (impureThrow)
+import Control.Exception.Safe (Exception(displayException))
 import Data.Hashable (Hashable)
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as HashSet
@@ -98,9 +99,46 @@ baselineConfig =
       , Option "help" (Just 'h') ""
     ]
 
-data UnknownOption = UnknownOption String deriving Show
+data InvalidCommandLine
+    = InvalidOption String
+    | UnknownOption String
+    | MissingArgument LongName
+    deriving Show
 
-instance Exception UnknownOption
+instance Exception InvalidCommandLine where
+    displayException e = case e of
+        InvalidOption arg ->
+          let
+            one = "Option '" ++ arg ++ "' illegal.\n\n"
+            two = [here|
+Options must either be long form with a double dash, for example:
+
+    --verbose
+
+or, when available with a short version, a single dash and a single
+character. They need to be listed individually:
+
+    -v -a
+
+When an option takes a value it has to be in long form and the value
+indicated with an equals sign, for example:
+
+    --tempdir=/tmp
+
+with complex values escaped according to the rules of your shell:
+
+    --username="Sarah Jones"
+
+For options valid in this program, please see --help.
+        |]
+          in
+            one ++ two
+        UnknownOption name -> "Sorry, option '--" ++ name ++ "' not recognized."
+        MissingArgument (LongName name) -> "Mandatory argument '" ++ name ++ "' missing."
+
+
+trim :: Int -> String -> String
+trim count input = unlines . map (drop count) . lines $ input
 
 --
 -- | Given a program configuration schema and the command line 
@@ -110,7 +148,7 @@ instance Exception UnknownOption
 -- unrecognized (because at that point, we want to rabbit right back to the
 -- top and bail out; there's no recovering).
 --
-parseCommandLine :: Config -> [String] -> Either String Parameters
+parseCommandLine :: Config -> [String] -> Either InvalidCommandLine Parameters
 parseCommandLine config argv = case config of
     Simple options ->
       let
@@ -122,32 +160,29 @@ parseCommandLine config argv = case config of
             Right params -> Right (Parameters Nothing params [])
 
     Complex commands ->
-        Left "FIXME not implemented" -- FIXME
+        Left (error "FIXME not implemented") -- FIXME
 --      Parameters (Just undefined) undefined []
   where
     (possibles,arguments) = List.partition isOption argv
 
     isOption :: String -> Bool
     isOption arg = case arg of
-        ('-':'-':name) -> True
-        ('-':c:cs) -> case cs of
-            [] -> True
-            _  -> error arg
+        ('-':_) -> True
         _ -> False
 
 
 parsePossibleOptions
     :: HashSet LongName
     -> [String]
-    -> Either String [(LongName,ParameterValue)]
+    -> Either InvalidCommandLine [(LongName,ParameterValue)]
 parsePossibleOptions valids args = mapM f args
   where
     f arg = case arg of
         ('-':'-':name) -> considerLongOption name
-        ('-':c:_) -> considerShortOption c
-        _ -> Left arg
+        ('-':c:[]) -> considerShortOption c
+        _ -> Left (InvalidOption arg)
 
-    considerLongOption :: String -> Either String (LongName,ParameterValue)
+    considerLongOption :: String -> Either InvalidCommandLine (LongName,ParameterValue)
     considerLongOption arg =
       let
         (name,value) = List.span (/= '=') arg 
@@ -157,10 +192,10 @@ parsePossibleOptions valids args = mapM f args
       in
         if HashSet.member candidate valids
             then Right (candidate,ParameterValue value')
-            else Left arg
+            else Left (UnknownOption name)
 
-    considerShortOption :: Char -> Either String (LongName,ParameterValue)
-    considerShortOption = error "TODO" -- FIXME
+    considerShortOption :: Char -> Either InvalidCommandLine (LongName,ParameterValue)
+    considerShortOption _ = Left (error "TODO") -- FIXME
 
 
 --  fold [Options] into HashSet LongName

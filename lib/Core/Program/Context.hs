@@ -17,10 +17,10 @@ module Core.Program.Context
 import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
 import Control.Concurrent.MVar (MVar, newEmptyMVar)
 import Control.Concurrent.STM.TChan (TChan, newTChanIO)
-import Control.Exception.Safe (throwString)
+import Control.Exception.Safe (displayException)
 import System.Console.Terminal.Size (Window(..), size, hSize)
 import System.Environment (getArgs, getProgName)
-import System.Exit (ExitCode)
+import System.Exit (ExitCode(..), exitWith)
 
 import Core.Text
 import Core.System
@@ -109,11 +109,21 @@ getConsoleWidth = do
             Nothing -> 80
     return width
 
+--
+-- | Process the command line options and arguments. If an invalid
+-- option is encountered or a [mandatory] argument is missing, then
+-- the program will terminate here.
+--
 handleCommandLine :: Config -> IO Parameters
 handleCommandLine config = do
     argv <- getArgs
     let result = parseCommandLine config argv
     case result of
-        Left err -> throwString err
         Right parameters -> return parameters
+        Left e -> do
+            putStr =<< getProgName
+            putStr ": "
+            putStrLn (displayException e)
+            hFlush stdout
+            exitWith (ExitFailure 1)
 
