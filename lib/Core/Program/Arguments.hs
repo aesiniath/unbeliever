@@ -79,8 +79,13 @@ data Variables
     = Variable LongName Description
 
 
-newtype ParameterValue = ParameterValue String -- ugh
-    deriving (Show, IsString, Eq)
+data ParameterValue
+    = Value String
+    | Empty
+    deriving (Show, Eq)
+
+instance IsString ParameterValue where
+    fromString x = Value x
 
 --
 -- Result of having processed the command line and the environment.
@@ -192,16 +197,18 @@ parsePossibleOptions valids shorts args = mapM f args
         (name,value) = List.span (/= '=') arg 
         candidate = LongName name
         -- lose the '='
-        value' = drop 1 value
+        value' = case List.uncons value of
+            Just (_,remainder) -> Value remainder
+            Nothing -> Empty
       in
         if HashSet.member candidate valids
-            then Right (candidate,ParameterValue value')
+            then Right (candidate,value')
             else Left (UnknownOption ("--" ++ name))
 
     considerShortOption :: Char -> Either InvalidCommandLine (LongName,ParameterValue)
     considerShortOption c =
         case HashMap.lookup c shorts of
-            Just name -> Right (name,ParameterValue "") -- FIXME
+            Just name -> Right (name,Empty)
             Nothing -> Left (UnknownOption ['-',c])
 
 --  fold [Options] into HashSet LongName
