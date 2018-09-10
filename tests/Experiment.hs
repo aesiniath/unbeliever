@@ -90,15 +90,18 @@ main :: IO ()
 main = do
     context <- configure (simple
         [ Option "verbose" (Just 'v') [here|
-              Turn on event level logging to console. 
-              Valid values are "event", "debug", and "none" (the default
-              if you don't specify the verbose option).
+            Turn on event level logging to console.
+            Valid values are "event", "debug", and "none" (the default
+            if you don't specify the verbose option).
           |]
         , Option "logging" Nothing [here|
-              Valid values are "console", "file:/path/to/file.log", and "syslog"
+            Valid values are "console", "file:/path/to/file.log", and "syslog"
           |]
         , Option "quiet" (Just 'q') [here|
-              Supress normal output.
+            Supress normal output.
+          |]
+        , Argument "filename" [here|
+            The file you want to frobnicate.
           |]
         ])
 

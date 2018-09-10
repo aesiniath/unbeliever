@@ -110,6 +110,7 @@ data InvalidCommandLine
     = InvalidOption String
     | UnknownOption String
     | MissingArgument LongName
+    | UnexpectedArguments [String]
     deriving Show
 
 instance Exception InvalidCommandLine where
@@ -134,7 +135,7 @@ indicated with an equals sign, for example:
 
 with complex values escaped according to the rules of your shell:
 
-    --username="Sarah Jones"
+    --username="Ada Lovelace"
 
 For options valid in this program, please see --help.
         |]
@@ -142,7 +143,16 @@ For options valid in this program, please see --help.
             one ++ two
         UnknownOption name -> "Sorry, option '" ++ name ++ "' not recognized."
         MissingArgument (LongName name) -> "Mandatory argument '" ++ name ++ "' missing."
+        UnexpectedArguments args ->
+          let
+            quoted = List.intercalate "', '" args
+          in [iTrim|
+Unexpected trailing arguments:
 
+    '${quoted}'.
+
+For arguments expected by this program, please see --help.
+|]
 
 trim :: Int -> String -> String
 trim count input = unlines . map (drop count) . lines $ input
@@ -161,7 +171,10 @@ parseCommandLine config argv = case config of
       let
         valids = extractValidNames options
         shorts = extractShortNames options
-        result = parsePossibleOptions valids shorts possibles
+        needed = extractRequiredArguments options
+        list1 = parsePossibleOptions valids shorts possibles
+        list2 = parseRequiredArguments needed arguments
+        result = (++) <$> list1 <*> list2
       in
         case result of
             Left err -> Left err
@@ -211,13 +224,33 @@ parsePossibleOptions valids shorts args = mapM f args
             Just name -> Right (name,Empty)
             Nothing -> Left (UnknownOption ['-',c])
 
---  fold [Options] into HashSet LongName
+parseRequiredArguments
+    :: [LongName]
+    -> [String]
+    -> Either InvalidCommandLine [(LongName,ParameterValue)]
+parseRequiredArguments needed args = iter needed args
+  where
+    iter :: [LongName] -> [String] -> Either InvalidCommandLine [(LongName,ParameterValue)]
+
+    iter [] [] = Right []
+    -- more arguments supplied than expected
+    iter [] args = Left (UnexpectedArguments args)
+    -- more arguments required, not satisfied
+    iter (name:_) [] = Left (MissingArgument name)
+    iter (name:names) (arg:args) =
+        let
+            deeper = iter names args
+        in case deeper of
+            Left e -> Left e
+            Right list -> Right ((name,Value arg):list)
+
 extractValidNames :: [Options] -> HashSet LongName
 extractValidNames options =
     foldr f HashSet.empty options
   where
     f :: Options -> HashSet LongName -> HashSet LongName
     f (Option longname _ _) valids = HashSet.insert longname valids
+    f _ valids = valids
 
 extractShortNames :: [Options] -> HashMap ShortName LongName
 extractShortNames options =
@@ -227,4 +260,13 @@ extractShortNames options =
     f (Option longname shortname _) shorts = case shortname of
         Just shortchar -> HashMap.insert shortchar longname shorts
         Nothing -> shorts
+    f _ shorts = shorts
+
+extractRequiredArguments :: [Options] -> [LongName]
+extractRequiredArguments arguments =
+    foldr f [] arguments
+  where
+    f :: Options -> [LongName] -> [LongName]
+    f (Argument longname _) needed = longname:needed
+    f _ needed = needed
 
