@@ -19,10 +19,17 @@ options2 =
     [ Argument "filename" "The file that you want"
     ]
 
+commands1 =
+    [ Global
+        options1
+    , Command "add" "Add a new file"
+        options2
+    ]
+
 
 checkArgumentsParsing :: Spec
 checkArgumentsParsing = do
-    describe "Parsing of command-line arguments" $ do
+    describe "Parsing of simple command-line arguments" $ do
         it "recognizes a single specified options" $
           let
             config = simple options1
@@ -72,3 +79,16 @@ checkArgumentsParsing = do
             actual = parseCommandLine config []
           in
             actual `shouldBe` Left (MissingArgument "filename")
+
+    describe "Parsing of complex command-line arguments" $ do
+
+        it "recognizes a single command" $
+          let
+            config = complex commands1
+            actual = parseCommandLine config ["-q", "add", "Hello.hs"]
+            expect = Parameters (Just "add")
+                [ ("quiet", Empty)
+                , ("file", Value "Hello.hs")
+                ] []
+          in
+            actual `shouldBe` Right expect
