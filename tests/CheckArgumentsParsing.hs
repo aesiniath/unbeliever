@@ -41,6 +41,7 @@ checkArgumentsParsing = do
               ] []
           in
             actual `shouldBe` Right expect
+
         it "recognizes required arguments" $
           let
             config = simple options2
@@ -50,6 +51,7 @@ checkArgumentsParsing = do
               ] []
           in
             actual `shouldBe` Right expect
+
         it "rejects unknown options" $
           let
             config = simple options2
@@ -64,3 +66,9 @@ checkArgumentsParsing = do
           in
             actual `shouldBe` Left (InvalidOption "-help")
 
+        it "fails on missing argument" $
+          let
+            config = simple options2
+            actual = parseCommandLine config []
+          in
+            actual `shouldBe` Left (MissingArgument "filename")
