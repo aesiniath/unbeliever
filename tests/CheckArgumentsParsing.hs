@@ -55,27 +55,12 @@ checkArgumentsParsing = do
             config = simple options2
             actual = parseCommandLine config ["-a"]
           in
-            case actual of
-                Left (UnknownOption _)  -> passed
-                _                       -> failed
+            actual `shouldBe` Left (UnknownOption "-a")
 
         it "rejects a malformed option" $
           let
             config = simple options2
             actual = parseCommandLine config ["-help"]
           in
-            case actual of
-                Left (InvalidOption _)  -> passed
-                _                       -> failed
+            actual `shouldBe` Left (InvalidOption "-help")
 
-{-
-    Clearly I'm missing something obvious, but this is the best way I could
-    think of to make sure the expressiong at the end of the above do block had
-    the correct type.
--}
-
-passed :: Expectation
-passed = True `shouldBe` True
-
-failed :: Expectation
-failed = False `shouldBe` True
