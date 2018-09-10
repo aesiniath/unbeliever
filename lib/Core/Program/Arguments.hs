@@ -111,7 +111,7 @@ data InvalidCommandLine
     | UnknownOption String
     | MissingArgument LongName
     | UnexpectedArguments [String]
-    deriving Show
+    deriving (Show, Eq)
 
 instance Exception InvalidCommandLine where
     displayException e = case e of
