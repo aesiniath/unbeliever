@@ -16,7 +16,8 @@ options1 =
     ]
 
 options2 =
-    [ Argument "filename" "The file that you want"
+    [ Option "recursive" Nothing "Descend into darkness"
+    , Argument "filename" "The file that you want"
     ]
 
 commands1 =
@@ -85,10 +86,11 @@ checkArgumentsParsing = do
         it "recognizes a single command" $
           let
             config = complex commands1
-            actual = parseCommandLine config ["-q", "add", "Hello.hs"]
+            actual = parseCommandLine config ["-q", "add", "--recursive", "Hello.hs"]
             expect = Parameters (Just "add")
                 [ ("quiet", Empty)
-                , ("file", Value "Hello.hs")
+                , ("recursive", Empty)
+                , ("filename", Value "Hello.hs")
                 ] []
           in
             actual `shouldBe` Right expect

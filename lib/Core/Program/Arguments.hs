@@ -111,6 +111,7 @@ data InvalidCommandLine
     | UnknownOption String
     | MissingArgument LongName
     | UnexpectedArguments [String]
+    | UnknownCommand String
     deriving (Show, Eq)
 
 instance Exception InvalidCommandLine where
@@ -153,6 +154,7 @@ Unexpected trailing arguments:
 
 For arguments expected by this program, please see --help.
 |]
+        UnknownCommand first -> "Hm. Command '" ++ first ++ "' not recognized."
 
 trim :: Int -> String -> String
 trim count input = unlines . map (drop count) . lines $ input
@@ -167,30 +169,39 @@ trim count input = unlines . map (drop count) . lines $ input
 --
 parseCommandLine :: Config -> [String] -> Either InvalidCommandLine Parameters
 parseCommandLine config argv = case config of
-    Simple options ->
-      let
-        valids = extractValidNames options
-        shorts = extractShortNames options
-        needed = extractRequiredArguments options
-        list1 = parsePossibleOptions valids shorts possibles
-        list2 = parseRequiredArguments needed arguments
-        result = (++) <$> list1 <*> list2
-      in
-        case result of
-            Left err -> Left err
-            Right params -> Right (Parameters Nothing params [])
+    Simple options -> do
+        params <- extractor options argv
+        return (Parameters Nothing params [])
 
     Complex commands ->
-        Left (error "FIXME not implemented") -- FIXME
---      Parameters (Just undefined) undefined []
+      let
+        globalOptions = extractGlobalOptions commands
+        modes = extractValidModes commands
+
+        (possibles,first:remainingArgs) = List.span isOption argv
+      in do
+        params1 <- extractor globalOptions possibles
+        (mode,localOptions) <- parseIndicatedCommand modes first
+        params2 <- extractor localOptions remainingArgs
+        return (Parameters (Just mode) (params1 ++ params2) [])
   where
-    (possibles,arguments) = List.partition isOption argv
 
     isOption :: String -> Bool
     isOption arg = case arg of
         ('-':_) -> True
         _ -> False
 
+    extractor :: [Options] -> [String] -> Either InvalidCommandLine [(LongName,ParameterValue)]
+    extractor options args =
+      let
+        (possibles,arguments) = List.partition isOption args
+        valids = extractValidNames options
+        shorts = extractShortNames options
+        needed = extractRequiredArguments options
+      in do
+        list1 <- parsePossibleOptions valids shorts possibles
+        list2 <- parseRequiredArguments needed arguments
+        return (list1 ++ list2)
 
 parsePossibleOptions
     :: HashSet LongName
@@ -244,6 +255,18 @@ parseRequiredArguments needed args = iter needed args
             Left e -> Left e
             Right list -> Right ((name,Value arg):list)
 
+parseIndicatedCommand
+    :: HashMap LongName [Options]
+    -> String
+    -> Either InvalidCommandLine (LongName,[Options])
+parseIndicatedCommand modes first =
+  let
+    candidate = LongName first
+  in
+    case HashMap.lookup candidate modes of
+        Just options -> Right (candidate,options)
+        Nothing -> Left (UnknownCommand first)
+
 extractValidNames :: [Options] -> HashSet LongName
 extractValidNames options =
     foldr f HashSet.empty options
@@ -254,19 +277,38 @@ extractValidNames options =
 
 extractShortNames :: [Options] -> HashMap ShortName LongName
 extractShortNames options =
-    foldr f HashMap.empty options
+    foldr g HashMap.empty options
   where
-    f :: Options -> HashMap ShortName LongName -> HashMap ShortName LongName
-    f (Option longname shortname _) shorts = case shortname of
+    g :: Options -> HashMap ShortName LongName -> HashMap ShortName LongName
+    g (Option longname shortname _) shorts = case shortname of
         Just shortchar -> HashMap.insert shortchar longname shorts
         Nothing -> shorts
-    f _ shorts = shorts
+    g _ shorts = shorts
 
 extractRequiredArguments :: [Options] -> [LongName]
 extractRequiredArguments arguments =
-    foldr f [] arguments
+    foldr h [] arguments
   where
-    f :: Options -> [LongName] -> [LongName]
-    f (Argument longname _) needed = longname:needed
-    f _ needed = needed
+    h :: Options -> [LongName] -> [LongName]
+    h (Argument longname _) needed = longname:needed
+    h _ needed = needed
 
+extractGlobalOptions :: [Commands] -> [Options]
+extractGlobalOptions commands =
+    foldr j [] commands
+  where
+    j :: Commands -> [Options] -> [Options]
+    j (Global options) valids = options ++ valids
+    j _ valids = valids
+
+extractValidModes :: [Commands] -> HashMap LongName [Options]
+extractValidModes commands =
+    foldr k HashMap.empty commands
+  where
+    k :: Commands -> HashMap LongName [Options] -> HashMap LongName [Options]
+    k (Command longname _ options) modes = HashMap.insert longname options modes
+    k _ modes = modes
+
+{-
+    Ok, the f,g,h,... was silly. But hey :)
+-}
