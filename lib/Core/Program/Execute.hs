@@ -9,10 +9,12 @@
 
 module Core.Program.Execute
     ( execute
+    , executeWith
     , Program
     , terminate
     , setProgramName
     , getProgramName
+    , getCommandLine
     , write
     , writeS
     , event
@@ -44,7 +46,6 @@ import qualified Data.ByteString.Char8 as C (singleton)
 import qualified Data.ByteString.Lazy as L (hPut)
 import Data.Hourglass (timePrint, TimeFormatElem(..))
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
-import System.Environment (getProgName)
 import System.Exit (ExitCode(..), exitWith)
 import System.IO.Unsafe (unsafePerformIO)
 import Time.System (timezoneCurrent)
@@ -55,6 +56,7 @@ import Core.Render
 import Core.Program.Context
 import Core.Program.Logging
 import Core.Program.Signal
+import Core.Program.Arguments
 
 --
 -- The type of a top-level Prgoram.
@@ -186,21 +188,21 @@ escapeHandlers context = [
 -- initialized with appropriate defaults. While some settings can be
 -- changed at runtime, if you need to replace (for example) the
 -- logging subsystem you can run your program using 'configure' and
--- then 'execute''.
+-- then 'executeWith'.
 --
 execute :: Program a -> IO ()
 execute program = do
+    context <- configure baselineConfig
+    executeWith context program
+
+executeWith :: Context -> Program a -> IO ()
+executeWith context program = do
     -- command line +RTS -Nn -RTS value
     when (numCapabilities == 1) (getNumProcessors >>= setNumCapabilities)
 
-    name <- getProgName
-    quit <- newEmptyMVar
-    start <- getCurrentTimeNanoseconds
-    width <- getConsoleWidth
-    output <- newTChanIO
-    logger <- newTChanIO
-
-    let context = Context (intoText name) quit start width output logger
+    let quit = exitSemaphoreFrom context
+        output = outputChannelFrom context
+        logger = loggerChannelFrom context
 
     -- set up standard output
     o <- async $ do
@@ -421,3 +423,10 @@ sleep seconds =
   in
     liftIO $ threadDelay us
 
+
+getCommandLine :: Program (Parameters)
+getCommandLine = do
+    v <- ask
+    liftIO $ do
+        context <- readMVar v
+        return (commandLineFrom context)

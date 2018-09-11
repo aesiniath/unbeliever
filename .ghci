@@ -1,3 +1,4 @@
+:set -ilib:tests
 :set -XOverloadedStrings
 
 import qualified Data.Text as T

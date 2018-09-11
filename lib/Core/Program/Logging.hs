@@ -6,10 +6,9 @@
 module Core.Program.Logging
     (
         putMessage
-      , getConsoleWidth
     ) where
 
-import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
+import Chrono.TimeStamp (TimeStamp(..))
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TChan (TChan, writeTChan)
 import qualified Data.ByteString as S (pack, hPut)
@@ -17,7 +16,6 @@ import qualified Data.ByteString.Char8 as C (singleton)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.Fixed
 import Data.Hourglass (timePrint, TimeFormatElem(..))
-import System.Console.Terminal.Size (Window(..), size, hSize)
 import Time.System (timezoneCurrent)
 
 import Core.Text
@@ -43,8 +41,6 @@ putMessage context message@(Message now nature text potentialValue) = do
     let width = terminalWidthFrom context
     let output = outputChannelFrom context
     let logger = loggerChannelFrom context
-
-    now <- getCurrentTimeNanoseconds
 
     let display = case potentialValue of
             Just value ->
@@ -99,11 +95,3 @@ padWithZeros digits str =
     pad = take len (replicate digits '0')
     len = digits - length str
 
-
-getConsoleWidth :: IO (Int)
-getConsoleWidth = do
-    window <- size
-    let width =  case window of
-            Just (Window _ w) -> w
-            Nothing -> 80
-    return width

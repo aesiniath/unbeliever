@@ -15,6 +15,7 @@ dependencies:
  - chronologique
  - exceptions
  - hashable
+ - here
  - hourglass
  - mtl
  - prettyprinter
@@ -37,6 +38,7 @@ library:
    - Core.Program
    - Core.System
    - Core.Render
+   - Core.Program.Arguments
   other-modules:
    - Core.Program.Context
    - Core.Program.Execute
@@ -64,8 +66,10 @@ tests:
 
     ghc-options: -threaded -Wall -Wwarn -fwarn-tabs
 
-    source-dirs: tests
+    source-dirs:
+     - tests
     main: TestSuite.hs
     other-modules:
+     - CheckArgumentsParsing
      - CheckJsonWrapper
 

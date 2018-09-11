@@ -3,6 +3,7 @@
 import Test.Hspec
 
 import CheckJsonWrapper
+import CheckArgumentsParsing
 
 main :: IO ()
 main = do
@@ -12,3 +13,4 @@ main = do
 suite :: Spec
 suite = do
     checkJsonWrapper
+    checkArgumentsParsing

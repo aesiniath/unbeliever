@@ -9,11 +9,25 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
 module Core.Program
-    ( execute
+    ( configure
+    , Config
+    , Parameters(..)
+    , ParameterValue(..)
+    , simple
+    , complex
+    , LongName(..)
+    , ShortName
+    , Options(..)
+    , Variables(..)
+    , Commands(..)
+    , Description
+    , execute
+    , executeWith
     , Program
     , terminate
     , setProgramName
     , getProgramName
+    , getCommandLine
     , write
     , writeS
     , event
@@ -24,6 +38,7 @@ module Core.Program
     ) where
 
 import Core.Program.Context
+import Core.Program.Arguments
 import Core.Program.Logging
 import Core.Program.Execute
 

@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
@@ -10,6 +11,7 @@ import Control.Concurrent (threadDelay)
 import Control.Monad (replicateM_)
 import qualified Data.ByteString.Char8 as S
 import qualified Data.HashMap.Strict as HashMap
+import Data.String.Here
 import Data.Text.Prettyprint.Doc (layoutPretty, defaultLayoutOptions, Pretty(..))
 import Data.Text.Prettyprint.Doc.Render.Text (renderStrict)
 
@@ -43,6 +45,9 @@ instance Exception Boom
 program :: Program ()
 program = do
     event "Starting..."
+
+    params <- getCommandLine
+    debugS "params" params
 
     name <- getProgramName
     debug "programName" name
@@ -82,7 +87,65 @@ program = do
 
 
 main :: IO ()
-main = execute program
+main = do
+    context <- configure (simple
+        [ Option "verbose" (Just 'v') [here|
+            Turn on event level logging to console.
+            Valid values are "event", "debug", and "none" (the default
+            if you don't specify the verbose option).
+          |]
+        , Option "logging" Nothing [here|
+            Valid values are "console", "file:/path/to/file.log", and "syslog"
+          |]
+        , Option "quiet" (Just 'q') [here|
+            Supress normal output.
+          |]
+        , Argument "filename" [here|
+            The file you want to frobnicate.
+          |]
+        ])
+
+{-
+    context1 <- configure (complex
+        [ Global
+            [ Option "verbose" (Just 'v') [here|
+                  Turn on event level logging to console. 
+                  Valid values are "event", "debug", and "none" (the default
+                  if you don't specify the verbose option).
+              |]
+            , Option "logging" Nothing [here|
+                  Valid values are "normal", "structured", and ...
+              |]
+            , Option "logging" Nothing [here|
+                  Valid values are "console", "file:/path/to/file.log", and "syslog"
+              |]
+            , Option "quiet" (Just 'q') "Supress normal output."
+            ]
+
+        , Command "add" "Add a file" 
+            [ Argument "filename" "File to add"
+            ]
+
+        , Command "commit" "Commit your changes to the repository" 
+            [ Option "message" (Just 'm') "Specify commit message (instead of using editor)"
+            ]
+  
+        , Environment
+            [ Variable "CRAZY_MODE" "Specify how many crazies to activate"
+            , Variable "GITHUB_TOKEN" "OAuth token to access GitHub"
+            ]
+        ])
+-}  
+    executeWith context program
+
+{-
+main3 :: IO ()
+main3 = do
+    context <- configure $ do
+        options config
+        logging Structured
+-}
+
 
 {-
 main :: IO ()
