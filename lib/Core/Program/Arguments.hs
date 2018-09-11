@@ -43,6 +43,7 @@ import qualified Data.HashSet as HashSet
 import qualified Data.List as List
 import Data.String
 import Data.String.Here
+import System.Environment (getProgName)
 
 import Core.Text
 import Core.System
@@ -112,6 +113,7 @@ data InvalidCommandLine
     | MissingArgument LongName
     | UnexpectedArguments [String]
     | UnknownCommand String
+    | NoCommandFound
     deriving (Show, Eq)
 
 instance Exception InvalidCommandLine where
@@ -155,6 +157,17 @@ Unexpected trailing arguments:
 For arguments expected by this program, please see --help.
 |]
         UnknownCommand first -> "Hm. Command '" ++ first ++ "' not recognized."
+        NoCommandFound -> [iTrim|
+No command specified.
+Usage is of the form:
+
+    ${programName} [GLOBAL OPTIONS] COMMAND [LOCAL OPTIONS] [ARGUMENTS]
+
+See --help for details.
+|]
+
+programName :: String
+programName = unsafePerformIO getProgName
 
 trim :: Int -> String -> String
 trim count input = unlines . map (drop count) . lines $ input
@@ -177,19 +190,13 @@ parseCommandLine config argv = case config of
       let
         globalOptions = extractGlobalOptions commands
         modes = extractValidModes commands
-
-        (possibles,first:remainingArgs) = List.span isOption argv
       in do
+        (possibles,first,remainingArgs) <- splitCommandLine argv
         params1 <- extractor globalOptions possibles
         (mode,localOptions) <- parseIndicatedCommand modes first
         params2 <- extractor localOptions remainingArgs
         return (Parameters (Just mode) (params1 ++ params2) [])
   where
-
-    isOption :: String -> Bool
-    isOption arg = case arg of
-        ('-':_) -> True
-        _ -> False
 
     extractor :: [Options] -> [String] -> Either InvalidCommandLine [(LongName,ParameterValue)]
     extractor options args =
@@ -202,6 +209,11 @@ parseCommandLine config argv = case config of
         list1 <- parsePossibleOptions valids shorts possibles
         list2 <- parseRequiredArguments needed arguments
         return (list1 ++ list2)
+
+isOption :: String -> Bool
+isOption arg = case arg of
+    ('-':_) -> True
+    _ -> False
 
 parsePossibleOptions
     :: HashSet LongName
@@ -308,6 +320,17 @@ extractValidModes commands =
     k :: Commands -> HashMap LongName [Options] -> HashMap LongName [Options]
     k (Command longname _ options) modes = HashMap.insert longname options modes
     k _ modes = modes
+
+splitCommandLine :: [String] -> Either InvalidCommandLine ([String], String, [String])
+splitCommandLine args =
+  let
+    (possibles,remainder) = List.span isOption args
+    x = List.uncons remainder
+  in
+    case x of
+        Just (mode,remainingArgs) -> Right (possibles,mode,remainingArgs)
+        Nothing -> Left NoCommandFound
+
 
 {-
     Ok, the f,g,h,... was silly. But hey :)

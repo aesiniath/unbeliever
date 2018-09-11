@@ -121,8 +121,7 @@ handleCommandLine config = do
     case result of
         Right parameters -> return parameters
         Left e -> do
-            putStr =<< getProgName
-            putStr ": "
+            putStr "error: "
             putStrLn (displayException e)
             hFlush stdout
             exitWith (ExitFailure 1)
