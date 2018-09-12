@@ -32,6 +32,7 @@ module Core.Program.Arguments
       , Description
       , parseCommandLine
       , InvalidCommandLine(..)
+      , renderUsage
     ) where
 
 import Control.Exception.Safe (Exception(displayException))
@@ -114,6 +115,7 @@ data InvalidCommandLine
     | UnexpectedArguments [String]
     | UnknownCommand String
     | NoCommandFound
+    | HelpRequest
     deriving (Show, Eq)
 
 instance Exception InvalidCommandLine where
@@ -165,6 +167,7 @@ Usage is of the form:
 
 See --help for details.
 |]
+        HelpRequest -> "Usage:"
 
 programName :: String
 programName = unsafePerformIO getProgName
@@ -223,6 +226,7 @@ parsePossibleOptions
 parsePossibleOptions valids shorts args = mapM f args
   where
     f arg = case arg of
+        "--help" -> Left HelpRequest
         ('-':'-':name) -> considerLongOption name
         ('-':c:[]) -> considerShortOption c
         _ -> Left (InvalidOption arg)
@@ -279,6 +283,10 @@ parseIndicatedCommand modes first =
         Just options -> Right (candidate,options)
         Nothing -> Left (UnknownCommand first)
 
+{-
+    Ok, the f,g,h,... was silly. But hey :)
+-}
+
 extractValidNames :: [Options] -> HashSet LongName
 extractValidNames options =
     foldr f HashSet.empty options
@@ -333,5 +341,51 @@ splitCommandLine args =
 
 
 {-
-    Ok, the f,g,h,... was silly. But hey :)
+    There's TODO and then there's TODO. This is the latter.
+    Replace with prettyprinter doing proper formatting.
 -}
+renderUsage :: Config -> String
+renderUsage config = case config of
+    Simple options ->
+      let
+        (o,a) = partitionParameters options
+        optionsPresent, argumentsPresent :: String
+        optionsPresent = if length o > 0 then " [OPTIONS]" else ""
+        argumentsPresent = if length a > 0 then " ARGUMENTS" else ""
+
+        optionsFormatted = formatParameters o
+        argumentsFormatted = formatParameters a
+
+      in
+        [iTrim|
+Usage:
+
+    ${programName}${optionsPresent}${argumentsPresent}
+
+where
+
+${optionsFormatted}
+${argumentsFormatted}
+        |]
+  where
+    partitionParameters :: [Options] -> ([Options],[Options])
+    partitionParameters options = foldr f ([],[]) options
+
+    f :: Options -> ([Options],[Options]) -> ([Options],[Options])
+    f o@(Option _ _ _) (opts,args) = (o:opts,args)
+    f a@(Argument _ _) (opts,args) = (opts,a:args)
+
+    formatParameters :: [Options] -> String
+    formatParameters options = foldr g "" options
+
+    g :: Options -> String -> String
+    g (Option (LongName l) shortname description) acc =
+      let
+        s = case shortname of
+                Just shortchar -> (' ':'-':shortchar:[]) ++ ", --"
+                Nothing -> "     --"
+      in
+        s ++ l ++ "\t" ++ fromText description ++ "\n" ++ acc
+    g (Argument (LongName l) description) acc =
+        "     " ++ l ++ "\t" ++ fromText description ++ "\n" ++ acc
+

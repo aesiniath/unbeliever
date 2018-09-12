@@ -25,7 +25,7 @@ import System.Exit (ExitCode(..), exitWith)
 import Core.Text
 import Core.System
 import Core.Render
-import Core.Program.Arguments (Config, Parameters, parseCommandLine)
+import Core.Program.Arguments
 
 {-
     The fieldNameFrom idiom is an experiment. Looks very strange,
@@ -96,7 +96,6 @@ configure config = do
         , loggerChannelFrom = logger
     }
 
-
 --
 -- | Probe the width of the terminal, in characters. If it fails to retrieve,
 -- for whatever reason, return a default of 80 characters wide.
@@ -120,9 +119,14 @@ handleCommandLine config = do
     let result = parseCommandLine config argv
     case result of
         Right parameters -> return parameters
-        Left e -> do
-            putStr "error: "
-            putStrLn (displayException e)
-            hFlush stdout
-            exitWith (ExitFailure 1)
+        Left e -> case e of
+            HelpRequest -> do
+                putStrLn (renderUsage config)
+                hFlush stdout
+                exitWith (ExitFailure 1)
+            _ -> do
+                putStr "error: "
+                putStrLn (displayException e)
+                hFlush stdout
+                exitWith (ExitFailure 1)
 
