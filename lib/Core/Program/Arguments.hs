@@ -42,9 +42,9 @@ import qualified Data.HashMap.Strict as HashMap
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as HashSet
 import qualified Data.List as List
-import Data.Text.Prettyprint.Doc (Doc, Pretty(..),
-    emptyDoc, hardline, fillBreak, align, (<+>),
-    layoutPretty, defaultLayoutOptions)
+import Data.Text.Prettyprint.Doc (Doc, Pretty(..), nest
+    , emptyDoc, hardline, fillBreak, align, (<+>), fillSep, indent
+    , layoutPretty, defaultLayoutOptions)
 import Data.Text.Prettyprint.Doc.Util (reflow)
 import Data.Text.Prettyprint.Doc.Render.String (renderString)
 import Data.String
@@ -357,29 +357,27 @@ renderUsage config = case config of
     Simple options ->
       let
         (o,a) = partitionParameters options
-        optionsPresent, argumentsPresent :: String
-        optionsPresent = if length o > 0 then " [OPTIONS]" else ""
-        argumentsPresent = if length a > 0 then " ARGUMENTS" else ""
 
-        optionsFormatted = renderString . layoutPretty defaultLayoutOptions
-                            . formatParameters $ o
-        argumentsFormatted = renderString . layoutPretty defaultLayoutOptions
-                            . formatParameters $ a
-
+        usage = "Usage:" <> hardline <> hardline
+            <> indent 4 (nest 4 (pretty programName <+> optionsPresent o <+> argumentsPresent a)) <> hardline
+            <> hardline
+            <> "where" <> hardline
+            <> hardline
+            <> formatParameters o
+            <> hardline
+            <> formatParameters a
       in
-        [iTrim|
-Usage:
+        renderString (layoutPretty defaultLayoutOptions usage)
 
-    ${programName}${optionsPresent}${argumentsPresent}
-
-Options:
-
-${optionsFormatted}
-${argumentsFormatted}
-        |]
   where
     partitionParameters :: [Options] -> ([Options],[Options])
     partitionParameters options = foldr f ([],[]) options
+
+    optionsPresent :: [Options] -> Doc ann
+    optionsPresent os = if length os > 0 then "[OPTIONS]" else ""
+
+    argumentsPresent :: [Options] -> Doc ann
+    argumentsPresent = fillSep . fmap pretty . extractRequiredArguments
 
     f :: Options -> ([Options],[Options]) -> ([Options],[Options])
     f o@(Option _ _ _) (opts,args) = (o:opts,args)
