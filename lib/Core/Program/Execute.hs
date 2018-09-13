@@ -59,7 +59,7 @@ import Core.Program.Signal
 import Core.Program.Arguments
 
 --
--- The type of a top-level Prgoram.
+-- | The type of a top-level Prgoram.
 --
 -- You would use this by writing:
 --
