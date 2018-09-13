@@ -359,12 +359,10 @@ renderUsage config = case config of
         (o,a) = partitionParameters options
 
         usage = "Usage:" <> hardline <> hardline
-            <> indent 4 (nest 4 (pretty programName <+> optionsPresent o <+> argumentsPresent a)) <> hardline
-            <> hardline
-            <> "where" <> hardline
-            <> hardline
+            <> indent 4 (nest 4 (pretty programName <> optionsSummary o <> argumentsSummary a)) <> hardline
+            <> optionsHeading o
             <> formatParameters o
-            <> hardline
+            <> argumentsHeading a
             <> formatParameters a
       in
         renderString (layoutPretty defaultLayoutOptions usage)
@@ -373,18 +371,23 @@ renderUsage config = case config of
     partitionParameters :: [Options] -> ([Options],[Options])
     partitionParameters options = foldr f ([],[]) options
 
-    optionsPresent :: [Options] -> Doc ann
-    optionsPresent os = if length os > 0 then "[OPTIONS]" else ""
+    optionsSummary :: [Options] -> Doc ann
+    optionsSummary os = if length os > 0 then " [OPTIONS]" else emptyDoc
 
-    argumentsPresent :: [Options] -> Doc ann
-    argumentsPresent = fillSep . fmap pretty . extractRequiredArguments
+    optionsHeading os = if length os > 0 then hardline <> "Available options:" <> hardline else emptyDoc
+
+    argumentsSummary :: [Options] -> Doc ann
+    argumentsSummary as = " " <> fillSep (fmap pretty (extractRequiredArguments as))
+
+    argumentsHeading as = if length as > 0 then hardline <> "Required arguments:" <> hardline else emptyDoc
 
     f :: Options -> ([Options],[Options]) -> ([Options],[Options])
     f o@(Option _ _ _) (opts,args) = (o:opts,args)
     f a@(Argument _ _) (opts,args) = (opts,a:args)
 
     formatParameters :: [Options] -> Doc ann
-    formatParameters options = foldr g emptyDoc options
+    formatParameters [] = emptyDoc
+    formatParameters options = hardline <> foldr g emptyDoc options
 
 {-
     15 characters width for short option, long option, and two spaces. If the
