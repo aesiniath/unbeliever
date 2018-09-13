@@ -42,6 +42,11 @@ import qualified Data.HashMap.Strict as HashMap
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as HashSet
 import qualified Data.List as List
+import Data.Text.Prettyprint.Doc (Doc, Pretty(..),
+    emptyDoc, hardline, fillBreak, align, (<+>),
+    layoutPretty, defaultLayoutOptions)
+import Data.Text.Prettyprint.Doc.Util (reflow)
+import Data.Text.Prettyprint.Doc.Render.String (renderString)
 import Data.String
 import Data.String.Here
 import System.Environment (getProgName)
@@ -56,6 +61,9 @@ type Description = Text
 
 newtype LongName = LongName String
     deriving (Show, IsString, Eq, Hashable)
+
+instance Pretty LongName where
+    pretty (LongName name) = pretty name
 
 data Config
     = Simple [Options]
@@ -353,8 +361,10 @@ renderUsage config = case config of
         optionsPresent = if length o > 0 then " [OPTIONS]" else ""
         argumentsPresent = if length a > 0 then " ARGUMENTS" else ""
 
-        optionsFormatted = formatParameters o
-        argumentsFormatted = formatParameters a
+        optionsFormatted = renderString . layoutPretty defaultLayoutOptions
+                            . formatParameters $ o
+        argumentsFormatted = renderString . layoutPretty defaultLayoutOptions
+                            . formatParameters $ a
 
       in
         [iTrim|
@@ -362,7 +372,7 @@ Usage:
 
     ${programName}${optionsPresent}${argumentsPresent}
 
-where
+Options:
 
 ${optionsFormatted}
 ${argumentsFormatted}
@@ -375,17 +385,31 @@ ${argumentsFormatted}
     f o@(Option _ _ _) (opts,args) = (o:opts,args)
     f a@(Argument _ _) (opts,args) = (opts,a:args)
 
-    formatParameters :: [Options] -> String
-    formatParameters options = foldr g "" options
+    formatParameters :: [Options] -> Doc ann
+    formatParameters options = foldr g emptyDoc options
 
-    g :: Options -> String -> String
-    g (Option (LongName l) shortname description) acc =
+{-
+    15 characters width for short option, long option, and two spaces. If the
+    long option's name is wider than this the description will be moved to
+    the next line.
+
+    Arguments are aligned to the character of the short option; looks
+    pretty good and better than waiting until column 8.
+-}
+    g :: Options -> Doc ann -> Doc ann
+    g (Option longname shortname description) acc =
       let
         s = case shortname of
-                Just shortchar -> (' ':'-':shortchar:[]) ++ ", --"
+                Just shortchar -> " -" <> pretty shortchar <> ", --"
                 Nothing -> "     --"
+        l = pretty longname
+        d = fromText description
       in
-        s ++ l ++ "\t" ++ fromText description ++ "\n" ++ acc
-    g (Argument (LongName l) description) acc =
-        "     " ++ l ++ "\t" ++ fromText description ++ "\n" ++ acc
+        fillBreak 15 (s <> l <> " ") <+> align (reflow d) <> hardline <> acc
+    g (Argument longname description) acc =
+      let
+        l = pretty longname
+        d = fromText description
+      in
+        fillBreak 15 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
 
