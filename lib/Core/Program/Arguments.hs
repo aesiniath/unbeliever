@@ -54,10 +54,29 @@ import Core.Text
 import Core.System
 import Core.Render
 
+{-|
+    Single letter "short" options (omitting the "@-@" prefix, obviously).
+-}
 type ShortName = Char
 
+{-|
+    The description of an option, command, or environment variable (for use
+    when rendering usage information in response to @--help@ on the
+    command-line).
+
+    By convention a description is a complete sentance which ends with a full
+    stop.
+-}
 type Description = Text
 
+{-|
+    The name of an option, command, or agument (omitting the "@--@" prefix in
+    the case of options). This identifier will be used to generate usage text
+    in response to @--help@ and by you later when retreiving the values of the
+    supplied parameters after the program has initialized.
+
+    Turn on __@OverloadedStrings@__ when specifying configurations, obviously.
+-}
 newtype LongName = LongName String
     deriving (Show, IsString, Eq, Hashable)
 
@@ -69,9 +88,20 @@ data Config
     | Complex [Commands]
 
 
+{-|
+    Declare a simple (as in normal) configuration for a program with any number
+    of optional parameters and mandatory arguments.
+-}
 simple :: [Options] -> Config
 simple options = Simple options
 
+{-|
+    Declare a complex configuration (implying a larger tool with various
+    "[sub]commands" or "modes") for a program. You can specify global options
+    applicable to all commands, a list of commands, and environment variables
+    that will be honoured by the program. Each command can have a list of local
+    options and arguments as needed.
+-}
 complex :: [Commands] -> Config
 complex commands = Complex commands
 
@@ -80,10 +110,34 @@ data Commands
     | Command LongName Description [Options]
     | Environment [Variables]
 
+{-|
+    Declaration of an optional switch or mandatory argument expected by a program.
+
+    By convention these are /lower case/. If the identifier is two or more words
+    they are joined with a hyphen. Examples:
+
+    >     [ Option "dry-run" Nothing "Don't actually execute commands, just simulate what would happen."
+    >     , Option "quiet" (Just 'q') "Keep the noise to a minimum."
+    >     , Argument "username" "The user to delete from the system."
+    >     ]
+-}
 data Options
     = Option LongName (Maybe ShortName) Description
     | Argument LongName Description
 
+{-|
+    Declaration of an environment variable that, if present, will be
+    interpreted by the program and stored in its runtime context.
+
+    By convention these are /upper case/. If the identifier is two or more
+    words they are joined with an underscore:
+
+    >     [ Variable "CRAZY_MODE" "Specify how many crazies to activate."
+    >     , ...
+    >     ]
+
+    Environment variables are only available in 'complex' configurations.
+-}
 data Variables
     = Variable LongName Description
 
