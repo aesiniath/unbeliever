@@ -64,8 +64,8 @@ type ShortName = Char
     when rendering usage information in response to @--help@ on the
     command-line).
 
-    By convention a description is a complete sentance which ends with a full
-    stop.
+    By convention a description is one or more complete sentances each of which
+    ends with a full stop.
 -}
 type Description = Text
 
@@ -459,12 +459,11 @@ buildUsage config mode = case config of
                 indent 2 (nest 4 (fillCat
                     [ pretty programName
                     , globalSummary oG
-                    , commandSummary mode
-                    , "..."
+                    , commandSummary modes
                     ])) <> hardline
                 <> globalHeading oG
                 <> formatParameters oG
-                <> commandHeading
+                <> commandHeading modes
                 <> formatCommands commands
 
             Just longname ->
@@ -476,7 +475,7 @@ buildUsage config mode = case config of
                 indent 2 (nest 4 (fillCat
                     [ pretty programName
                     , globalSummary oG
-                    , commandSummary mode
+                    , commandSummary modes
                     , localSummary oL
                     , argumentsSummary aL
                     ])) <> hardline
@@ -507,16 +506,16 @@ buildUsage config mode = case config of
     commandName :: Doc ann
     commandName = case mode of
         Just (LongName name) -> pretty name
-        Nothing -> "COMMAND"
+        Nothing -> "COMMAND..."
 
     argumentsSummary :: [Options] -> Doc ann
     argumentsSummary as = " " <> fillSep (fmap pretty (extractRequiredArguments as))
 
     argumentsHeading as = if length as > 0 then hardline <> "Required arguments:" <> hardline else emptyDoc
 
-    commandSummary mode = softline <> commandName
-
-    commandHeading = hardline <> "Available commands:" <> hardline
+    -- there is a corner case of complex config with no commands
+    commandSummary modes = if HashMap.size modes > 0 then softline <> commandName else emptyDoc
+    commandHeading modes = if HashMap.size modes > 0 then hardline <> "Available commands:" <> hardline else emptyDoc
 
     f :: Options -> ([Options],[Options]) -> ([Options],[Options])
     f o@(Option _ _ _) (opts,args) = (o:opts,args)
