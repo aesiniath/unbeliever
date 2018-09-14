@@ -18,6 +18,8 @@ import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
 import Control.Concurrent.MVar (MVar, newEmptyMVar)
 import Control.Concurrent.STM.TChan (TChan, newTChanIO)
 import Control.Exception.Safe (displayException)
+import Data.Text.Prettyprint.Doc (layoutPretty, defaultLayoutOptions, LayoutOptions(..), PageWidth(..))
+import Data.Text.Prettyprint.Doc.Render.Text (renderIO)
 import System.Console.Terminal.Size (Window(..), size, hSize)
 import System.Environment (getArgs, getProgName)
 import System.Exit (ExitCode(..), exitWith)
@@ -115,8 +117,9 @@ getConsoleWidth = do
 --
 {-
     We came back here with the error case so we can pass config in to
-    renderUsage. Otherwise we could have done it all in displayException
-    and called that in Core.Program.Arguments
+    buildUsage (otherwise we could have done it all in displayException and
+    called that in Core.Program.Arguments). And, returning here lets us set
+    up the layout width to match (one off the) actual width of console.
 -}
 handleCommandLine :: Config -> IO Parameters
 handleCommandLine config = do
@@ -126,7 +129,10 @@ handleCommandLine config = do
         Right parameters -> return parameters
         Left e -> case e of
             HelpRequest mode -> do
-                putStrLn (renderUsage config mode)
+                width <- getConsoleWidth
+                let options = LayoutOptions (AvailablePerLine (width - 1) 1.0)
+                let usage = buildUsage config mode
+                renderIO stdout (layoutPretty options usage)
                 hFlush stdout
                 exitWith (ExitFailure 1)
             _ -> do

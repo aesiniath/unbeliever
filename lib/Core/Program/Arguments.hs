@@ -32,7 +32,7 @@ module Core.Program.Arguments
       , Description
       , parseCommandLine
       , InvalidCommandLine(..)
-      , renderUsage
+      , buildUsage
     ) where
 
 import Control.Exception.Safe (Exception(displayException))
@@ -42,11 +42,9 @@ import qualified Data.HashMap.Strict as HashMap
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as HashSet
 import qualified Data.List as List
-import Data.Text.Prettyprint.Doc (Doc, Pretty(..), nest
-    , emptyDoc, hardline, fillBreak, align, (<+>), fillSep, indent
-    , layoutPretty, defaultLayoutOptions)
+import Data.Text.Prettyprint.Doc (Doc, Pretty(..), nest, fillCat
+    , emptyDoc, hardline, softline, fillBreak, align, (<+>), fillSep, indent)
 import Data.Text.Prettyprint.Doc.Util (reflow)
-import Data.Text.Prettyprint.Doc.Render.String (renderString)
 import Data.String
 import Data.String.Here
 import System.Environment (getProgName)
@@ -175,7 +173,7 @@ Usage is of the form:
 
 See --help for details.
 |]
-        -- handled by parent module calling back into here renderUsage
+        -- handled by parent module calling back into here buildUsage
         HelpRequest _ -> ""
 
 programName :: String
@@ -358,20 +356,23 @@ splitCommandLine args =
     path to an exit and return to user's command line.
 -}
 
-renderUsage :: Config -> Maybe LongName -> String
-renderUsage config mode = case config of
+buildUsage :: Config -> Maybe LongName -> Doc ann
+buildUsage config mode = case config of
     Simple options ->
       let
         (o,a) = partitionParameters options
-
-        usage = "Usage:" <> hardline <> hardline
-            <> indent 4 (nest 4 (pretty programName <> optionsSummary o <> argumentsSummary a)) <> hardline
+      in
+        "Usage:" <> hardline <> hardline
+            <> indent 4 (nest 4 (fillCat
+                [ pretty programName
+                , optionsSummary o
+                , argumentsSummary a
+                ])) <> hardline
             <> optionsHeading o
             <> formatParameters o
             <> argumentsHeading a
             <> formatParameters a
-      in
-        renderString (layoutPretty defaultLayoutOptions usage)
+
     Complex commands ->
       let
         globalOptions = extractGlobalOptions commands
@@ -383,13 +384,15 @@ renderUsage config mode = case config of
                 Just localOptions -> partitionParameters localOptions
                 Nothing -> error "Illegal State"
             Nothing -> ([],[])
-
-        usage = "Usage:" <> hardline <> hardline <> case mode of
+      in
+        "Usage:" <> hardline <> hardline <> case mode of
             Nothing ->
-                indent 2 (nest 4 (pretty programName
-                    <> globalSummary oG
-                    <> commandSummary mode
-                    <+> "...")) <> hardline
+                indent 2 (nest 4 (fillCat
+                    [ pretty programName
+                    , globalSummary oG
+                    , commandSummary mode
+                    , "..."
+                    ])) <> hardline
                 <> globalHeading oG
                 <> formatParameters oG
                 <> commandHeading
@@ -401,39 +404,33 @@ renderUsage config mode = case config of
                     Just localOptions -> partitionParameters localOptions
                     Nothing -> error "Illegal State"
               in
-                indent 2 (nest 4 (pretty programName
-                    <> globalSummary oG
-                    <> commandSummary mode
-                    <> localSummary oL
-                    <> argumentsSummary aL)) <> hardline
+                indent 2 (nest 4 (fillCat
+                    [ pretty programName
+                    , globalSummary oG
+                    , commandSummary mode
+                    , localSummary oL
+                    , argumentsSummary aL
+                    ])) <> hardline
                 <> localHeading oL
                 <> formatParameters oL
                 <> argumentsHeading aL
                 <> formatParameters aL
-      in
-        renderString (layoutPretty defaultLayoutOptions usage)
-
-{-        
-        params1 <- extractor globalOptions possibles
-        (mode,localOptions) <- parseIndicatedCommand modes first
-        params2 <- extractor localOptions remainingArgs
--}
 
   where
     partitionParameters :: [Options] -> ([Options],[Options])
     partitionParameters options = foldr f ([],[]) options
 
     optionsSummary :: [Options] -> Doc ann
-    optionsSummary os = if length os > 0 then " [OPTIONS]" else emptyDoc
+    optionsSummary os = if length os > 0 then softline <> "[OPTIONS]" else emptyDoc
 
     optionsHeading os = if length os > 0 then hardline <> "Available options:" <> hardline else emptyDoc
 
-    globalSummary os = if length os > 0 then " [GLOBAL OPTIONS]" else emptyDoc
+    globalSummary os = if length os > 0 then softline <> "[GLOBAL OPTIONS]" else emptyDoc
     globalHeading os = if length os > 0
         then hardline <> "Global options:" <> hardline
         else emptyDoc
 
-    localSummary os = if length os > 0 then " [LOCAL OPTIONS]" else emptyDoc
+    localSummary os = if length os > 0 then softline <> "[LOCAL OPTIONS]" else emptyDoc
     localHeading os = if length os > 0
         then hardline <> "Options to the '" <> commandName <> "' command:" <> hardline
         else emptyDoc
@@ -448,7 +445,7 @@ renderUsage config mode = case config of
 
     argumentsHeading as = if length as > 0 then hardline <> "Required arguments:" <> hardline else emptyDoc
 
-    commandSummary mode = " " <> commandName
+    commandSummary mode = softline <> commandName
 
     commandHeading = hardline <> "Available commands:" <> hardline
 
