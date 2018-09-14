@@ -32,6 +32,7 @@ module Core.Program.Arguments
       , Description
       , parseCommandLine
       , InvalidCommandLine(..)
+      , buildUsage
     ) where
 
 import Control.Exception.Safe (Exception(displayException))
@@ -41,6 +42,9 @@ import qualified Data.HashMap.Strict as HashMap
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as HashSet
 import qualified Data.List as List
+import Data.Text.Prettyprint.Doc (Doc, Pretty(..), nest, fillCat
+    , emptyDoc, hardline, softline, fillBreak, align, (<+>), fillSep, indent)
+import Data.Text.Prettyprint.Doc.Util (reflow)
 import Data.String
 import Data.String.Here
 import System.Environment (getProgName)
@@ -55,6 +59,9 @@ type Description = Text
 
 newtype LongName = LongName String
     deriving (Show, IsString, Eq, Hashable)
+
+instance Pretty LongName where
+    pretty (LongName name) = pretty name
 
 data Config
     = Simple [Options]
@@ -114,6 +121,7 @@ data InvalidCommandLine
     | UnexpectedArguments [String]
     | UnknownCommand String
     | NoCommandFound
+    | HelpRequest (Maybe LongName)
     deriving (Show, Eq)
 
 instance Exception InvalidCommandLine where
@@ -165,6 +173,8 @@ Usage is of the form:
 
 See --help for details.
 |]
+        -- handled by parent module calling back into here buildUsage
+        HelpRequest _ -> ""
 
 programName :: String
 programName = unsafePerformIO getProgName
@@ -183,7 +193,7 @@ trim count input = unlines . map (drop count) . lines $ input
 parseCommandLine :: Config -> [String] -> Either InvalidCommandLine Parameters
 parseCommandLine config argv = case config of
     Simple options -> do
-        params <- extractor options argv
+        params <- extractor Nothing options argv
         return (Parameters Nothing params [])
 
     Complex commands ->
@@ -192,21 +202,21 @@ parseCommandLine config argv = case config of
         modes = extractValidModes commands
       in do
         (possibles,first,remainingArgs) <- splitCommandLine argv
-        params1 <- extractor globalOptions possibles
+        params1 <- extractor Nothing globalOptions possibles
         (mode,localOptions) <- parseIndicatedCommand modes first
-        params2 <- extractor localOptions remainingArgs
+        params2 <- extractor (Just mode) localOptions remainingArgs
         return (Parameters (Just mode) (params1 ++ params2) [])
   where
 
-    extractor :: [Options] -> [String] -> Either InvalidCommandLine [(LongName,ParameterValue)]
-    extractor options args =
+    extractor :: Maybe LongName -> [Options] -> [String] -> Either InvalidCommandLine [(LongName,ParameterValue)]
+    extractor mode options args =
       let
         (possibles,arguments) = List.partition isOption args
         valids = extractValidNames options
         shorts = extractShortNames options
         needed = extractRequiredArguments options
       in do
-        list1 <- parsePossibleOptions valids shorts possibles
+        list1 <- parsePossibleOptions mode valids shorts possibles
         list2 <- parseRequiredArguments needed arguments
         return (list1 ++ list2)
 
@@ -216,13 +226,15 @@ isOption arg = case arg of
     _ -> False
 
 parsePossibleOptions
-    :: HashSet LongName
+    :: Maybe LongName
+    -> HashSet LongName
     -> HashMap ShortName LongName
     -> [String]
     -> Either InvalidCommandLine [(LongName,ParameterValue)]
-parsePossibleOptions valids shorts args = mapM f args
+parsePossibleOptions mode valids shorts args = mapM f args
   where
     f arg = case arg of
+        "--help" -> Left (HelpRequest mode)
         ('-':'-':name) -> considerLongOption name
         ('-':c:[]) -> considerShortOption c
         _ -> Left (InvalidOption arg)
@@ -279,6 +291,10 @@ parseIndicatedCommand modes first =
         Just options -> Right (candidate,options)
         Nothing -> Left (UnknownCommand first)
 
+{-
+    Ok, the f,g,h,... was silly. But hey :)
+-}
+
 extractValidNames :: [Options] -> HashSet LongName
 extractValidNames options =
     foldr f HashSet.empty options
@@ -329,9 +345,160 @@ splitCommandLine args =
   in
     case x of
         Just (mode,remainingArgs) -> Right (possibles,mode,remainingArgs)
-        Nothing -> Left NoCommandFound
-
+        Nothing -> if (List.elem "--help" possibles)
+            then Left (HelpRequest Nothing)
+            else Left NoCommandFound
 
 {-
-    Ok, the f,g,h,... was silly. But hey :)
+    The code from here on is formatting code. It's fairly repetative
+    and crafted to achieve a specific aesthetic output. Rather messy.
+    I'm sure it could be done "better" but no matter; this is on the
+    path to an exit and return to user's command line.
 -}
+
+buildUsage :: Config -> Maybe LongName -> Doc ann
+buildUsage config mode = case config of
+    Simple options ->
+      let
+        (o,a) = partitionParameters options
+      in
+        "Usage:" <> hardline <> hardline
+            <> indent 4 (nest 4 (fillCat
+                [ pretty programName
+                , optionsSummary o
+                , argumentsSummary a
+                ])) <> hardline
+            <> optionsHeading o
+            <> formatParameters o
+            <> argumentsHeading a
+            <> formatParameters a
+
+    Complex commands ->
+      let
+        globalOptions = extractGlobalOptions commands
+        modes = extractValidModes commands
+
+        (oG,_) = partitionParameters globalOptions
+        (oL,aL) = case mode of
+            Just longname -> case HashMap.lookup longname modes of 
+                Just localOptions -> partitionParameters localOptions
+                Nothing -> error "Illegal State"
+            Nothing -> ([],[])
+      in
+        "Usage:" <> hardline <> hardline <> case mode of
+            Nothing ->
+                indent 2 (nest 4 (fillCat
+                    [ pretty programName
+                    , globalSummary oG
+                    , commandSummary mode
+                    , "..."
+                    ])) <> hardline
+                <> globalHeading oG
+                <> formatParameters oG
+                <> commandHeading
+                <> formatCommands commands
+
+            Just longname ->
+              let
+                (oL,aL) = case HashMap.lookup longname modes of
+                    Just localOptions -> partitionParameters localOptions
+                    Nothing -> error "Illegal State"
+              in
+                indent 2 (nest 4 (fillCat
+                    [ pretty programName
+                    , globalSummary oG
+                    , commandSummary mode
+                    , localSummary oL
+                    , argumentsSummary aL
+                    ])) <> hardline
+                <> localHeading oL
+                <> formatParameters oL
+                <> argumentsHeading aL
+                <> formatParameters aL
+
+  where
+    partitionParameters :: [Options] -> ([Options],[Options])
+    partitionParameters options = foldr f ([],[]) options
+
+    optionsSummary :: [Options] -> Doc ann
+    optionsSummary os = if length os > 0 then softline <> "[OPTIONS]" else emptyDoc
+
+    optionsHeading os = if length os > 0 then hardline <> "Available options:" <> hardline else emptyDoc
+
+    globalSummary os = if length os > 0 then softline <> "[GLOBAL OPTIONS]" else emptyDoc
+    globalHeading os = if length os > 0
+        then hardline <> "Global options:" <> hardline
+        else emptyDoc
+
+    localSummary os = if length os > 0 then softline <> "[LOCAL OPTIONS]" else emptyDoc
+    localHeading os = if length os > 0
+        then hardline <> "Options to the '" <> commandName <> "' command:" <> hardline
+        else emptyDoc
+
+    commandName :: Doc ann
+    commandName = case mode of
+        Just (LongName name) -> pretty name
+        Nothing -> "COMMAND"
+
+    argumentsSummary :: [Options] -> Doc ann
+    argumentsSummary as = " " <> fillSep (fmap pretty (extractRequiredArguments as))
+
+    argumentsHeading as = if length as > 0 then hardline <> "Required arguments:" <> hardline else emptyDoc
+
+    commandSummary mode = softline <> commandName
+
+    commandHeading = hardline <> "Available commands:" <> hardline
+
+    f :: Options -> ([Options],[Options]) -> ([Options],[Options])
+    f o@(Option _ _ _) (opts,args) = (o:opts,args)
+    f a@(Argument _ _) (opts,args) = (opts,a:args)
+
+    formatParameters :: [Options] -> Doc ann
+    formatParameters [] = emptyDoc
+    formatParameters options = hardline <> foldr g emptyDoc options
+
+{-
+    16 characters width for short option, long option, and two spaces. If the
+    long option's name is wider than this the description will be moved to
+    the next line.
+
+    Arguments are aligned to the character of the short option; looks
+    pretty good and better than waiting until column 8.
+-}
+    g :: Options -> Doc ann -> Doc ann
+    g (Option longname shortname description) acc =
+      let
+        s = case shortname of
+                Just shortchar -> "  -" <> pretty shortchar <> ", --"
+                Nothing -> "      --"
+        l = pretty longname
+        d = fromText description
+      in
+        fillBreak 16 (s <> l <> " ") <+> align (reflow d) <> hardline <> acc
+    g (Argument longname description) acc =
+      let
+        l = pretty longname
+        d = fromText description
+      in
+        fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
+
+    formatCommands :: [Commands] -> Doc ann
+    formatCommands commands = hardline <> foldr h emptyDoc commands
+
+    h :: Commands -> Doc ann -> Doc ann
+    h (Command longname description _) acc =
+      let
+        l = pretty longname
+        d = fromText description
+      in
+        fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
+    h _ acc = acc
+
+extractCommandDescriptions :: [Commands] -> [(LongName,Description)]
+extractCommandDescriptions commands =
+    foldr k [] commands
+  where
+    k :: Commands -> [(LongName,Description)] -> [(LongName,Description)]
+    k (Command longname description _) modes = (longname,description):modes
+    k _ modes = modes
+

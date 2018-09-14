@@ -18,6 +18,8 @@ import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
 import Control.Concurrent.MVar (MVar, newEmptyMVar)
 import Control.Concurrent.STM.TChan (TChan, newTChanIO)
 import Control.Exception.Safe (displayException)
+import Data.Text.Prettyprint.Doc (layoutPretty, defaultLayoutOptions, LayoutOptions(..), PageWidth(..))
+import Data.Text.Prettyprint.Doc.Render.Text (renderIO)
 import System.Console.Terminal.Size (Window(..), size, hSize)
 import System.Environment (getArgs, getProgName)
 import System.Exit (ExitCode(..), exitWith)
@@ -25,7 +27,7 @@ import System.Exit (ExitCode(..), exitWith)
 import Core.Text
 import Core.System
 import Core.Render
-import Core.Program.Arguments (Config, Parameters, parseCommandLine)
+import Core.Program.Arguments
 
 {-
     The fieldNameFrom idiom is an experiment. Looks very strange,
@@ -96,7 +98,6 @@ configure config = do
         , loggerChannelFrom = logger
     }
 
-
 --
 -- | Probe the width of the terminal, in characters. If it fails to retrieve,
 -- for whatever reason, return a default of 80 characters wide.
@@ -114,15 +115,29 @@ getConsoleWidth = do
 -- option is encountered or a [mandatory] argument is missing, then
 -- the program will terminate here.
 --
+{-
+    We came back here with the error case so we can pass config in to
+    buildUsage (otherwise we could have done it all in displayException and
+    called that in Core.Program.Arguments). And, returning here lets us set
+    up the layout width to match (one off the) actual width of console.
+-}
 handleCommandLine :: Config -> IO Parameters
 handleCommandLine config = do
     argv <- getArgs
     let result = parseCommandLine config argv
     case result of
         Right parameters -> return parameters
-        Left e -> do
-            putStr "error: "
-            putStrLn (displayException e)
-            hFlush stdout
-            exitWith (ExitFailure 1)
+        Left e -> case e of
+            HelpRequest mode -> do
+                width <- getConsoleWidth
+                let options = LayoutOptions (AvailablePerLine (width - 1) 1.0)
+                let usage = buildUsage config mode
+                renderIO stdout (layoutPretty options usage)
+                hFlush stdout
+                exitWith (ExitFailure 1)
+            _ -> do
+                putStr "error: "
+                putStrLn (displayException e)
+                hFlush stdout
+                exitWith (ExitFailure 1)
 
