@@ -384,19 +384,32 @@ renderUsage config mode = case config of
                 Nothing -> error "Illegal State"
             Nothing -> ([],[])
 
-        usage = "Usage:" <> hardline <> hardline
-            <> indent 4 (nest 4 (pretty programName
-                <> globalSummary oG
-                <> commandSummary mode
-                <> localSummary oL
-                <> argumentsSummary aL)) <> hardline
-            <> globalHeading oG
-            <> formatParameters oG
-            <> commandHeading mode
-            <> formatCommands commands
-            <> formatParameters oL
-            <> argumentsHeading aL
-            <> formatParameters aL
+        usage = "Usage:" <> hardline <> hardline <> case mode of
+            Nothing ->
+                indent 2 (nest 4 (pretty programName
+                    <> globalSummary oG
+                    <> commandSummary mode
+                    <+> "...")) <> hardline
+                <> globalHeading oG
+                <> formatParameters oG
+                <> commandHeading
+                <> formatCommands commands
+
+            Just longname ->
+              let
+                (oL,aL) = case HashMap.lookup longname modes of
+                    Just localOptions -> partitionParameters localOptions
+                    Nothing -> error "Illegal State"
+              in
+                indent 2 (nest 4 (pretty programName
+                    <> globalSummary oG
+                    <> commandSummary mode
+                    <> localSummary oL
+                    <> argumentsSummary aL)) <> hardline
+                <> localHeading oL
+                <> formatParameters oL
+                <> argumentsHeading aL
+                <> formatParameters aL
       in
         renderString (layoutPretty defaultLayoutOptions usage)
 
@@ -415,23 +428,29 @@ renderUsage config mode = case config of
 
     optionsHeading os = if length os > 0 then hardline <> "Available options:" <> hardline else emptyDoc
 
-    globalSummary os = if length os > 0 then " [GLOBAL_OPTIONS]" else emptyDoc
-    globalHeading os = if length os > 0 then hardline <> "Global options:" <> hardline else emptyDoc
+    globalSummary os = if length os > 0 then " [GLOBAL OPTIONS]" else emptyDoc
+    globalHeading os = if length os > 0
+        then hardline <> "Global options:" <> hardline
+        else emptyDoc
 
-    localSummary os = if length os > 0 then " [LOCAL_OPTIONS]" else emptyDoc
+    localSummary os = if length os > 0 then " [LOCAL OPTIONS]" else emptyDoc
+    localHeading os = if length os > 0
+        then hardline <> "Options to the '" <> commandName <> "' command:" <> hardline
+        else emptyDoc
+
+    commandName :: Doc ann
+    commandName = case mode of
+        Just (LongName name) -> pretty name
+        Nothing -> "COMMAND"
 
     argumentsSummary :: [Options] -> Doc ann
     argumentsSummary as = " " <> fillSep (fmap pretty (extractRequiredArguments as))
 
     argumentsHeading as = if length as > 0 then hardline <> "Required arguments:" <> hardline else emptyDoc
 
-    commandSummary mode = " " <> case mode of
-        Just (LongName name) -> pretty name
-        Nothing -> "COMMAND"
+    commandSummary mode = " " <> commandName
 
-    commandHeading mode = hardline <> case mode of
-        Just (LongName name) -> "Within the '" <> pretty name <> "' command:" <> hardline
-        Nothing -> "Available commands:" <> hardline
+    commandHeading = hardline <> "Available commands:" <> hardline
 
     f :: Options -> ([Options],[Options]) -> ([Options],[Options])
     f o@(Option _ _ _) (opts,args) = (o:opts,args)
@@ -442,7 +461,7 @@ renderUsage config mode = case config of
     formatParameters options = hardline <> foldr g emptyDoc options
 
 {-
-    15 characters width for short option, long option, and two spaces. If the
+    16 characters width for short option, long option, and two spaces. If the
     long option's name is wider than this the description will be moved to
     the next line.
 
@@ -453,18 +472,18 @@ renderUsage config mode = case config of
     g (Option longname shortname description) acc =
       let
         s = case shortname of
-                Just shortchar -> " -" <> pretty shortchar <> ", --"
-                Nothing -> "     --"
+                Just shortchar -> "  -" <> pretty shortchar <> ", --"
+                Nothing -> "      --"
         l = pretty longname
         d = fromText description
       in
-        fillBreak 15 (s <> l <> " ") <+> align (reflow d) <> hardline <> acc
+        fillBreak 16 (s <> l <> " ") <+> align (reflow d) <> hardline <> acc
     g (Argument longname description) acc =
       let
         l = pretty longname
         d = fromText description
       in
-        fillBreak 15 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
+        fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
 
     formatCommands :: [Commands] -> Doc ann
     formatCommands commands = hardline <> foldr h emptyDoc commands
@@ -475,7 +494,7 @@ renderUsage config mode = case config of
         l = pretty longname
         d = fromText description
       in
-        fillBreak 15 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
+        fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
     h _ acc = acc
 
 extractCommandDescriptions :: [Commands] -> [(LongName,Description)]
