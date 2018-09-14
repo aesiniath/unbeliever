@@ -2,6 +2,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StrictData #-}
+{-# OPTIONS_HADDOCK prune #-}
 
 --
 -- | Invoking a command-line program (be it tool or daemon) consists of
@@ -53,10 +54,29 @@ import Core.Text
 import Core.System
 import Core.Render
 
+{-|
+    Single letter "short" options (omitting the "@-@" prefix, obviously).
+-}
 type ShortName = Char
 
+{-|
+    The description of an option, command, or environment variable (for use
+    when rendering usage information in response to @--help@ on the
+    command-line).
+
+    By convention a description is one or more complete sentences each of which
+    ends with a full stop.
+-}
 type Description = Text
 
+{-|
+    The name of an option, command, or agument (omitting the "@--@" prefix in
+    the case of options). This identifier will be used to generate usage text
+    in response to @--help@ and by you later when retreiving the values of the
+    supplied parameters after the program has initialized.
+
+    Turn on __@OverloadedStrings@__ when specifying configurations, obviously.
+-}
 newtype LongName = LongName String
     deriving (Show, IsString, Eq, Hashable)
 
@@ -68,9 +88,20 @@ data Config
     | Complex [Commands]
 
 
+{-|
+    Declare a simple (as in normal) configuration for a program with any number
+    of optional parameters and mandatory arguments.
+-}
 simple :: [Options] -> Config
 simple options = Simple options
 
+{-|
+    Declare a complex configuration (implying a larger tool with various
+    "[sub]commands" or "modes") for a program. You can specify global options
+    applicable to all commands, a list of commands, and environment variables
+    that will be honoured by the program. Each command can have a list of local
+    options and arguments as needed.
+-}
 complex :: [Commands] -> Config
 complex commands = Complex commands
 
@@ -79,10 +110,34 @@ data Commands
     | Command LongName Description [Options]
     | Environment [Variables]
 
+{-|
+    Declaration of an optional switch or mandatory argument expected by a program.
+
+    By convention these are /lower case/. If the identifier is two or more words
+    they are joined with a hyphen. Examples:
+
+    >     [ Option "dry-run" Nothing "Don't actually execute commands, just simulate what would happen."
+    >     , Option "quiet" (Just 'q') "Keep the noise to a minimum."
+    >     , Argument "username" "The user to delete from the system."
+    >     ]
+-}
 data Options
     = Option LongName (Maybe ShortName) Description
     | Argument LongName Description
 
+{-|
+    Declaration of an environment variable that, if present, will be
+    interpreted by the program and stored in its runtime context.
+
+    By convention these are /upper case/. If the identifier is two or more
+    words they are joined with an underscore:
+
+    >     [ Variable "CRAZY_MODE" "Specify how many crazies to activate."
+    >     , ...
+    >     ]
+
+    Environment variables are only available in 'complex' configurations.
+-}
 data Variables
     = Variable LongName Description
 
@@ -95,9 +150,11 @@ data ParameterValue
 instance IsString ParameterValue where
     fromString x = Value x
 
---
--- Result of having processed the command line and the environment.
---
+{-|
+    Result of having processed the command-line and the environment. You get at
+    the parsed command-line options and arguments by calling
+    'Core.Program.Execute.getCommandLine' in a 'Core.Program.Execute.Program'.
+-}
 data Parameters
     = Parameters {
           commandNameFrom :: Maybe LongName
@@ -111,17 +168,22 @@ baselineConfig =
         Option "verbose" (Just 'v') [here|
             Turn on event level logging to console.
         |]
-      , Option "help" (Just 'h') ""
     ]
 
+{-|
+    Different ways parsing a simple or complex command-line can fail.
+-}
 data InvalidCommandLine
-    = InvalidOption String
-    | UnknownOption String
+    = InvalidOption String  {-^ Something was wrong with the way the user specified [usually a short] option. -}
+    | UnknownOption String  {-^ User specified an option that doesn't match any in the supplied configuration. -}
     | MissingArgument LongName
+                            {-^ Arguments are mandatory, and this one is missing. -}
     | UnexpectedArguments [String]
-    | UnknownCommand String
-    | NoCommandFound
+                            {-^ Arguments are present we weren't expecting. -}
+    | UnknownCommand String {-^ In a complex configuration, user specified a command that doesn't match any in the configuration. -}
+    | NoCommandFound        {-^ In a complex configuration, user didn't specify a command. -}
     | HelpRequest (Maybe LongName)
+                            {-^ In a complex configuration, usage information was requested with @--help@, either globally or for the supplied command. -}
     deriving (Show, Eq)
 
 instance Exception InvalidCommandLine where
@@ -182,14 +244,21 @@ programName = unsafePerformIO getProgName
 trim :: Int -> String -> String
 trim count input = unlines . map (drop count) . lines $ input
 
---
--- | Given a program configuration schema and the command line 
--- arguments, process them into Parameters pairs.
---
--- This throws 'UnknownOption' exception if one of the passed in options is
--- unrecognized (because at that point, we want to rabbit right back to the
--- top and bail out; there's no recovering).
---
+
+{-|
+    Given a program configuration schema and the command-line arguments,
+    process them into key/value pairs in a Parameters object.
+
+    This results in 'InvalidCommandLine' on the left side if one of the passed
+    in options is unrecognized or if there is some other problem handling
+    options or arguments (because at that point, we want to rabbit right back
+    to the top and bail out; there's no recovering).
+
+    This isn't somethin you'll ever need to call directly; it's exposed for
+    testing convenience. This function is invoked when you call
+    'Core.Program.Context.configure' or 'Core.Program.Execute.execute' (which
+    calls @configure@ with a default @Config@ when setting up).
+-}
 parseCommandLine :: Config -> [String] -> Either InvalidCommandLine Parameters
 parseCommandLine config argv = case config of
     Simple options -> do
@@ -291,9 +360,9 @@ parseIndicatedCommand modes first =
         Just options -> Right (candidate,options)
         Nothing -> Left (UnknownCommand first)
 
-{-
-    Ok, the f,g,h,... was silly. But hey :)
--}
+--
+-- Ok, the f,g,h,... was silly. But hey :)
+--
 
 extractValidNames :: [Options] -> HashSet LongName
 extractValidNames options =
@@ -349,12 +418,12 @@ splitCommandLine args =
             then Left (HelpRequest Nothing)
             else Left NoCommandFound
 
-{-
-    The code from here on is formatting code. It's fairly repetative
-    and crafted to achieve a specific aesthetic output. Rather messy.
-    I'm sure it could be done "better" but no matter; this is on the
-    path to an exit and return to user's command line.
--}
+--
+-- The code from here on is formatting code. It's fairly repetative
+-- and crafted to achieve a specific aesthetic output. Rather messy.
+-- I'm sure it could be done "better" but no matter; this is on the
+-- path to an exit and return to user's command line.
+--
 
 buildUsage :: Config -> Maybe LongName -> Doc ann
 buildUsage config mode = case config of
@@ -390,12 +459,11 @@ buildUsage config mode = case config of
                 indent 2 (nest 4 (fillCat
                     [ pretty programName
                     , globalSummary oG
-                    , commandSummary mode
-                    , "..."
+                    , commandSummary modes
                     ])) <> hardline
                 <> globalHeading oG
                 <> formatParameters oG
-                <> commandHeading
+                <> commandHeading modes
                 <> formatCommands commands
 
             Just longname ->
@@ -407,7 +475,7 @@ buildUsage config mode = case config of
                 indent 2 (nest 4 (fillCat
                     [ pretty programName
                     , globalSummary oG
-                    , commandSummary mode
+                    , commandSummary modes
                     , localSummary oL
                     , argumentsSummary aL
                     ])) <> hardline
@@ -438,16 +506,16 @@ buildUsage config mode = case config of
     commandName :: Doc ann
     commandName = case mode of
         Just (LongName name) -> pretty name
-        Nothing -> "COMMAND"
+        Nothing -> "COMMAND..."
 
     argumentsSummary :: [Options] -> Doc ann
     argumentsSummary as = " " <> fillSep (fmap pretty (extractRequiredArguments as))
 
     argumentsHeading as = if length as > 0 then hardline <> "Required arguments:" <> hardline else emptyDoc
 
-    commandSummary mode = softline <> commandName
-
-    commandHeading = hardline <> "Available commands:" <> hardline
+    -- there is a corner case of complex config with no commands
+    commandSummary modes = if HashMap.size modes > 0 then softline <> commandName else emptyDoc
+    commandHeading modes = if HashMap.size modes > 0 then hardline <> "Available commands:" <> hardline else emptyDoc
 
     f :: Options -> ([Options],[Options]) -> ([Options],[Options])
     f o@(Option _ _ _) (opts,args) = (o:opts,args)
@@ -457,14 +525,15 @@ buildUsage config mode = case config of
     formatParameters [] = emptyDoc
     formatParameters options = hardline <> foldr g emptyDoc options
 
-{-
-    16 characters width for short option, long option, and two spaces. If the
-    long option's name is wider than this the description will be moved to
-    the next line.
+--
+-- 16 characters width for short option, long option, and two spaces. If the
+-- long option's name is wider than this the description will be moved to
+-- the next line.
+--
+-- Arguments are aligned to the character of the short option; looks
+-- pretty good and better than waiting until column 8.
+--
 
-    Arguments are aligned to the character of the short option; looks
-    pretty good and better than waiting until column 8.
--}
     g :: Options -> Doc ann -> Doc ann
     g (Option longname shortname description) acc =
       let
@@ -493,12 +562,4 @@ buildUsage config mode = case config of
       in
         fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
     h _ acc = acc
-
-extractCommandDescriptions :: [Commands] -> [(LongName,Description)]
-extractCommandDescriptions commands =
-    foldr k [] commands
-  where
-    k :: Commands -> [(LongName,Description)] -> [(LongName,Description)]
-    k (Command longname description _) modes = (longname,description):modes
-    k _ modes = modes
 
