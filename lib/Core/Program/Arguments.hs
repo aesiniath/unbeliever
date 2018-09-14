@@ -2,6 +2,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StrictData #-}
+{-# OPTIONS_HADDOCK prune #-}
 
 --
 -- | Invoking a command-line program (be it tool or daemon) consists of
@@ -95,9 +96,11 @@ data ParameterValue
 instance IsString ParameterValue where
     fromString x = Value x
 
---
--- Result of having processed the command line and the environment.
---
+{-|
+    Result of having processed the command-line and the environment. You get at
+    the parsed command-line options and arguments by calling
+    'Core.Program.Execute.getCommandLine' in a 'Core.Program.Execute.Program'.
+-}
 data Parameters
     = Parameters {
           commandNameFrom :: Maybe LongName
@@ -111,17 +114,22 @@ baselineConfig =
         Option "verbose" (Just 'v') [here|
             Turn on event level logging to console.
         |]
-      , Option "help" (Just 'h') ""
     ]
 
+{-|
+    Different ways parsing a simple or complex command-line can fail.
+-}
 data InvalidCommandLine
-    = InvalidOption String
-    | UnknownOption String
+    = InvalidOption String  {-^ Something was wrong with the way the user specified [usually a short] option. -}
+    | UnknownOption String  {-^ User specified an option that doesn't match any in the supplied configuration. -}
     | MissingArgument LongName
+                            {-^ Arguments are mandatory, and this one is missing. -}
     | UnexpectedArguments [String]
-    | UnknownCommand String
-    | NoCommandFound
+                            {-^ Arguments are present we weren't expecting. -}
+    | UnknownCommand String {-^ In a complex configuration, user specified a command that doesn't match any in the configuration. -}
+    | NoCommandFound        {-^ In a complex configuration, user didn't specify a command. -}
     | HelpRequest (Maybe LongName)
+                            {-^ In a complex configuration, usage information was requested with @--help@, either globally or for the supplied command. -}
     deriving (Show, Eq)
 
 instance Exception InvalidCommandLine where
@@ -182,14 +190,21 @@ programName = unsafePerformIO getProgName
 trim :: Int -> String -> String
 trim count input = unlines . map (drop count) . lines $ input
 
---
--- | Given a program configuration schema and the command line 
--- arguments, process them into Parameters pairs.
---
--- This throws 'UnknownOption' exception if one of the passed in options is
--- unrecognized (because at that point, we want to rabbit right back to the
--- top and bail out; there's no recovering).
---
+
+{-|
+    Given a program configuration schema and the command-line arguments,
+    process them into key/value pairs in a Parameters object.
+
+    This results in 'InvalidCommandLine' on the left side if one of the passed
+    in options is unrecognized or if there is some other problem handling
+    options or arguments (because at that point, we want to rabbit right back
+    to the top and bail out; there's no recovering).
+
+    This isn't somethin you'll ever need to call directly; it's exposed for
+    testing convenience. This function is invoked when you call
+    'Core.Program.Context.configure' or 'Core.Program.Execute.execute' (which
+    calls @configure@ with a default @Config@ when setting up).
+-}
 parseCommandLine :: Config -> [String] -> Either InvalidCommandLine Parameters
 parseCommandLine config argv = case config of
     Simple options -> do
@@ -291,9 +306,9 @@ parseIndicatedCommand modes first =
         Just options -> Right (candidate,options)
         Nothing -> Left (UnknownCommand first)
 
-{-
-    Ok, the f,g,h,... was silly. But hey :)
--}
+--
+-- Ok, the f,g,h,... was silly. But hey :)
+--
 
 extractValidNames :: [Options] -> HashSet LongName
 extractValidNames options =
@@ -349,12 +364,12 @@ splitCommandLine args =
             then Left (HelpRequest Nothing)
             else Left NoCommandFound
 
-{-
-    The code from here on is formatting code. It's fairly repetative
-    and crafted to achieve a specific aesthetic output. Rather messy.
-    I'm sure it could be done "better" but no matter; this is on the
-    path to an exit and return to user's command line.
--}
+--
+-- The code from here on is formatting code. It's fairly repetative
+-- and crafted to achieve a specific aesthetic output. Rather messy.
+-- I'm sure it could be done "better" but no matter; this is on the
+-- path to an exit and return to user's command line.
+--
 
 buildUsage :: Config -> Maybe LongName -> Doc ann
 buildUsage config mode = case config of
@@ -457,14 +472,15 @@ buildUsage config mode = case config of
     formatParameters [] = emptyDoc
     formatParameters options = hardline <> foldr g emptyDoc options
 
-{-
-    16 characters width for short option, long option, and two spaces. If the
-    long option's name is wider than this the description will be moved to
-    the next line.
+--
+-- 16 characters width for short option, long option, and two spaces. If the
+-- long option's name is wider than this the description will be moved to
+-- the next line.
+--
+-- Arguments are aligned to the character of the short option; looks
+-- pretty good and better than waiting until column 8.
+--
 
-    Arguments are aligned to the character of the short option; looks
-    pretty good and better than waiting until column 8.
--}
     g :: Options -> Doc ann -> Doc ann
     g (Option longname shortname description) acc =
       let
@@ -493,12 +509,4 @@ buildUsage config mode = case config of
       in
         fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
     h _ acc = acc
-
-extractCommandDescriptions :: [Commands] -> [(LongName,Description)]
-extractCommandDescriptions commands =
-    foldr k [] commands
-  where
-    k :: Commands -> [(LongName,Description)] -> [(LongName,Description)]
-    k (Command longname description _) modes = (longname,description):modes
-    k _ modes = modes
 
