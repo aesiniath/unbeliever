@@ -113,6 +113,11 @@ getConsoleWidth = do
 -- option is encountered or a [mandatory] argument is missing, then
 -- the program will terminate here.
 --
+{-
+    We came back here with the error case so we can pass config in to
+    renderUsage. Otherwise we could have done it all in displayException
+    and called that in Core.Program.Arguments
+-}
 handleCommandLine :: Config -> IO Parameters
 handleCommandLine config = do
     argv <- getArgs
@@ -120,8 +125,8 @@ handleCommandLine config = do
     case result of
         Right parameters -> return parameters
         Left e -> case e of
-            HelpRequest -> do
-                putStrLn (renderUsage config)
+            HelpRequest mode -> do
+                putStrLn (renderUsage config mode)
                 hFlush stdout
                 exitWith (ExitFailure 1)
             _ -> do

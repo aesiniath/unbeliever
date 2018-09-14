@@ -171,7 +171,7 @@ For arguments expected by this program, please see --help.
 No command specified.
 Usage is of the form:
 
-  ${programName} [GLOBAL OPTIONS] COMMAND [LOCAL OPTIONS] [ARGUMENTS]
+    ${programName} [GLOBAL OPTIONS] COMMAND [LOCAL OPTIONS] [ARGUMENTS]
 
 See --help for details.
 |]
@@ -385,7 +385,7 @@ renderUsage config mode = case config of
             Nothing -> ([],[])
 
         usage = "Usage:" <> hardline <> hardline
-            <> indent 2 (nest 4 (pretty programName
+            <> indent 4 (nest 4 (pretty programName
                 <> globalSummary oG
                 <> commandSummary mode
                 <> localSummary oL
