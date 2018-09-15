@@ -35,14 +35,14 @@ library:
   exposed-modules:
    - Core.Text
    - Core.Json
-   - Core.Program
    - Core.System
-   - Core.Render
+   - Core.Program
    - Core.Program.Arguments
-  other-modules:
-   - Core.Program.Context
    - Core.Program.Execute
    - Core.Program.Logging
+   - Core.Render
+  other-modules:
+   - Core.Program.Context
    - Core.Program.Signal
 
 executables:
@@ -53,7 +53,7 @@ executables:
     ghc-options: -threaded -Wall -Wwarn -fwarn-tabs
    
     source-dirs: tests
-    main: Experiment.hs
+    main: ComplexExperiment.hs
     other-modules: []
 
     ghc-prof-options: -fprof-auto

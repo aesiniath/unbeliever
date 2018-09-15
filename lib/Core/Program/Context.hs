@@ -5,7 +5,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# OPTIONS_HADDOCK hide,not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -- This is an Internal module
 module Core.Program.Context

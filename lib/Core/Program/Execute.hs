@@ -6,9 +6,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_HADDOCK prune #-}
 
 module Core.Program.Execute
     ( Context
+    , configure
     , execute
     , executeWith
     , Program ()
