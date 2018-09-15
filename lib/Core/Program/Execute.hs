@@ -8,9 +8,10 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Core.Program.Execute
-    ( execute
+    ( Context
+    , execute
     , executeWith
-    , Program
+    , Program ()
     , terminate
     , setProgramName
     , getProgramName
@@ -37,10 +38,10 @@ import qualified Control.Exception as Base (throwIO)
 import Control.Exception.Safe (SomeException, Exception(displayException))
 import qualified Control.Exception.Safe as Safe (throw, catchesAsync)
 import Control.Monad (when, forever)
-import Control.Monad.Catch (MonadThrow(throwM), Handler(..))
-import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Trans.Reader (ReaderT(..))
-import Control.Monad.Reader.Class (MonadReader(..))
+import Control.Monad.Catch (Handler(..))
+import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Reader.Class (MonadReader(ask))
+import Control.Monad.Trans.Reader (ReaderT(runReaderT))
 import qualified Data.ByteString as S (pack, hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
 import qualified Data.ByteString.Lazy as L (hPut)
@@ -58,55 +59,11 @@ import Core.Program.Logging
 import Core.Program.Signal
 import Core.Program.Arguments
 
-{-|
-The type of a top-level Prgoram.
-
-You would use this by writing:
-
-@
-module Main where
-
-import "Core.Program"
-
-main :: 'IO' ()
-main = 'execute' program
-@
-
-and defining a program that is the top level of your application:
-
-@
-program :: 'Program' ()
-@
-
-Program actions are combinable; you can sequence them (using bind in
-do-notation) or run them in parallel, but basically you should need one
-such object at the top of your application.
-
-You're best off putting your top-level Program action in a separate module
-so you can refer to it from test suites and example snippets.
-
--}
-newtype Program a = Program (ReaderT (MVar Context) IO a)
-    deriving (Functor, Applicative, Monad, MonadIO, MonadReader (MVar Context))
-
 unwrapProgram :: Program a -> ReaderT (MVar Context) IO a
 unwrapProgram (Program reader) = reader
 
 instance Render TimeStamp where
     render t = intoText (show t)
-
---
--- This is complicated. The **safe-exceptions** library exports a
--- `throwM` which is not the `throwM` class method from MonadThrow.
--- See https://github.com/fpco/safe-exceptions/issues/31 for
--- discussion. In any event, the re-exports flow back to
--- Control.Monad.Catch from **exceptions** and Control.Exceptions in
--- **base**. In _this_ module, we need to catch everything (including
--- asynchronous exceptions); elsewhere we will use and wrap/export
--- **safe-exceptions**'s variants of the functions.
---
-instance MonadThrow Program where
-    throwM = liftIO . Safe.throw
 
 runProgram :: Context -> Program a -> IO a
 runProgram context (Program reader) = do

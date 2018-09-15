@@ -3,14 +3,18 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_HADDOCK hide,not-home #-}
 
+-- This is an Internal module
 module Core.Program.Context
     ( 
         Context(..)
       , configure
       , Message(..)
       , Nature(..)
+      , Program(..)
       , getConsoleWidth
     ) where
 
@@ -18,6 +22,11 @@ import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
 import Control.Concurrent.MVar (MVar, newEmptyMVar)
 import Control.Concurrent.STM.TChan (TChan, newTChanIO)
 import Control.Exception.Safe (displayException)
+import qualified Control.Exception.Safe as Safe (throw)
+import Control.Monad.Catch (MonadThrow(throwM))
+import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.Reader.Class (MonadReader(..))
+import Control.Monad.Trans.Reader (ReaderT(..))
 import Data.Text.Prettyprint.Doc (layoutPretty, defaultLayoutOptions, LayoutOptions(..), PageWidth(..))
 import Data.Text.Prettyprint.Doc.Render.Text (renderIO)
 import System.Console.Terminal.Size (Window(..), size, hSize)
@@ -29,24 +38,27 @@ import Core.System
 import Core.Render
 import Core.Program.Arguments
 
-{-
-    The fieldNameFrom idiom is an experiment. Looks very strange,
-    certainly, here in the record type definition and when setting
-    fields, but for the common case of getting a value out of the
-    record, a call like
-
-        fieldNameFrom context
-
-    isn't bad at all, and no worse than the leading underscore
-    convention.
-
-        _fieldName context
-
-     (I would argue better, since _ is already so overloaded as the
-     wildcard symbol in Haskell). Either way, the point is to avoid a
-     bare fieldName because so often you have want to be able to use
-     that field name as a local variable name.
+{-|
+Internal context for a running program.
 -}
+--
+-- The fieldNameFrom idiom is an experiment. Looks very strange,
+-- certainly, here in the record type definition and when setting
+-- fields, but for the common case of getting a value out of the
+-- record, a call like
+--
+--     fieldNameFrom context
+--
+-- isn't bad at all, and no worse than the leading underscore
+-- convention.
+--
+--     _fieldName context
+--
+-- (I would argue better, since _ is already so overloaded as the
+-- wildcard symbol in Haskell). Either way, the point is to avoid a
+-- bare fieldName because so often you have want to be able to use
+-- that field name as a local variable name.
+--
 data Context = Context {
       programNameFrom :: Text
     , commandLineFrom :: Parameters
@@ -60,6 +72,51 @@ data Context = Context {
 data Message = Message TimeStamp Nature Text (Maybe Text)
 
 data Nature = Output | Event | Debug
+
+{-|
+The type of a top-level Prgoram.
+
+You would use this by writing:
+
+@
+module Main where
+
+import "Core.Program"
+
+main :: 'IO' ()
+main = 'execute' program
+@
+
+and defining a program that is the top level of your application:
+
+@
+program :: 'Program' ()
+@
+
+Program actions are combinable; you can sequence them (using bind in
+do-notation) or run them in parallel, but basically you should need one
+such object at the top of your application.
+
+You're best off putting your top-level Program action in a separate module
+so you can refer to it from test suites and example snippets.
+
+-}
+newtype Program a = Program (ReaderT (MVar Context) IO a)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadReader (MVar Context))
+
+--
+-- This is complicated. The **safe-exceptions** library exports a
+-- `throwM` which is not the `throwM` class method from MonadThrow.
+-- See https://github.com/fpco/safe-exceptions/issues/31 for
+-- discussion. In any event, the re-exports flow back to
+-- Control.Monad.Catch from **exceptions** and Control.Exceptions in
+-- **base**. In _this_ module, we need to catch everything (including
+-- asynchronous exceptions); elsewhere we will use and wrap/export
+-- **safe-exceptions**'s variants of the functions.
+--
+instance MonadThrow Program where
+    throwM = liftIO . Safe.throw
+
 
 {-
     FIXME
