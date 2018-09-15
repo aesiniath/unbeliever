@@ -59,27 +59,32 @@ import Core.Program.Signal
 import Core.Program.Arguments
 
 {-|
-    The type of a top-level Prgoram.
+The type of a top-level Prgoram.
 
-    You would use this by writing:
+You would use this by writing:
 
-    > module Main where
-    >
-    > import Core.Program
-    >
-    > main :: IO ()
-    > main = execute program
+@
+module Main where
 
-    and defining a program that is the top level of your application:
+import "Core.Program"
 
-    > program :: Program ()
+main :: 'IO' ()
+main = 'execute' program
+@
 
-    Program actions are combinable; you can sequence them (using bind in
-    do-notation) or run them in parallel, but basically you should need
-    one such object at the top of your application.
+and defining a program that is the top level of your application:
 
-    You're best off putting your top-level Program action in a separate
-    module so you can refer to it from test suites and example snippets.
+@
+program :: 'Program' ()
+@
+
+Program actions are combinable; you can sequence them (using bind in
+do-notation) or run them in parallel, but basically you should need one
+such object at the top of your application.
+
+You're best off putting your top-level Program action in a separate module
+so you can refer to it from test suites and example snippets.
+
 -}
 newtype Program a = Program (ReaderT (MVar Context) IO a)
     deriving (Functor, Applicative, Monad, MonadIO, MonadReader (MVar Context))
@@ -152,43 +157,40 @@ escapeHandlers context = [
 
 
 {-|
-    Embelish a program with useful behaviours.
+Embelish a program with useful behaviours.
 
-    /Runtime/
+/Runtime/
 
-    Sets number of capabilities (heavy-weight operating system threads
-    used by the GHC runtime to run Haskell green threads) to the number
-    of CPU cores available (for some reason the default is 1 capability
-    only, which is a bit silly on a multicore system).
+Sets number of capabilities (heavy-weight operating system threads used by
+the GHC runtime to run Haskell green threads) to the number of CPU cores
+available (for some reason the default is 1 capability only, which is a bit
+silly on a multicore system).
 
-    Install signal handlers to properly terminate the program
-    performing cleanup as necessary.
+Install signal handlers to properly terminate the program performing
+cleanup as necessary.
 
-    /Logging and output/
+/Logging and output/
 
-    The Program monad provides functions for both normal output and
-    debug logging. A common annoyance when building command line
-    tools and daemons is getting program output to stdout and debug
-    messages interleaved, made even worse when error messages written to
-    stderr land in the same console. To avoid this, when using the
-    Program monad all output is sent through a single channel. This
-    includes both normal output and log messages.
+The Program monad provides functions for both normal output and debug
+logging. A common annoyance when building command line tools and daemons is
+getting program output to stdout and debug messages interleaved, made even
+worse when error messages written to stderr land in the same console. To
+avoid this, when using the Program monad all output is sent through a
+single channel. This includes both normal output and log messages.
 
-    /Exceptions/
+/Exceptions/
 
-    Ideally your code should handle (and not leak) exceptions, as is
-    good practice anywhere in the Haskell ecosystem. As a measure of
-    last resort however, if an exception is thrown (and not caught) by
-    your program it will be caught here, logged for debugging, and then
-    your Program will exit.
+Ideally your code should handle (and not leak) exceptions, as is good
+practice anywhere in the Haskell ecosystem. As a measure of last resort
+however, if an exception is thrown (and not caught) by your program it will
+be caught here, logged for debugging, and then your Program will exit.
 
-    /Customizing the execution context/
+/Customizing the execution context/
 
-    This function will run your Program in a basic 'Context'
-    initialized with appropriate defaults. While some settings can be
-    changed at runtime, if you need to replace (for example) the
-    logging subsystem you can run your program using 'configure' and
-    then 'executeWith'.
+This function will run your Program in a basic 'Context' initialized with
+appropriate defaults. While some settings can be changed at runtime, if you
+need to replace (for example) the logging subsystem you can run your
+program using 'configure' and then 'executeWith'.
 -}
 execute :: Program a -> IO ()
 execute program = do
@@ -261,9 +263,8 @@ processDebugMessages logger = do
         return ()
 
 {-|
-    Safely exit the program with the supplied exit code. Current
-    output and debug queues will be flushed, and then the process will
-    terminate.
+Safely exit the program with the supplied exit code. Current output and
+debug queues will be flushed, and then the process will terminate.
 -}
 terminate :: Int -> Program ()
 terminate code =
@@ -277,8 +278,8 @@ terminate code =
 
 
 {- |
-    Override the program name used for logging, etc. At least, that was the
-    idea. Nothing makes use of this at the moemnt. @:/@
+Override the program name used for logging, etc. At least, that was the
+idea. Nothing makes use of this at the moemnt. @:/@
 -}
 setProgramName :: Text -> Program ()
 setProgramName name = do
@@ -296,11 +297,13 @@ getProgramName = do
     return (programNameFrom context)
 
 {-|
-    Write the supplied text to @stdout@.
+Write the supplied text to @stdout@.
 
-    This is for normal program output.
+This is for normal program output.
 
-    >     write "Beginning now"
+@
+     'write' "Beginning now"
+@
 -}
 write :: Text -> Program ()
 write text = do
@@ -312,39 +315,41 @@ write text = do
         atomically (writeTChan chan text)
 
 {-|
-    Call 'show' on the supplied argument and write the resultant
-    text to @stdout@.
+Call 'show' on the supplied argument and write the resultant text to
+@stdout@.
 
-    (This is the equivalent of 'print' from __base__)
+(This is the equivalent of 'print' from __base__)
 -}
 writeS :: Show a => a -> Program ()
 writeS = write . intoText . show
 
 {-|
-    Write the supplied bytes to the given handle
-    (in contrast to 'write' we don't output a trailing newline)
+Write the supplied bytes to the given handle
+(in contrast to 'write' we don't output a trailing newline)
 -}
 output :: Handle -> Bytes -> Program ()
 output h b = liftIO $ do
         S.hPut h (fromBytes b)
 
 {-|
-    Note a significant event, state transition, status, or debugging
-    message. This:
+Note a significant event, state transition, status, or debugging
+message. This:
 
-    >    event "Starting..."
+@
+    'event' "Starting..."
+@
 
-    will result in
+will result in
 
-    > 13:05:55Z (0000.001) Starting...
+> 13:05:55Z (0000.001) Starting...
 
-    appearing on stdout /and/ the message being sent down the logging
-    channel. The output string is current time in UTC, and time elapsed
-    since startup shown to the nearest millisecond (our timestamps are to
-    nanosecond precision, but you don't need that kind of resolution in
-    in ordinary debugging).
-    
-    Messages sent to syslog will be logged at @Info@ level severity.
+appearing on stdout /and/ the message being sent down the logging
+channel. The output string is current time in UTC, and time elapsed
+since startup shown to the nearest millisecond (our timestamps are to
+nanosecond precision, but you don't need that kind of resolution in
+in ordinary debugging).
+
+Messages sent to syslog will be logged at @Info@ level severity.
 -}
 event :: Text -> Program ()
 event text = do
@@ -355,24 +360,24 @@ event text = do
         putMessage context (Message now Event text Nothing)
 
 {-|
-    Output a debugging message formed from a label and a value. This
-    is like 'event' above but for the (rather common) case of needing
-    to inspect or record the value of a variable when debugging code.
-    This:
+Output a debugging message formed from a label and a value. This is like
+'event' above but for the (rather common) case of needing to inspect or
+record the value of a variable when debugging code.  This:
 
-    >    setProgramName "hello"
-    >    name <- getProgramName
-    >    debug "programName" name
+@
+    'setProgramName' \"hello\"
+    name <- 'getProgramName'
+    'debug' \"programName\" name
+@
 
-    will result in
+will result in
 
-    > 13:05:58Z (0003.141) programName = hello
+> 13:05:58Z (0003.141) programName = hello
 
-    appearing on stdout /and/ the message being sent down the logging
-    channel, assuming these actions executed about three seconds after
-    program start.
+appearing on stdout /and/ the message being sent down the logging channel,
+assuming these actions executed about three seconds after program start.
 
-    Messages sent to syslog will be logged at @Debug@ level severity.
+Messages sent to syslog will be logged at @Debug@ level severity.
 -}
 debug :: Text -> Text -> Program ()
 debug label value = do
@@ -387,7 +392,7 @@ debugS :: Show a => Text -> a -> Program ()
 debugS label value = debug label (intoText (show value))
 
 {-|
-    Fork a thread.
+Fork a thread.
 -}
 --
 -- TODO change Async to a wrapper called Thread
@@ -404,12 +409,14 @@ fork program = do
         return a
 
 {-|
-    Pause the current thread for the given number of seconds. For
-    example, to delay a second and a half, do:
+Pause the current thread for the given number of seconds. For
+example, to delay a second and a half, do:
 
-    >     sleep 1.5
+@
+    'sleep' 1.5
+@
 
-    (this wraps __base__'s 'threadDelay')
+(this wraps __base__'s 'threadDelay')
 -}
 --
 -- FIXME is this the right type, given we want to avoid type default warnings?
