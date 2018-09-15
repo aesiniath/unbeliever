@@ -134,6 +134,12 @@ instance Semigroup Context where
         , loggerChannelFrom = loggerChannelFrom one
         }
 
+{-|
+Initialize the programs's execution context. This takes care of various
+administrative actions, including setting up output channels, parsing
+command-line arguments (according to the supplied configuratoin), and
+putting in place various semaphores for internal program communication.
+-}
 configure :: Config -> IO Context
 configure config = do
     start <- getCurrentTimeNanoseconds

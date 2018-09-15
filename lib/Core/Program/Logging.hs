@@ -2,15 +2,21 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# OPTIONS_HADDOCK prune #-}
 
 module Core.Program.Logging
     (
         putMessage
+      , event
+      , debug
+      , debugS
     ) where
 
-import Chrono.TimeStamp (TimeStamp(..))
+import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
+import Control.Concurrent.MVar (MVar, readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TChan (TChan, writeTChan)
+import Control.Monad.Reader.Class (MonadReader(ask))
 import qualified Data.ByteString as S (pack, hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
@@ -94,4 +100,67 @@ padWithZeros digits str =
   where
     pad = take len (replicate digits '0')
     len = digits - length str
+
+{-|
+Note a significant event, state transition, status, or debugging
+message. This:
+
+@
+    'event' "Starting..."
+@
+
+will result in
+
+> 13:05:55Z (0000.001) Starting...
+
+appearing on stdout /and/ the message being sent down the logging
+channel. The output string is current time in UTC, and time elapsed
+since startup shown to the nearest millisecond (our timestamps are to
+nanosecond precision, but you don't need that kind of resolution in
+in ordinary debugging).
+
+Messages sent to syslog will be logged at @Info@ level severity.
+-}
+event :: Text -> Program ()
+event text = do
+    v <- ask
+    liftIO $ do
+        context <- readMVar v
+        now <- getCurrentTimeNanoseconds
+        putMessage context (Message now Event text Nothing)
+
+{-|
+Output a debugging message formed from a label and a value. This is like
+'event' above but for the (rather common) case of needing to inspect or
+record the value of a variable when debugging code.  This:
+
+@
+    'setProgramName' \"hello\"
+    name <- 'getProgramName'
+    'debug' \"programName\" name
+@
+
+will result in
+
+> 13:05:58Z (0003.141) programName = hello
+
+appearing on stdout /and/ the message being sent down the logging channel,
+assuming these actions executed about three seconds after program start.
+
+Messages sent to syslog will be logged at @Debug@ level severity.
+-}
+debug :: Text -> Text -> Program ()
+debug label value = do
+    v <- ask
+    liftIO $ do
+        context <- readMVar v
+        now <- getCurrentTimeNanoseconds
+        putMessage context (Message now Debug label (Just value))
+
+{-|
+Convenience for the common case of needing to inspect the value
+of a general variable which has a Show instance
+-}
+debugS :: Show a => Text -> a -> Program ()
+debugS label value = debug label (intoText (show value))
 

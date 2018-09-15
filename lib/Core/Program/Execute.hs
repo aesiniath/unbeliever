@@ -20,14 +20,11 @@ module Core.Program.Execute
     , getCommandLine
     , write
     , writeS
-    , event
-    , debug
-    , debugS
     , fork
     , sleep
     ) where
 
-import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
+import Chrono.TimeStamp (TimeStamp(..))
 import Control.Concurrent (yield, threadDelay)
 import Control.Concurrent.Async (Async, async, link, cancel, wait,
     ExceptionInLinkedThread(..), AsyncCancelled)
@@ -289,66 +286,6 @@ Write the supplied bytes to the given handle
 output :: Handle -> Bytes -> Program ()
 output h b = liftIO $ do
         S.hPut h (fromBytes b)
-
-{-|
-Note a significant event, state transition, status, or debugging
-message. This:
-
-@
-    'event' "Starting..."
-@
-
-will result in
-
-> 13:05:55Z (0000.001) Starting...
-
-appearing on stdout /and/ the message being sent down the logging
-channel. The output string is current time in UTC, and time elapsed
-since startup shown to the nearest millisecond (our timestamps are to
-nanosecond precision, but you don't need that kind of resolution in
-in ordinary debugging).
-
-Messages sent to syslog will be logged at @Info@ level severity.
--}
-event :: Text -> Program ()
-event text = do
-    v <- ask
-    liftIO $ do
-        context <- readMVar v
-        now <- getCurrentTimeNanoseconds
-        putMessage context (Message now Event text Nothing)
-
-{-|
-Output a debugging message formed from a label and a value. This is like
-'event' above but for the (rather common) case of needing to inspect or
-record the value of a variable when debugging code.  This:
-
-@
-    'setProgramName' \"hello\"
-    name <- 'getProgramName'
-    'debug' \"programName\" name
-@
-
-will result in
-
-> 13:05:58Z (0003.141) programName = hello
-
-appearing on stdout /and/ the message being sent down the logging channel,
-assuming these actions executed about three seconds after program start.
-
-Messages sent to syslog will be logged at @Debug@ level severity.
--}
-debug :: Text -> Text -> Program ()
-debug label value = do
-    v <- ask
-    liftIO $ do
-        context <- readMVar v
-        now <- getCurrentTimeNanoseconds
-        putMessage context (Message now Debug label (Just value))
-
-
-debugS :: Show a => Text -> a -> Program ()
-debugS label value = debug label (intoText (show value))
 
 {-|
 Fork a thread.
