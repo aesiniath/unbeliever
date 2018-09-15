@@ -4,33 +4,37 @@
 {-# LANGUAGE StrictData #-}
 {-# OPTIONS_HADDOCK prune #-}
 
---
--- | Invoking a command-line program (be it tool or daemon) consists of
--- listing the name of its binary, optionally supplying various
--- options to adjust the behaviour of the program, and then supplying
--- mandatory arguments, if any are specified.
---
--- On startup, we parse any arguments passed in from the shell into
--- @name,value@ pairs and incorporated into the resultant configuration stored
--- in the program's Context.
---
--- Additionally, this module allows you to specify environment variables that,
--- if present, will be incorporated into the stored configuration.
---
+{-|
+Invoking a command-line program (be it tool or daemon) consists of listing
+the name of its binary, optionally supplying various options to adjust the
+behaviour of the program, and then supplying mandatory arguments, if any
+are specified.
+
+On startup, we parse any arguments passed in from the shell into
+@name,value@ pairs and incorporated into the resultant configuration stored
+in the program's Context.
+
+Additionally, this module allows you to specify environment variables that,
+if present, will be incorporated into the stored configuration.
+-}
 module Core.Program.Arguments
     ( 
+        {-* Setup -}
         Config
+      , simple
       , baselineConfig
       , Parameters(..)
       , ParameterValue(..)
-      , simple
-      , complex
+        {-* Options and Arguments -}
       , LongName(..)
       , ShortName
+      , Description
       , Options(..)
+        {-* Programs with Commands -}
+      , complex
       , Commands(..)
       , Variables(..)
-      , Description
+        {-* Internals -}
       , parseCommandLine
       , InvalidCommandLine(..)
       , buildUsage
@@ -55,27 +59,27 @@ import Core.System
 import Core.Render
 
 {-|
-    Single letter "short" options (omitting the "@-@" prefix, obviously).
+Single letter "short" options (omitting the "@-@" prefix, obviously).
 -}
 type ShortName = Char
 
 {-|
-    The description of an option, command, or environment variable (for use
-    when rendering usage information in response to @--help@ on the
-    command-line).
+The description of an option, command, or environment variable (for use
+when rendering usage information in response to @--help@ on the
+command-line).
 
-    By convention a description is one or more complete sentences each of which
-    ends with a full stop.
+By convention a description is one or more complete sentences each of which
+ends with a full stop.
 -}
 type Description = Text
 
 {-|
-    The name of an option, command, or agument (omitting the "@--@" prefix in
-    the case of options). This identifier will be used to generate usage text
-    in response to @--help@ and by you later when retreiving the values of the
-    supplied parameters after the program has initialized.
+The name of an option, command, or agument (omitting the "@--@" prefix in
+the case of options). This identifier will be used to generate usage text
+in response to @--help@ and by you later when retreiving the values of the
+supplied parameters after the program has initialized.
 
-    Turn on __@OverloadedStrings@__ when specifying configurations, obviously.
+Turn on __@OverloadedStrings@__ when specifying configurations, obviously.
 -}
 newtype LongName = LongName String
     deriving (Show, IsString, Eq, Hashable)
@@ -83,24 +87,59 @@ newtype LongName = LongName String
 instance Pretty LongName where
     pretty (LongName name) = pretty name
 
+{-|
+The setup for parsing the command-line arguments of your program. You build
+a @Config@ with 'simple' or 'complex', and pass it to
+'Core.Program.Context.configure'.
+-}
 data Config
     = Simple [Options]
     | Complex [Commands]
 
+--
+-- Those constructors are not exposed [and functions wrapping them are] partly
+-- for documentation convenience, partly for aesthetics (after a point too many
+-- constructors got a bit hard to differentiate betwen), and mostly so that if
+-- configure's argument turns into a monad like RequestBuilder we have
+-- somewhere to make that change.
+--
 
 {-|
-    Declare a simple (as in normal) configuration for a program with any number
-    of optional parameters and mandatory arguments.
+Declare a simple (as in normal) configuration for a program with any number
+of optional parameters and mandatory arguments. For example:
+
+@
+main :: 'IO' ()
+main = do
+    context <- 'Core.Program.Context.configure' ('simple'
+        [ 'Option' "verbose" ('Just' 'v') [here|
+            Turn on event level logging to console.
+            Valid values are "event", "debug", and "none" (the default
+            if you don't specify the verbose option).
+          |]
+        , 'Option' "logging" 'Nothing' [here|
+            Valid values are "console", "file:/path/to/file.log", and "syslog"
+          |]
+        , 'Option' "quiet" (Just 'q') [here|
+            Supress normal output.
+          |]
+        , 'Argument' "filename" [here|
+            The file you want to frobnicate.
+          |]
+        ])
+
+    'Core.Program.Execute.executeWith' context program
+@
 -}
 simple :: [Options] -> Config
 simple options = Simple options
 
 {-|
-    Declare a complex configuration (implying a larger tool with various
-    "[sub]commands" or "modes") for a program. You can specify global options
-    applicable to all commands, a list of commands, and environment variables
-    that will be honoured by the program. Each command can have a list of local
-    options and arguments as needed.
+Declare a complex configuration (implying a larger tool with various
+"[sub]commands" or "modes") for a program. You can specify global options
+applicable to all commands, a list of commands, and environment variables
+that will be honoured by the program. Each command can have a list of local
+options and arguments as needed.
 -}
 complex :: [Commands] -> Config
 complex commands = Complex commands
@@ -111,32 +150,37 @@ data Commands
     | Environment [Variables]
 
 {-|
-    Declaration of an optional switch or mandatory argument expected by a program.
+Declaration of an optional switch or mandatory argument expected by a
+program.
 
-    By convention these are /lower case/. If the identifier is two or more words
-    they are joined with a hyphen. Examples:
+By convention these are /lower case/. If the identifier is two or more
+words they are joined with a hyphen. Examples:
 
-    >     [ Option "dry-run" Nothing "Don't actually execute commands, just simulate what would happen."
-    >     , Option "quiet" (Just 'q') "Keep the noise to a minimum."
-    >     , Argument "username" "The user to delete from the system."
-    >     ]
+@
+        [ 'Option' \"dry-run\" 'Nothing' "Don't actually execute commands, just simulate what would happen."
+        , 'Option' \"quiet\" ('Just' 'q') "Keep the noise to a minimum."
+        , 'Argument' \"username\" "The user to delete from the system."
+        ]
+@
 -}
 data Options
     = Option LongName (Maybe ShortName) Description
     | Argument LongName Description
 
 {-|
-    Declaration of an environment variable that, if present, will be
-    interpreted by the program and stored in its runtime context.
+Declaration of an environment variable that, if present, will be
+interpreted by the program and stored in its runtime context.
 
-    By convention these are /upper case/. If the identifier is two or more
-    words they are joined with an underscore:
+By convention these are /upper case/. If the identifier is two or more
+words they are joined with an underscore:
 
-    >     [ Variable "CRAZY_MODE" "Specify how many crazies to activate."
-    >     , ...
-    >     ]
+@
+        [ 'Variable' \"CRAZY_MODE\" "Specify how many crazies to activate."
+        , ...
+        ]
+@
 
-    Environment variables are only available in 'complex' configurations.
+Environment variables are only available in 'complex' configurations.
 -}
 data Variables
     = Variable LongName Description
@@ -151,9 +195,9 @@ instance IsString ParameterValue where
     fromString x = Value x
 
 {-|
-    Result of having processed the command-line and the environment. You get at
-    the parsed command-line options and arguments by calling
-    'Core.Program.Execute.getCommandLine' in a 'Core.Program.Execute.Program'.
+Result of having processed the command-line and the environment. You get at
+the parsed command-line options and arguments by calling
+'Core.Program.Execute.getCommandLine' within a 'Program' block.
 -}
 data Parameters
     = Parameters {
@@ -171,7 +215,7 @@ baselineConfig =
     ]
 
 {-|
-    Different ways parsing a simple or complex command-line can fail.
+Different ways parsing a simple or complex command-line can fail.
 -}
 data InvalidCommandLine
     = InvalidOption String  {-^ Something was wrong with the way the user specified [usually a short] option. -}
@@ -246,18 +290,18 @@ trim count input = unlines . map (drop count) . lines $ input
 
 
 {-|
-    Given a program configuration schema and the command-line arguments,
-    process them into key/value pairs in a Parameters object.
+Given a program configuration schema and the command-line arguments,
+process them into key/value pairs in a Parameters object.
 
-    This results in 'InvalidCommandLine' on the left side if one of the passed
-    in options is unrecognized or if there is some other problem handling
-    options or arguments (because at that point, we want to rabbit right back
-    to the top and bail out; there's no recovering).
+This results in 'InvalidCommandLine' on the left side if one of the passed
+in options is unrecognized or if there is some other problem handling
+options or arguments (because at that point, we want to rabbit right back
+to the top and bail out; there's no recovering).
 
-    This isn't somethin you'll ever need to call directly; it's exposed for
-    testing convenience. This function is invoked when you call
-    'Core.Program.Context.configure' or 'Core.Program.Execute.execute' (which
-    calls @configure@ with a default @Config@ when setting up).
+This isn't somethin you'll ever need to call directly; it's exposed for
+testing convenience. This function is invoked when you call
+'Core.Program.Context.configure' or 'Core.Program.Execute.execute' (which
+calls 'configure' with a default @Config@ when initializing).
 -}
 parseCommandLine :: Config -> [String] -> Either InvalidCommandLine Parameters
 parseCommandLine config argv = case config of
