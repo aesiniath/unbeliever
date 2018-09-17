@@ -36,6 +36,7 @@ library:
    - Core.Text
    - Core.Json
    - Core.System
+   - Core.System.External
    - Core.Program
    - Core.Program.Arguments
    - Core.Program.Execute
