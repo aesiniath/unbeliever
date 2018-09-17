@@ -16,7 +16,7 @@ import Data.Text.Prettyprint.Doc (layoutPretty, defaultLayoutOptions, Pretty(..)
 import Data.Text.Prettyprint.Doc.Render.Text (renderStrict)
 
 import Core.Text
-import Core.Json
+import Core.Encoding
 import Core.Program
 import Core.System
 import Core.Render

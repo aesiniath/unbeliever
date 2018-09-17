@@ -34,7 +34,8 @@ library:
   source-dirs: lib
   exposed-modules:
    - Core.Text
-   - Core.Json
+   - Core.Encoding
+   - Core.Encoding.Json
    - Core.System
    - Core.System.External
    - Core.Program
@@ -54,7 +55,7 @@ executables:
     ghc-options: -threaded -Wall -Wwarn -fwarn-tabs
    
     source-dirs: tests
-    main: ComplexExperiment.hs
+    main: Experiment.hs
     other-modules: []
 
     ghc-prof-options: -fprof-auto

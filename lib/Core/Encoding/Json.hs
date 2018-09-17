@@ -12,7 +12,7 @@
     efficient emitter.
 -}
 
-module Core.Json
+module Core.Encoding.Json
     ( encodeToUTF8
     , decodeFromUTF8
     , JsonValue(..)
