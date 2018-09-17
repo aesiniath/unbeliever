@@ -62,6 +62,11 @@ module Core.Encoding.Json
       , JsonValue(..)
       , JsonKey(..)
         {-* Syntax highlighting -}
+{-|
+Support for pretty printing JSON values with syntax highlighting.
+-}
+      , JsonToken(..)
+      , colourize
       , prettyKey
       , prettyValue
     ) where
@@ -211,9 +216,9 @@ fromAeson value = case value of
     Aeson.Bool x -> JsonBool x
     Aeson.Null -> JsonNull
 
-{-
-    Pretty printing
--}
+--
+-- Pretty printing
+--
 
 data JsonToken
     = SymbolToken
@@ -229,11 +234,11 @@ instance Render JsonValue where
     render = intoText . renderStrict . reAnnotateS colourize
               . layoutPretty defaultLayoutOptions . prettyValue
 
-{-
-    Ugh. If you want to experiment with narrower output, then:
-
-              . layoutPretty (LayoutOptions {layoutPageWidth = AvailablePerLine 15 1.0}) . prettyValue
--}
+--
+--  Ugh. If you want to experiment with narrower output, then:
+--
+--            . layoutPretty (LayoutOptions {layoutPageWidth = AvailablePerLine 15 1.0}) . prettyValue
+--
 
 colourize :: JsonToken -> AnsiStyle
 colourize token = case token of

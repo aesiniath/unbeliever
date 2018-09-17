@@ -29,6 +29,10 @@ for more complex cases [sub]commands, mandatory arguments, and environment
 variable handling.
 -}
       , module Core.Program.Arguments
+        {-* Logging facilities -}
+{-|
+Facilities for noting events through your program and doing debugging.
+-}
       , module Core.Program.Logging
     ) where
 
