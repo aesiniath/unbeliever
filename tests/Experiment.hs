@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
@@ -24,18 +25,18 @@ import Core.Render
 k = JsonKey "intro"
 v = JsonString "Hello"
 
-j = JsonObject (HashMap.fromList
+j = JsonObject
         [ (k, v)
         , (JsonKey "song", JsonString "Thriller")
-        , (JsonKey "other", JsonString "A very long name for the \"shadow of the moon\".")
+        , ("other", "A very long name for the \"shadow of the moon\".")
         , (JsonKey "four", JsonObject (HashMap.fromList
                 [ (JsonKey "n1", r)
                 ]))
-        ])
+        ]
 
 b = StrictBytes (S.pack "{\"cost\": 4500}")
 
-r = JsonArray [JsonBool False, JsonNull, JsonNumber 42]
+r = JsonArray [JsonBool False, JsonNull, 42]
 
 data Boom = Boom
     deriving Show

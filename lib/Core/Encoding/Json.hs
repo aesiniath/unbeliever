@@ -86,7 +86,7 @@ import Data.Text.Prettyprint.Doc.Util (reflow)
 import Data.Text.Prettyprint.Doc.Render.Terminal (AnsiStyle)
 import Data.Scientific (Scientific)
 import qualified Data.Scientific as Scientific
-import Data.String (IsString)
+import Data.String (IsString(..))
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics
@@ -125,6 +125,30 @@ data JsonValue
     | JsonBool Bool
     | JsonNull
     deriving (Eq, Read, Show, Generic)
+
+--
+-- Overloads so that Haskell code literals can be interpreted as JSON
+-- values. Obviously these are a lot on the partial side, but what else are
+-- you supposed to do? This is all Haskell gives us for getting at
+-- literals.
+--
+instance IsString JsonValue where
+    fromString :: String -> JsonValue
+    fromString = JsonString . intoText
+
+instance Num JsonValue where
+    fromInteger = JsonNumber . fromInteger
+    (+) = error "Sorry, you can't add JsonValues"
+    (-) = error "Sorry, you can't negate JsonValues"
+    (*) = error "Sorry, you can't multiply JsonValues"
+    abs = error "Sorry, not applicable for JsonValues"
+    signum = error "Sorry, not applicable for JsonValues"
+
+instance Fractional JsonValue where
+    fromRational :: Rational -> JsonValue
+    fromRational = JsonNumber . fromRational
+    (/) = error "Sorry, you can't do division on JsonValues"
+
 
 intoAeson :: JsonValue -> Aeson.Value
 intoAeson value = case value of
