@@ -39,7 +39,8 @@ import Core.Render
 import Core.Program.Arguments
 
 {-|
-Internal context for a running program.
+Internal context for a running program. You access this via actions in the
+'Program' monad.
 -}
 --
 -- The fieldNameFrom idiom is an experiment. Looks very strange,
@@ -84,7 +85,7 @@ module Main where
 import "Core.Program"
 
 main :: 'IO' ()
-main = 'execute' program
+main = 'Core.Program.Execute.execute' program
 @
 
 and defining a program that is the top level of your application:
@@ -93,13 +94,15 @@ and defining a program that is the top level of your application:
 program :: 'Program' ()
 @
 
-Program actions are combinable; you can sequence them (using bind in
+Such actions are combinable; you can sequence them (using bind in
 do-notation) or run them in parallel, but basically you should need one
 such object at the top of your application.
 
-You're best off putting your top-level Program action in a separate module
-so you can refer to it from test suites and example snippets.
-
+One of the quirks of Haskell is that it is difficult to refer to code in
+the Main module when you've got a number of programs kicking around in a
+project each with a @main@ function. So you're best off putting your
+top-level 'Program' actions in a separate modules so you can refer to them
+from test suites and example snippets.
 -}
 newtype Program a = Program (ReaderT (MVar Context) IO a)
     deriving (Functor, Applicative, Monad, MonadIO, MonadReader (MVar Context))
@@ -137,7 +140,7 @@ instance Semigroup Context where
 {-|
 Initialize the programs's execution context. This takes care of various
 administrative actions, including setting up output channels, parsing
-command-line arguments (according to the supplied configuratoin), and
+command-line arguments (according to the supplied configuration), and
 putting in place various semaphores for internal program communication.
 -}
 configure :: Config -> IO Context

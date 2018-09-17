@@ -8,20 +8,62 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_HADDOCK prune #-}
 
+{-|
+Embelish a Haskell command-line program with useful behaviours.
+
+/Runtime/
+
+Sets number of capabilities (heavy-weight operating system threads used by
+the GHC runtime to run Haskell green threads) to the number of CPU cores
+available (for some reason the default is 1 capability only, which is a bit
+silly on a multicore system).
+
+Install signal handlers to properly terminate the program performing
+cleanup as necessary.
+
+/Logging and output/
+
+The 'Program' monad provides functions for both normal output and debug
+logging. A common annoyance when building command line tools and daemons is
+getting program output to @stdout@ and debug messages interleaved, made
+even worse when error messages written to @stderr@ land in the same
+console. To avoid this, when all output is sent through a single channel.
+This includes both normal output and log messages.
+
+/Exceptions/
+
+Ideally your code should handle (and not leak) exceptions, as is good
+practice anywhere in the Haskell ecosystem. As a measure of last resort
+however, if an exception is thrown (and not caught) by your program it will
+be caught at the outer 'execute' entrypoint, logged for debugging, and then
+your Program will exit.
+
+/Customizing the execution context/
+
+The 'execute' function will run your 'Program' in a basic 'Context'
+initialized with appropriate defaults. While some settings can be changed
+at runtime, if you need to replace (for example) the logging subsystem you
+can initialize your program using 'configure' and then run 'executeWith'.
+-}
 module Core.Program.Execute
-    ( Context
-    , configure
-    , execute
-    , executeWith
-    , Program ()
-    , terminate
-    , setProgramName
-    , getProgramName
-    , getCommandLine
-    , write
-    , writeS
-    , fork
-    , sleep
+    (   Program ()
+        {-* Running programs -}
+      , configure
+      , execute
+      , executeWith
+        {-* Exiting a program -}
+      , terminate
+        {-* Accessing program context -}
+      , setProgramName
+      , getProgramName
+      , getCommandLine
+        {-* Useful actions -}
+      , write
+      , writeS
+      , fork
+      , sleep
+        {-* Internals -}
+      , Context
     ) where
 
 import Chrono.TimeStamp (TimeStamp(..))
@@ -113,46 +155,19 @@ escapeHandlers context = [
 
 
 {-|
-Embelish a program with useful behaviours.
-
-/Runtime/
-
-Sets number of capabilities (heavy-weight operating system threads used by
-the GHC runtime to run Haskell green threads) to the number of CPU cores
-available (for some reason the default is 1 capability only, which is a bit
-silly on a multicore system).
-
-Install signal handlers to properly terminate the program performing
-cleanup as necessary.
-
-/Logging and output/
-
-The Program monad provides functions for both normal output and debug
-logging. A common annoyance when building command line tools and daemons is
-getting program output to stdout and debug messages interleaved, made even
-worse when error messages written to stderr land in the same console. To
-avoid this, when using the Program monad all output is sent through a
-single channel. This includes both normal output and log messages.
-
-/Exceptions/
-
-Ideally your code should handle (and not leak) exceptions, as is good
-practice anywhere in the Haskell ecosystem. As a measure of last resort
-however, if an exception is thrown (and not caught) by your program it will
-be caught here, logged for debugging, and then your Program will exit.
-
-/Customizing the execution context/
-
-This function will run your Program in a basic 'Context' initialized with
-appropriate defaults. While some settings can be changed at runtime, if you
-need to replace (for example) the logging subsystem you can run your
-program using 'configure' and then 'executeWith'.
+Embelish a program with useful behaviours. See module header
+"Core.Program.Execute" for a detailed description. Internally this function
+calls 'configure' with an appropriate default when initializing.
 -}
 execute :: Program a -> IO ()
 execute program = do
     context <- configure baselineConfig
     executeWith context program
 
+{-|
+Embelish a program with useful behaviours, supplying a configuration
+for command-line options & argument parsing.
+-}
 executeWith :: Context -> Program a -> IO ()
 executeWith context program = do
     -- command line +RTS -Nn -RTS value
