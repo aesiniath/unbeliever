@@ -2,23 +2,68 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-{-
-    As currently implemented this module, in conjunction with
-    Core.Text, is the opposite of efficient. The idea right now is to
-    experiment with the surface API. If it stabilizes, then the fact
-    that our string objects are already in UTF-8 will make for a very
-    efficient emitter.
--}
+{-|
+Encoding and decoding UTF-8 JSON content.
 
+This module is a thin wrapper around the most excellent __aeson__ library,
+which has rich and powerful facilities for encoding Haskell types into
+JSON.
+
+Quite often, however, you find yourself having to create a Haskell type
+/just/ to read some JSON coming from an external web service or API. This
+can be challenging when the source of the JSON is complex or varying its
+schema over time. For ease of exploration this module simply defines an
+easy to use intermediate type representing JSON as a format.
+
+To use this module, you may find the following imports helpful:
+
+@
+\{\-\# LANGUAGE OverloadedStrings \#\-\}
+\{\-\# LANGUAGE OverloadedLists \#\-\}
+
+import "Data.HashMap.Strict" ('HashMap')
+import qualified "Data.HashMap.Strict" as 'HashMap'  -- from the __unordered-containers__ package.
+import "Data.Scientific" ('Scientific')              -- from the __scientific__ package
+import "Core.Encoding.Json"
+@
+
+Often you'll be working with literals directly in your code. While you can
+write:
+
+@
+    j = JsonObject (HashMap.fromList [(JsonKey "answer", JsonNumber 42)])
+@
+
+and it would be correct, enabling @OverloadedStrings@ and @OverloadedLists@
+allows you to write:
+
+@
+    j = JsonObject [("answer", 42)]
+@
+
+which you is somewhat less cumbersome. You're certainly welcome to use the
+constructors if you find it makes for more readable code or if you need
+the type annotations.
+
+-}
+--
+-- As currently implemented this module, in conjunction with
+-- Core.Text, is the opposite of efficient. The idea right now is to
+-- experiment with the surface API. If it stabilizes, then the fact
+-- that our string objects are already in UTF-8 will make for a very
+-- efficient emitter.
+--
 module Core.Encoding.Json
-    ( encodeToUTF8
-    , decodeFromUTF8
-    , JsonValue(..)
-    , JsonKey(..)
-    , prettyKey
-    , prettyValue
+      ( encodeToUTF8
+      , decodeFromUTF8
+      , JsonValue(..)
+      , JsonKey(..)
+        {-* Syntax highlighting -}
+      , prettyKey
+      , prettyValue
     ) where
 
 import qualified Data.Aeson as Aeson
@@ -49,9 +94,18 @@ import GHC.Generics
 import Core.Text (Text(UTF8), Bytes(StrictBytes), Textual, intoText, fromText)
 import Core.Render (Render, render)
 
+{-|
+Given a JSON value, encode it to UTF-8 bytes
+
+I know we're not /supposed/ to rely on types to document functions, but
+really, this one does what it says on the tin.
+-}
 encodeToUTF8 :: JsonValue -> Bytes
 encodeToUTF8 = StrictBytes . S.concat . L.toChunks . Aeson.encode . intoAeson
 
+{-|
+Given an array of bytes, attempt to decode it as a JSON value.
+-}
 decodeFromUTF8 :: Bytes -> Maybe JsonValue
 decodeFromUTF8 (StrictBytes b') =
   let
@@ -60,6 +114,9 @@ decodeFromUTF8 (StrictBytes b') =
   in
     fmap fromAeson x
 
+{-|
+A JSON value.
+-}
 data JsonValue
     = JsonObject (HashMap JsonKey JsonValue)
     | JsonArray [JsonValue]
@@ -91,7 +148,9 @@ intoAeson value = case value of
     JsonBool x -> Aeson.Bool x
     JsonNull -> Aeson.Null
 
-
+{-|
+    Keys in a JSON object.
+-}
 newtype JsonKey
     = JsonKey Text
     deriving (Eq, Show, Read, Generic, IsString)
