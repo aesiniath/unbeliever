@@ -36,7 +36,7 @@ Ideally your code should handle (and not leak) exceptions, as is good
 practice anywhere in the Haskell ecosystem. As a measure of last resort
 however, if an exception is thrown (and not caught) by your program it will
 be caught at the outer 'execute' entrypoint, logged for debugging, and then
-your Program will exit.
+your program will exit.
 
 /Customizing the execution context/
 
@@ -66,7 +66,6 @@ module Core.Program.Execute
       , Context
     ) where
 
-import Chrono.TimeStamp (TimeStamp(..))
 import Control.Concurrent (yield, threadDelay)
 import Control.Concurrent.Async (Async, async, link, cancel, wait,
     ExceptionInLinkedThread(..), AsyncCancelled)
@@ -102,9 +101,6 @@ import Core.Program.Arguments
 
 unwrapProgram :: Program a -> ReaderT (MVar Context) IO a
 unwrapProgram (Program reader) = reader
-
-instance Render TimeStamp where
-    render t = intoText (show t)
 
 runProgram :: Context -> Program a -> IO a
 runProgram context (Program reader) = do
@@ -248,9 +244,9 @@ terminate code =
     liftIO (Safe.throw exit)
 
 
-{- |
+{-|
 Override the program name used for logging, etc. At least, that was the
-idea. Nothing makes use of this at the moemnt. @:/@
+idea. Nothing makes use of this at the moment. @:/@
 -}
 setProgramName :: Text -> Program ()
 setProgramName name = do
@@ -261,6 +257,10 @@ setProgramName name = do
     }
     liftIO (modifyMVar_ v (\_ -> pure context'))
 
+{-|
+Get the program name as invoked from the command-line (or as overridden by
+'setProgramName').
+-}
 getProgramName :: Program Text
 getProgramName = do
     v <- ask
@@ -339,7 +339,10 @@ sleep seconds =
   in
     liftIO $ threadDelay us
 
-
+{-|
+Retrieve the values of parameters parsed from options and arguments
+supplied by the user on the command-line.
+-}
 getCommandLine :: Program (Parameters)
 getCommandLine = do
     v <- ask
