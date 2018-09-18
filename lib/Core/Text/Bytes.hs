@@ -4,9 +4,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 module Core.Text.Bytes
-    ( Text(..)
-    , contains
-    , Bytes(..)
+    ( Bytes(..)
     , fromBytes
     , intoBytes
     , Textual(..)
@@ -25,64 +23,6 @@ import qualified Data.Text.Lazy.Encoding as U (decodeUtf8, encodeUtf8)
 import Data.Hashable (Hashable)
 import Data.Word (Word8)
 import GHC.Generics (Generic)
-
-data Text
-    = UTF8 S.ByteString
-    deriving (Eq, Read, Show, Generic)
-
-instance Hashable Text
-
-instance IsString Text where
-    fromString = UTF8 . T.encodeUtf8 . T.pack
-
-instance Semigroup Text where
-    (<>) = mappend
-
-instance Monoid Text where
-    mempty = UTF8 S.empty
-    mappend (UTF8 b1') (UTF8 b2') = UTF8 (S.append b1' b2')
-
---  fromString :: IsString a => String -> a
---  fromTextual :: Text -> a
-
-{-|
-Machinery to interpret a type as containing valid UTF-8 that can be
-represented as a Text object.
--}
-class Textual a where
-    fromText :: Text -> a
-    intoText :: a -> Text
-
-instance Textual Text where
-    fromText = id
-    intoText = id
-
-instance Textual T.Text where
-    fromText (UTF8 b') = T.decodeUtf8 b'
-    intoText t = UTF8 (T.encodeUtf8 t)
-
-instance Textual S.ByteString where
-    fromText (UTF8 b') = b'
-    intoText b' = UTF8 (T.encodeUtf8 (T.decodeUtf8 b'))
-
-instance Textual [Char] where
-    fromText (UTF8 b') = T.unpack (T.decodeUtf8 b')
-    intoText cs = UTF8 (T.encodeUtf8 (T.pack cs))
-
-{-|
-Does this Text contain this character?
-
-We've used it to ask whether there are newlines present, for
-example:
-
-@
-    if 'contains' '\n' text
-        then handleComplexCase
-        else keepItSimple
-@
--}
-contains :: Char -> Text -> Bool
-contains c (UTF8 b') = C.elem c b'
 
 data Bytes
     = StrictBytes S.ByteString
