@@ -3,7 +3,7 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE DeriveGeneric #-}
 
-module Core.Text
+module Core.Text.Bytes
     ( Text(..)
     , contains
     , Bytes(..)
@@ -45,10 +45,10 @@ instance Monoid Text where
 --  fromString :: IsString a => String -> a
 --  fromTextual :: Text -> a
 
---
--- | Machinery to interpret a type as containing valid UTF-8 that can be
--- represented as a Text object.
---
+{-|
+Machinery to interpret a type as containing valid UTF-8 that can be
+represented as a Text object.
+-}
 class Textual a where
     fromText :: Text -> a
     intoText :: a -> Text
@@ -69,16 +69,18 @@ instance Textual [Char] where
     fromText (UTF8 b') = T.unpack (T.decodeUtf8 b')
     intoText cs = UTF8 (T.encodeUtf8 (T.pack cs))
 
---
--- | Does this Text contain this character?
---
--- We've used it to ask whether there are newlines present, for
--- example:
---
--- >    if contains '\n' text
--- >        then handleComplexCase
--- >        else keepItSimple
---
+{-|
+Does this Text contain this character?
+
+We've used it to ask whether there are newlines present, for
+example:
+
+@
+    if 'contains' '\n' text
+        then handleComplexCase
+        else keepItSimple
+@
+-}
 contains :: Char -> Text -> Bool
 contains c (UTF8 b') = C.elem c b'
 
@@ -88,10 +90,10 @@ data Bytes
     | ListBytes [Word8]
     deriving (Show, Eq)
 
---
--- Conversion to and from various types containing binary data into our
--- convenience Bytes type.
---
+{-|
+Conversion to and from various types containing binary data into our
+convenience Bytes type.
+-}
 class Binary a where
     fromBytes :: Bytes -> a
     intoBytes :: a -> Bytes
