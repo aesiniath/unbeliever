@@ -8,7 +8,7 @@ import qualified Data.HashMap.Strict as HashMap
 import Test.Hspec
 
 import Core.Text
-import Core.Json
+import Core.Encoding.Json
 
 k = JsonKey "intro"
 v = JsonString "Hello"

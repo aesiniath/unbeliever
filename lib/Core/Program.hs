@@ -1,43 +1,41 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE StrictData #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# OPTIONS_GHC -fno-warn-unused-imports #-}
+{-# OPTIONS_HADDOCK not-home #-}
 
+{-|
+Support for building command-line programs, ranging from simple tools to
+long-running daemons.
+
+This is intended to be used directly:
+
+@
+import "Core.Program"
+@
+
+the submodules are mostly there to group documentation.
+-}
+-- actually, they're there to group implementation too, but hey.
 module Core.Program
-    ( configure
-    , Config
-    , Parameters(..)
-    , ParameterValue(..)
-    , simple
-    , complex
-    , LongName(..)
-    , ShortName
-    , Options(..)
-    , Variables(..)
-    , Commands(..)
-    , Description
-    , execute
-    , executeWith
-    , Program
-    , terminate
-    , setProgramName
-    , getProgramName
-    , getCommandLine
-    , write
-    , writeS
-    , event
-    , debug
-    , debugS
-    , fork
-    , sleep
+    (
+        {-* Executing a program -}
+{-|
+A top-level Program type giving you unified access to logging, concurrency,
+and more.
+-}
+        module Core.Program.Execute
+
+        {-* Command-line argument parsing -}
+{-|
+Including declaring what options your program accepts, generating help, and
+for more complex cases [sub]commands, mandatory arguments, and environment
+variable handling.
+-}
+      , module Core.Program.Arguments
+        {-* Logging facilities -}
+{-|
+Facilities for noting events through your program and doing debugging.
+-}
+      , module Core.Program.Logging
     ) where
 
-import Core.Program.Context
 import Core.Program.Arguments
 import Core.Program.Logging
 import Core.Program.Execute

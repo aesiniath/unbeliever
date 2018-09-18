@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Core.Render (
+module Core.Text.Utilities (
     Render(..),
     indefinite,
 
@@ -17,7 +17,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.Builder as T
 
-import Core.Text
+import Core.Text.Bytes
 
 class Render a where
     render :: a -> Text

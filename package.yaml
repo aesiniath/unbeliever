@@ -1,5 +1,5 @@
 name: unbeliever
-version: 0.0.2
+version: 0.1.1
 description: Opinionated Haskell Interoperability
 license: BSD3
 author: Andrew Cowie <andrew@operationaldynamics.com>
@@ -34,15 +34,18 @@ library:
   source-dirs: lib
   exposed-modules:
    - Core.Text
-   - Core.Json
-   - Core.Program
+   - Core.Text.Bytes
+   - Core.Text.Utilities
+   - Core.Encoding
+   - Core.Encoding.Json
    - Core.System
-   - Core.Render
+   - Core.System.External
+   - Core.Program
    - Core.Program.Arguments
-  other-modules:
-   - Core.Program.Context
    - Core.Program.Execute
    - Core.Program.Logging
+  other-modules:
+   - Core.Program.Context
    - Core.Program.Signal
 
 executables:

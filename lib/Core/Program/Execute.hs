@@ -6,25 +6,66 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_HADDOCK prune #-}
 
+{-|
+Embelish a Haskell command-line program with useful behaviours.
+
+/Runtime/
+
+Sets number of capabilities (heavy-weight operating system threads used by
+the GHC runtime to run Haskell green threads) to the number of CPU cores
+available (for some reason the default is 1 capability only, which is a bit
+silly on a multicore system).
+
+Install signal handlers to properly terminate the program performing
+cleanup as necessary.
+
+/Logging and output/
+
+The 'Program' monad provides functions for both normal output and debug
+logging. A common annoyance when building command line tools and daemons is
+getting program output to @stdout@ and debug messages interleaved, made
+even worse when error messages written to @stderr@ land in the same
+console. To avoid this, when all output is sent through a single channel.
+This includes both normal output and log messages.
+
+/Exceptions/
+
+Ideally your code should handle (and not leak) exceptions, as is good
+practice anywhere in the Haskell ecosystem. As a measure of last resort
+however, if an exception is thrown (and not caught) by your program it will
+be caught at the outer 'execute' entrypoint, logged for debugging, and then
+your program will exit.
+
+/Customizing the execution context/
+
+The 'execute' function will run your 'Program' in a basic 'Context'
+initialized with appropriate defaults. While some settings can be changed
+at runtime, if you need to replace (for example) the logging subsystem you
+can initialize your program using 'configure' and then run 'executeWith'.
+-}
 module Core.Program.Execute
-    ( execute
-    , executeWith
-    , Program
-    , terminate
-    , setProgramName
-    , getProgramName
-    , getCommandLine
-    , write
-    , writeS
-    , event
-    , debug
-    , debugS
-    , fork
-    , sleep
+    (   Program ()
+        {-* Running programs -}
+      , configure
+      , execute
+      , executeWith
+        {-* Exiting a program -}
+      , terminate
+        {-* Accessing program context -}
+      , setProgramName
+      , getProgramName
+      , getCommandLine
+        {-* Useful actions -}
+      , write
+      , writeS
+      , fork
+      , sleep
+        {-* Internals -}
+      , Context
     ) where
 
-import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
 import Control.Concurrent (yield, threadDelay)
 import Control.Concurrent.Async (Async, async, link, cancel, wait,
     ExceptionInLinkedThread(..), AsyncCancelled)
@@ -37,10 +78,10 @@ import qualified Control.Exception as Base (throwIO)
 import Control.Exception.Safe (SomeException, Exception(displayException))
 import qualified Control.Exception.Safe as Safe (throw, catchesAsync)
 import Control.Monad (when, forever)
-import Control.Monad.Catch (MonadThrow(throwM), Handler(..))
-import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Trans.Reader (ReaderT(..))
-import Control.Monad.Reader.Class (MonadReader(..))
+import Control.Monad.Catch (Handler(..))
+import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Reader.Class (MonadReader(ask))
+import Control.Monad.Trans.Reader (ReaderT(runReaderT))
 import qualified Data.ByteString as S (pack, hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
 import qualified Data.ByteString.Lazy as L (hPut)
@@ -50,58 +91,15 @@ import System.Exit (ExitCode(..), exitWith)
 import System.IO.Unsafe (unsafePerformIO)
 import Time.System (timezoneCurrent)
 
-import Core.Text
-import Core.System
-import Core.Render
+import Core.Text.Bytes
+import Core.System.External
 import Core.Program.Context
 import Core.Program.Logging
 import Core.Program.Signal
 import Core.Program.Arguments
 
-{-|
-    The type of a top-level Prgoram.
-
-    You would use this by writing:
-
-    > module Main where
-    >
-    > import Core.Program
-    >
-    > main :: IO ()
-    > main = execute program
-
-    and defining a program that is the top level of your application:
-
-    > program :: Program ()
-
-    Program actions are combinable; you can sequence them (using bind in
-    do-notation) or run them in parallel, but basically you should need
-    one such object at the top of your application.
-
-    You're best off putting your top-level Program action in a separate
-    module so you can refer to it from test suites and example snippets.
--}
-newtype Program a = Program (ReaderT (MVar Context) IO a)
-    deriving (Functor, Applicative, Monad, MonadIO, MonadReader (MVar Context))
-
 unwrapProgram :: Program a -> ReaderT (MVar Context) IO a
 unwrapProgram (Program reader) = reader
-
-instance Render TimeStamp where
-    render t = intoText (show t)
-
---
--- This is complicated. The **safe-exceptions** library exports a
--- `throwM` which is not the `throwM` class method from MonadThrow.
--- See https://github.com/fpco/safe-exceptions/issues/31 for
--- discussion. In any event, the re-exports flow back to
--- Control.Monad.Catch from **exceptions** and Control.Exceptions in
--- **base**. In _this_ module, we need to catch everything (including
--- asynchronous exceptions); elsewhere we will use and wrap/export
--- **safe-exceptions**'s variants of the functions.
---
-instance MonadThrow Program where
-    throwM = liftIO . Safe.throw
 
 runProgram :: Context -> Program a -> IO a
 runProgram context (Program reader) = do
@@ -152,49 +150,19 @@ escapeHandlers context = [
 
 
 {-|
-    Embelish a program with useful behaviours.
-
-    /Runtime/
-
-    Sets number of capabilities (heavy-weight operating system threads
-    used by the GHC runtime to run Haskell green threads) to the number
-    of CPU cores available (for some reason the default is 1 capability
-    only, which is a bit silly on a multicore system).
-
-    Install signal handlers to properly terminate the program
-    performing cleanup as necessary.
-
-    /Logging and output/
-
-    The Program monad provides functions for both normal output and
-    debug logging. A common annoyance when building command line
-    tools and daemons is getting program output to stdout and debug
-    messages interleaved, made even worse when error messages written to
-    stderr land in the same console. To avoid this, when using the
-    Program monad all output is sent through a single channel. This
-    includes both normal output and log messages.
-
-    /Exceptions/
-
-    Ideally your code should handle (and not leak) exceptions, as is
-    good practice anywhere in the Haskell ecosystem. As a measure of
-    last resort however, if an exception is thrown (and not caught) by
-    your program it will be caught here, logged for debugging, and then
-    your Program will exit.
-
-    /Customizing the execution context/
-
-    This function will run your Program in a basic 'Context'
-    initialized with appropriate defaults. While some settings can be
-    changed at runtime, if you need to replace (for example) the
-    logging subsystem you can run your program using 'configure' and
-    then 'executeWith'.
+Embelish a program with useful behaviours. See module header
+"Core.Program.Execute" for a detailed description. Internally this function
+calls 'configure' with an appropriate default when initializing.
 -}
 execute :: Program a -> IO ()
 execute program = do
     context <- configure baselineConfig
     executeWith context program
 
+{-|
+Embelish a program with useful behaviours, supplying a configuration
+for command-line options & argument parsing.
+-}
 executeWith :: Context -> Program a -> IO ()
 executeWith context program = do
     -- command line +RTS -Nn -RTS value
@@ -261,9 +229,8 @@ processDebugMessages logger = do
         return ()
 
 {-|
-    Safely exit the program with the supplied exit code. Current
-    output and debug queues will be flushed, and then the process will
-    terminate.
+Safely exit the program with the supplied exit code. Current output and
+debug queues will be flushed, and then the process will terminate.
 -}
 terminate :: Int -> Program ()
 terminate code =
@@ -276,9 +243,9 @@ terminate code =
     liftIO (Safe.throw exit)
 
 
-{- |
-    Override the program name used for logging, etc. At least, that was the
-    idea. Nothing makes use of this at the moemnt. @:/@
+{-|
+Override the program name used for logging, etc. At least, that was the
+idea. Nothing makes use of this at the moment. @:/@
 -}
 setProgramName :: Text -> Program ()
 setProgramName name = do
@@ -289,6 +256,10 @@ setProgramName name = do
     }
     liftIO (modifyMVar_ v (\_ -> pure context'))
 
+{-|
+Get the program name as invoked from the command-line (or as overridden by
+'setProgramName').
+-}
 getProgramName :: Program Text
 getProgramName = do
     v <- ask
@@ -296,11 +267,13 @@ getProgramName = do
     return (programNameFrom context)
 
 {-|
-    Write the supplied text to @stdout@.
+Write the supplied text to @stdout@.
 
-    This is for normal program output.
+This is for normal program output.
 
-    >     write "Beginning now"
+@
+     'write' "Beginning now"
+@
 -}
 write :: Text -> Program ()
 write text = do
@@ -312,82 +285,24 @@ write text = do
         atomically (writeTChan chan text)
 
 {-|
-    Call 'show' on the supplied argument and write the resultant
-    text to @stdout@.
+Call 'show' on the supplied argument and write the resultant text to
+@stdout@.
 
-    (This is the equivalent of 'print' from __base__)
+(This is the equivalent of 'print' from __base__)
 -}
 writeS :: Show a => a -> Program ()
 writeS = write . intoText . show
 
 {-|
-    Write the supplied bytes to the given handle
-    (in contrast to 'write' we don't output a trailing newline)
+Write the supplied bytes to the given handle
+(in contrast to 'write' we don't output a trailing newline)
 -}
 output :: Handle -> Bytes -> Program ()
 output h b = liftIO $ do
         S.hPut h (fromBytes b)
 
 {-|
-    Note a significant event, state transition, status, or debugging
-    message. This:
-
-    >    event "Starting..."
-
-    will result in
-
-    > 13:05:55Z (0000.001) Starting...
-
-    appearing on stdout /and/ the message being sent down the logging
-    channel. The output string is current time in UTC, and time elapsed
-    since startup shown to the nearest millisecond (our timestamps are to
-    nanosecond precision, but you don't need that kind of resolution in
-    in ordinary debugging).
-    
-    Messages sent to syslog will be logged at @Info@ level severity.
--}
-event :: Text -> Program ()
-event text = do
-    v <- ask
-    liftIO $ do
-        context <- readMVar v
-        now <- getCurrentTimeNanoseconds
-        putMessage context (Message now Event text Nothing)
-
-{-|
-    Output a debugging message formed from a label and a value. This
-    is like 'event' above but for the (rather common) case of needing
-    to inspect or record the value of a variable when debugging code.
-    This:
-
-    >    setProgramName "hello"
-    >    name <- getProgramName
-    >    debug "programName" name
-
-    will result in
-
-    > 13:05:58Z (0003.141) programName = hello
-
-    appearing on stdout /and/ the message being sent down the logging
-    channel, assuming these actions executed about three seconds after
-    program start.
-
-    Messages sent to syslog will be logged at @Debug@ level severity.
--}
-debug :: Text -> Text -> Program ()
-debug label value = do
-    v <- ask
-    liftIO $ do
-        context <- readMVar v
-        now <- getCurrentTimeNanoseconds
-        putMessage context (Message now Debug label (Just value))
-
-
-debugS :: Show a => Text -> a -> Program ()
-debugS label value = debug label (intoText (show value))
-
-{-|
-    Fork a thread.
+Fork a thread.
 -}
 --
 -- TODO change Async to a wrapper called Thread
@@ -404,12 +319,14 @@ fork program = do
         return a
 
 {-|
-    Pause the current thread for the given number of seconds. For
-    example, to delay a second and a half, do:
+Pause the current thread for the given number of seconds. For
+example, to delay a second and a half, do:
 
-    >     sleep 1.5
+@
+    'sleep' 1.5
+@
 
-    (this wraps __base__'s 'threadDelay')
+(this wraps __base__'s 'threadDelay')
 -}
 --
 -- FIXME is this the right type, given we want to avoid type default warnings?
@@ -421,7 +338,10 @@ sleep seconds =
   in
     liftIO $ threadDelay us
 
-
+{-|
+Retrieve the values of parameters parsed from options and arguments
+supplied by the user on the command-line.
+-}
 getCommandLine :: Program (Parameters)
 getCommandLine = do
     v <- ask

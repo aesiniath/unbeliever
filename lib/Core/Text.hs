@@ -1,112 +1,34 @@
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE StrictData #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# OPTIONS_HADDOCK not-home #-}
 
+{-|
+A unified Text type providing interoperability between various text
+back-ends present in the Haskell ecosystem.
+
+This is intended to be used directly:
+
+@
+import "Core.Text"
+@
+
+as this module re-exports all of the various components making up this
+library's text handling subsystem.
+-}
 module Core.Text
-    ( Text(..)
-    , contains
-    , Bytes(..)
-    , fromBytes
-    , intoBytes
-    , Textual(..)
+    (
+        {-* Internal representation -}
+{-|
+Exposes 'Bytes', a wrapper around different types of binary data, and 'Rope',
+a finger-tree over buffers containing text.
+-}
+        module Core.Text.Bytes
+
+        {-* Useful utilities -}
+{-|
+Useful functions for common use cases.
+-}
+      , module Core.Text.Utilities
     ) where
 
-import qualified Data.ByteString as S (ByteString, unpack, empty, append)
-import qualified Data.ByteString.Char8 as C (elem)
-import qualified Data.ByteString.Lazy as L (ByteString, unpack, fromStrict, toStrict)
-import Data.String (IsString(..))
-import qualified Data.Text as T (Text, pack, unpack)
-import qualified Data.Text.Encoding as T (decodeUtf8, encodeUtf8)
-import qualified Data.Text.Lazy as U (Text, toStrict, unpack)
-import qualified Data.Text.Lazy.Encoding as U (decodeUtf8, encodeUtf8)
+import Core.Text.Bytes
+import Core.Text.Utilities
 
---import qualified Data.Text.IO as T
-import Data.Hashable (Hashable)
-import Data.Word (Word8)
-import GHC.Generics (Generic)
-
-data Text
-    = UTF8 S.ByteString
-    deriving (Eq, Read, Show, Generic)
-
-instance Hashable Text
-
-instance IsString Text where
-    fromString = UTF8 . T.encodeUtf8 . T.pack
-
-instance Semigroup Text where
-    (<>) = mappend
-
-instance Monoid Text where
-    mempty = UTF8 S.empty
-    mappend (UTF8 b1') (UTF8 b2') = UTF8 (S.append b1' b2')
-
---  fromString :: IsString a => String -> a
---  fromTextual :: Text -> a
-
---
--- | Machinery to interpret a type as containing valid UTF-8 that can be
--- represented as a Text object.
---
-class Textual a where
-    fromText :: Text -> a
-    intoText :: a -> Text
-
-instance Textual Text where
-    fromText = id
-    intoText = id
-
-instance Textual T.Text where
-    fromText (UTF8 b') = T.decodeUtf8 b'
-    intoText t = UTF8 (T.encodeUtf8 t)
-
-instance Textual S.ByteString where
-    fromText (UTF8 b') = b'
-    intoText b' = UTF8 (T.encodeUtf8 (T.decodeUtf8 b'))
-
-instance Textual [Char] where
-    fromText (UTF8 b') = T.unpack (T.decodeUtf8 b')
-    intoText cs = UTF8 (T.encodeUtf8 (T.pack cs))
-
---
--- | Does this Text contain this character?
---
--- We've used it to ask whether there are newlines present, for
--- example:
---
--- >    if contains '\n' text
--- >        then handleComplexCase
--- >        else keepItSimple
---
-contains :: Char -> Text -> Bool
-contains c (UTF8 b') = C.elem c b'
-
-data Bytes
-    = StrictBytes S.ByteString
-    | LazyBytes L.ByteString
-    | ListBytes [Word8]
-    deriving (Show, Eq)
-
---
--- Conversion to and from various types containing binary data into our
--- convenience Bytes type.
---
-class Binary a where
-    fromBytes :: Bytes -> a
-    intoBytes :: a -> Bytes
-
-instance Binary S.ByteString where
-    fromBytes (StrictBytes b') = b'
-    intoBytes b' = StrictBytes b'
-
-instance Binary L.ByteString where
-    fromBytes (StrictBytes b') = L.fromStrict b'
-    intoBytes b' = StrictBytes (L.toStrict b')      -- expensive
-
-
-{-
-instance Show Bytes where
-    show x = case x of
-        StrictBytes b' -> 
--}

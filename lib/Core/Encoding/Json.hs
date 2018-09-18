@@ -2,23 +2,90 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-{-
-    As currently implemented this module, in conjunction with
-    Core.Text, is the opposite of efficient. The idea right now is to
-    experiment with the surface API. If it stabilizes, then the fact
-    that our string objects are already in UTF-8 will make for a very
-    efficient emitter.
--}
+{-|
+Encoding and decoding UTF-8 JSON content.
 
-module Core.Json
-    ( encodeToUTF8
-    , decodeFromUTF8
-    , JsonValue(..)
-    , JsonKey(..)
-    , prettyKey
-    , prettyValue
+This module is a thin wrapper around the most excellent __aeson__ library,
+which has rich and powerful facilities for encoding Haskell types into
+JSON.
+
+Quite often, however, you find yourself having to create a Haskell type
+/just/ to read some JSON coming from an external web service or API. This
+can be challenging when the source of the JSON is complex or varying its
+schema over time. For ease of exploration this module simply defines an
+easy to use intermediate type representing JSON as a format.
+
+To use this module, you may find the following imports helpful:
+
+@
+\{\-\# LANGUAGE OverloadedStrings \#\-\}
+\{\-\# LANGUAGE OverloadedLists \#\-\}
+
+import "Data.HashMap.Strict" ('HashMap')
+import qualified "Data.HashMap.Strict" as 'HashMap'  -- from the __unordered-containers__ package.
+import "Data.Scientific" ('Scientific')              -- from the __scientific__ package
+import "Core.Encoding.Json"
+@
+
+Often you'll be working with literals directly in your code. While you can
+write:
+
+@
+    j = JsonObject (HashMap.fromList [(JsonKey "answer", JsonNumber 42)])
+@
+
+and it would be correct, enabling @OverloadedStrings@ and @OverloadedLists@
+allows you to write:
+
+@
+    j = JsonObject [("answer", 42)]
+@
+
+which you is somewhat less cumbersome. You're certainly welcome to use the
+constructors if you find it makes for more readable code or if you need
+the type annotations.
+
+-}
+--
+-- As currently implemented this module, in conjunction with
+-- Core.Text, is the opposite of efficient. The idea right now is to
+-- experiment with the surface API. If it stabilizes, then the fact
+-- that our string objects are already in UTF-8 will make for a very
+-- efficient emitter.
+--
+module Core.Encoding.Json
+      ( {-* Encoding and Decoding -}
+        encodeToUTF8
+      , decodeFromUTF8
+      , JsonValue(..)
+      , JsonKey(..)
+        {-* Syntax highlighting -}
+{-|
+Support for pretty-printing JSON values with syntax highlighting using the
+__prettyprinter__ library. To output a JSON structure to terminal
+colourized with ANSI escape codes you can use the 'Render' instance:
+
+@
+    debug "j" (render j)
+@
+
+will get you:
+
+@
+23:46:04Z (00000.007) j =
+{
+    "answer": 42.0
+}
+@
+
+-}
+      , JsonToken(..)
+      , colourize
+      , prettyKey
+      , prettyValue
     ) where
 
 import qualified Data.Aeson as Aeson
@@ -41,17 +108,26 @@ import Data.Text.Prettyprint.Doc.Util (reflow)
 import Data.Text.Prettyprint.Doc.Render.Terminal (AnsiStyle)
 import Data.Scientific (Scientific)
 import qualified Data.Scientific as Scientific
-import Data.String (IsString)
+import Data.String (IsString(..))
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics
 
-import Core.Text (Text(UTF8), Bytes(StrictBytes), Textual, intoText, fromText)
-import Core.Render (Render, render)
+import Core.Text.Bytes (Text(UTF8), Bytes(StrictBytes), Textual, intoText, fromText)
+import Core.Text.Utilities (Render, render)
 
+{-|
+Given a JSON value, encode it to UTF-8 bytes
+
+I know we're not /supposed/ to rely on types to document functions, but
+really, this one does what it says on the tin.
+-}
 encodeToUTF8 :: JsonValue -> Bytes
 encodeToUTF8 = StrictBytes . S.concat . L.toChunks . Aeson.encode . intoAeson
 
+{-|
+Given an array of bytes, attempt to decode it as a JSON value.
+-}
 decodeFromUTF8 :: Bytes -> Maybe JsonValue
 decodeFromUTF8 (StrictBytes b') =
   let
@@ -60,6 +136,9 @@ decodeFromUTF8 (StrictBytes b') =
   in
     fmap fromAeson x
 
+{-|
+A JSON value.
+-}
 data JsonValue
     = JsonObject (HashMap JsonKey JsonValue)
     | JsonArray [JsonValue]
@@ -68,6 +147,30 @@ data JsonValue
     | JsonBool Bool
     | JsonNull
     deriving (Eq, Read, Show, Generic)
+
+--
+-- Overloads so that Haskell code literals can be interpreted as JSON
+-- values. Obviously these are a lot on the partial side, but what else are
+-- you supposed to do? This is all Haskell gives us for getting at
+-- literals.
+--
+instance IsString JsonValue where
+    fromString :: String -> JsonValue
+    fromString = JsonString . intoText
+
+instance Num JsonValue where
+    fromInteger = JsonNumber . fromInteger
+    (+) = error "Sorry, you can't add JsonValues"
+    (-) = error "Sorry, you can't negate JsonValues"
+    (*) = error "Sorry, you can't multiply JsonValues"
+    abs = error "Sorry, not applicable for JsonValues"
+    signum = error "Sorry, not applicable for JsonValues"
+
+instance Fractional JsonValue where
+    fromRational :: Rational -> JsonValue
+    fromRational = JsonNumber . fromRational
+    (/) = error "Sorry, you can't do division on JsonValues"
+
 
 intoAeson :: JsonValue -> Aeson.Value
 intoAeson value = case value of
@@ -91,7 +194,9 @@ intoAeson value = case value of
     JsonBool x -> Aeson.Bool x
     JsonNull -> Aeson.Null
 
-
+{-|
+    Keys in a JSON object.
+-}
 newtype JsonKey
     = JsonKey Text
     deriving (Eq, Show, Read, Generic, IsString)
@@ -128,9 +233,9 @@ fromAeson value = case value of
     Aeson.Bool x -> JsonBool x
     Aeson.Null -> JsonNull
 
-{-
-    Pretty printing
--}
+--
+-- Pretty printing
+--
 
 data JsonToken
     = SymbolToken
@@ -146,12 +251,20 @@ instance Render JsonValue where
     render = intoText . renderStrict . reAnnotateS colourize
               . layoutPretty defaultLayoutOptions . prettyValue
 
-{-
-    Ugh. If you want to experiment with narrower output, then:
+--
+--  Ugh. If you want to experiment with narrower output, then:
+--
+--            . layoutPretty (LayoutOptions {layoutPageWidth = AvailablePerLine 15 1.0}) . prettyValue
+--
+{-|
+Used by the 'Render' instance to turn symbolic annotations into ANSI colours annotations.
+If you're curious, the render pipeline looks like:
 
-              . layoutPretty (LayoutOptions {layoutPageWidth = AvailablePerLine 15 1.0}) . prettyValue
+@
+    render = 'intoText' . 'renderStrict' . 'reAnnotateS' 'colourize'
+                . 'layoutPretty' 'defaultLayoutOptions' . 'prettyValue'
+@
 -}
-
 colourize :: JsonToken -> AnsiStyle
 colourize token = case token of
     SymbolToken -> color Black
