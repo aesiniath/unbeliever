@@ -57,13 +57,30 @@ the type annotations.
 -- efficient emitter.
 --
 module Core.Encoding.Json
-      ( encodeToUTF8
+      ( {-* Encoding and Decoding -}
+        encodeToUTF8
       , decodeFromUTF8
       , JsonValue(..)
       , JsonKey(..)
         {-* Syntax highlighting -}
 {-|
-Support for pretty printing JSON values with syntax highlighting.
+Support for pretty-printing JSON values with syntax highlighting using the
+__prettyprinter__ library. To output a JSON structure to terminal
+colourized with ANSI escape codes you can use the 'Render' instance:
+
+@
+    debug "j" (render j)
+@
+
+will get you:
+
+@
+23:46:04Z (00000.007) j =
+{
+    "answer": 42.0
+}
+@
+
 -}
       , JsonToken(..)
       , colourize
@@ -239,7 +256,15 @@ instance Render JsonValue where
 --
 --            . layoutPretty (LayoutOptions {layoutPageWidth = AvailablePerLine 15 1.0}) . prettyValue
 --
+{-|
+Used by the 'Render' instance to turn symbolic annotations into ANSI colours annotations.
+If you're curious, the render pipeline looks like:
 
+@
+    render = 'intoText' . 'renderStrict' . 'reAnnotateS' 'colourize'
+                . 'layoutPretty' 'defaultLayoutOptions' . 'prettyValue'
+@
+-}
 colourize :: JsonToken -> AnsiStyle
 colourize token = case token of
     SymbolToken -> color Black
