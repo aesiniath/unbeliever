@@ -33,9 +33,9 @@ import System.Console.Terminal.Size (Window(..), size, hSize)
 import System.Environment (getArgs, getProgName)
 import System.Exit (ExitCode(..), exitWith)
 
-import Core.Text
-import Core.System
-import Core.Render
+import Core.System.External
+import Core.Text.Bytes
+import Core.Text.Utilities
 import Core.Program.Arguments
 
 {-|

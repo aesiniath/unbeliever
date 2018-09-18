@@ -91,9 +91,8 @@ import System.Exit (ExitCode(..), exitWith)
 import System.IO.Unsafe (unsafePerformIO)
 import Time.System (timezoneCurrent)
 
-import Core.Text
-import Core.System
-import Core.Render
+import Core.Text.Bytes
+import Core.System.External
 import Core.Program.Context
 import Core.Program.Logging
 import Core.Program.Signal

@@ -24,9 +24,8 @@ import Data.Fixed
 import Data.Hourglass (timePrint, TimeFormatElem(..))
 import Time.System (timezoneCurrent)
 
-import Core.Text
-import Core.Render
-import Core.System
+import Core.Text.Bytes
+import Core.System.External
 import Core.Program.Context
 
 {-

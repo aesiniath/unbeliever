@@ -20,7 +20,6 @@ import Core.Text
 import Core.Encoding
 import Core.Program
 import Core.System
-import Core.Render
 
 k = JsonKey "intro"
 v = JsonString "Hello"

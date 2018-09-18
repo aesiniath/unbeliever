@@ -113,8 +113,8 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics
 
-import Core.Text (Text(UTF8), Bytes(StrictBytes), Textual, intoText, fromText)
-import Core.Render (Render, render)
+import Core.Text.Bytes (Text(UTF8), Bytes(StrictBytes), Textual, intoText, fromText)
+import Core.Text.Utilities (Render, render)
 
 {-|
 Given a JSON value, encode it to UTF-8 bytes

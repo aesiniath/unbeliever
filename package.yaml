@@ -34,6 +34,8 @@ library:
   source-dirs: lib
   exposed-modules:
    - Core.Text
+   - Core.Text.Bytes
+   - Core.Text.Utilities
    - Core.Encoding
    - Core.Encoding.Json
    - Core.System
@@ -42,7 +44,6 @@ library:
    - Core.Program.Arguments
    - Core.Program.Execute
    - Core.Program.Logging
-   - Core.Render
   other-modules:
    - Core.Program.Context
    - Core.Program.Signal

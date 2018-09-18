@@ -54,9 +54,9 @@ import Data.String
 import Data.String.Here
 import System.Environment (getProgName)
 
-import Core.Text
-import Core.System
-import Core.Render
+import Core.Text.Bytes
+import Core.Text.Utilities
+import Core.System.External
 
 {-|
 Single letter "short" options (omitting the "@-@" prefix, obviously).
