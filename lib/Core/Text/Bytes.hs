@@ -7,7 +7,6 @@ module Core.Text.Bytes
     ( Bytes(..)
     , fromBytes
     , intoBytes
-    , Textual(..)
     ) where
 
 import qualified Data.ByteString as S (ByteString, unpack, empty, append)

@@ -6,8 +6,9 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
 
-module Core.Text.Bytes
+module Core.Text.Rope
     ( Rope
+    , unRope
     , contains
     , Textual(..)
     ) where
@@ -50,6 +51,19 @@ tiny.
 data Rope
     = Rope (F.FingerTree Width S.ShortText)
     deriving Generic
+
+{-|
+Access the finger tree underlying the 'Rope'. You'll want the following
+imports:
+
+@
+import qualified Data.FingerTree as F  -- from the **fingertree** package
+import qualified Data.Text.Short as S  -- from the **text-short** package
+@
+-}
+unRope :: Rope -> F.FingerTree Width S.ShortText
+unRope (Rope x) = x
+
 
 {-|
 The length of the Rope, in characters.
