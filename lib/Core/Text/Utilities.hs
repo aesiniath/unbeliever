@@ -3,30 +3,33 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Core.Text.Utilities (
-    Render(..),
-    indefinite,
-
-    wrap,
-    underline
+      Render(..)
+    , indefinite
+    , wrap
+    , underline
 ) where
 
 import qualified Data.ByteString.Char8 as C
+import qualified Data.FingerTree as F (FingerTree(..), empty
+    , singleton, (><), fromList, (<|), ViewL(..), viewl)
 import Data.List (foldl')
 import Data.Monoid ((<>))
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.Builder as T
+import qualified Data.Text.Short as S (ShortText, length, uncons)
 
 import Core.Text.Bytes
+import Core.Text.Rope
 
 class Render a where
-    render :: a -> Text
+    render :: a -> Rope
 
-instance Render Text where
+instance Render Rope where
     render x = x
 
-instance Render [Text] where
-    render ts = UTF8 (C.concat (fmap fromText ts))
+instance Render [Rope] where
+    render = Rope . F.fromList . fmap unRope
 
 instance Render [Char] where
     render cs = intoText cs
@@ -35,18 +38,19 @@ instance Render [Char] where
 -- | Render "a" or "an" in front of a word depending on English's idea of
 -- whether it's a vowel or not.
 --
-indefinite :: Text -> Text
-indefinite t =
+indefinite :: Rope -> Rope
+indefinite text =
   let
-    text = fromText t
-    article = if T.head text `elem` ['A','E','I','O','U','a','e','i','o','u']
-        then "an "
-        else "a "
-    result = if T.null text
-        then T.empty
-        else T.append article text
+    x = unRope text
   in
-    intoText result
+    case F.viewl x of
+        F.EmptyL -> text
+        piece F.:< _ -> case S.uncons piece of
+            Nothing -> text
+            Just c  -> if c `elem` ['A','E','I','O','U','a','e','i','o','u']
+                then Rope (F.<| "an " x)
+                else Rope (F.<| "a " x)
+
 
 --
 -- | Often the input text represents a paragraph, but does not have any
