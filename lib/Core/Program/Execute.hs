@@ -82,7 +82,7 @@ import Control.Monad.Catch (Handler(..))
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Reader.Class (MonadReader(ask))
 import Control.Monad.Trans.Reader (ReaderT(runReaderT))
-import qualified Data.ByteString as S (pack, hPut)
+import qualified Data.ByteString as B (pack, hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
 import qualified Data.ByteString.Lazy as L (hPut)
 import Data.Hourglass (timePrint, TimeFormatElem(..))
@@ -213,13 +213,13 @@ executeWith context program = do
         else (Base.throwIO code)
 
 
-processStandardOutput :: TChan Text -> IO ()
+processStandardOutput :: TChan Rope -> IO ()
 processStandardOutput output = do
     forever $ do
         text <- atomically (readTChan output)
 
-        S.hPut stdout (fromText text)
-        S.hPut stdout (C.singleton '\n')
+        B.hPut stdout (fromRope text) -- FIXME efficiency?
+        B.hPut stdout (C.singleton '\n')
 
 processDebugMessages :: TChan Message -> IO ()
 processDebugMessages logger = do

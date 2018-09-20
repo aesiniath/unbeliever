@@ -12,6 +12,7 @@ module Core.Text.Utilities (
 import qualified Data.ByteString.Char8 as C
 import qualified Data.FingerTree as F (FingerTree(..), empty
     , singleton, (><), fromList, (<|), ViewL(..), viewl)
+import Data.Foldable (toList)
 import Data.List (foldl')
 import Data.Monoid ((<>))
 import qualified Data.Text as T
@@ -29,10 +30,10 @@ instance Render Rope where
     render x = x
 
 instance Render [Rope] where
-    render = Rope . F.fromList . fmap unRope
+    render = Rope . F.fromList . concatMap toList . fmap unRope
 
 instance Render [Char] where
-    render cs = intoText cs
+    render cs = intoRope cs
 
 --
 -- | Render "a" or "an" in front of a word depending on English's idea of
@@ -47,23 +48,23 @@ indefinite text =
         F.EmptyL -> text
         piece F.:< _ -> case S.uncons piece of
             Nothing -> text
-            Just c  -> if c `elem` ['A','E','I','O','U','a','e','i','o','u']
-                then Rope (F.<| "an " x)
-                else Rope (F.<| "a " x)
+            Just (c,_)  -> if c `elem` ['A','E','I','O','U','a','e','i','o','u']
+                then Rope ("an " F.<| x)
+                else Rope ("a " F.<| x)
 
 
---
--- | Often the input text represents a paragraph, but does not have any
--- internal newlines (representing word wrapping). This function takes a line
--- of text and inserts newlines to simulate such folding. It also appends a
--- trailing newline to finish the paragraph.
---
-wrap :: Int -> Text -> Text
+{-|
+Often the input text represents a paragraph, but does not have any internal
+newlines (representing word wrapping). This function takes a line of text
+and inserts newlines to simulate such folding. It also appends a trailing
+newline to finish the paragraph.
+-}
+wrap :: Int -> Rope -> Rope
 wrap margin text =
   let
-    built = wrapHelper margin (T.words (fromText text))
+    built = wrapHelper margin (T.words (fromRope text))
   in
-    intoText (L.toStrict (T.toLazyText built))
+    intoRope (T.toLazyText built)
 
 wrapHelper :: Int -> [T.Text] -> T.Builder
 wrapHelper _ [] = ""
@@ -82,11 +83,11 @@ wrapLine margin (pos,builder) word =
         else (width', builder <> " "  <> T.fromText word)
 
 
-underline :: Char -> Text -> Text
-underline level title =
+underline :: Char -> Rope -> Rope
+underline level text =
   let
-    text = fromText title
-    line = T.map (\_ -> level) text
+    title = fromRope text
+    line = T.map (\_ -> level) title
   in
-    intoText line
+    intoRope line
 
