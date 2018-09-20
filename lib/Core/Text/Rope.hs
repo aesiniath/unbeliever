@@ -53,13 +53,8 @@ instance Show Rope where
     show text = "\"" ++ fromRope text ++ "\""
 
 instance Eq Rope where
-    (==) (Rope x1) (Rope x2) = go (stream x1, stream x2)
+    (==) (Rope x1) (Rope x2) = (==) (stream x1) (stream x2)
       where
-        go ([],[]) = True
-        go ([],_) = False
-        go (_,[]) = False
-        go (a:as,b:bs) = if (a /= b) then False else go (as,bs)
-
         stream x = foldMap S.unpack x
 
 
