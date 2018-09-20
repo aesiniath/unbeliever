@@ -7,9 +7,10 @@
 {-# LANGUAGE InstanceSigs #-}
 
 module Core.Text.Rope
-    ( Rope(..)
+    ( Rope
     , Width(..)
     , unRope
+    , width
     , contains
     , Textual(..)
     ) where
@@ -24,7 +25,7 @@ import qualified Data.Text.Lazy as U (Text, fromChunks, foldrChunks)
 import qualified Data.Text.Short as S (ShortText, length, pack, any
     , fromText, toText, fromByteString, toByteString, fromString, toString
     , concat, append, empty)
-import Data.Hashable (Hashable)
+import Data.Hashable (Hashable, hashWithSalt, hashUsing)
 import GHC.Generics (Generic)
 
 {-|
@@ -91,8 +92,25 @@ instance Monoid Rope where
     mempty = Rope F.empty
     mappend = (<>)
 
---  fromString :: IsString a => String -> a
---  fromTextual :: Text -> a
+width :: Rope -> Int
+width = foldr f 0 . unRope
+  where
+    f piece count = S.length piece + count
+
+--
+-- Manual instance to get around the fact that FingerTree doesn't have a
+-- Hashable instance. If this were ever to become a hotspot we could
+-- potentially use the Hashed caching type in the finger tree as
+--
+-- FingerTree Width (Hashed S.ShortText)
+--
+-- at the cost of endless unwrapping.
+--
+instance Hashable Rope where
+    hashWithSalt salt (Rope x) = foldr f salt x
+      where
+        f :: S.ShortText -> Int -> Int
+        f piece salt = hashWithSalt salt piece
 
 {-|
 Machinery to interpret a type as containing valid UTF-8 that can be
