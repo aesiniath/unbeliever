@@ -130,6 +130,10 @@ class Textual a where
     fromRope :: Rope -> a
     intoRope :: a -> Rope
 
+instance Textual (F.FingerTree Width S.ShortText) where
+    fromRope = unRope
+    intoRope = Rope
+
 instance Textual Rope where
     fromRope = id
     intoRope = id
