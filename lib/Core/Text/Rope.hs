@@ -19,11 +19,11 @@ import qualified Data.ByteString as B (ByteString, unpack, empty, append)
 import Data.String (IsString(..))
 import qualified Data.FingerTree as F (FingerTree, Measured(..), empty
     , singleton, (><), (<|))
-import Data.Foldable (foldr, toList, any)
+import Data.Foldable (foldr, foldr', foldMap, toList, any)
 import qualified Data.Text as T (Text, empty, append)
 import qualified Data.Text.Lazy as U (Text, fromChunks, foldrChunks)
-import qualified Data.Text.Short as S (ShortText, length, pack, any
-    , fromText, toText, fromByteString, toByteString, fromString, toString
+import qualified Data.Text.Short as S (ShortText, length, any
+    , fromText, toText, fromByteString, toByteString, pack, unpack
     , concat, append, empty)
 import Data.Hashable (Hashable, hashWithSalt, hashUsing)
 import GHC.Generics (Generic)
@@ -40,14 +40,28 @@ However, if we are manipulating this /at all/ in any way we're going to end
 up needing to copy it ... is that true?
 
 Second use case is assembling text to go out. This involves considerable
-appending of data, very very occaisionally inserting it. Often the pieces are
-tiny.
+appending of data, very very occaisionally inserting it. Often the pieces
+are tiny.
 
 -}
 
 data Rope
     = Rope (F.FingerTree Width S.ShortText)
     deriving Generic
+
+instance Show Rope where
+    show text = "\"" ++ fromRope text ++ "\""
+
+instance Eq Rope where
+    (==) (Rope x1) (Rope x2) = go (stream x1, stream x2)
+      where
+        go ([],[]) = True
+        go ([],_) = False
+        go (_,[]) = False
+        go (a:as,b:bs) = if (a /= b) then False else go (as,bs)
+
+        stream x = foldMap S.unpack x
+
 
 {-|
 Access the finger tree underlying the 'Rope'. You'll want the following
@@ -63,7 +77,8 @@ unRope (Rope x) = x
 
 
 {-|
-The length of the Rope, in characters.
+The length of the Rope, in characters. This is the monoid used to structure
+the finger tree underlying the Rope.
 -}
 newtype Width = Width Int
     deriving (Eq, Ord, Show, Num, Generic)
@@ -93,7 +108,7 @@ instance Monoid Rope where
     mappend = (<>)
 
 width :: Rope -> Int
-width = foldr f 0 . unRope
+width = foldr' f 0 . unRope
   where
     f piece count = S.length piece + count
 
@@ -153,7 +168,7 @@ instance Textual B.ByteString where
 instance Textual [Char] where
     fromRope (Rope x) = foldr h [] x
       where
-        h piece string = (S.toString piece) ++ string -- ugh
+        h piece string = (S.unpack piece) ++ string -- ugh
     intoRope = Rope . F.singleton . S.pack
 
 {-|

@@ -29,5 +29,16 @@ checkRopeBehaviour = do
             width sulfate `shouldBe` 3
             width (hydrogen <> sulfate) `shouldBe` 5
 
+        it "Eq instance behaves" $ do
+             ("" :: Rope) == ("" :: Rope) `shouldBe` True
+             ("C" :: Rope) /= ("" :: Rope) `shouldBe` True
+             ("" :: Rope) /= ("F" :: Rope) `shouldBe` True
+             ("O" :: Rope) == ("O" :: Rope) `shouldBe` True
+             ("H₂" :: Rope) == ("H₂" :: Rope) `shouldBe` True
+             ("H₂" :: Rope) /= ("SO₄" :: Rope)  `shouldBe` True
+
+        -- depended on Textual instance for String being fixed and
+        -- the Eq instance being customized to ignore tree structure
         it "concatonating two Ropes correctly" $ do
              ("H₂" :: Rope) <> ("SO₄" :: Rope)  `shouldBe` ("H₂SO₄" :: Rope)
+
