@@ -153,7 +153,7 @@ instance Textual B.ByteString where
 instance Textual [Char] where
     fromRope (Rope x) = foldr h [] x
       where
-        h piece string = (++) string (S.toString piece) -- ugh
+        h piece string = (S.toString piece) ++ string -- ugh
     intoRope = Rope . F.singleton . S.pack
 
 {-|
