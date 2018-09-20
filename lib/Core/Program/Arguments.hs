@@ -55,6 +55,7 @@ import Data.String.Here
 import System.Environment (getProgName)
 
 import Core.Text.Bytes
+import Core.Text.Rope
 import Core.Text.Utilities
 import Core.System.External
 
@@ -71,7 +72,7 @@ command-line).
 By convention a description is one or more complete sentences each of which
 ends with a full stop.
 -}
-type Description = Text
+type Description = Rope
 
 {-|
 The name of an option, command, or agument (omitting the "@--@" prefix in
@@ -585,13 +586,13 @@ buildUsage config mode = case config of
                 Just shortchar -> "  -" <> pretty shortchar <> ", --"
                 Nothing -> "      --"
         l = pretty longname
-        d = fromText description
+        d = fromRope description
       in
         fillBreak 16 (s <> l <> " ") <+> align (reflow d) <> hardline <> acc
     g (Argument longname description) acc =
       let
         l = pretty longname
-        d = fromText description
+        d = fromRope description
       in
         fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
 
@@ -602,7 +603,7 @@ buildUsage config mode = case config of
     h (Command longname description _) acc =
       let
         l = pretty longname
-        d = fromText description
+        d = fromRope description
       in
         fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
     h _ acc = acc

@@ -22,9 +22,11 @@ import qualified Data.ByteString.Char8 as C (singleton)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.Fixed
 import Data.Hourglass (timePrint, TimeFormatElem(..))
+import qualified Data.Text.Short as S (replicate)
 import Time.System (timezoneCurrent)
 
 import Core.Text.Bytes
+import Core.Text.Rope
 import Core.System.External
 import Core.Program.Context
 
@@ -61,7 +63,7 @@ putMessage context message@(Message now nature text potentialValue) = do
         writeTChan logger message
 
 
-formatLogMessage :: TimeStamp -> TimeStamp -> Text -> Text
+formatLogMessage :: TimeStamp -> TimeStamp -> Rope -> Rope
 formatLogMessage start now message =
   let
     start' = unTimeStamp start
@@ -79,7 +81,7 @@ formatLogMessage start now message =
     elapsed = fromRational (toRational (now' - start') / 1e9) :: Fixed E3
   in
     mconcat
-        [ intoText stampZ
+        [ intoRope stampZ
         , " ("
         , padWithZeros 9 (show elapsed)
         , ") "
@@ -93,11 +95,11 @@ formatLogMessage start now message =
 {-
     Cloned from **locators** package Data.Locators.Hashes, BSD3 licence
 -}
-padWithZeros :: Int -> String -> Text
+padWithZeros :: Int -> String -> Rope
 padWithZeros digits str =
-    intoText (pad ++ str)
+    intoRope pad <> intoRope str
   where
-    pad = take len (replicate digits '0')
+    pad = S.replicate len "0"
     len = digits - length str
 
 {-|
@@ -120,7 +122,7 @@ in ordinary debugging).
 
 Messages sent to syslog will be logged at @Info@ level severity.
 -}
-event :: Text -> Program ()
+event :: Rope -> Program ()
 event text = do
     v <- ask
     liftIO $ do
@@ -148,7 +150,7 @@ assuming these actions executed about three seconds after program start.
 
 Messages sent to syslog will be logged at @Debug@ level severity.
 -}
-debug :: Text -> Text -> Program ()
+debug :: Rope -> Rope -> Program ()
 debug label value = do
     v <- ask
     liftIO $ do
@@ -160,6 +162,6 @@ debug label value = do
 Convenience for the common case of needing to inspect the value
 of a general variable which has a Show instance
 -}
-debugS :: Show a => Text -> a -> Program ()
-debugS label value = debug label (intoText (show value))
+debugS :: Show a => Rope -> a -> Program ()
+debugS label value = debug label (intoRope (show value))
 
