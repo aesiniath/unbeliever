@@ -30,7 +30,7 @@ instance Render Rope where
     render x = x
 
 instance Render [Rope] where
-    render = Rope . F.fromList . concatMap toList . fmap unRope
+    render = intoRope . F.fromList . concatMap toList . fmap unRope
 
 instance Render [Char] where
     render cs = intoRope cs
@@ -49,8 +49,8 @@ indefinite text =
         piece F.:< _ -> case S.uncons piece of
             Nothing -> text
             Just (c,_)  -> if c `elem` ['A','E','I','O','U','a','e','i','o','u']
-                then Rope ("an " F.<| x)
-                else Rope ("a " F.<| x)
+                then intoRope ("an " F.<| x)
+                else intoRope ("a " F.<| x)
 
 
 {-|

@@ -136,7 +136,7 @@ instance Textual [Char] where
     fromRope (Rope x) = foldr h [] x
       where
         h piece string = (++) string (S.toString piece) -- ugh
-    intoRope cs = Rope (F.singleton (S.fromString cs))
+    intoRope = Rope . F.singleton . S.pack
 
 {-|
 Does this Text contain this character?

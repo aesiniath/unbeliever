@@ -92,6 +92,7 @@ import System.IO.Unsafe (unsafePerformIO)
 import Time.System (timezoneCurrent)
 
 import Core.Text.Bytes
+import Core.Text.Rope
 import Core.System.External
 import Core.Program.Context
 import Core.Program.Logging
@@ -143,7 +144,7 @@ escapeHandlers context = [
     bail :: Exception e => e -> IO ()
     bail e =
       let
-        text = intoText (displayException e)
+        text = intoRope (displayException e)
       in do
         runProgram context (event text)
         putMVar quit (ExitFailure 127)
@@ -247,7 +248,7 @@ terminate code =
 Override the program name used for logging, etc. At least, that was the
 idea. Nothing makes use of this at the moment. @:/@
 -}
-setProgramName :: Text -> Program ()
+setProgramName :: Rope -> Program ()
 setProgramName name = do
     v <- ask
     context <- liftIO (readMVar v)
@@ -260,7 +261,7 @@ setProgramName name = do
 Get the program name as invoked from the command-line (or as overridden by
 'setProgramName').
 -}
-getProgramName :: Program Text
+getProgramName :: Program Rope
 getProgramName = do
     v <- ask
     context <- liftIO (readMVar v)
@@ -275,7 +276,7 @@ This is for normal program output.
      'write' "Beginning now"
 @
 -}
-write :: Text -> Program ()
+write :: Rope -> Program ()
 write text = do
     v <- ask
     liftIO $ do
@@ -291,7 +292,7 @@ Call 'show' on the supplied argument and write the resultant text to
 (This is the equivalent of 'print' from __base__)
 -}
 writeS :: Show a => a -> Program ()
-writeS = write . intoText . show
+writeS = write . intoRope . show
 
 {-|
 Write the supplied bytes to the given handle
@@ -299,7 +300,7 @@ Write the supplied bytes to the given handle
 -}
 output :: Handle -> Bytes -> Program ()
 output h b = liftIO $ do
-        S.hPut h (fromBytes b)
+        B.hPut h (fromBytes b)
 
 {-|
 Fork a thread.
