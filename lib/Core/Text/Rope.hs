@@ -7,28 +7,24 @@
 {-# LANGUAGE InstanceSigs #-}
 
 module Core.Text.Rope
-    ( Rope
+    ( Rope(..)
+    , Width(..)
     , unRope
     , contains
     , Textual(..)
     ) where
 
 import qualified Data.ByteString as B (ByteString, unpack, empty, append)
-import qualified Data.ByteString.Char8 as C (elem)
-import qualified Data.ByteString.Lazy as L (ByteString, unpack, fromStrict, toStrict)
 import Data.String (IsString(..))
-import qualified Data.FingerTree as F (FingerTree(..), Measured(..), empty
-    , singleton, (><))
-import Data.Foldable (foldr, any)
-import qualified Data.List as List
-import qualified Data.Text as T (Text, pack, unpack, empty, append)
-import qualified Data.Text.Encoding as T (decodeUtf8, encodeUtf8)
-import qualified Data.Text.Lazy as U (Text, toStrict, unpack)
-import qualified Data.Text.Lazy.Encoding as U (decodeUtf8, encodeUtf8)
+import qualified Data.FingerTree as F (FingerTree, Measured(..), empty
+    , singleton, (><), (<|))
+import Data.Foldable (foldr, toList, any)
+import qualified Data.Text as T (Text, empty, append)
+import qualified Data.Text.Lazy as U (Text, fromChunks, foldrChunks)
 import qualified Data.Text.Short as S (ShortText, length, pack, any
-    , fromText, toText, fromByteString, toByteString, fromString, toString)
+    , fromText, toText, fromByteString, toByteString, fromString, toString
+    , concat, append, empty)
 import Data.Hashable (Hashable)
-import Data.Word (Word8)
 import GHC.Generics (Generic)
 
 {-|
@@ -110,6 +106,10 @@ instance Textual Rope where
     fromRope = id
     intoRope = id
 
+instance Textual S.ShortText where
+    fromRope = foldr S.append S.empty . unRope
+    intoRope = Rope . F.singleton
+
 -- FIXME Wow. Use Text's Builder instead?
 instance Textual T.Text where
     fromRope (Rope x) = foldr f T.empty x
@@ -117,11 +117,16 @@ instance Textual T.Text where
         f piece text = T.append text (S.toText piece)
     intoRope t = Rope (F.singleton (S.fromText t))
 
+instance Textual U.Text where
+    fromRope (Rope x) = U.fromChunks . fmap S.toText . toList $ x
+    intoRope t = Rope (U.foldrChunks ((F.<|) . S.fromText) F.empty t)
+
 -- FIXME Same thing again. Use ByteString's Builder instead?
 instance Textual B.ByteString where
     fromRope (Rope x) = foldr g B.empty x
       where
         g piece bytes = B.append bytes (S.toByteString piece) -- UTF8 throughout
+
     {-| If the input ByteString does not contain valid UTF-8 then an empty Rope will be returned -}
     intoRope b' = case S.fromByteString b' of
         Just piece -> Rope (F.singleton piece)
