@@ -21,7 +21,10 @@ import qualified Data.FingerTree as F (FingerTree, Measured(..), empty
     , singleton, (><), (<|), (|>))
 import Data.Foldable (foldr, foldr', foldMap, toList, any)
 import qualified Data.Text as T (Text, empty, append)
-import qualified Data.Text.Lazy as U (Text, fromChunks, foldrChunks)
+import qualified Data.Text.Lazy as U (Text, fromChunks, foldrChunks
+    , toStrict)
+import qualified Data.Text.Lazy.Builder as U (Builder, toLazyText
+    , fromText)
 import qualified Data.Text.Short as S (ShortText, length, any
     , fromText, toText, fromByteString, toByteString, pack, unpack
     , concat, append, empty)
@@ -162,11 +165,12 @@ instance Textual S.ShortText where
     intoRope = Rope . F.singleton
     append piece (Rope x) = Rope ((F.|>) x piece)
 
--- FIXME Wow. Use Text's Builder instead?
 instance Textual T.Text where
-    fromRope (Rope x) = foldr f T.empty x
+    fromRope = U.toStrict . U.toLazyText . foldr f mempty . unRope
       where
-        f piece text = T.append (S.toText piece) text
+        f :: S.ShortText -> U.Builder -> U.Builder
+        f piece built = (<>) (U.fromText (S.toText piece)) built
+
     intoRope t = Rope (F.singleton (S.fromText t))
     append piece (Rope t) = Rope ((F.|>) t (S.fromText piece))
 
