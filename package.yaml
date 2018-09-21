@@ -76,6 +76,7 @@ tests:
      - tests
     main: TestSuite.hs
     other-modules:
+     - CheckRopeBehaviour
      - CheckArgumentsParsing
      - CheckJsonWrapper
 

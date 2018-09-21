@@ -3,10 +3,7 @@
 
 module CheckRopeBehaviour where
 
-import qualified Data.ByteString.Char8 as C
-import qualified Data.HashMap.Strict as HashMap
 import qualified Data.FingerTree as F
-import Data.Foldable (length)
 import qualified Data.Text.Short as S
 import Test.Hspec
 
