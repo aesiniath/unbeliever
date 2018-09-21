@@ -71,8 +71,8 @@ Access the finger tree underlying the 'Rope'. You'll want the following
 imports:
 
 @
-import qualified Data.FingerTree as F  -- from the __fingertree__ package
-import qualified Data.Text.Short as S  -- from the __text-short__ package
+import qualified "Data.FingerTree" as F  -- from the __fingertree__ package
+import qualified "Data.Text.Short" as S  -- from the __text-short__ package
 @
 -}
 unRope :: Rope -> F.FingerTree Width S.ShortText
@@ -156,12 +156,13 @@ class Textual a where
     fromRope :: Rope -> a
     intoRope :: a -> Rope
 
-{-|
+    {-|
 Append some text to this Rope. The default implementation is basically a
 convenience wrapper around calling 'intoRope' and the 'mappend'ing it to
 your text, but for many types more efficient implementations are provided.
--}
-    append :: a -> Rope -> Rope append thing text = text <> intoRope thing
+    -}
+    append :: a -> Rope -> Rope
+    append thing text = text <> intoRope thing
 
 instance Textual (F.FingerTree Width S.ShortText) where
     fromRope = unRope
@@ -207,11 +208,12 @@ instance Textual [Char] where
     intoRope = Rope . F.singleton . S.pack
 
 {-|
-Write the 'Rope' to the given 'Handle'. Uses
-'Data.ByteString.Builder.hPutBuilder' internally which saves all kinds of
-intermediate allocation and copying because we can go from the 'ShortText's
-in the finger tree to 'ShortByteString' to 'Builder' to the 'Handle''s
-output buffer in one go.
+Write the 'Rope' to the given 'Handle'.
+
+Uses 'Data.ByteString.Builder.hPutBuilder' internally which saves all kinds
+of intermediate allocation and copying because we can go from the
+'ShortText's in the finger tree to 'ShortByteString' to 'Builder' to the
+'Handle''s output buffer in one go.
 -}
 hOutput :: Handle -> Rope -> IO ()
 hOutput handle (Rope x) = B.hPutBuilder handle (foldr j mempty x)

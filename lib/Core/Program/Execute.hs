@@ -219,7 +219,7 @@ processStandardOutput output = do
     forever $ do
         text <- atomically (readTChan output)
 
-        B.hPut stdout (fromRope text) -- FIXME efficiency?
+        hOutput stdout text
         B.hPut stdout (C.singleton '\n')
 
 processDebugMessages :: TChan Message -> IO ()
