@@ -21,6 +21,7 @@ Exposes 'Bytes', a wrapper around different types of binary data, and 'Rope',
 a finger-tree over buffers containing text.
 -}
         module Core.Text.Bytes
+      , module Core.Text.Rope
 
         {-* Useful utilities -}
 {-|
@@ -30,5 +31,6 @@ Useful functions for common use cases.
     ) where
 
 import Core.Text.Bytes
+import Core.Text.Rope
 import Core.Text.Utilities
 

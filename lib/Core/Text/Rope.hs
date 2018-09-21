@@ -13,9 +13,13 @@ module Core.Text.Rope
     , width
     , contains
     , Textual(..)
+    , hOutput
     ) where
 
 import qualified Data.ByteString as B (ByteString, unpack, empty, append)
+import qualified Data.ByteString.Builder as B (Builder, toLazyByteString
+    , hPutBuilder)
+import qualified Data.ByteString.Lazy as L (toStrict)
 import Data.String (IsString(..))
 import qualified Data.FingerTree as F (FingerTree, Measured(..), empty
     , singleton, (><), (<|), (|>))
@@ -27,9 +31,10 @@ import qualified Data.Text.Lazy.Builder as U (Builder, toLazyText
     , fromText)
 import qualified Data.Text.Short as S (ShortText, length, any
     , fromText, toText, fromByteString, toByteString, pack, unpack
-    , concat, append, empty)
+    , concat, append, empty, toBuilder)
 import Data.Hashable (Hashable, hashWithSalt, hashUsing)
 import GHC.Generics (Generic)
+import System.IO (Handle)
 
 {-|
 
@@ -66,12 +71,13 @@ Access the finger tree underlying the 'Rope'. You'll want the following
 imports:
 
 @
-import qualified Data.FingerTree as F  -- from the **fingertree** package
-import qualified Data.Text.Short as S  -- from the **text-short** package
+import qualified Data.FingerTree as F  -- from the __fingertree__ package
+import qualified Data.Text.Short as S  -- from the __text-short__ package
 @
 -}
 unRope :: Rope -> F.FingerTree Width S.ShortText
 unRope (Rope x) = x
+{-# INLINE unRope #-}
 
 
 {-|
@@ -141,16 +147,21 @@ This module is optimized to reduce heap fragmentation by letting the
 Haskell runtime and garbage collector manage the memory
 
 Instances are expected to /copy/ these strings out of pinned memory.
+
+Several of the 'fromRope' implementations are expensive and involves a lot
+of intermiate allocation and copying. If you're ultimately writing to a
+handle prefer 'hOutput' which will write directly to the output buffer
 -}
 class Textual a where
     fromRope :: Rope -> a
     intoRope :: a -> Rope
 
-    {-|
-Append some text to this Rope.
-    -}
-    append :: a -> Rope -> Rope
-    append thing text = text <> intoRope thing
+{-|
+Append some text to this Rope. The default implementation is basically a
+convenience wrapper around calling 'intoRope' and the 'mappend'ing it to
+your text, but for many types more efficient implementations are provided.
+-}
+    append :: a -> Rope -> Rope append thing text = text <> intoRope thing
 
 instance Textual (F.FingerTree Width S.ShortText) where
     fromRope = unRope
@@ -178,13 +189,13 @@ instance Textual U.Text where
     fromRope (Rope x) = U.fromChunks . fmap S.toText . toList $ x
     intoRope t = Rope (U.foldrChunks ((F.<|) . S.fromText) F.empty t)
 
--- FIXME Same thing again. Use ByteString's Builder instead?
 instance Textual B.ByteString where
-    fromRope (Rope x) = foldr g B.empty x
+    fromRope = L.toStrict . B.toLazyByteString . foldr g mempty . unRope
       where
-        g piece bytes = B.append (S.toByteString piece) bytes -- UTF8 throughout
+        g piece built = (<>) (S.toBuilder piece) built
 
-    {-| If the input ByteString does not contain valid UTF-8 then an empty Rope will be returned -}
+    -- If the input ByteString does not contain valid UTF-8 then an empty
+    -- Rope will be returned. That's not ideal.
     intoRope b' = case S.fromByteString b' of
         Just piece -> Rope (F.singleton piece)
         Nothing -> Rope F.empty
@@ -194,6 +205,18 @@ instance Textual [Char] where
       where
         h piece string = (S.unpack piece) ++ string -- ugh
     intoRope = Rope . F.singleton . S.pack
+
+{-|
+Write the 'Rope' to the given 'Handle'. Uses
+'Data.ByteString.Builder.hPutBuilder' internally which saves all kinds of
+intermediate allocation and copying because we can go from the 'ShortText's
+in the finger tree to 'ShortByteString' to 'Builder' to the 'Handle''s
+output buffer in one go.
+-}
+hOutput :: Handle -> Rope -> IO ()
+hOutput handle (Rope x) = B.hPutBuilder handle (foldr j mempty x)
+  where
+    j piece built = (<>) (S.toBuilder piece) built
 
 {-|
 Does this Text contain this character?
