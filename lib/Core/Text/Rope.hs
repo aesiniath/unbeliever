@@ -157,7 +157,7 @@ instance Textual U.Text where
 instance Textual B.ByteString where
     fromRope (Rope x) = foldr g B.empty x
       where
-        g piece bytes = B.append bytes (S.toByteString piece) -- UTF8 throughout
+        g piece bytes = B.append (S.toByteString piece) bytes -- UTF8 throughout
 
     {-| If the input ByteString does not contain valid UTF-8 then an empty Rope will be returned -}
     intoRope b' = case S.fromByteString b' of
