@@ -3,7 +3,11 @@
 
 module CheckRopeBehaviour where
 
+import qualified Data.ByteString.Char8 as C
 import qualified Data.FingerTree as F
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import qualified Data.Text.Lazy as U
 import qualified Data.Text.Short as S
 import Test.Hspec
 
@@ -38,4 +42,16 @@ checkRopeBehaviour = do
         -- the Eq instance being customized to ignore tree structure
         it "concatonating two Ropes correctly" $ do
              ("H₂" :: Rope) <> ("SO₄" :: Rope)  `shouldBe` ("H₂SO₄" :: Rope)
+
+        it "exports to ByteString" $
+          let
+            expected = T.encodeUtf8 (T.pack "H₂SO₄")
+          in do
+            fromRope sulfuric_acid `shouldBe` expected
+
+        it "exports to Text (Strict)" $ do
+            fromRope sulfuric_acid `shouldBe` T.pack "H₂SO₄"
+
+        it "exports to Text (Lazy)" $ do
+            fromRope sulfuric_acid `shouldBe` U.pack "H₂SO₄"
 

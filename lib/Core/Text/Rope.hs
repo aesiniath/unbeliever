@@ -166,7 +166,7 @@ instance Textual S.ShortText where
 instance Textual T.Text where
     fromRope (Rope x) = foldr f T.empty x
       where
-        f piece text = T.append text (S.toText piece)
+        f piece text = T.append (S.toText piece) text
     intoRope t = Rope (F.singleton (S.fromText t))
     append piece (Rope t) = Rope ((F.|>) t (S.fromText piece))
 
