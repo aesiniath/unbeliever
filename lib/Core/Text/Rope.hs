@@ -18,7 +18,7 @@ module Core.Text.Rope
 import qualified Data.ByteString as B (ByteString, unpack, empty, append)
 import Data.String (IsString(..))
 import qualified Data.FingerTree as F (FingerTree, Measured(..), empty
-    , singleton, (><), (<|))
+    , singleton, (><), (<|), (|>))
 import Data.Foldable (foldr, foldr', foldMap, toList, any)
 import qualified Data.Text as T (Text, empty, append)
 import qualified Data.Text.Lazy as U (Text, fromChunks, foldrChunks)
@@ -124,11 +124,30 @@ instance Hashable Rope where
 
 {-|
 Machinery to interpret a type as containing valid UTF-8 that can be
-represented as a Text object.
+represented as a Rope object.
+
+/Implementation notes/
+
+Given that Rope is backed by a finger tree, 'append' is relatively
+inexpensive, plus whatever the cost of conversion is. There is a subtle
+trap, however: if adding small fragments of that were obtained by slicing
+(for example) a large ByteString we would end up holding on to a reference
+to the entire underlying pinned memory.
+
+This module is optimized to reduce heap fragmentation by letting the
+Haskell runtime and garbage collector manage the memory
+
+Instances are expected to /copy/ these strings out of pinned memory.
 -}
 class Textual a where
     fromRope :: Rope -> a
     intoRope :: a -> Rope
+
+    {-|
+Append some text to this Rope.
+    -}
+    append :: a -> Rope -> Rope
+    append thing text = text <> intoRope thing
 
 instance Textual (F.FingerTree Width S.ShortText) where
     fromRope = unRope
@@ -141,6 +160,7 @@ instance Textual Rope where
 instance Textual S.ShortText where
     fromRope = foldr S.append S.empty . unRope
     intoRope = Rope . F.singleton
+    append piece (Rope x) = Rope ((F.|>) x piece)
 
 -- FIXME Wow. Use Text's Builder instead?
 instance Textual T.Text where
@@ -148,6 +168,7 @@ instance Textual T.Text where
       where
         f piece text = T.append text (S.toText piece)
     intoRope t = Rope (F.singleton (S.fromText t))
+    append piece (Rope t) = Rope ((F.|>) t (S.fromText piece))
 
 instance Textual U.Text where
     fromRope (Rope x) = U.fromChunks . fmap S.toText . toList $ x
