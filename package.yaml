@@ -91,4 +91,5 @@ benchmarks:
     source-dirs:
      - bench
     main: GeneralPerformance.hs
+    other-modules: []
 
