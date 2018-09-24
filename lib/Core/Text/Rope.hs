@@ -16,6 +16,7 @@ module Core.Text.Rope
     , hOutput
     ) where
 
+import Control.DeepSeq (NFData(..))
 import qualified Data.ByteString as B (ByteString, unpack, empty, append)
 import qualified Data.ByteString.Builder as B (Builder, toLazyByteString
     , hPutBuilder)
@@ -56,6 +57,9 @@ are tiny.
 data Rope
     = Rope (F.FingerTree Width S.ShortText)
     deriving Generic
+
+instance NFData Rope where
+    rnf (Rope x) = foldMap (\piece -> rnf piece) x
 
 instance Show Rope where
     show text = "\"" ++ fromRope text ++ "\""
