@@ -1,6 +1,6 @@
 name: unbeliever
 version: 0.2.1
-description: Opinionated Haskell Interoperability
+synopsis: Opinionated Haskell Interoperability
 license: BSD3
 author: Andrew Cowie <andrew@operationaldynamics.com>
 maintainer: Andrew Cowie <andrew@operationaldynamics.com>
