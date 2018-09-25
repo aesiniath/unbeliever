@@ -13,6 +13,7 @@ module Core.Text.Rope
     , width
     , contains
     , Textual(..)
+    , unsafeIntoRope
     , hOutput
     ) where
 
@@ -33,6 +34,7 @@ import qualified Data.Text.Lazy.Builder as U (Builder, toLazyText
 import qualified Data.Text.Short as S (ShortText, length, any
     , fromText, toText, fromByteString, toByteString, pack, unpack
     , concat, append, empty, toBuilder)
+import qualified Data.Text.Short.Unsafe as S (fromByteStringUnsafe)
 import Data.Hashable (Hashable, hashWithSalt, hashUsing)
 import GHC.Generics (Generic)
 import System.IO (Handle)
@@ -204,6 +206,13 @@ instance Textual B.ByteString where
     intoRope b' = case S.fromByteString b' of
         Just piece -> Rope (F.singleton piece)
         Nothing -> Rope F.empty
+
+{-|
+If you /know/ the input bytes are valid UTF-8 encoded characters, then
+you can use this function to convert to a piece of Rope.
+-}
+unsafeIntoRope :: B.ByteString -> Rope
+unsafeIntoRope = Rope . F.singleton . S.fromByteStringUnsafe
 
 instance Textual [Char] where
     fromRope (Rope x) = foldr h [] x
