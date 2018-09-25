@@ -122,6 +122,7 @@ Second use case is assembling text to go out. This involves considerable
 appending of data, very very occaisionally inserting it. Often the pieces
 are tiny.
 
+
 -}
 
 data Rope
@@ -240,7 +241,7 @@ Take another text-like type and convert it to a Rope.
 Append some text to this Rope. The default implementation is basically a
 convenience wrapper around calling 'intoRope' and 'mappend'ing it to your
 text (which will work just fine, but for some types more efficient
-implementations are possible).
+implementations are possible)t.
     -}
     append :: a -> Rope -> Rope
     append thing text = text <> intoRope thing
@@ -303,11 +304,29 @@ instance Textual [Char] where
 {-|
 Write the 'Rope' to the given 'Handle'.
 
+@
+import "Core.Text"
+import "Core.System" -- rexports stdout
+
+main :: IO ()
+main =
+  let
+    text :: 'Rope'
+    text = "Hello World"
+  in
+    'hOutput' 'System.IO.stdout' text
+@
+because it's tradition.
+
 Uses 'Data.ByteString.Builder.hPutBuilder' internally which saves all kinds
 of intermediate allocation and copying because we can go from the
-'ShortText's in the finger tree to 'ShortByteString' to 'Builder' to the
-'Handle''s output buffer in one go.
+'Data.Text.Short.ShortText's in the finger tree to
+'Data.ByteString.Short.ShortByteString' to
+'Data.ByteString.Builder.Builder' to the 'System.IO.Handle''s output buffer
+in one go.
+
 -}
+
 hOutput :: Handle -> Rope -> IO ()
 hOutput handle (Rope x) = B.hPutBuilder handle (foldr j mempty x)
   where
