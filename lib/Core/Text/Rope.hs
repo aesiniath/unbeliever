@@ -265,7 +265,7 @@ instance Textual T.Text where
         f piece built = (<>) (U.fromText (S.toText piece)) built
 
     intoRope t = Rope (F.singleton (S.fromText t))
-    append piece (Rope t) = Rope ((F.|>) t (S.fromText piece))
+    append chunk (Rope x) = Rope ((F.|>) x (S.fromText chunk))
 
 instance Textual U.Text where
     fromRope (Rope x) = U.fromChunks . fmap S.toText . toList $ x
@@ -280,7 +280,12 @@ instance Textual B.ByteString where
     -- Rope will be returned. That's not ideal.
     intoRope b' = case S.fromByteString b' of
         Just piece -> Rope (F.singleton piece)
-        Nothing -> Rope F.empty
+        Nothing -> Rope F.empty         -- bad
+
+    -- ditto
+    append b' (Rope x) = case S.fromByteString b' of
+        Just piece -> Rope ((F.|>) x piece)
+        Nothing -> (Rope x)             -- bad
 
 {-|
 If you /know/ the input bytes are valid UTF-8 encoded characters, then
