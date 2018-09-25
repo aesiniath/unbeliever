@@ -64,20 +64,24 @@ you can use 'fromRope' or 'intoRope' from the 'Textual' typeclass.
 
 Note that we haven't tried to cover the entire gamut of operations or
 customary convenience functions you would find in the other libraries; so
-far 'Rope' is concentrated on being good at appending (lots of) small
-pieces, and in taking the resultant text object out to a file handle, be
-that the terminal console, a file, or a network socket.
+far 'Rope' is concentrated on aiding interoperation, being good at
+appending (lots of) small pieces, and then efficiently taking the resultant
+text object out to a file handle, be that the terminal console, a file, or
+a network socket.
 
 -}
 module Core.Text.Rope
-    ( Rope
-    , Width(..)
+    ( {-* Rope type -}
+      Rope
     , unRope
     , width
     , contains
+      {-* Interoperation and Output -}
     , Textual(..)
     , unsafeIntoRope
     , hOutput
+      {-* Internals -}
+    , Width(..)
     ) where
 
 import Control.DeepSeq (NFData(..))
@@ -202,7 +206,7 @@ instance Hashable Rope where
         f piece salt = hashWithSalt salt piece
 
 {-|
-Machinery to interpret a type as containing valid UTF-8 that can be
+Machinery to interpret a type as containing valid Unicode that can be
 represented as a Rope object.
 
 /Implementation notes/
@@ -211,25 +215,32 @@ Given that Rope is backed by a finger tree, 'append' is relatively
 inexpensive, plus whatever the cost of conversion is. There is a subtle
 trap, however: if adding small fragments of that were obtained by slicing
 (for example) a large ByteString we would end up holding on to a reference
-to the entire underlying pinned memory.
+to the entire underlying block of memory. This module is optimized to
+reduce heap fragmentation by letting the Haskell runtime and garbage
+collector manage the memory, so instances are expected to /copy/ these
+substrings out of pinned memory.
 
-This module is optimized to reduce heap fragmentation by letting the
-Haskell runtime and garbage collector manage the memory
+The ByteString instance requires that its content be valid UTF-8. If not an
+empty Rope will be returned.
 
-Instances are expected to /copy/ these strings out of pinned memory.
-
-Several of the 'fromRope' implementations are expensive and involves a lot
+Several of the 'fromRope' implementations are expensive and involve a lot
 of intermiate allocation and copying. If you're ultimately writing to a
-handle prefer 'hOutput' which will write directly to the output buffer
+handle prefer 'hOutput' which will write directly to the output buffer.
 -}
 class Textual a where
+    {-|
+Convert a Rope into another text-like type.
+    -}
     fromRope :: Rope -> a
+    {-|
+Take another text-like type and convert it to a Rope.
+    -}
     intoRope :: a -> Rope
-
     {-|
 Append some text to this Rope. The default implementation is basically a
-convenience wrapper around calling 'intoRope' and the 'mappend'ing it to
-your text, but for many types more efficient implementations are provided.
+convenience wrapper around calling 'intoRope' and 'mappend'ing it to your
+text (which will work just fine, but for some types more efficient
+implementations are possible).
     -}
     append :: a -> Rope -> Rope
     append thing text = text <> intoRope thing
