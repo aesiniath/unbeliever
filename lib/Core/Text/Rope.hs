@@ -107,21 +107,36 @@ import GHC.Generics (Generic)
 import System.IO (Handle)
 
 {-|
-A type for textual data.
+A type for textual data. A rope is text backed by a tree data structure, rather than
+a single large continguous array, as is the case for strings.
 
-There are two use cases: first, referencing large blocks of data sourced from
-external systems. Ideally we would hold onto this without copying the memory.
-ByteString and its pinned memory is appropriate for this.
+There are three use cases:
 
- ... maybe that's what Bytes is for
+ - referencing large blocks of data sourced
+from external systems. Ideally we would hold onto this without copying the
+memory, but (in the case of ByteString), before we can treat it as text we
+have to validate the UTF-8 content. Safety first. We also have to copy it
+out of pinned memory
 
-However, if we are manipulating this /at all/ in any way we're going to end 
-up needing to copy it ... is that true?
-
-Second use case is assembling text to go out. This involves considerable
+ - assembling text to go out. This involves considerable
 appending of data, very very occaisionally inserting it. Often the pieces
 are tiny.
 
+ - interoperating with other libraries. The only constant of the Haskell
+universe is that you won't have the right combination of {strict,lazy} ×
+{Text,ByteString,String,[Word8]} for the next function call. The 'Textual'
+typeclass provides for converting between these representations.
+
+/Usage/
+
+To add text to a Rope use 'append'.
+
+To join two Ropes together use 'append' from 'Textual' below or
+('Data.Monoid.<>') from "Data.Monoid" (like you would have with a Builder).
+
+You can get at the underlying finger tree with the 'unRope' function.
+
+To convert between Rope and something else use 'fromRope' or 'intoRope'.
 
 -}
 

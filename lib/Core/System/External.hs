@@ -8,17 +8,17 @@
 module Core.System.External
     ( {-* Input/Output -}
       {-** from Control.Monad.IO.Class -}
-      {-| Reexported from "Control.Monad.IO.Class" in __base__: -}
+      {-| Re-exported from "Control.Monad.IO.Class" in __base__: -}
       liftIO
       {-** from System.IO -}
-      {-| Reexported from "System.IO" in __base__: -}
+      {-| Re-exported from "System.IO" in __base__: -}
     , Handle
     , stdin, stdout, stderr
     , hFlush
     , unsafePerformIO
       {-* Exception handling -}
       {-** from Control.Exception.Safe -}
-      {-| Rexported from "Control.Exception.Safe" in the __safe-exceptions__ package: -}
+      {-| Re-exported from "Control.Exception.Safe" in the __safe-exceptions__ package: -}
     , Exception(..)
     , throw
     , bracket
