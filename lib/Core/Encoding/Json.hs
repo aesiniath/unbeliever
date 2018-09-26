@@ -250,12 +250,12 @@ data JsonToken
 instance Render JsonValue where
     type Token JsonValue = JsonToken
     colourize = colourizeJson
-    intoAnsi = prettyValue
+    intoDocA = prettyValue
 
 instance Render JsonKey where
     type Token JsonKey = JsonToken
     colourize = colourizeJson
-    intoAnsi = prettyKey
+    intoDocA = prettyKey
 
 --
 --  Ugh. If you want to experiment with narrower output, then:

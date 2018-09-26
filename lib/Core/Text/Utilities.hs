@@ -34,22 +34,41 @@ import Core.Text.Rope
 -- change AnsiStyle to a custom token type, perhaps Ansi, which
 -- has the escape codes already converted to Rope.
 
+{-|
+Types which can be rendered "prettily", that is, formatted by a pretty
+printer and embossed with beautiful ANSI colours when printed to the
+terminal.
+
+Use 'render' to build text object for later use or "Core.Program"'s
+'Core.Program.Execute.writeR' if you're writing directly to console now.
+-}
+
 class Render a where
+    {-|
+Which type are the annotations of your Doc going to be expressed in?
+    -}
     type Token a :: *
+    {-|
+Convert semantic tokens to specific ANSI escape tokens
+    -}
     colourize :: Token a -> AnsiStyle
-    intoAnsi :: a -> Doc (Token a)
+    {-|
+Arrange your type as a 'Doc' @ann@, annotated with your semantic
+tokens.
+    -}
+    intoDocA :: a -> Doc (Token a)
 
 {-
 instance Render Rope where
     type Token Rope = 
     colourize = 
-    intoAnsi x = x
+    intoDocA x = x
 
 instance Render [Rope] where
-    intoAnsi = intoRope . F.fromList . concatMap toList . fmap unRope
+    intoDocA = intoRope . F.fromList . concatMap toList . fmap unRope
 
 instance Render [Char] where
-    intoAnsi cs = intoRope cs
+    intoDocA cs = intoRope cs
 -}
 
 {-|
@@ -69,7 +88,7 @@ available width of the terminal.
 -- colourize no longer needs a in its type signature.
 render :: Render a => a -> Rope
 render (thing :: a) = intoRope . renderStrict . reAnnotateS (colourize @a)
-                . layoutPretty defaultLayoutOptions . intoAnsi $ thing
+                . layoutPretty defaultLayoutOptions . intoDocA $ thing
 
 --
 -- | Render "a" or "an" in front of a word depending on English's idea of
