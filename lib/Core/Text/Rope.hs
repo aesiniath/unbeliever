@@ -114,7 +114,7 @@ There are three use cases:
 
  - referencing large blocks of data sourced
 from external systems. Ideally we would hold onto this without copying the
-memory, but (in the case of ByteString), before we can treat it as text we
+memory, but (in the case of ByteString) before we can treat it as text we
 have to validate the UTF-8 content. Safety first. We also have to copy it
 out of pinned memory
 
@@ -268,6 +268,7 @@ instance Textual (F.FingerTree Width S.ShortText) where
 instance Textual Rope where
     fromRope = id
     intoRope = id
+    append (Rope x2) (Rope x1) = Rope ((F.><) x1 x2)
 
 instance Textual S.ShortText where
     fromRope = foldr S.append S.empty . unRope

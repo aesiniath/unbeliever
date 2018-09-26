@@ -40,8 +40,11 @@ checkRopeBehaviour = do
 
         -- depended on Textual instance for String being fixed and
         -- the Eq instance being customized to ignore tree structure
-        it "concatonating two Ropes correctly" $ do
+        it "concatonates two Ropes correctly (Monoid)" $ do
              ("H₂" :: Rope) <> ("SO₄" :: Rope)  `shouldBe` ("H₂SO₄" :: Rope)
+
+        it "concatonates two Ropes correctly (Textual)" $ do
+             append ("SO₄" :: Rope) ("H₂" :: Rope) `shouldBe` ("H₂SO₄" :: Rope)
 
         it "exports to ByteString" $
           let
