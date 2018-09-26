@@ -1,6 +1,6 @@
 name: unbeliever
-version: 0.1.1
-description: Opinionated Haskell Interoperability
+version: 0.2.1
+synopsis: Opinionated Haskell Interoperability
 license: BSD3
 author: Andrew Cowie <andrew@operationaldynamics.com>
 maintainer: Andrew Cowie <andrew@operationaldynamics.com>
@@ -13,7 +13,9 @@ dependencies:
  - base
  - bytestring
  - chronologique
+ - deepseq
  - exceptions
+ - fingertree
  - hashable
  - here
  - hourglass
@@ -25,6 +27,7 @@ dependencies:
  - stm
  - terminal-size
  - text
+ - text-short
  - transformers
  - unordered-containers
  - unix
@@ -35,6 +38,7 @@ library:
   exposed-modules:
    - Core.Text
    - Core.Text.Bytes
+   - Core.Text.Rope
    - Core.Text.Utilities
    - Core.Encoding
    - Core.Encoding.Json
@@ -73,6 +77,20 @@ tests:
      - tests
     main: TestSuite.hs
     other-modules:
+     - CheckRopeBehaviour
      - CheckArgumentsParsing
      - CheckJsonWrapper
+
+benchmarks:
+  performance:
+    dependencies:
+     - gauge
+     - unbeliever
+
+    ghc-options: -threaded -Wall -Wwarn -fwarn-tabs
+
+    source-dirs:
+     - bench
+    main: GeneralPerformance.hs
+    other-modules: []
 

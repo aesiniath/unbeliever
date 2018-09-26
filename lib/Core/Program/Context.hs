@@ -35,6 +35,7 @@ import System.Exit (ExitCode(..), exitWith)
 
 import Core.System.External
 import Core.Text.Bytes
+import Core.Text.Rope
 import Core.Text.Utilities
 import Core.Program.Arguments
 
@@ -61,16 +62,16 @@ Internal context for a running program. You access this via actions in the
 -- that field name as a local variable name.
 --
 data Context = Context {
-      programNameFrom :: Text
+      programNameFrom :: Rope
     , commandLineFrom :: Parameters
     , exitSemaphoreFrom :: MVar ExitCode
     , startTimeFrom :: TimeStamp
     , terminalWidthFrom :: Int
-    , outputChannelFrom :: TChan Text
+    , outputChannelFrom :: TChan Rope
     , loggerChannelFrom :: TChan Message
 }
 
-data Message = Message TimeStamp Nature Text (Maybe Text)
+data Message = Message TimeStamp Nature Rope (Maybe Rope)
 
 data Nature = Output | Event | Debug
 
@@ -155,7 +156,7 @@ configure config = do
     logger <- newTChanIO
 
     return $! Context {
-          programNameFrom = (intoText name)
+          programNameFrom = (intoRope name)
         , commandLineFrom = parameters
         , exitSemaphoreFrom = quit
         , startTimeFrom = start

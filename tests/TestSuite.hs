@@ -2,6 +2,7 @@
 
 import Test.Hspec
 
+import CheckRopeBehaviour
 import CheckJsonWrapper
 import CheckArgumentsParsing
 
@@ -12,5 +13,6 @@ main = do
 
 suite :: Spec
 suite = do
+    checkRopeBehaviour
     checkJsonWrapper
     checkArgumentsParsing

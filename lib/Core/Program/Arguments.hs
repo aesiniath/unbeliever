@@ -55,6 +55,7 @@ import Data.String.Here
 import System.Environment (getProgName)
 
 import Core.Text.Bytes
+import Core.Text.Rope
 import Core.Text.Utilities
 import Core.System.External
 
@@ -71,7 +72,7 @@ command-line).
 By convention a description is one or more complete sentences each of which
 ends with a full stop.
 -}
-type Description = Text
+type Description = Rope
 
 {-|
 The name of an option, command, or agument (omitting the "@--@" prefix in
@@ -112,7 +113,7 @@ of optional parameters and mandatory arguments. For example:
 main :: 'IO' ()
 main = do
     context <- 'Core.Program.Context.configure' ('simple'
-        [ 'Option' "verbose" ('Just' 'v') [here|
+        [ 'Option' "verbose" ('Just' \'v\') [here|
             Turn on event level logging to console.
             Valid values are "event", "debug", and "none" (the default
             if you don't specify the verbose option).
@@ -120,7 +121,7 @@ main = do
         , 'Option' "logging" 'Nothing' [here|
             Valid values are "console", "file:/path/to/file.log", and "syslog"
           |]
-        , 'Option' "quiet" (Just 'q') [here|
+        , 'Option' "quiet" (Just \'q\') [here|
             Supress normal output.
           |]
         , 'Argument' "filename" [here|
@@ -585,13 +586,13 @@ buildUsage config mode = case config of
                 Just shortchar -> "  -" <> pretty shortchar <> ", --"
                 Nothing -> "      --"
         l = pretty longname
-        d = fromText description
+        d = fromRope description
       in
         fillBreak 16 (s <> l <> " ") <+> align (reflow d) <> hardline <> acc
     g (Argument longname description) acc =
       let
         l = pretty longname
-        d = fromText description
+        d = fromRope description
       in
         fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
 
@@ -602,7 +603,7 @@ buildUsage config mode = case config of
     h (Command longname description _) acc =
       let
         l = pretty longname
-        d = fromText description
+        d = fromRope description
       in
         fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
     h _ acc = acc

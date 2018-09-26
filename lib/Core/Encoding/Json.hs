@@ -113,7 +113,8 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics
 
-import Core.Text.Bytes (Text(UTF8), Bytes(StrictBytes), Textual, intoText, fromText)
+import Core.Text.Bytes (Bytes(StrictBytes))
+import Core.Text.Rope (Rope, Textual, intoRope, fromRope)
 import Core.Text.Utilities (Render, render)
 
 {-|
@@ -142,11 +143,11 @@ A JSON value.
 data JsonValue
     = JsonObject (HashMap JsonKey JsonValue)
     | JsonArray [JsonValue]
-    | JsonString Text
+    | JsonString Rope
     | JsonNumber Scientific
     | JsonBool Bool
     | JsonNull
-    deriving (Eq, Read, Show, Generic)
+    deriving (Eq, Show, Generic)
 
 --
 -- Overloads so that Haskell code literals can be interpreted as JSON
@@ -156,7 +157,7 @@ data JsonValue
 --
 instance IsString JsonValue where
     fromString :: String -> JsonValue
-    fromString = JsonString . intoText
+    fromString = JsonString . intoRope
 
 instance Num JsonValue where
     fromInteger = JsonNumber . fromInteger
@@ -177,7 +178,7 @@ intoAeson value = case value of
     JsonObject xm ->
         let
             kvs = HashMap.toList xm
-            tvs = fmap (\(k, v) -> (fromText (coerce k), intoAeson v)) kvs
+            tvs = fmap (\(k, v) -> (fromRope (coerce k), intoAeson v)) kvs
             tvm :: HashMap T.Text Aeson.Value
             tvm = HashMap.fromList tvs
         in
@@ -189,7 +190,7 @@ intoAeson value = case value of
         in
             Aeson.Array (V.fromList vs)
 
-    JsonString x -> Aeson.String (fromText x)
+    JsonString x -> Aeson.String (fromRope x)
     JsonNumber x -> Aeson.Number x
     JsonBool x -> Aeson.Bool x
     JsonNull -> Aeson.Null
@@ -198,21 +199,22 @@ intoAeson value = case value of
     Keys in a JSON object.
 -}
 newtype JsonKey
-    = JsonKey Text
-    deriving (Eq, Show, Read, Generic, IsString)
+    = JsonKey Rope
+    deriving (Eq, Show, Generic, IsString)
 
 instance Hashable JsonKey
 
 instance Render JsonKey where
-    render = intoText . renderStrict . reAnnotateS colourize
+    render = intoRope . renderStrict . reAnnotateS colourize
               . layoutPretty defaultLayoutOptions . prettyKey
 
-instance Aeson.ToJSON Text where
-    toJSON b' = Aeson.toJSON (fromText b' :: T.Text) -- BAD
+-- FIXME what is this instance?
+instance Aeson.ToJSON Rope where
+    toJSON text = Aeson.toJSON (fromRope text :: T.Text) -- BAD
 
 instance Textual JsonKey where
-    fromText t = coerce t
-    intoText x = coerce x
+    fromRope t = coerce t
+    intoRope x = coerce x
 
 
 fromAeson :: Aeson.Value -> JsonValue
@@ -220,7 +222,7 @@ fromAeson value = case value of
     Aeson.Object o ->
         let
             tvs = HashMap.toList o
-            kvs = fmap (\(k, v) -> (JsonKey (intoText k), fromAeson v)) tvs
+            kvs = fmap (\(k, v) -> (JsonKey (intoRope k), fromAeson v)) tvs
 
             kvm :: HashMap JsonKey JsonValue
             kvm = HashMap.fromList kvs
@@ -228,7 +230,7 @@ fromAeson value = case value of
             JsonObject kvm
 
     Aeson.Array v -> JsonArray (fmap fromAeson (V.toList v))
-    Aeson.String t -> JsonString (intoText t)
+    Aeson.String t -> JsonString (intoRope t)
     Aeson.Number n -> JsonNumber n
     Aeson.Bool x -> JsonBool x
     Aeson.Null -> JsonNull
@@ -248,7 +250,7 @@ data JsonToken
     | LiteralToken
 
 instance Render JsonValue where
-    render = intoText . renderStrict . reAnnotateS colourize
+    render = intoRope . renderStrict . reAnnotateS colourize
               . layoutPretty defaultLayoutOptions . prettyValue
 
 --
@@ -283,7 +285,7 @@ instance Pretty JsonKey where
 prettyKey :: JsonKey -> Doc JsonToken
 prettyKey (JsonKey t) =
     annotate QuoteToken dquote <>
-    annotate KeyToken (pretty (fromText t :: T.Text)) <>
+    annotate KeyToken (pretty (fromRope t :: T.Text)) <>
     annotate QuoteToken dquote
 
 instance Pretty JsonValue where
@@ -332,10 +334,10 @@ prettyValue value = case value of
     JsonNull -> annotate LiteralToken "null"
 {-# INLINEABLE prettyValue #-}
 
-escapeText :: Text -> Doc JsonToken
+escapeText :: Rope -> Doc JsonToken
 escapeText text =
   let
-    t = fromText text :: T.Text
+    t = fromRope text :: T.Text
     ts = T.split (== '"') t
     ds = fmap pretty ts
   in

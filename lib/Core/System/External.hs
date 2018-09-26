@@ -6,11 +6,19 @@
 -- | Re-exports of Haskell base and GHC system libraries.
 --
 module Core.System.External
-    ( liftIO
+    ( {-* Input/Output -}
+      {-** from Control.Monad.IO.Class -}
+      {-| Re-exported from "Control.Monad.IO.Class" in __base__: -}
+      liftIO
+      {-** from System.IO -}
+      {-| Re-exported from "System.IO" in __base__: -}
     , Handle
     , stdin, stdout, stderr
     , hFlush
     , unsafePerformIO
+      {-* Exception handling -}
+      {-** from Control.Exception.Safe -}
+      {-| Re-exported from "Control.Exception.Safe" in the __safe-exceptions__ package: -}
     , Exception(..)
     , throw
     , bracket
