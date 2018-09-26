@@ -25,7 +25,7 @@ import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.Builder as T
 import qualified Data.Text.Short as S (ShortText, length, uncons)
 import Data.Text.Prettyprint.Doc (Doc, layoutPretty
-    , defaultLayoutOptions, reAnnotateS)
+    , defaultLayoutOptions, reAnnotateS, LayoutOptions(..), PageWidth(..))
 import Data.Text.Prettyprint.Doc.Render.Terminal (renderStrict, AnsiStyle)
 
 import Core.Text.Bytes
@@ -74,7 +74,7 @@ instance Render [Char] where
 {-|
 Given an object of a type with a 'Render' instance, transform it into a
 Rope saturated with ANSI escape codes representing syntax highlighting or
-similar colouring.
+similar colouring, wrapping at the specified @width@.
 
 The obvious expectation is that the next thing you're going to do is send
 the Rope to console with @'Core.Program.Execute.write' (render thing)@.
@@ -86,9 +86,13 @@ available width of the terminal.
 -- at term level so that it can be used by TypedApplications. Which then
 -- needed AllowAmbiguousTypes, but with all that finally it works:
 -- colourize no longer needs a in its type signature.
-render :: Render a => a -> Rope
-render (thing :: a) = intoRope . renderStrict . reAnnotateS (colourize @a)
-                . layoutPretty defaultLayoutOptions . intoDocA $ thing
+render :: Render a => Int -> a -> Rope
+render width (thing :: a) =
+  let
+    options = LayoutOptions (AvailablePerLine (width - 1) 1.0)
+  in
+    intoRope . renderStrict . reAnnotateS (colourize @a)
+                . layoutPretty options . intoDocA $ thing
 
 --
 -- | Render "a" or "an" in front of a word depending on English's idea of

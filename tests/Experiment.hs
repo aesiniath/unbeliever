@@ -57,7 +57,7 @@ program = do
     name <- getProgramName
     debug "programName" name
 
-    debug "key" (render k)
+    debug "key" (render 80 k)
     event "Verify internal values"
 
     let x = encodeToUTF8 j
@@ -68,7 +68,7 @@ program = do
     writeS (encodeToUTF8 y)
     writeS (encodeToUTF8 r)
 
-    debug "packet" (render j)
+    debug "packet" (render 80 j)
 
     event "Clock..."
 
