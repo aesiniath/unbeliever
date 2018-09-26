@@ -3,6 +3,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 {-|
@@ -115,7 +116,7 @@ import GHC.Generics
 
 import Core.Text.Bytes (Bytes(StrictBytes))
 import Core.Text.Rope (Rope, Textual, intoRope, fromRope)
-import Core.Text.Utilities (Render, render)
+import Core.Text.Utilities (Render(..), render)
 
 {-|
 Given a JSON value, encode it to UTF-8 bytes
@@ -204,9 +205,6 @@ newtype JsonKey
 
 instance Hashable JsonKey
 
-instance Render JsonKey where
-    render = intoRope . renderStrict . reAnnotateS colourize
-              . layoutPretty defaultLayoutOptions . prettyKey
 
 -- FIXME what is this instance?
 instance Aeson.ToJSON Rope where
@@ -250,8 +248,14 @@ data JsonToken
     | LiteralToken
 
 instance Render JsonValue where
-    render = intoRope . renderStrict . reAnnotateS colourize
-              . layoutPretty defaultLayoutOptions . prettyValue
+    type Token JsonValue = JsonToken
+    colourize _ = colourizeJson
+    intoAnsi = prettyValue
+
+instance Render JsonKey where
+    type Token JsonKey = JsonToken
+    colourize _ = colourizeJson
+    intoAnsi = prettyKey
 
 --
 --  Ugh. If you want to experiment with narrower output, then:
@@ -267,8 +271,8 @@ If you're curious, the render pipeline looks like:
                 . 'layoutPretty' 'defaultLayoutOptions' . 'prettyValue'
 @
 -}
-colourize :: JsonToken -> AnsiStyle
-colourize token = case token of
+colourizeJson :: JsonToken -> AnsiStyle
+colourizeJson token = case token of
     SymbolToken -> color Black
     QuoteToken -> color Black
     KeyToken -> color Blue

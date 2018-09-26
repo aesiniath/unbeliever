@@ -1,9 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Core.Text.Utilities (
       Render(..)
+    , render
     , indefinite
     , wrap
     , underline
@@ -19,21 +21,48 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.Builder as T
 import qualified Data.Text.Short as S (ShortText, length, uncons)
+import Data.Text.Prettyprint.Doc (Doc, layoutPretty
+    , defaultLayoutOptions, reAnnotateS)
+import Data.Text.Prettyprint.Doc.Render.Terminal (renderStrict, AnsiStyle)
 
 import Core.Text.Bytes
 import Core.Text.Rope
 
-class Render a where
-    render :: a -> Rope
+-- change AnsiStyle to a custom token type, perhaps Ansi, which
+-- has the escape codes already converted to Rope.
 
+class Render a where
+    type Token a :: *
+    colourize :: a -> Token a -> AnsiStyle
+    intoAnsi :: a -> Doc (Token a)
+
+{-
 instance Render Rope where
-    render x = x
+    type Token Rope = 
+    colourize = 
+    intoAnsi x = x
 
 instance Render [Rope] where
-    render = intoRope . F.fromList . concatMap toList . fmap unRope
+    intoAnsi = intoRope . F.fromList . concatMap toList . fmap unRope
 
 instance Render [Char] where
-    render cs = intoRope cs
+    intoAnsi cs = intoRope cs
+-}
+
+{-|
+Given an object of a type with a 'Render' instance, transform it into a
+Rope saturated with ANSI escape codes representing syntax highlighting or
+similar colouring.
+
+The obvious expectation is that the next thing you're going to do is send
+the Rope to console with @'Core.Program.Execute.write' (render thing)@.
+However, the /better/ thing to do is to use 'Core.Program.Execute.writeR'
+instead, which is able to pretty print the document text respecting the
+available width of the terminal.
+-}
+render :: Render a => a -> Rope
+render thing = intoRope . renderStrict . reAnnotateS (colourize thing)
+                . layoutPretty defaultLayoutOptions . intoAnsi $ thing
 
 --
 -- | Render "a" or "an" in front of a word depending on English's idea of
