@@ -113,7 +113,7 @@ of optional parameters and mandatory arguments. For example:
 main :: 'IO' ()
 main = do
     context <- 'Core.Program.Context.configure' ('simple'
-        [ 'Option' "verbose" ('Just' 'v') [here|
+        [ 'Option' "verbose" ('Just' \'v\') [here|
             Turn on event level logging to console.
             Valid values are "event", "debug", and "none" (the default
             if you don't specify the verbose option).
@@ -121,7 +121,7 @@ main = do
         , 'Option' "logging" 'Nothing' [here|
             Valid values are "console", "file:/path/to/file.log", and "syslog"
           |]
-        , 'Option' "quiet" (Just 'q') [here|
+        , 'Option' "quiet" (Just \'q\') [here|
             Supress normal output.
           |]
         , 'Argument' "filename" [here|
