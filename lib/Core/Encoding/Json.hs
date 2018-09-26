@@ -84,7 +84,7 @@ will get you:
 
 -}
       , JsonToken(..)
-      , colourize
+      , colourizeJson
       , prettyKey
       , prettyValue
     ) where
@@ -249,12 +249,12 @@ data JsonToken
 
 instance Render JsonValue where
     type Token JsonValue = JsonToken
-    colourize _ = colourizeJson
+    colourize = colourizeJson
     intoAnsi = prettyValue
 
 instance Render JsonKey where
     type Token JsonKey = JsonToken
-    colourize _ = colourizeJson
+    colourize = colourizeJson
     intoAnsi = prettyKey
 
 --

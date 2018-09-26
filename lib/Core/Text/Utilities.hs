@@ -1,6 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Core.Text.Utilities (
@@ -33,7 +36,7 @@ import Core.Text.Rope
 
 class Render a where
     type Token a :: *
-    colourize :: a -> Token a -> AnsiStyle
+    colourize :: Token a -> AnsiStyle
     intoAnsi :: a -> Doc (Token a)
 
 {-
@@ -60,8 +63,12 @@ However, the /better/ thing to do is to use 'Core.Program.Execute.writeR'
 instead, which is able to pretty print the document text respecting the
 available width of the terminal.
 -}
+-- the annotation (_ :: a) of the parameter is to bring type a into scope
+-- at term level so that it can be used by TypedApplications. Which then
+-- needed AllowAmbiguousTypes, but with all that finally it works:
+-- colourize no longer needs a in its type signature.
 render :: Render a => a -> Rope
-render thing = intoRope . renderStrict . reAnnotateS (colourize thing)
+render (thing :: a) = intoRope . renderStrict . reAnnotateS (colourize @a)
                 . layoutPretty defaultLayoutOptions . intoAnsi $ thing
 
 --
