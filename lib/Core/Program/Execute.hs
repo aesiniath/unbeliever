@@ -240,7 +240,6 @@ terminate code =
         0 -> ExitSuccess
         _ -> ExitFailure code
   in do
-    v <- ask
     liftIO (Safe.throw exit)
 
 
