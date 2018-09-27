@@ -10,6 +10,7 @@ module Core.Program.Logging
       , event
       , debug
       , debugS
+      , debugR
     ) where
 
 import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
@@ -27,6 +28,7 @@ import Time.System (timezoneCurrent)
 
 import Core.Text.Bytes
 import Core.Text.Rope
+import Core.Text.Utilities
 import Core.System.External
 import Core.Program.Context
 
@@ -165,3 +167,17 @@ of a general variable which has a Show instance
 debugS :: Show a => Rope -> a -> Program ()
 debugS label value = debug label (intoRope (show value))
 
+debugR :: Render a => Rope -> a -> Program ()
+debugR label thing = do
+    v <- ask
+    liftIO $ do
+        context <- readMVar v
+        now <- getCurrentTimeNanoseconds
+
+        let width = terminalWidthFrom context
+
+        -- TODO take into account width already consumed by timestamp
+        -- TODO move render to putMessage? putMessageR?
+        let value = render width thing
+
+        putMessage context (Message now Debug label (Just value))

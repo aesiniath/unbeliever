@@ -60,6 +60,7 @@ module Core.Program.Execute
         {-* Useful actions -}
       , write
       , writeS
+      , writeR
       , fork
       , sleep
         {-* Internals -}
@@ -93,6 +94,7 @@ import Time.System (timezoneCurrent)
 
 import Core.Text.Bytes
 import Core.Text.Rope
+import Core.Text.Utilities
 import Core.System.External
 import Core.Program.Context
 import Core.Program.Logging
@@ -292,6 +294,23 @@ Call 'show' on the supplied argument and write the resultant text to
 -}
 writeS :: Show a => a -> Program ()
 writeS = write . intoRope . show
+
+{-|
+Pretty print the supplied argument and write the resultant text to
+@stdout@. This will pass the detected terminal width to the 'render'
+function, resulting in appopriate line wrapping when rendering your value.
+-}
+writeR :: Render a => a -> Program ()
+writeR thing = do
+    v <- ask
+    liftIO $ do
+        context <- readMVar v
+        let chan = outputChannelFrom context
+        let width = terminalWidthFrom context
+
+        let text = render width thing
+
+        atomically (writeTChan chan text)
 
 {-|
 Write the supplied bytes to the given handle
