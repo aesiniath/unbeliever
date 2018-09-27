@@ -19,8 +19,8 @@ as there's no particular benefit to cherry-picking the various sub-modules.
 module Core.System
     (
         {-* Base libraries -}
-        module Core.System.External
+        module Core.System.Base
     ) where
 
-import Core.System.External
+import Core.System.Base
 

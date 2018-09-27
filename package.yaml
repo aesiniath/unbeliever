@@ -47,7 +47,7 @@ library:
    - Core.Encoding
    - Core.Encoding.Json
    - Core.System
-   - Core.System.External
+   - Core.System.Base
    - Core.Program
    - Core.Program.Arguments
    - Core.Program.Execute

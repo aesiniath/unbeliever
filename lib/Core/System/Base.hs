@@ -5,7 +5,7 @@
 --
 -- | Re-exports of Haskell base and GHC system libraries.
 --
-module Core.System.External
+module Core.System.Base
     ( {-* Input/Output -}
       {-** from Control.Monad.IO.Class -}
       {-| Re-exported from "Control.Monad.IO.Class" in __base__: -}

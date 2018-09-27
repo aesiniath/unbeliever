@@ -95,7 +95,7 @@ import Time.System (timezoneCurrent)
 import Core.Text.Bytes
 import Core.Text.Rope
 import Core.Text.Utilities
-import Core.System.External
+import Core.System.Base
 import Core.Program.Context
 import Core.Program.Logging
 import Core.Program.Signal

@@ -54,10 +54,10 @@ import Data.String
 import Data.String.Here
 import System.Environment (getProgName)
 
+import Core.System.Base
 import Core.Text.Bytes
 import Core.Text.Rope
 import Core.Text.Utilities
-import Core.System.External
 
 {-|
 Single letter "short" options (omitting the "@-@" prefix, obviously).
