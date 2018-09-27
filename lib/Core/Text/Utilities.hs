@@ -6,6 +6,9 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+{-|
+Useful tools for working with 'Rope's. Support for pretty printing.
+-}
 module Core.Text.Utilities (
       Render(..)
     , render
