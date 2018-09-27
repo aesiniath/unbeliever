@@ -159,7 +159,7 @@ words they are joined with a hyphen. Examples:
 
 @
         [ 'Option' \"dry-run\" 'Nothing' "Don't actually execute commands, just simulate what would happen."
-        , 'Option' \"quiet\" ('Just' 'q') "Keep the noise to a minimum."
+        , 'Option' \"quiet\" ('Just' \'q'\) "Keep the noise to a minimum."
         , 'Argument' \"username\" "The user to delete from the system."
         ]
 @

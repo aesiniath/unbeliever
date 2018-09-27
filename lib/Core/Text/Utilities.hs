@@ -1,9 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+{-|
+Useful tools for working with 'Rope's. Support for pretty printing.
+-}
 module Core.Text.Utilities (
       Render(..)
+    , render
     , indefinite
     , wrap
     , underline
@@ -19,21 +27,75 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.Builder as T
 import qualified Data.Text.Short as S (ShortText, length, uncons)
+import Data.Text.Prettyprint.Doc (Doc, layoutPretty
+    , defaultLayoutOptions, reAnnotateS, LayoutOptions(..), PageWidth(..))
+import Data.Text.Prettyprint.Doc.Render.Terminal (renderStrict, AnsiStyle)
 
 import Core.Text.Bytes
 import Core.Text.Rope
 
-class Render a where
-    render :: a -> Rope
+-- change AnsiStyle to a custom token type, perhaps Ansi, which
+-- has the escape codes already converted to Rope.
 
+{-|
+Types which can be rendered "prettily", that is, formatted by a pretty
+printer and embossed with beautiful ANSI colours when printed to the
+terminal.
+
+Use 'render' to build text object for later use or "Core.Program"'s
+'Core.Program.Execute.writeR' if you're writing directly to console now.
+-}
+
+class Render a where
+    {-|
+Which type are the annotations of your Doc going to be expressed in?
+    -}
+    type Token a :: *
+    {-|
+Convert semantic tokens to specific ANSI escape tokens
+    -}
+    colourize :: Token a -> AnsiStyle
+    {-|
+Arrange your type as a 'Doc' @ann@, annotated with your semantic
+tokens.
+    -}
+    intoDocA :: a -> Doc (Token a)
+
+{-
 instance Render Rope where
-    render x = x
+    type Token Rope = 
+    colourize = 
+    intoDocA x = x
 
 instance Render [Rope] where
-    render = intoRope . F.fromList . concatMap toList . fmap unRope
+    intoDocA = intoRope . F.fromList . concatMap toList . fmap unRope
 
 instance Render [Char] where
-    render cs = intoRope cs
+    intoDocA cs = intoRope cs
+-}
+
+{-|
+Given an object of a type with a 'Render' instance, transform it into a
+Rope saturated with ANSI escape codes representing syntax highlighting or
+similar colouring, wrapping at the specified @width@.
+
+The obvious expectation is that the next thing you're going to do is send
+the Rope to console with @'Core.Program.Execute.write' (render thing)@.
+However, the /better/ thing to do is to use 'Core.Program.Execute.writeR'
+instead, which is able to pretty print the document text respecting the
+available width of the terminal.
+-}
+-- the annotation (_ :: a) of the parameter is to bring type a into scope
+-- at term level so that it can be used by TypedApplications. Which then
+-- needed AllowAmbiguousTypes, but with all that finally it works:
+-- colourize no longer needs a in its type signature.
+render :: Render a => Int -> a -> Rope
+render width (thing :: a) =
+  let
+    options = LayoutOptions (AvailablePerLine (width - 1) 1.0)
+  in
+    intoRope . renderStrict . reAnnotateS (colourize @a)
+                . layoutPretty options . intoDocA $ thing
 
 --
 -- | Render "a" or "an" in front of a word depending on English's idea of

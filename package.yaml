@@ -1,6 +1,10 @@
 name: unbeliever
 version: 0.2.1
 synopsis: Opinionated Haskell Interoperability
+description: |
+  A library to help build command-line programs, both tools and
+  longer-running daemons.
+stability: experimental
 license: BSD3
 author: Andrew Cowie <andrew@operationaldynamics.com>
 maintainer: Andrew Cowie <andrew@operationaldynamics.com>
