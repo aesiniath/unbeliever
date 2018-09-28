@@ -33,7 +33,7 @@ import System.Console.Terminal.Size (Window(..), size, hSize)
 import System.Environment (getArgs, getProgName)
 import System.Exit (ExitCode(..), exitWith)
 
-import Core.System.External
+import Core.System.Base
 import Core.Text.Bytes
 import Core.Text.Rope
 import Core.Text.Utilities

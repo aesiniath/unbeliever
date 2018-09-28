@@ -19,8 +19,22 @@ as there's no particular benefit to cherry-picking the various sub-modules.
 module Core.System
     (
         {-* Base libraries -}
-        module Core.System.External
+{-|
+Re-exports from foundational libraries supplied by the compiler runtime,
+or from re-implementations of those areas.
+-}
+        module Core.System.Base
+
+        {-* External dependencies -}
+{-|
+Dependencies from libraries outside the traditional ecosystem of Haskell.
+These are typically special cases or custom re-implementations of things
+which are maintained either by ourselves or people we are in regular
+contact with.
+-}
+      , module Core.System.External
     ) where
 
+import Core.System.Base
 import Core.System.External
 
