@@ -42,7 +42,7 @@ data Boom = Boom
 
 instance Exception Boom
 
-program :: Program ()
+program :: Program () ()
 program = do
     event "Starting..."
 

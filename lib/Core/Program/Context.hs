@@ -61,7 +61,7 @@ Internal context for a running program. You access this via actions in the
 -- bare fieldName because so often you have want to be able to use
 -- that field name as a local variable name.
 --
-data Context = Context {
+data Context c = Context {
       programNameFrom :: Rope
     , commandLineFrom :: Parameters
     , exitSemaphoreFrom :: MVar ExitCode
@@ -69,6 +69,7 @@ data Context = Context {
     , terminalWidthFrom :: Int
     , outputChannelFrom :: TChan Rope
     , loggerChannelFrom :: TChan Message
+    , applicationConfigFrom :: Config c
 }
 
 data Message = Message TimeStamp Nature Rope (Maybe Rope)
@@ -105,8 +106,8 @@ project each with a @main@ function. So you're best off putting your
 top-level 'Program' actions in a separate modules so you can refer to them
 from test suites and example snippets.
 -}
-newtype Program a = Program (ReaderT (MVar Context) IO a)
-    deriving (Functor, Applicative, Monad, MonadIO, MonadReader (MVar Context))
+newtype Program c a = Program (ReaderT (MVar (Context c)) IO a)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadReader (MVar (Context c)))
 
 --
 -- This is complicated. The **safe-exceptions** library exports a
@@ -118,25 +119,9 @@ newtype Program a = Program (ReaderT (MVar Context) IO a)
 -- asynchronous exceptions); elsewhere we will use and wrap/export
 -- **safe-exceptions**'s variants of the functions.
 --
-instance MonadThrow Program where
+instance MonadThrow (Program c) where
     throwM = liftIO . Safe.throw
 
-
-{-
-    FIXME
-    Change to global quit semaphore, reachable anywhere?
--}
-
-instance Semigroup Context where
-    (<>) one two = Context {
-          programNameFrom = (programNameFrom two)
-        , commandLineFrom = (commandLineFrom one)
-        , exitSemaphoreFrom = (exitSemaphoreFrom one)
-        , startTimeFrom = startTimeFrom one
-        , terminalWidthFrom = terminalWidthFrom two
-        , outputChannelFrom = outputChannelFrom one
-        , loggerChannelFrom = loggerChannelFrom one
-        }
 
 {-|
 Initialize the programs's execution context. This takes care of various
@@ -144,7 +129,7 @@ administrative actions, including setting up output channels, parsing
 command-line arguments (according to the supplied configuration), and
 putting in place various semaphores for internal program communication.
 -}
-configure :: Config -> IO Context
+configure :: Config c -> IO (Context c)
 configure config = do
     start <- getCurrentTimeNanoseconds
 
@@ -163,6 +148,7 @@ configure config = do
         , terminalWidthFrom = width
         , outputChannelFrom = output
         , loggerChannelFrom = logger
+        , applicationConfigFrom = config
     }
 
 --
@@ -188,7 +174,7 @@ getConsoleWidth = do
     called that in Core.Program.Arguments). And, returning here lets us set
     up the layout width to match (one off the) actual width of console.
 -}
-handleCommandLine :: Config -> IO Parameters
+handleCommandLine :: Config a -> IO Parameters
 handleCommandLine config = do
     argv <- getArgs
     let result = parseCommandLine config argv

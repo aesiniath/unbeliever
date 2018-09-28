@@ -93,9 +93,17 @@ The setup for parsing the command-line arguments of your program. You build
 a @Config@ with 'simple' or 'complex', and pass it to
 'Core.Program.Context.configure'.
 -}
-data Config
-    = Simple [Options]
-    | Complex [Commands]
+data Config a
+    = Simple [Options] a
+    | Complex [Commands] a
+
+-- Ah. HERE. TODO a is the custom local context for _your_ program.
+
+instance Functor Config where
+    fmap f config = case config of
+        Simple options application -> Simple options (f application)
+        Complex commands application -> Complex commands (f application)
+
 
 --
 -- Those constructors are not exposed [and functions wrapping them are] partly
@@ -132,8 +140,8 @@ main = do
     'Core.Program.Execute.executeWith' context program
 @
 -}
-simple :: [Options] -> Config
-simple options = Simple options
+simple :: [Options] -> Config ()
+simple options = Simple options ()
 
 {-|
 Declare a complex configuration (implying a larger tool with various
@@ -142,8 +150,8 @@ applicable to all commands, a list of commands, and environment variables
 that will be honoured by the program. Each command can have a list of local
 options and arguments as needed.
 -}
-complex :: [Commands] -> Config
-complex commands = Complex commands
+complex :: [Commands] -> Config ()
+complex commands = Complex commands ()
 
 data Commands 
     = Global [Options]
@@ -207,7 +215,7 @@ data Parameters
         , environmentValuesFrom :: [(LongName, ParameterValue)]
     } deriving (Show, Eq)
 
-baselineConfig :: Config
+baselineConfig :: Config ()
 baselineConfig =
     simple [
         Option "verbose" (Just 'v') [here|
@@ -304,13 +312,13 @@ testing convenience. This function is invoked when you call
 'Core.Program.Context.configure' or 'Core.Program.Execute.execute' (which
 calls 'configure' with a default @Config@ when initializing).
 -}
-parseCommandLine :: Config -> [String] -> Either InvalidCommandLine Parameters
+parseCommandLine :: Config a -> [String] -> Either InvalidCommandLine Parameters
 parseCommandLine config argv = case config of
-    Simple options -> do
+    Simple options _ -> do
         params <- extractor Nothing options argv
         return (Parameters Nothing params [])
 
-    Complex commands ->
+    Complex commands _ ->
       let
         globalOptions = extractGlobalOptions commands
         modes = extractValidModes commands
@@ -470,9 +478,9 @@ splitCommandLine args =
 -- path to an exit and return to user's command line.
 --
 
-buildUsage :: Config -> Maybe LongName -> Doc ann
+buildUsage :: Config a -> Maybe LongName -> Doc ann
 buildUsage config mode = case config of
-    Simple options ->
+    Simple options _ ->
       let
         (o,a) = partitionParameters options
       in
@@ -487,7 +495,7 @@ buildUsage config mode = case config of
             <> argumentsHeading a
             <> formatParameters a
 
-    Complex commands ->
+    Complex commands _ ->
       let
         globalOptions = extractGlobalOptions commands
         modes = extractValidModes commands
