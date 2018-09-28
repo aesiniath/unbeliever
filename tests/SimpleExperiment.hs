@@ -12,9 +12,9 @@ import Control.Concurrent (threadDelay)
 import Control.Monad (replicateM_)
 import qualified Data.ByteString.Char8 as S
 import qualified Data.HashMap.Strict as HashMap
-import Data.String.Here
 import Data.Text.Prettyprint.Doc (layoutPretty, defaultLayoutOptions, Pretty(..))
 import Data.Text.Prettyprint.Doc.Render.Text (renderStrict)
+import Text.Heredoc
 
 import Core.Text
 import Core.Encoding

@@ -21,7 +21,7 @@ dependencies:
  - exceptions
  - fingertree
  - hashable
- - here
+ - heredoc
  - hourglass
  - mtl
  - prettyprinter
@@ -65,7 +65,7 @@ executables:
     ghc-options: -threaded -Wall -Wwarn -fwarn-tabs
    
     source-dirs: tests
-    main: Experiment.hs
+    main: SimpleExperiment.hs
     other-modules: []
 
     ghc-prof-options: -fprof-auto

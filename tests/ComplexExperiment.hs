@@ -6,7 +6,7 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
-import Data.String.Here
+import Text.Heredoc
 
 import Core.Text
 import Core.Program

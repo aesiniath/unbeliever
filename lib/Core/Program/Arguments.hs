@@ -51,7 +51,7 @@ import Data.Text.Prettyprint.Doc (Doc, Pretty(..), nest, fillCat
     , emptyDoc, hardline, softline, fillBreak, align, (<+>), fillSep, indent)
 import Data.Text.Prettyprint.Doc.Util (reflow)
 import Data.String
-import Data.String.Here
+import Text.Heredoc
 import System.Environment (getProgName)
 
 import Core.System.Base
@@ -264,19 +264,19 @@ For options valid in this program, please see --help.
         UnexpectedArguments args ->
           let
             quoted = List.intercalate "', '" args
-          in [iTrim|
+          in [here|
 Unexpected trailing arguments:
 
-    '${quoted}'.
+|] ++ quoted ++ [here|
 
 For arguments expected by this program, please see --help.
 |]
         UnknownCommand first -> "Hm. Command '" ++ first ++ "' not recognized."
-        NoCommandFound -> [iTrim|
+        NoCommandFound -> [here|
 No command specified.
 Usage is of the form:
 
-    ${programName} [GLOBAL OPTIONS] COMMAND [LOCAL OPTIONS] [ARGUMENTS]
+    |] ++ programName ++ [here| [GLOBAL OPTIONS] COMMAND [LOCAL OPTIONS] [ARGUMENTS]
 
 See --help for details.
 |]
