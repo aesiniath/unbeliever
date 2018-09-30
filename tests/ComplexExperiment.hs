@@ -12,7 +12,7 @@ import Core.Text
 import Core.Program
 import Core.System
 
-program :: Program ()
+program :: Program None ()
 program = do
     event "Starting..."
 

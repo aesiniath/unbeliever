@@ -21,6 +21,7 @@ module Core.Program.Arguments
     ( 
         {-* Setup -}
         Config
+      , None
       , simple
       , baselineConfig
       , Parameters(..)
@@ -89,13 +90,29 @@ instance Pretty LongName where
     pretty (LongName name) = pretty name
 
 {-|
+A 'Program' with no user-supplied state to be threaded throughout the
+computation.
+
+The "Core.Program.Execute" framework makes your top-level application state
+available at the outer level of your process. While this is a feature that
+most substantial programs rely on, it is /not/ needed for many simple
+programs or when first starting out.
+
+This is effectively the unit type, but this alias is here to clearly signal
+a user data type is not a part of the program semantics.
+
+-}
+-- Bids are open for a better name for this
+data None = None
+
+{-|
 The setup for parsing the command-line arguments of your program. You build
 a @Config@ with 'simple' or 'complex', and pass it to
 'Core.Program.Context.configure'.
 -}
-data Config a
-    = Simple [Options] a
-    | Complex [Commands] a
+data Config x
+    = Simple [Options] x
+    | Complex [Commands] x
 
 -- Ah. HERE. TODO a is the custom local context for _your_ program.
 
@@ -140,8 +157,8 @@ main = do
     'Core.Program.Execute.executeWith' context program
 @
 -}
-simple :: [Options] -> Config ()
-simple options = Simple options ()
+simple :: [Options] -> Config None
+simple options = Simple options None
 
 {-|
 Declare a complex configuration (implying a larger tool with various
@@ -150,8 +167,8 @@ applicable to all commands, a list of commands, and environment variables
 that will be honoured by the program. Each command can have a list of local
 options and arguments as needed.
 -}
-complex :: [Commands] -> Config ()
-complex commands = Complex commands ()
+complex :: [Commands] -> Config None
+complex commands = Complex commands None
 
 data Commands 
     = Global [Options]
@@ -215,7 +232,7 @@ data Parameters
         , environmentValuesFrom :: [(LongName, ParameterValue)]
     } deriving (Show, Eq)
 
-baselineConfig :: Config ()
+baselineConfig :: Config None
 baselineConfig =
     simple [
         Option "verbose" (Just 'v') [here|

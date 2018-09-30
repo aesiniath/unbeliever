@@ -61,7 +61,7 @@ Internal context for a running program. You access this via actions in the
 -- bare fieldName because so often you have want to be able to use
 -- that field name as a local variable name.
 --
-data Context c = Context {
+data Context x = Context {
       programNameFrom :: Rope
     , commandLineFrom :: Parameters
     , exitSemaphoreFrom :: MVar ExitCode
@@ -69,7 +69,7 @@ data Context c = Context {
     , terminalWidthFrom :: Int
     , outputChannelFrom :: TChan Rope
     , loggerChannelFrom :: TChan Message
-    , applicationConfigFrom :: Config c
+    , applicationConfigFrom :: Config x
 }
 
 data Message = Message TimeStamp Nature Rope (Maybe Rope)
@@ -93,7 +93,7 @@ main = 'Core.Program.Execute.execute' program
 and defining a program that is the top level of your application:
 
 @
-program :: 'Program' ()
+program :: 'Program' 'None' ()
 @
 
 Such actions are combinable; you can sequence them (using bind in
@@ -106,8 +106,8 @@ project each with a @main@ function. So you're best off putting your
 top-level 'Program' actions in a separate modules so you can refer to them
 from test suites and example snippets.
 -}
-newtype Program c a = Program (ReaderT (MVar (Context c)) IO a)
-    deriving (Functor, Applicative, Monad, MonadIO, MonadReader (MVar (Context c)))
+newtype Program x a = Program (ReaderT (MVar (Context x)) IO a)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadReader (MVar (Context x)))
 
 --
 -- This is complicated. The **safe-exceptions** library exports a
@@ -119,7 +119,7 @@ newtype Program c a = Program (ReaderT (MVar (Context c)) IO a)
 -- asynchronous exceptions); elsewhere we will use and wrap/export
 -- **safe-exceptions**'s variants of the functions.
 --
-instance MonadThrow (Program c) where
+instance MonadThrow (Program x) where
     throwM = liftIO . Safe.throw
 
 
@@ -129,7 +129,7 @@ administrative actions, including setting up output channels, parsing
 command-line arguments (according to the supplied configuration), and
 putting in place various semaphores for internal program communication.
 -}
-configure :: Config c -> IO (Context c)
+configure :: Config x -> IO (Context x)
 configure config = do
     start <- getCurrentTimeNanoseconds
 
@@ -174,7 +174,7 @@ getConsoleWidth = do
     called that in Core.Program.Arguments). And, returning here lets us set
     up the layout width to match (one off the) actual width of console.
 -}
-handleCommandLine :: Config a -> IO Parameters
+handleCommandLine :: Config x -> IO Parameters
 handleCommandLine config = do
     argv <- getArgs
     let result = parseCommandLine config argv

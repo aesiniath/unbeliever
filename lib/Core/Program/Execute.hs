@@ -65,6 +65,7 @@ module Core.Program.Execute
       , sleep
         {-* Internals -}
       , Context
+      , None
     ) where
 
 import Control.Concurrent (yield, threadDelay)
@@ -101,17 +102,17 @@ import Core.Program.Logging
 import Core.Program.Signal
 import Core.Program.Arguments
 
-unwrapProgram :: Program c a -> ReaderT (MVar (Context c)) IO a
+unwrapProgram :: Program x a -> ReaderT (MVar (Context x)) IO a
 unwrapProgram (Program reader) = reader
 
-runProgram :: Context c -> Program c a -> IO a
+runProgram :: Context x -> Program x a -> IO a
 runProgram context (Program reader) = do
     v <- newMVar context
     runReaderT reader v
 
 
 -- execute actual "main"
-executeAction :: Context c -> Program c a -> IO ()
+executeAction :: Context x -> Program x a -> IO ()
 executeAction context program =
   let
     quit = exitSemaphoreFrom context
@@ -157,7 +158,7 @@ Embelish a program with useful behaviours. See module header
 "Core.Program.Execute" for a detailed description. Internally this function
 calls 'configure' with an appropriate default when initializing.
 -}
-execute :: Program () a -> IO ()
+execute :: Program None a -> IO ()
 execute program = do
     context <- configure baselineConfig
     executeWith context program
@@ -166,7 +167,7 @@ execute program = do
 Embelish a program with useful behaviours, supplying a configuration
 for command-line options & argument parsing.
 -}
-executeWith :: Context c -> Program c a -> IO ()
+executeWith :: Context x -> Program x a -> IO ()
 executeWith context program = do
     -- command line +RTS -Nn -RTS value
     when (numCapabilities == 1) (getNumProcessors >>= setNumCapabilities)
@@ -235,7 +236,7 @@ processDebugMessages logger = do
 Safely exit the program with the supplied exit code. Current output and
 debug queues will be flushed, and then the process will terminate.
 -}
-terminate :: Int -> Program c ()
+terminate :: Int -> Program x ()
 terminate code =
   let
     exit = case code of
@@ -249,7 +250,7 @@ terminate code =
 Override the program name used for logging, etc. At least, that was the
 idea. Nothing makes use of this at the moment. @:/@
 -}
-setProgramName :: Rope -> Program c ()
+setProgramName :: Rope -> Program x ()
 setProgramName name = do
     v <- ask
     context <- liftIO (readMVar v)
@@ -262,7 +263,7 @@ setProgramName name = do
 Get the program name as invoked from the command-line (or as overridden by
 'setProgramName').
 -}
-getProgramName :: Program c Rope
+getProgramName :: Program x Rope
 getProgramName = do
     v <- ask
     context <- liftIO (readMVar v)
@@ -277,7 +278,7 @@ This is for normal program output.
      'write' "Beginning now"
 @
 -}
-write :: Rope -> Program c ()
+write :: Rope -> Program x ()
 write text = do
     v <- ask
     liftIO $ do
@@ -292,7 +293,7 @@ Call 'show' on the supplied argument and write the resultant text to
 
 (This is the equivalent of 'print' from __base__)
 -}
-writeS :: Show a => a -> Program c ()
+writeS :: Show a => a -> Program x ()
 writeS = write . intoRope . show
 
 {-|
@@ -300,7 +301,7 @@ Pretty print the supplied argument and write the resultant text to
 @stdout@. This will pass the detected terminal width to the 'render'
 function, resulting in appopriate line wrapping when rendering your value.
 -}
-writeR :: Render a => a -> Program c ()
+writeR :: Render a => a -> Program x ()
 writeR thing = do
     v <- ask
     liftIO $ do
@@ -316,7 +317,7 @@ writeR thing = do
 Write the supplied bytes to the given handle
 (in contrast to 'write' we don't output a trailing newline)
 -}
-output :: Handle -> Bytes -> Program c ()
+output :: Handle -> Bytes -> Program x ()
 output h b = liftIO $ do
         B.hPut h (fromBytes b)
 
@@ -327,7 +328,7 @@ Fork a thread.
 -- TODO change Async to a wrapper called Thread
 -- TODO documentation about launching threads
 --
-fork :: Program c a -> Program c (Async a)
+fork :: Program x a -> Program x (Async a)
 fork program = do
     v <- ask
     liftIO $ do
@@ -350,7 +351,7 @@ example, to delay a second and a half, do:
 --
 -- FIXME is this the right type, given we want to avoid type default warnings?
 --
-sleep :: Rational -> Program c () 
+sleep :: Rational -> Program x ()
 sleep seconds =
   let
     us = floor (toRational (seconds * 1e6))
@@ -361,7 +362,7 @@ sleep seconds =
 Retrieve the values of parameters parsed from options and arguments
 supplied by the user on the command-line.
 -}
-getCommandLine :: Program c (Parameters)
+getCommandLine :: Program x (Parameters)
 getCommandLine = do
     v <- ask
     liftIO $ do
