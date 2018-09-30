@@ -77,7 +77,7 @@ data Message = Message TimeStamp Nature Rope (Maybe Rope)
 data Nature = Output | Event | Debug
 
 {-|
-The type of a top-level Prgoram.
+The type of a top-level program.
 
 You would use this by writing:
 
@@ -99,6 +99,24 @@ program :: 'Program' 'None' ()
 Such actions are combinable; you can sequence them (using bind in
 do-notation) or run them in parallel, but basically you should need one
 such object at the top of your application.
+
+/Type variables/
+
+A 'Program' has a user-supplied application state and a return type.
+
+The return type, @a@, is usually unit as this effectively being called
+directly from @main@ and Haskell programs have type @'IO' ()@. That is,
+they don't return anything; I/O having already happened as side effects.
+
+The first type variable, @x@, is the your application's state. This is an
+object that will be threaded through the computation and made available to
+your code in the 'Program' monad. While this is a common requirement of
+outer layer code in large programs, it is often /not/ necessary in small
+programs or when starting new projects. You can mark that there is no
+top-level applicaiton state required using 'None' and easily change it
+later if your needs evolve.
+
+/Programs in separate modules/
 
 One of the quirks of Haskell is that it is difficult to refer to code in
 the Main module when you've got a number of programs kicking around in a
