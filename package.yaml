@@ -83,8 +83,9 @@ tests:
     main: TestSuite.hs
     other-modules:
      - CheckRopeBehaviour
-     - CheckArgumentsParsing
      - CheckJsonWrapper
+     - CheckArgumentsParsing
+     - CheckProgramMonad
 
 benchmarks:
   performance:

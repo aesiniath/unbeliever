@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE StrictData #-}
 {-# OPTIONS_HADDOCK prune #-}
 
@@ -21,7 +22,8 @@ module Core.Program.Arguments
     ( 
         {-* Setup -}
         Config
-      , None
+      , unConfig
+      , None(..)
       , simple
       , baselineConfig
       , Parameters(..)
@@ -41,6 +43,7 @@ module Core.Program.Arguments
       , buildUsage
     ) where
 
+import Control.Monad (ap, join)
 import Control.Exception.Safe (Exception(displayException))
 import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
@@ -104,23 +107,45 @@ a user data type is not a part of the program semantics.
 -}
 -- Bids are open for a better name for this
 data None = None
+    deriving (Show, Eq)
+
+isNone :: None -> Bool
+isNone _ = True
 
 {-|
 The setup for parsing the command-line arguments of your program. You build
 a @Config@ with 'simple' or 'complex', and pass it to
 'Core.Program.Context.configure'.
+
+This is a monad in that it allows various actions which will both declare
+the desired configuration of arugment parsing as well as initializing the
+"user data" to be made available as top-level application state.
 -}
 data Config x
-    = Simple [Options] x
+    = Trivial x
+    | Simple [Options] x
     | Complex [Commands] x
+    deriving (Functor)
 
--- Ah. HERE. TODO a is the custom local context for _your_ program.
+{-|
+Strip the "user data" out of the Config monad.
+-}
+unConfig :: Config x -> x
+unConfig config = case config of
+    Trivial s -> s
+    Simple _ s -> s
+    Complex _ s -> s
 
-instance Functor Config where
-    fmap f config = case config of
-        Simple options application -> Simple options (f application)
-        Complex commands application -> Complex commands (f application)
+instance Applicative Config where
+    pure = Trivial
+    (<*>) = ap
 
+-- s for "user state"
+instance Monad Config where
+    return = Trivial
+    (Trivial s) >>= k = k s
+    (Simple options s) >>= k = k s
+    (Complex commands s) >>= k = k s
 
 --
 -- Those constructors are not exposed [and functions wrapping them are] partly
