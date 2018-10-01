@@ -81,7 +81,7 @@ computation.
 The "Core.Program.Execute" framework makes your top-level application state
 available at the outer level of your process. While this is a feature that
 most substantial programs rely on, it is /not/ needed for many simple
-programs or when first starting out what will become a larger project.
+tasks or when first starting out what will become a larger project.
 
 This is effectively the unit type, but this alias is here to clearly signal
 a user-data type is not a part of the program semantics.

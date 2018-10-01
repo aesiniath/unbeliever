@@ -60,6 +60,9 @@ program = do
     debugR "key" k
     event "Verify internal values"
 
+    state <- getApplicationState
+    debugS "state" state
+
     let x = encodeToUTF8 j
     writeS x
 

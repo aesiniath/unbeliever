@@ -54,9 +54,13 @@ module Core.Program.Execute
         {-* Exiting a program -}
       , terminate
         {-* Accessing program context -}
-      , setProgramName
       , getProgramName
+      , setProgramName
       , getCommandLine
+      , getApplicationState
+      , setApplicationState
+      , retrieve
+      , change
         {-* Useful actions -}
       , write
       , writeS
@@ -66,6 +70,7 @@ module Core.Program.Execute
         {-* Internals -}
       , Context
       , None(..)
+      , isNone
     ) where
 
 import Control.Concurrent (yield, threadDelay)
@@ -268,6 +273,35 @@ getProgramName = do
     v <- ask
     context <- liftIO (readMVar v)
     return (programNameFrom context)
+
+{-|
+Get the user supplied application state as originally supplied to
+'configure' and modified subsequntly by replacement with
+'setApplicationState'.
+-}
+getApplicationState :: Program x x
+getApplicationState = do
+    v <- ask
+    context <- liftIO (readMVar v)
+    return (applicationDataFrom context)
+
+{-|
+Update the user supplied top-level application state.
+-}
+setApplicationState :: x -> Program x ()
+setApplicationState user = do
+    v <- ask
+    context <- liftIO (readMVar v)
+    let context' = context {
+        applicationDataFrom = user
+    }
+    liftIO (modifyMVar_ v (\_ -> pure context'))
+
+{-| Alias for 'getApplicationState' -}
+retrieve = getApplicationState
+
+{-| Alias for 'setApplicationState' -}
+change = setApplicationState
 
 {-|
 Write the supplied text to @stdout@.
