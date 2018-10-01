@@ -12,7 +12,6 @@ options =
     [ Option "all" (Just 'a') "Good will to everyone"
     ]
 
-
 commands =
     [ Global
         options
@@ -22,9 +21,6 @@ commands =
 
 checkProgramMonad :: Spec
 checkProgramMonad = do
-    describe "Config type" $ do
-        it "Functor instance behaves" $
-          let
-            config = simple options
-          in
-            unConfig config `shouldBe` None
+    describe "Context type" $ do
+        it "Eq instance for None behaves" $
+            None `shouldBe` None

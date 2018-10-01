@@ -88,7 +88,7 @@ program = do
 
 main :: IO ()
 main = do
-    context <- configure (simple
+    context <- configure None (simple
         [ Option "verbose" (Just 'v') [here|
             Turn on event level logging to console.
             Valid values are "event", "debug", and "none" (the default

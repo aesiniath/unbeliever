@@ -22,8 +22,6 @@ module Core.Program.Arguments
     ( 
         {-* Setup -}
         Config
-      , unConfig
-      , None(..)
       , simple
       , baselineConfig
       , Parameters(..)
@@ -43,7 +41,6 @@ module Core.Program.Arguments
       , buildUsage
     ) where
 
-import Control.Monad (ap, join)
 import Control.Exception.Safe (Exception(displayException))
 import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
@@ -93,59 +90,14 @@ instance Pretty LongName where
     pretty (LongName name) = pretty name
 
 {-|
-A 'Program' with no user-supplied state to be threaded throughout the
-computation.
-
-The "Core.Program.Execute" framework makes your top-level application state
-available at the outer level of your process. While this is a feature that
-most substantial programs rely on, it is /not/ needed for many simple
-programs or when first starting out.
-
-This is effectively the unit type, but this alias is here to clearly signal
-a user data type is not a part of the program semantics.
-
--}
--- Bids are open for a better name for this
-data None = None
-    deriving (Show, Eq)
-
-isNone :: None -> Bool
-isNone _ = True
-
-{-|
 The setup for parsing the command-line arguments of your program. You build
 a @Config@ with 'simple' or 'complex', and pass it to
 'Core.Program.Context.configure'.
-
-This is a monad in that it allows various actions which will both declare
-the desired configuration of arugment parsing as well as initializing the
-"user data" to be made available as top-level application state.
 -}
-data Config x
-    = Trivial x
-    | Simple [Options] x
-    | Complex [Commands] x
-    deriving (Functor)
-
-{-|
-Strip the "user data" out of the Config monad.
--}
-unConfig :: Config x -> x
-unConfig config = case config of
-    Trivial s -> s
-    Simple _ s -> s
-    Complex _ s -> s
-
-instance Applicative Config where
-    pure = Trivial
-    (<*>) = ap
-
--- s for "user state"
-instance Monad Config where
-    return = Trivial
-    (Trivial s) >>= k = k s
-    (Simple options s) >>= k = k s
-    (Complex commands s) >>= k = k s
+data Config
+    = Trivial
+    | Simple [Options]
+    | Complex [Commands]
 
 --
 -- Those constructors are not exposed [and functions wrapping them are] partly
@@ -182,8 +134,8 @@ main = do
     'Core.Program.Execute.executeWith' context program
 @
 -}
-simple :: [Options] -> Config None
-simple options = Simple options None
+simple :: [Options] -> Config
+simple options = Simple options
 
 {-|
 Declare a complex configuration (implying a larger tool with various
@@ -192,8 +144,8 @@ applicable to all commands, a list of commands, and environment variables
 that will be honoured by the program. Each command can have a list of local
 options and arguments as needed.
 -}
-complex :: [Commands] -> Config None
-complex commands = Complex commands None
+complex :: [Commands] -> Config
+complex commands = Complex commands
 
 data Commands 
     = Global [Options]
@@ -257,7 +209,7 @@ data Parameters
         , environmentValuesFrom :: [(LongName, ParameterValue)]
     } deriving (Show, Eq)
 
-baselineConfig :: Config None
+baselineConfig :: Config
 baselineConfig =
     simple [
         Option "verbose" (Just 'v') [here|
@@ -354,13 +306,13 @@ testing convenience. This function is invoked when you call
 'Core.Program.Context.configure' or 'Core.Program.Execute.execute' (which
 calls 'configure' with a default @Config@ when initializing).
 -}
-parseCommandLine :: Config a -> [String] -> Either InvalidCommandLine Parameters
+parseCommandLine :: Config -> [String] -> Either InvalidCommandLine Parameters
 parseCommandLine config argv = case config of
-    Simple options _ -> do
+    Simple options -> do
         params <- extractor Nothing options argv
         return (Parameters Nothing params [])
 
-    Complex commands _ ->
+    Complex commands ->
       let
         globalOptions = extractGlobalOptions commands
         modes = extractValidModes commands
@@ -520,9 +472,9 @@ splitCommandLine args =
 -- path to an exit and return to user's command line.
 --
 
-buildUsage :: Config a -> Maybe LongName -> Doc ann
+buildUsage :: Config -> Maybe LongName -> Doc ann
 buildUsage config mode = case config of
-    Simple options _ ->
+    Simple options ->
       let
         (o,a) = partitionParameters options
       in
@@ -537,7 +489,7 @@ buildUsage config mode = case config of
             <> argumentsHeading a
             <> formatParameters a
 
-    Complex commands _ ->
+    Complex commands ->
       let
         globalOptions = extractGlobalOptions commands
         modes = extractValidModes commands

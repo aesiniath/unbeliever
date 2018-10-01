@@ -11,6 +11,8 @@
 module Core.Program.Context
     ( 
         Context(..)
+      , None(..)
+      , isNone
       , configure
       , Message(..)
       , Nature(..)
@@ -69,8 +71,29 @@ data Context x = Context {
     , terminalWidthFrom :: Int
     , outputChannelFrom :: TChan Rope
     , loggerChannelFrom :: TChan Message
-    , applicationConfigFrom :: Config x
+    , applicationDataFrom :: x
 }
+
+{-|
+A 'Program' with no user-supplied state to be threaded throughout the
+computation.
+
+The "Core.Program.Execute" framework makes your top-level application state
+available at the outer level of your process. While this is a feature that
+most substantial programs rely on, it is /not/ needed for many simple
+programs or when first starting out what will become a larger project.
+
+This is effectively the unit type, but this alias is here to clearly signal
+a user-data type is not a part of the program semantics.
+
+-}
+-- Bids are open for a better name for this
+data None = None
+    deriving (Show, Eq)
+
+isNone :: None -> Bool
+isNone _ = True
+
 
 data Message = Message TimeStamp Nature Rope (Maybe Rope)
 
@@ -147,8 +170,8 @@ administrative actions, including setting up output channels, parsing
 command-line arguments (according to the supplied configuration), and
 putting in place various semaphores for internal program communication.
 -}
-configure :: Config x -> IO (Context x)
-configure config = do
+configure :: x -> Config -> IO (Context x)
+configure user config = do
     start <- getCurrentTimeNanoseconds
 
     name <- getProgName
@@ -166,7 +189,7 @@ configure config = do
         , terminalWidthFrom = width
         , outputChannelFrom = output
         , loggerChannelFrom = logger
-        , applicationConfigFrom = config
+        , applicationDataFrom = user
     }
 
 --
@@ -192,7 +215,7 @@ getConsoleWidth = do
     called that in Core.Program.Arguments). And, returning here lets us set
     up the layout width to match (one off the) actual width of console.
 -}
-handleCommandLine :: Config x -> IO Parameters
+handleCommandLine :: Config -> IO Parameters
 handleCommandLine config = do
     argv <- getArgs
     let result = parseCommandLine config argv

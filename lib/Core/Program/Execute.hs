@@ -65,7 +65,7 @@ module Core.Program.Execute
       , sleep
         {-* Internals -}
       , Context
-      , None
+      , None(..)
     ) where
 
 import Control.Concurrent (yield, threadDelay)
@@ -160,7 +160,7 @@ calls 'configure' with an appropriate default when initializing.
 -}
 execute :: Program None a -> IO ()
 execute program = do
-    context <- configure baselineConfig
+    context <- configure None baselineConfig
     executeWith context program
 
 {-|
