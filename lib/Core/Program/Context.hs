@@ -29,16 +29,14 @@ import Control.Monad.Catch (MonadThrow(throwM))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader.Class (MonadReader(..))
 import Control.Monad.Trans.Reader (ReaderT(..))
-import Data.Text.Prettyprint.Doc (layoutPretty, defaultLayoutOptions, LayoutOptions(..), PageWidth(..))
+import Data.Text.Prettyprint.Doc (layoutPretty, LayoutOptions(..), PageWidth(..))
 import Data.Text.Prettyprint.Doc.Render.Text (renderIO)
-import System.Console.Terminal.Size (Window(..), size, hSize)
+import qualified System.Console.Terminal.Size as Terminal (Window(..), size)
 import System.Environment (getArgs, getProgName)
 import System.Exit (ExitCode(..), exitWith)
 
 import Core.System.Base
-import Core.Text.Bytes
 import Core.Text.Rope
-import Core.Text.Utilities
 import Core.Program.Arguments
 
 {-|
@@ -178,7 +176,7 @@ configure user config = do
     name <- getProgName
     parameters <- handleCommandLine config
     quit <- newEmptyMVar
-    width <- getConsoleWidth
+    columns <- getConsoleWidth
     output <- newTChanIO
     logger <- newTChanIO
 
@@ -187,7 +185,7 @@ configure user config = do
         , commandLineFrom = parameters
         , exitSemaphoreFrom = quit
         , startTimeFrom = start
-        , terminalWidthFrom = width
+        , terminalWidthFrom = columns
         , outputChannelFrom = output
         , loggerChannelFrom = logger
         , applicationDataFrom = user
@@ -199,11 +197,11 @@ configure user config = do
 --
 getConsoleWidth :: IO (Int)
 getConsoleWidth = do
-    window <- size
-    let width =  case window of
-            Just (Window _ w) -> w
+    window <- Terminal.size
+    let columns =  case window of
+            Just (Terminal.Window _ w) -> w
             Nothing -> 80
-    return width
+    return columns
 
 --
 -- | Process the command line options and arguments. If an invalid
@@ -224,8 +222,8 @@ handleCommandLine config = do
         Right parameters -> return parameters
         Left e -> case e of
             HelpRequest mode -> do
-                width <- getConsoleWidth
-                let options = LayoutOptions (AvailablePerLine (width - 1) 1.0)
+                columns <- getConsoleWidth
+                let options = LayoutOptions (AvailablePerLine (columns - 1) 1.0)
                 let usage = buildUsage config mode
                 renderIO stdout (layoutPretty options usage)
                 hFlush stdout

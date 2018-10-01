@@ -17,21 +17,16 @@ module Core.Text.Utilities (
     , underline
 ) where
 
-import qualified Data.ByteString.Char8 as C
-import qualified Data.FingerTree as F (FingerTree(..), empty
-    , singleton, (><), fromList, (<|), ViewL(..), viewl)
-import Data.Foldable (toList)
+import qualified Data.FingerTree as F ((<|), ViewL(..), viewl)
 import Data.List (foldl')
 import Data.Monoid ((<>))
 import qualified Data.Text as T
-import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.Builder as T
-import qualified Data.Text.Short as S (ShortText, length, uncons)
+import qualified Data.Text.Short as S (uncons)
 import Data.Text.Prettyprint.Doc (Doc, layoutPretty
-    , defaultLayoutOptions, reAnnotateS, LayoutOptions(..), PageWidth(..))
+    , reAnnotateS, LayoutOptions(..), PageWidth(..))
 import Data.Text.Prettyprint.Doc.Render.Terminal (renderStrict, AnsiStyle)
 
-import Core.Text.Bytes
 import Core.Text.Rope
 
 -- change AnsiStyle to a custom token type, perhaps Ansi, which
@@ -90,9 +85,9 @@ available width of the terminal.
 -- needed AllowAmbiguousTypes, but with all that finally it works:
 -- colourize no longer needs a in its type signature.
 render :: Render a => Int -> a -> Rope
-render width (thing :: a) =
+render columns (thing :: a) =
   let
-    options = LayoutOptions (AvailablePerLine (width - 1) 1.0)
+    options = LayoutOptions (AvailablePerLine (columns - 1) 1.0)
   in
     intoRope . renderStrict . reAnnotateS (colourize @a)
                 . layoutPretty options . intoDocA $ thing
@@ -137,12 +132,12 @@ wrapHelper margin (x:xs) =
 wrapLine :: Int -> (Int, T.Builder) -> T.Text -> (Int, T.Builder)
 wrapLine margin (pos,builder) word =
   let
-    width = T.length word
-    width' = pos + width + 1
+    wide = T.length word
+    wide' = pos + wide + 1
   in
-    if width' > margin
-        then (width , builder <> "\n" <> T.fromText word)
-        else (width', builder <> " "  <> T.fromText word)
+    if wide' > margin
+        then (wide , builder <> "\n" <> T.fromText word)
+        else (wide', builder <> " "  <> T.fromText word)
 
 
 underline :: Char -> Rope -> Rope

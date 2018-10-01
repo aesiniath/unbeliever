@@ -3,7 +3,6 @@
 
 module CheckRopeBehaviour where
 
-import qualified Data.ByteString.Char8 as C
 import qualified Data.FingerTree as F
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T

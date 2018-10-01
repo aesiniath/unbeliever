@@ -11,5 +11,5 @@ module Core.System.External
     , getCurrentTimeNanoseconds
     ) where
 
-import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
+import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
 

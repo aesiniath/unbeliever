@@ -6,7 +6,7 @@ module CheckProgramMonad where
 import Test.Hspec
 
 import Core.Program.Arguments
-import Core.Program.Context
+import Core.Program.Execute
 
 options =
     [ Option "all" (Just 'a') "Good will to everyone"

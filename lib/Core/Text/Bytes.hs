@@ -2,6 +2,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}        -- FIXME
+{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}   -- FIXME
 
 module Core.Text.Bytes
     ( Bytes(..)
@@ -9,16 +11,8 @@ module Core.Text.Bytes
     , intoBytes
     ) where
 
-import qualified Data.ByteString as S (ByteString, unpack, empty, append)
-import qualified Data.ByteString.Char8 as C (elem)
-import qualified Data.ByteString.Lazy as L (ByteString, unpack, fromStrict, toStrict)
-import Data.String (IsString(..))
-import qualified Data.Text as T (Text, pack, unpack)
-import qualified Data.Text.Encoding as T (decodeUtf8, encodeUtf8)
-import qualified Data.Text.Lazy as U (Text, toStrict, unpack)
-import qualified Data.Text.Lazy.Encoding as U (decodeUtf8, encodeUtf8)
-
---import qualified Data.Text.IO as T
+import qualified Data.ByteString as S (ByteString)
+import qualified Data.ByteString.Lazy as L (ByteString, fromStrict, toStrict)
 import Data.Hashable (Hashable)
 import Data.Word (Word8)
 import GHC.Generics (Generic)

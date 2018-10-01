@@ -56,9 +56,7 @@ import Text.Heredoc
 import System.Environment (getProgName)
 
 import Core.System.Base
-import Core.Text.Bytes
 import Core.Text.Rope
-import Core.Text.Utilities
 
 {-|
 Single letter "short" options (omitting the "@-@" prefix, obviously).
@@ -95,8 +93,7 @@ a @Config@ with 'simple' or 'complex', and pass it to
 'Core.Program.Context.configure'.
 -}
 data Config
-    = Trivial
-    | Simple [Options]
+    = Simple [Options]
     | Complex [Commands]
 
 --
@@ -288,10 +285,6 @@ See --help for details.
 programName :: String
 programName = unsafePerformIO getProgName
 
-trim :: Int -> String -> String
-trim count input = unlines . map (drop count) . lines $ input
-
-
 {-|
 Given a program configuration schema and the command-line arguments,
 process them into key/value pairs in a Parameters object.
@@ -379,7 +372,7 @@ parseRequiredArguments
     :: [LongName]
     -> [String]
     -> Either InvalidCommandLine [(LongName,ParameterValue)]
-parseRequiredArguments needed args = iter needed args
+parseRequiredArguments needed argv = iter needed argv
   where
     iter :: [LongName] -> [String] -> Either InvalidCommandLine [(LongName,ParameterValue)]
 

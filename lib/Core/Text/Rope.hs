@@ -5,6 +5,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 {-|
 If you're accustomed to working with text in almost any other programming
@@ -85,24 +86,24 @@ module Core.Text.Rope
     ) where
 
 import Control.DeepSeq (NFData(..))
-import qualified Data.ByteString as B (ByteString, unpack, empty, append)
-import qualified Data.ByteString.Builder as B (Builder, toLazyByteString
+import qualified Data.ByteString as B (ByteString)
+import qualified Data.ByteString.Builder as B (toLazyByteString
     , hPutBuilder)
 import qualified Data.ByteString.Lazy as L (toStrict)
 import Data.String (IsString(..))
 import qualified Data.FingerTree as F (FingerTree, Measured(..), empty
     , singleton, (><), (<|), (|>))
 import Data.Foldable (foldr, foldr', foldMap, toList, any)
-import qualified Data.Text as T (Text, empty, append)
+import qualified Data.Text as T (Text)
 import qualified Data.Text.Lazy as U (Text, fromChunks, foldrChunks
     , toStrict)
 import qualified Data.Text.Lazy.Builder as U (Builder, toLazyText
     , fromText)
 import qualified Data.Text.Short as S (ShortText, length, any
-    , fromText, toText, fromByteString, toByteString, pack, unpack
-    , concat, append, empty, toBuilder)
+    , fromText, toText, fromByteString, pack, unpack
+    , append, empty, toBuilder)
 import qualified Data.Text.Short.Unsafe as S (fromByteStringUnsafe)
-import Data.Hashable (Hashable, hashWithSalt, hashUsing)
+import Data.Hashable (Hashable, hashWithSalt)
 import GHC.Generics (Generic)
 import System.IO (Handle)
 
@@ -219,7 +220,7 @@ instance Hashable Rope where
     hashWithSalt salt (Rope x) = foldr f salt x
       where
         f :: S.ShortText -> Int -> Int
-        f piece salt = hashWithSalt salt piece
+        f piece num = hashWithSalt num piece
 
 {-|
 Machinery to interpret a type as containing valid Unicode that can be
