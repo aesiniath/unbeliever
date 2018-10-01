@@ -60,7 +60,7 @@ module Core.Program.Execute
       , getApplicationState
       , setApplicationState
       , retrieve
-      , change
+      , update
         {-* Useful actions -}
       , write
       , writeS
@@ -278,6 +278,10 @@ getProgramName = do
 Get the user supplied application state as originally supplied to
 'configure' and modified subsequntly by replacement with
 'setApplicationState'.
+
+@
+    state <- getApplicationState
+@
 -}
 getApplicationState :: Program x x
 getApplicationState = do
@@ -287,6 +291,11 @@ getApplicationState = do
 
 {-|
 Update the user supplied top-level application state.
+
+@
+    let state' = state { answer = 42 }
+    setApplicationState state'
+@
 -}
 setApplicationState :: x -> Program x ()
 setApplicationState user = do
@@ -297,11 +306,15 @@ setApplicationState user = do
     }
     liftIO (modifyMVar_ v (\_ -> pure context'))
 
-{-| Alias for 'getApplicationState' -}
+{-|
+Alias for 'getApplicationState'.
+-}
 retrieve = getApplicationState
 
-{-| Alias for 'setApplicationState' -}
-change = setApplicationState
+{-|
+Alias for 'setApplicationState'.
+-}
+update = setApplicationState
 
 {-|
 Write the supplied text to @stdout@.

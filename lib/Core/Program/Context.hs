@@ -127,17 +127,17 @@ such object at the top of your application.
 
 A 'Program' has a user-supplied application state and a return type.
 
+The first type variable, @x@, is the your application's state. This is an
+object that will be threaded through the computation and made available to
+your code in the 'Program' monad. While this is a common requirement of the
+outer code layer in large programs, it is often /not/ necessary in small
+programs or when starting new projects. You can mark that there is no
+top-level application state required using 'None' and easily change it
+later if your needs evolve.
+
 The return type, @a@, is usually unit as this effectively being called
 directly from @main@ and Haskell programs have type @'IO' ()@. That is,
 they don't return anything; I/O having already happened as side effects.
-
-The first type variable, @x@, is the your application's state. This is an
-object that will be threaded through the computation and made available to
-your code in the 'Program' monad. While this is a common requirement of
-outer layer code in large programs, it is often /not/ necessary in small
-programs or when starting new projects. You can mark that there is no
-top-level applicaiton state required using 'None' and easily change it
-later if your needs evolve.
 
 /Programs in separate modules/
 
@@ -169,6 +169,7 @@ Initialize the programs's execution context. This takes care of various
 administrative actions, including setting up output channels, parsing
 command-line arguments (according to the supplied configuration), and
 putting in place various semaphores for internal program communication.
+See "Core.Program.Arguments" for details.
 -}
 configure :: x -> Config -> IO (Context x)
 configure user config = do
