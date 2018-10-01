@@ -5,6 +5,7 @@ import Test.Hspec
 import CheckRopeBehaviour
 import CheckJsonWrapper
 import CheckArgumentsParsing
+import CheckProgramMonad
 
 main :: IO ()
 main = do
@@ -16,3 +17,4 @@ suite = do
     checkRopeBehaviour
     checkJsonWrapper
     checkArgumentsParsing
+    checkProgramMonad

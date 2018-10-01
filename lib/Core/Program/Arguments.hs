@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE StrictData #-}
 {-# OPTIONS_HADDOCK prune #-}
 
@@ -94,7 +95,8 @@ a @Config@ with 'simple' or 'complex', and pass it to
 'Core.Program.Context.configure'.
 -}
 data Config
-    = Simple [Options]
+    = Trivial
+    | Simple [Options]
     | Complex [Commands]
 
 --

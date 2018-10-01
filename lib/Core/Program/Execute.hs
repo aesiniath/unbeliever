@@ -54,9 +54,13 @@ module Core.Program.Execute
         {-* Exiting a program -}
       , terminate
         {-* Accessing program context -}
-      , setProgramName
       , getProgramName
+      , setProgramName
       , getCommandLine
+      , getApplicationState
+      , setApplicationState
+      , retrieve
+      , update
         {-* Useful actions -}
       , write
       , writeS
@@ -65,6 +69,8 @@ module Core.Program.Execute
       , sleep
         {-* Internals -}
       , Context
+      , None(..)
+      , isNone
     ) where
 
 import Control.Concurrent (yield, threadDelay)
@@ -101,17 +107,17 @@ import Core.Program.Logging
 import Core.Program.Signal
 import Core.Program.Arguments
 
-unwrapProgram :: Program a -> ReaderT (MVar Context) IO a
+unwrapProgram :: Program x a -> ReaderT (MVar (Context x)) IO a
 unwrapProgram (Program reader) = reader
 
-runProgram :: Context -> Program a -> IO a
+runProgram :: Context x -> Program x a -> IO a
 runProgram context (Program reader) = do
     v <- newMVar context
     runReaderT reader v
 
 
 -- execute actual "main"
-executeAction :: Context -> Program a -> IO ()
+executeAction :: Context x -> Program x a -> IO ()
 executeAction context program =
   let
     quit = exitSemaphoreFrom context
@@ -126,7 +132,7 @@ executeAction context program =
 -- final entry is the catch-all; the first is what we get from the
 -- terminate action.
 --
-escapeHandlers :: Context -> [Handler IO ()]
+escapeHandlers :: Context c -> [Handler IO ()]
 escapeHandlers context = [
     Handler (\ (exit :: ExitCode) -> done exit)
   , Handler (\ (e :: AsyncCancelled) -> pass)
@@ -157,16 +163,16 @@ Embelish a program with useful behaviours. See module header
 "Core.Program.Execute" for a detailed description. Internally this function
 calls 'configure' with an appropriate default when initializing.
 -}
-execute :: Program a -> IO ()
+execute :: Program None a -> IO ()
 execute program = do
-    context <- configure baselineConfig
+    context <- configure None baselineConfig
     executeWith context program
 
 {-|
 Embelish a program with useful behaviours, supplying a configuration
 for command-line options & argument parsing.
 -}
-executeWith :: Context -> Program a -> IO ()
+executeWith :: Context x -> Program x a -> IO ()
 executeWith context program = do
     -- command line +RTS -Nn -RTS value
     when (numCapabilities == 1) (getNumProcessors >>= setNumCapabilities)
@@ -235,7 +241,7 @@ processDebugMessages logger = do
 Safely exit the program with the supplied exit code. Current output and
 debug queues will be flushed, and then the process will terminate.
 -}
-terminate :: Int -> Program ()
+terminate :: Int -> Program x ()
 terminate code =
   let
     exit = case code of
@@ -249,7 +255,7 @@ terminate code =
 Override the program name used for logging, etc. At least, that was the
 idea. Nothing makes use of this at the moment. @:/@
 -}
-setProgramName :: Rope -> Program ()
+setProgramName :: Rope -> Program x ()
 setProgramName name = do
     v <- ask
     context <- liftIO (readMVar v)
@@ -262,11 +268,53 @@ setProgramName name = do
 Get the program name as invoked from the command-line (or as overridden by
 'setProgramName').
 -}
-getProgramName :: Program Rope
+getProgramName :: Program x Rope
 getProgramName = do
     v <- ask
     context <- liftIO (readMVar v)
     return (programNameFrom context)
+
+{-|
+Get the user supplied application state as originally supplied to
+'configure' and modified subsequntly by replacement with
+'setApplicationState'.
+
+@
+    state <- getApplicationState
+@
+-}
+getApplicationState :: Program x x
+getApplicationState = do
+    v <- ask
+    context <- liftIO (readMVar v)
+    return (applicationDataFrom context)
+
+{-|
+Update the user supplied top-level application state.
+
+@
+    let state' = state { answer = 42 }
+    setApplicationState state'
+@
+-}
+setApplicationState :: x -> Program x ()
+setApplicationState user = do
+    v <- ask
+    context <- liftIO (readMVar v)
+    let context' = context {
+        applicationDataFrom = user
+    }
+    liftIO (modifyMVar_ v (\_ -> pure context'))
+
+{-|
+Alias for 'getApplicationState'.
+-}
+retrieve = getApplicationState
+
+{-|
+Alias for 'setApplicationState'.
+-}
+update = setApplicationState
 
 {-|
 Write the supplied text to @stdout@.
@@ -277,7 +325,7 @@ This is for normal program output.
      'write' "Beginning now"
 @
 -}
-write :: Rope -> Program ()
+write :: Rope -> Program x ()
 write text = do
     v <- ask
     liftIO $ do
@@ -292,7 +340,7 @@ Call 'show' on the supplied argument and write the resultant text to
 
 (This is the equivalent of 'print' from __base__)
 -}
-writeS :: Show a => a -> Program ()
+writeS :: Show a => a -> Program x ()
 writeS = write . intoRope . show
 
 {-|
@@ -300,7 +348,7 @@ Pretty print the supplied argument and write the resultant text to
 @stdout@. This will pass the detected terminal width to the 'render'
 function, resulting in appopriate line wrapping when rendering your value.
 -}
-writeR :: Render a => a -> Program ()
+writeR :: Render a => a -> Program x ()
 writeR thing = do
     v <- ask
     liftIO $ do
@@ -316,7 +364,7 @@ writeR thing = do
 Write the supplied bytes to the given handle
 (in contrast to 'write' we don't output a trailing newline)
 -}
-output :: Handle -> Bytes -> Program ()
+output :: Handle -> Bytes -> Program x ()
 output h b = liftIO $ do
         B.hPut h (fromBytes b)
 
@@ -327,7 +375,7 @@ Fork a thread.
 -- TODO change Async to a wrapper called Thread
 -- TODO documentation about launching threads
 --
-fork :: Program a -> Program (Async a)
+fork :: Program x a -> Program x (Async a)
 fork program = do
     v <- ask
     liftIO $ do
@@ -350,7 +398,7 @@ example, to delay a second and a half, do:
 --
 -- FIXME is this the right type, given we want to avoid type default warnings?
 --
-sleep :: Rational -> Program () 
+sleep :: Rational -> Program x ()
 sleep seconds =
   let
     us = floor (toRational (seconds * 1e6))
@@ -361,7 +409,7 @@ sleep seconds =
 Retrieve the values of parameters parsed from options and arguments
 supplied by the user on the command-line.
 -}
-getCommandLine :: Program (Parameters)
+getCommandLine :: Program x (Parameters)
 getCommandLine = do
     v <- ask
     liftIO $ do

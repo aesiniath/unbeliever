@@ -11,6 +11,8 @@
 module Core.Program.Context
     ( 
         Context(..)
+      , None(..)
+      , isNone
       , configure
       , Message(..)
       , Nature(..)
@@ -61,7 +63,7 @@ Internal context for a running program. You access this via actions in the
 -- bare fieldName because so often you have want to be able to use
 -- that field name as a local variable name.
 --
-data Context = Context {
+data Context x = Context {
       programNameFrom :: Rope
     , commandLineFrom :: Parameters
     , exitSemaphoreFrom :: MVar ExitCode
@@ -69,14 +71,36 @@ data Context = Context {
     , terminalWidthFrom :: Int
     , outputChannelFrom :: TChan Rope
     , loggerChannelFrom :: TChan Message
+    , applicationDataFrom :: x
 }
+
+{-|
+A 'Program' with no user-supplied state to be threaded throughout the
+computation.
+
+The "Core.Program.Execute" framework makes your top-level application state
+available at the outer level of your process. While this is a feature that
+most substantial programs rely on, it is /not/ needed for many simple
+tasks or when first starting out what will become a larger project.
+
+This is effectively the unit type, but this alias is here to clearly signal
+a user-data type is not a part of the program semantics.
+
+-}
+-- Bids are open for a better name for this
+data None = None
+    deriving (Show, Eq)
+
+isNone :: None -> Bool
+isNone _ = True
+
 
 data Message = Message TimeStamp Nature Rope (Maybe Rope)
 
 data Nature = Output | Event | Debug
 
 {-|
-The type of a top-level Prgoram.
+The type of a top-level program.
 
 You would use this by writing:
 
@@ -92,12 +116,30 @@ main = 'Core.Program.Execute.execute' program
 and defining a program that is the top level of your application:
 
 @
-program :: 'Program' ()
+program :: 'Program' 'None' ()
 @
 
 Such actions are combinable; you can sequence them (using bind in
 do-notation) or run them in parallel, but basically you should need one
 such object at the top of your application.
+
+/Type variables/
+
+A 'Program' has a user-supplied application state and a return type.
+
+The first type variable, @x@, is the your application's state. This is an
+object that will be threaded through the computation and made available to
+your code in the 'Program' monad. While this is a common requirement of the
+outer code layer in large programs, it is often /not/ necessary in small
+programs or when starting new projects. You can mark that there is no
+top-level application state required using 'None' and easily change it
+later if your needs evolve.
+
+The return type, @a@, is usually unit as this effectively being called
+directly from @main@ and Haskell programs have type @'IO' ()@. That is,
+they don't return anything; I/O having already happened as side effects.
+
+/Programs in separate modules/
 
 One of the quirks of Haskell is that it is difficult to refer to code in
 the Main module when you've got a number of programs kicking around in a
@@ -105,8 +147,8 @@ project each with a @main@ function. So you're best off putting your
 top-level 'Program' actions in a separate modules so you can refer to them
 from test suites and example snippets.
 -}
-newtype Program a = Program (ReaderT (MVar Context) IO a)
-    deriving (Functor, Applicative, Monad, MonadIO, MonadReader (MVar Context))
+newtype Program x a = Program (ReaderT (MVar (Context x)) IO a)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadReader (MVar (Context x)))
 
 --
 -- This is complicated. The **safe-exceptions** library exports a
@@ -118,34 +160,19 @@ newtype Program a = Program (ReaderT (MVar Context) IO a)
 -- asynchronous exceptions); elsewhere we will use and wrap/export
 -- **safe-exceptions**'s variants of the functions.
 --
-instance MonadThrow Program where
+instance MonadThrow (Program x) where
     throwM = liftIO . Safe.throw
 
-
-{-
-    FIXME
-    Change to global quit semaphore, reachable anywhere?
--}
-
-instance Semigroup Context where
-    (<>) one two = Context {
-          programNameFrom = (programNameFrom two)
-        , commandLineFrom = (commandLineFrom one)
-        , exitSemaphoreFrom = (exitSemaphoreFrom one)
-        , startTimeFrom = startTimeFrom one
-        , terminalWidthFrom = terminalWidthFrom two
-        , outputChannelFrom = outputChannelFrom one
-        , loggerChannelFrom = loggerChannelFrom one
-        }
 
 {-|
 Initialize the programs's execution context. This takes care of various
 administrative actions, including setting up output channels, parsing
 command-line arguments (according to the supplied configuration), and
 putting in place various semaphores for internal program communication.
+See "Core.Program.Arguments" for details.
 -}
-configure :: Config -> IO Context
-configure config = do
+configure :: x -> Config -> IO (Context x)
+configure user config = do
     start <- getCurrentTimeNanoseconds
 
     name <- getProgName
@@ -163,6 +190,7 @@ configure config = do
         , terminalWidthFrom = width
         , outputChannelFrom = output
         , loggerChannelFrom = logger
+        , applicationDataFrom = user
     }
 
 --
