@@ -244,22 +244,22 @@ Several of the 'fromRope' implementations are expensive and involve a lot
 of intermiate allocation and copying. If you're ultimately writing to a
 handle prefer 'hOutput' which will write directly to the output buffer.
 -}
-class Textual a where
+class Textual α where
     {-|
 Convert a Rope into another text-like type.
     -}
-    fromRope :: Rope -> a
+    fromRope :: Rope -> α
     {-|
 Take another text-like type and convert it to a Rope.
     -}
-    intoRope :: a -> Rope
+    intoRope :: α -> Rope
     {-|
 Append some text to this Rope. The default implementation is basically a
 convenience wrapper around calling 'intoRope' and 'mappend'ing it to your
 text (which will work just fine, but for some types more efficient
 implementations are possible)t.
     -}
-    append :: a -> Rope -> Rope
+    append :: α -> Rope -> Rope
     append thing text = text <> intoRope thing
 
 instance Textual (F.FingerTree Width S.ShortText) where

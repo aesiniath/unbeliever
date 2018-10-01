@@ -44,7 +44,7 @@ instance MonadLog Text IO where
         hPutStrLn stdout line
 -}
 
-putMessage :: Context c -> Message -> IO ()
+putMessage :: Context τ -> Message -> IO ()
 putMessage context message@(Message now nature text potentialValue) = do
     let start = startTimeFrom context
     let width = terminalWidthFrom context
@@ -124,7 +124,7 @@ in ordinary debugging).
 
 Messages sent to syslog will be logged at @Info@ level severity.
 -}
-event :: Rope -> Program c ()
+event :: Rope -> Program τ ()
 event text = do
     v <- ask
     liftIO $ do
@@ -152,7 +152,7 @@ assuming these actions executed about three seconds after program start.
 
 Messages sent to syslog will be logged at @Debug@ level severity.
 -}
-debug :: Rope -> Rope -> Program c ()
+debug :: Rope -> Rope -> Program τ ()
 debug label value = do
     v <- ask
     liftIO $ do
@@ -164,10 +164,10 @@ debug label value = do
 Convenience for the common case of needing to inspect the value
 of a general variable which has a Show instance
 -}
-debugS :: Show a => Rope -> a -> Program c ()
+debugS :: Show α => Rope -> α -> Program τ ()
 debugS label value = debug label (intoRope (show value))
 
-debugR :: Render a => Rope -> a -> Program c ()
+debugR :: Render α => Rope -> α -> Program τ ()
 debugR label thing = do
     v <- ask
     liftIO $ do

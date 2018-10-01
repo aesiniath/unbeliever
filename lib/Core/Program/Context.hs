@@ -41,7 +41,10 @@ import Core.Program.Arguments
 
 {-|
 Internal context for a running program. You access this via actions in the
-'Program' monad.
+'Program' monad. The principal item here is the user-supplied top-level
+application data of type @τ@ which can be retrieved with
+'Core.Program.Execute.getApplicationState' and updated with
+'Core.Program.Execute.setApplicationState'.
 -}
 --
 -- The fieldNameFrom idiom is an experiment. Looks very strange,
@@ -61,7 +64,7 @@ Internal context for a running program. You access this via actions in the
 -- bare fieldName because so often you have want to be able to use
 -- that field name as a local variable name.
 --
-data Context x = Context {
+data Context τ = Context {
       programNameFrom :: Rope
     , commandLineFrom :: Parameters
     , exitSemaphoreFrom :: MVar ExitCode
@@ -69,7 +72,7 @@ data Context x = Context {
     , terminalWidthFrom :: Int
     , outputChannelFrom :: TChan Rope
     , loggerChannelFrom :: TChan Message
-    , applicationDataFrom :: x
+    , applicationDataFrom :: τ
 }
 
 {-|
@@ -125,7 +128,7 @@ such object at the top of your application.
 
 A 'Program' has a user-supplied application state and a return type.
 
-The first type variable, @x@, is the your application's state. This is an
+The first type variable, @τ@, is your application's state. This is an
 object that will be threaded through the computation and made available to
 your code in the 'Program' monad. While this is a common requirement of the
 outer code layer in large programs, it is often /not/ necessary in small
@@ -133,7 +136,7 @@ programs or when starting new projects. You can mark that there is no
 top-level application state required using 'None' and easily change it
 later if your needs evolve.
 
-The return type, @a@, is usually unit as this effectively being called
+The return type, @α@, is usually unit as this effectively being called
 directly from @main@ and Haskell programs have type @'IO' ()@. That is,
 they don't return anything; I/O having already happened as side effects.
 
@@ -145,8 +148,8 @@ project each with a @main@ function. So you're best off putting your
 top-level 'Program' actions in a separate modules so you can refer to them
 from test suites and example snippets.
 -}
-newtype Program x a = Program (ReaderT (MVar (Context x)) IO a)
-    deriving (Functor, Applicative, Monad, MonadIO, MonadReader (MVar (Context x)))
+newtype Program τ α = Program (ReaderT (MVar (Context τ)) IO α)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadReader (MVar (Context τ)))
 
 --
 -- This is complicated. The **safe-exceptions** library exports a
@@ -158,7 +161,7 @@ newtype Program x a = Program (ReaderT (MVar (Context x)) IO a)
 -- asynchronous exceptions); elsewhere we will use and wrap/export
 -- **safe-exceptions**'s variants of the functions.
 --
-instance MonadThrow (Program x) where
+instance MonadThrow (Program τ) where
     throwM = liftIO . Safe.throw
 
 
@@ -169,7 +172,7 @@ command-line arguments (according to the supplied configuration), and
 putting in place various semaphores for internal program communication.
 See "Core.Program.Arguments" for details.
 -}
-configure :: x -> Config -> IO (Context x)
+configure :: τ -> Config -> IO (Context τ)
 configure user config = do
     start <- getCurrentTimeNanoseconds
 

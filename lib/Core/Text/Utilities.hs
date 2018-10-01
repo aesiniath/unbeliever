@@ -41,20 +41,20 @@ Use 'render' to build text object for later use or "Core.Program"'s
 'Core.Program.Execute.writeR' if you're writing directly to console now.
 -}
 
-class Render a where
+class Render α where
     {-|
 Which type are the annotations of your Doc going to be expressed in?
     -}
-    type Token a :: *
+    type Token α :: *
     {-|
 Convert semantic tokens to specific ANSI escape tokens
     -}
-    colourize :: Token a -> AnsiStyle
+    colourize :: Token α -> AnsiStyle
     {-|
 Arrange your type as a 'Doc' @ann@, annotated with your semantic
 tokens.
     -}
-    intoDocA :: a -> Doc (Token a)
+    intoDocA :: α -> Doc (Token α)
 
 {-
 instance Render Rope where
@@ -80,16 +80,16 @@ However, the /better/ thing to do is to use 'Core.Program.Execute.writeR'
 instead, which is able to pretty print the document text respecting the
 available width of the terminal.
 -}
--- the annotation (_ :: a) of the parameter is to bring type a into scope
+-- the annotation (_ :: α) of the parameter is to bring type a into scope
 -- at term level so that it can be used by TypedApplications. Which then
 -- needed AllowAmbiguousTypes, but with all that finally it works:
 -- colourize no longer needs a in its type signature.
-render :: Render a => Int -> a -> Rope
-render columns (thing :: a) =
+render :: Render α => Int -> α -> Rope
+render columns (thing :: α) =
   let
     options = LayoutOptions (AvailablePerLine (columns - 1) 1.0)
   in
-    intoRope . renderStrict . reAnnotateS (colourize @a)
+    intoRope . renderStrict . reAnnotateS (colourize @α)
                 . layoutPretty options . intoDocA $ thing
 
 --

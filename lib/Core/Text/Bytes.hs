@@ -27,9 +27,9 @@ data Bytes
 Conversion to and from various types containing binary data into our
 convenience Bytes type.
 -}
-class Binary a where
-    fromBytes :: Bytes -> a
-    intoBytes :: a -> Bytes
+class Binary α where
+    fromBytes :: Bytes -> α
+    intoBytes :: α -> Bytes
 
 instance Binary S.ByteString where
     fromBytes (StrictBytes b') = b'

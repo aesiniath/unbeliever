@@ -41,9 +41,10 @@ your program will exit.
 /Customizing the execution context/
 
 The 'execute' function will run your 'Program' in a basic 'Context'
-initialized with appropriate defaults. While some settings can be changed
-at runtime, if you need to replace (for example) the logging subsystem you
-can initialize your program using 'configure' and then run 'executeWith'.
+initialized with appropriate defaults. Most settings can be changed at
+runtime, but to specify the allowed command-line options and expected
+arguments you can initialize your program using 'configure' and then run
+with 'executeWith'.
 -}
 module Core.Program.Execute
     (   Program ()
@@ -107,17 +108,17 @@ import Core.Program.Logging
 import Core.Program.Signal
 import Core.Program.Arguments
 
-unwrapProgram :: Program x a -> ReaderT (MVar (Context x)) IO a
+unwrapProgram :: Program τ α -> ReaderT (MVar (Context τ)) IO α
 unwrapProgram (Program reader) = reader
 
-runProgram :: Context x -> Program x a -> IO a
+runProgram :: Context τ -> Program τ a -> IO a
 runProgram context (Program reader) = do
     v <- newMVar context
     runReaderT reader v
 
 
 -- execute actual "main"
-executeAction :: Context x -> Program x a -> IO ()
+executeAction :: Context τ -> Program τ α -> IO ()
 executeAction context program =
   let
     quit = exitSemaphoreFrom context
@@ -163,7 +164,7 @@ Embelish a program with useful behaviours. See module header
 "Core.Program.Execute" for a detailed description. Internally this function
 calls 'configure' with an appropriate default when initializing.
 -}
-execute :: Program None a -> IO ()
+execute :: Program None α -> IO ()
 execute program = do
     context <- configure None baselineConfig
     executeWith context program
@@ -172,7 +173,7 @@ execute program = do
 Embelish a program with useful behaviours, supplying a configuration
 for command-line options & argument parsing.
 -}
-executeWith :: Context x -> Program x a -> IO ()
+executeWith :: Context τ -> Program τ α -> IO ()
 executeWith context program = do
     -- command line +RTS -Nn -RTS value
     when (numCapabilities == 1) (getNumProcessors >>= setNumCapabilities)
@@ -241,7 +242,7 @@ processDebugMessages logger = do
 Safely exit the program with the supplied exit code. Current output and
 debug queues will be flushed, and then the process will terminate.
 -}
-terminate :: Int -> Program x ()
+terminate :: Int -> Program τ ()
 terminate code =
   let
     exit = case code of
@@ -255,7 +256,7 @@ terminate code =
 Override the program name used for logging, etc. At least, that was the
 idea. Nothing makes use of this at the moment. @:/@
 -}
-setProgramName :: Rope -> Program x ()
+setProgramName :: Rope -> Program τ ()
 setProgramName name = do
     v <- ask
     context <- liftIO (readMVar v)
@@ -268,7 +269,7 @@ setProgramName name = do
 Get the program name as invoked from the command-line (or as overridden by
 'setProgramName').
 -}
-getProgramName :: Program x Rope
+getProgramName :: Program τ Rope
 getProgramName = do
     v <- ask
     context <- liftIO (readMVar v)
@@ -283,7 +284,7 @@ Get the user supplied application state as originally supplied to
     state <- getApplicationState
 @
 -}
-getApplicationState :: Program x x
+getApplicationState :: Program τ τ
 getApplicationState = do
     v <- ask
     context <- liftIO (readMVar v)
@@ -297,7 +298,7 @@ Update the user supplied top-level application state.
     setApplicationState state'
 @
 -}
-setApplicationState :: x -> Program x ()
+setApplicationState :: τ -> Program τ ()
 setApplicationState user = do
     v <- ask
     context <- liftIO (readMVar v)
@@ -325,7 +326,7 @@ This is for normal program output.
      'write' "Beginning now"
 @
 -}
-write :: Rope -> Program x ()
+write :: Rope -> Program τ ()
 write text = do
     v <- ask
     liftIO $ do
@@ -340,7 +341,7 @@ Call 'show' on the supplied argument and write the resultant text to
 
 (This is the equivalent of 'print' from __base__)
 -}
-writeS :: Show a => a -> Program x ()
+writeS :: Show α => α -> Program τ ()
 writeS = write . intoRope . show
 
 {-|
@@ -348,7 +349,7 @@ Pretty print the supplied argument and write the resultant text to
 @stdout@. This will pass the detected terminal width to the 'render'
 function, resulting in appopriate line wrapping when rendering your value.
 -}
-writeR :: Render a => a -> Program x ()
+writeR :: Render α => α -> Program τ ()
 writeR thing = do
     v <- ask
     liftIO $ do
@@ -364,7 +365,7 @@ writeR thing = do
 Write the supplied bytes to the given handle
 (in contrast to 'write' we don't output a trailing newline)
 -}
-output :: Handle -> Bytes -> Program x ()
+output :: Handle -> Bytes -> Program τ ()
 output h b = liftIO $ do
         B.hPut h (fromBytes b)
 
@@ -375,7 +376,7 @@ Fork a thread.
 -- TODO change Async to a wrapper called Thread
 -- TODO documentation about launching threads
 --
-fork :: Program x a -> Program x (Async a)
+fork :: Program τ α -> Program τ (Async α)
 fork program = do
     v <- ask
     liftIO $ do
@@ -398,7 +399,7 @@ example, to delay a second and a half, do:
 --
 -- FIXME is this the right type, given we want to avoid type default warnings?
 --
-sleep :: Rational -> Program x ()
+sleep :: Rational -> Program τ ()
 sleep seconds =
   let
     us = floor (toRational (seconds * 1e6))
@@ -409,7 +410,7 @@ sleep seconds =
 Retrieve the values of parameters parsed from options and arguments
 supplied by the user on the command-line.
 -}
-getCommandLine :: Program x (Parameters)
+getCommandLine :: Program τ (Parameters)
 getCommandLine = do
     v <- ask
     liftIO $ do
