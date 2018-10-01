@@ -25,7 +25,7 @@ program = do
 
 main :: IO ()
 main = do
-    context <- configure (complex
+    context <- configure None (complex
         [ Global
             [ Option "verbose" (Just 'v') [here|
                 Turn on event level logging to console.

@@ -162,6 +162,12 @@ words they are joined with a hyphen. Examples:
         , 'Argument' \"username\" "The user to delete from the system."
         ]
 @
+
+Option takes a long name for the option, a short single character
+abbreviation if offered for convenience, and a description for use when
+displaying usage via @--help@. Mandatory argument takes the long name used
+to identify the parsed value from the command-line, and likewise a
+description for @--help@ output.
 -}
 data Options
     = Option LongName (Maybe ShortName) Description
@@ -185,7 +191,6 @@ Environment variables are only available in 'complex' configurations.
 data Variables
     = Variable LongName Description
 
-
 data ParameterValue
     = Value String
     | Empty
@@ -197,7 +202,41 @@ instance IsString ParameterValue where
 {-|
 Result of having processed the command-line and the environment. You get at
 the parsed command-line options and arguments by calling
-'Core.Program.Execute.getCommandLine' within a 'Program' block.
+'Core.Program.Execute.getCommandLine' within a
+'Core.Program.Execute.Program' block.
+
+Each option and mandatory argument parsed from the command-line is either
+standalone (in the case of switches and flags, such as @--quiet@) or has an
+associated value. In the case of options the key is the name of the option,
+and for arguments it is the implicit name specified when setting up the
+program. For example, in:
+
+@
+$ ./submit --username=gbmh GraceHopper_Resume.pdf
+@
+
+the option has parameter name \"@username@\" and value \"@gmbh@\"; the
+argument has parameter name \"filename\" (assuming that is what was
+declared in the 'Argument' entry) and a value being the Admiral's CV. This
+would be returned as:
+
+@
+Parameters Nothing [("username","gbmh"), ("filename","GraceHopper_Resume.pdf")] []
+@
+
+The case of a complex command such as /git/ or /stack/, you get the specific
+mode chosen by the user returned in the first position:
+
+@
+$ missiles launch --all
+@
+
+would be parsed as:
+
+@
+Parameters (Just "missiles") [("all",Empty)] []
+@
+
 -}
 data Parameters
     = Parameters {
