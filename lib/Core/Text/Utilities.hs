@@ -21,7 +21,7 @@ module Core.Text.Utilities (
 ) where
 
 import qualified Data.FingerTree as F ((<|), ViewL(..), viewl)
-import Data.List (foldl')
+import qualified Data.List as List (foldl', dropWhile, dropWhileEnd)
 import Data.Monoid ((<>))
 import qualified Data.Text as T
 import qualified Data.Text.Lazy.Builder as T
@@ -133,7 +133,7 @@ wrapHelper :: Int -> [T.Text] -> T.Builder
 wrapHelper _ [] = ""
 wrapHelper _ [x]  = T.fromText x
 wrapHelper margin (x:xs) =
-    snd $ foldl' (wrapLine margin) (T.length x, T.fromText x) xs
+    snd $ List.foldl' (wrapLine margin) (T.length x, T.fromText x) xs
 
 wrapLine :: Int -> (Int, T.Builder) -> T.Text -> (Int, T.Builder)
 wrapLine margin (pos,builder) word =
@@ -187,8 +187,8 @@ it. Other times you will want to have the string as is, literally:
     let poem = ['quote'|
 If the sun
     rises
-        in the west
-    you
+        in the
+    west you
         drank
     too much
                 last week.
@@ -211,15 +211,24 @@ is translated to:
 @
 
 without the leading newline or trailing four spaces. Note that as string
-literals they are presented to you code with 'Data.String.fromString' so
+literals they are presented to your code with 'Data.String.fromString' so
 any type with an 'Data.String.IsString' instance (as 'Rope' has) can be
 constructed from a multi-line @[|'quote' ... |]@ literal.
 -}
 -- I thought this was going to be more complicated.
 quote :: QuasiQuoter
 quote = QuasiQuoter
-    (litE . stringL)               -- in an expression
+    (litE . stringL . trim)        -- in an expression
     (error "Cannot use [quote| ... |] in a pattern")
     (error "Cannot use [quote| ... |] as a type")
     (error "Cannot use [quote| ... |] for a declaration")
+  where
+    trim :: String -> String
+    trim = bot . top
+
+    top [] = []
+    top ('\n':cs) = cs
+    top str = str
+
+    bot = List.dropWhileEnd (== ' ')
 
