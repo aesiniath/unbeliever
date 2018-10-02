@@ -167,6 +167,14 @@ of a general variable which has a Show instance
 debugS :: Show α => Rope -> α -> Program τ ()
 debugS label value = debug label (intoRope (show value))
 
+{-|
+Convenience for the common case of needing to inspect the value of a
+general variable for which there is a 'Render' instance and so can pretty
+print the supplied argument to the log. This will pass the detected
+terminal width to the 'render' function, resulting in appopriate line
+wrapping when rendering your value (if logging to something other than
+console the default width of @80@ will be applied).
+-}
 debugR :: Render α => Rope -> α -> Program τ ()
 debugR label thing = do
     v <- ask
