@@ -138,9 +138,7 @@ To join two Ropes together use 'append' from 'Textual' below or
 You can get at the underlying finger tree with the 'unRope' function.
 
 To convert between Rope and something else use 'fromRope' or 'intoRope'.
-
 -}
-
 data Rope
     = Rope (F.FingerTree Width S.ShortText)
     deriving Generic

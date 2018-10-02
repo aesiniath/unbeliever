@@ -179,17 +179,18 @@ leading a passage (8 spaces in this example):
     |]
 @
 
-because you are feeding it into a 'Doc' for pretty printing and know the
-renderer will convert the whole text into a single line and then re-flow
-it. Other times you will want to have the string as is, literally:
+because you are feeding it into a 'Data.Text.Prettyprint.Doc.Doc' for
+pretty printing and know the renderer will convert the whole text into a
+single line and then re-flow it. Other times you will want to have the
+string as is, literally:
 
 @
     let poem = ['quote'|
 If the sun
     rises
         in the
-    west you
-        drank
+    west
+you     drank
     too much
                 last week.
     |]
@@ -211,9 +212,10 @@ is translated to:
 @
 
 without the leading newline or trailing four spaces. Note that as string
-literals they are presented to your code with 'Data.String.fromString' so
-any type with an 'Data.String.IsString' instance (as 'Rope' has) can be
-constructed from a multi-line @[|'quote' ... |]@ literal.
+literals they are presented to your code with 'Data.String.fromString' @::
+String -> α@ so any type with an 'Data.String.IsString' instance (as 'Rope'
+has) can be constructed from a multi-line @['quote'| ... |]@ literal.
+
 -}
 -- I thought this was going to be more complicated.
 quote :: QuasiQuoter

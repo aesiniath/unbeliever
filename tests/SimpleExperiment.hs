@@ -97,7 +97,7 @@ main = do
             if you don't specify the verbose option).
           |]
         , Option "logging" Nothing [quote|
-            Valid values are "console", "file:/path/to/file.log", and "syslog"
+            Valid values are "console", "file:/path/to/file.log", and "syslog".
           |]
         , Option "quiet" (Just 'q') [quote|
             Supress normal output.
