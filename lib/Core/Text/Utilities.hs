@@ -7,7 +7,8 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 {-|
-Useful tools for working with 'Rope's. Support for pretty printing.
+Useful tools for working with 'Rope's. Support for pretty printing,
+multi-line strings, and...
 -}
 module Core.Text.Utilities (
       Render(..)
@@ -15,6 +16,8 @@ module Core.Text.Utilities (
     , indefinite
     , wrap
     , underline
+      {-* Multi-line strings -}
+    , quote
 ) where
 
 import qualified Data.FingerTree as F ((<|), ViewL(..), viewl)
@@ -23,9 +26,12 @@ import Data.Monoid ((<>))
 import qualified Data.Text as T
 import qualified Data.Text.Lazy.Builder as T
 import qualified Data.Text.Short as S (uncons)
-import Data.Text.Prettyprint.Doc (Doc, layoutPretty
-    , reAnnotateS, LayoutOptions(..), PageWidth(..))
+import Data.Text.Prettyprint.Doc (Doc, layoutPretty , reAnnotateS
+    , LayoutOptions(LayoutOptions)
+    , PageWidth(AvailablePerLine))
 import Data.Text.Prettyprint.Doc.Render.Terminal (renderStrict, AnsiStyle)
+import Language.Haskell.TH (litE, stringL)
+import Language.Haskell.TH.Quote (QuasiQuoter(QuasiQuoter))
 
 import Core.Text.Rope
 
@@ -147,4 +153,73 @@ underline level text =
     line = T.map (\_ -> level) title
   in
     intoRope line
+
+{-|
+Multi-line string literals.
+
+To use these you need to enable the @QuasiQuotes@ language extension
+in your source file:
+
+@
+\{\-\# LANGUAGE OverloadedStrings \#\-\}
+\{\-\# LANGUAGE QuasiQuotes \#\-\}
+@
+
+you are then able to easily write a string stretching over several lines.
+
+How best to formatting multi-line string literal within your source code is
+an aesthetic judgement. Sometimes you don't care about the whitespace
+leading a passage (8 spaces in this example):
+
+@
+    let message = ['quote'|
+        This is a test of the Emergency Broadcast System. Do not be
+        alarmed. If this were a real emergency, someone would have tweeted
+        about it by now.
+    |]
+@
+
+because you are feeding it into a 'Doc' for pretty printing and know the
+renderer will convert the whole text into a single line and then re-flow
+it. Other times you will want to have the string as is, literally:
+
+@
+    let poem = ['quote'|
+If the sun
+    rises
+        in the west
+    you
+        drank
+    too much
+                last week.
+    |]
+@
+
+Leading whitespace from the first line and trailing whitespace from the
+last line will be trimmed, so this:
+
+@
+    let value = ['quote'|
+Hello
+    |]
+@
+
+is translated to:
+
+@
+    let value = 'Data.String.fromString' \"Hello\\n\"
+@
+
+without the leading newline or trailing four spaces. Note that as string
+literals they are presented to you code with 'Data.String.fromString' so
+any type with an 'Data.String.IsString' instance (as 'Rope' has) can be
+constructed from a multi-line @[|'quote' ... |]@ literal.
+-}
+-- I thought this was going to be more complicated.
+quote :: QuasiQuoter
+quote = QuasiQuoter
+    (litE . stringL)               -- in an expression
+    (error "Cannot use [quote| ... |] in a pattern")
+    (error "Cannot use [quote| ... |] as a type")
+    (error "Cannot use [quote| ... |] for a declaration")
 
