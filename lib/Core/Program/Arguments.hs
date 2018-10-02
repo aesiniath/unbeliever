@@ -112,24 +112,27 @@ of optional parameters and mandatory arguments. For example:
 main :: 'IO' ()
 main = do
     context <- 'Core.Program.Execute.configure' 'Core.Program.Execute.None' ('simple'
-        [ 'Option' "verbose" ('Just' \'v\') [here|
+        [ 'Option' "verbose" ('Just' \'v\') ['quote'|
             Turn on event level logging to console.
             Valid values are "event", "debug", and "none" (the default
             if you don't specify the verbose option).
           |]
-        , 'Option' "logging" 'Nothing' [quote|
+        , 'Option' "logging" 'Nothing' ['quote'|
             Valid values are "console", "file:\/path\/to\/file.log", and "syslog"
           |]
-        , 'Option' "quiet" (Just \'q\') [quote|
+        , 'Option' "quiet" (Just \'q\') ['quote'|
             Supress normal output.
           |]
-        , 'Argument' "filename" [quote|
+        , 'Argument' "filename" ['quote'|
             The file you want to frobnicate.
           |]
         ])
 
     'Core.Program.Execute.executeWith' context program
 @
+
+For information on how to use multi-line string literals this way, see
+'quote' in "Core.Text.Utilities".
 -}
 simple :: [Options] -> Config
 simple options = Simple options

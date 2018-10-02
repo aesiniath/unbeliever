@@ -11,8 +11,10 @@ Useful tools for working with 'Rope's. Support for pretty printing,
 multi-line strings, and...
 -}
 module Core.Text.Utilities (
+      {-* Pretty printing -}
       Render(..)
     , render
+      {-* Helpers -}
     , indefinite
     , wrap
     , underline
@@ -43,7 +45,7 @@ Types which can be rendered "prettily", that is, formatted by a pretty
 printer and embossed with beautiful ANSI colours when printed to the
 terminal.
 
-Use 'render' to build text object for later use or "Core.Program"'s
+Use 'render' to build text object for later use or "Core.Program.Execute"'s
 'Core.Program.Execute.writeR' if you're writing directly to console now.
 -}
 
