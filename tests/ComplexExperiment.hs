@@ -6,8 +6,6 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
-import Text.Heredoc
-
 import Core.Text
 import Core.Program
 import Core.System
@@ -27,15 +25,15 @@ main :: IO ()
 main = do
     context <- configure None (complex
         [ Global
-            [ Option "verbose" (Just 'v') [here|
+            [ Option "verbose" (Just 'v') [quote|
                 Turn on event level logging to console.
                 Valid values are "event", "debug", and "none" (the default
                 if you don't specify the verbose option).
               |]
-            , Option "logging-and-cutting" Nothing [here|
+            , Option "logging-and-cutting" Nothing [quote|
                 Valid values are "console", "file:/path/to/file.log", and "syslog".
               |]
-            , Option "quiet" (Just 'q') [here|
+            , Option "quiet" (Just 'q') [quote|
                 Supress normal output.
               |]
             ]
@@ -50,10 +48,10 @@ main = do
         , Command "launch" "Fire the weapons at the alien horde."
             [ Option "all" (Just 'a') "Target all the baddies."
             , Option "other" Nothing "Another option."
-            , Argument "input-file" [here|
+            , Argument "input-file" [quote|
                 The file you want to read the launch codes from.
               |]
-            , Argument "main-output-device" [here|
+            , Argument "main-output-device" [quote|
                 The device you want to draw the pretty picture to.
               |]
             ]

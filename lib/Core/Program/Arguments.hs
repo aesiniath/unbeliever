@@ -52,11 +52,11 @@ import Data.Text.Prettyprint.Doc (Doc, Pretty(..), nest, fillCat
     , emptyDoc, hardline, softline, fillBreak, align, (<+>), fillSep, indent)
 import Data.Text.Prettyprint.Doc.Util (reflow)
 import Data.String
-import Text.Heredoc
 import System.Environment (getProgName)
 
 import Core.System.Base
 import Core.Text.Rope
+import Core.Text.Utilities
 
 {-|
 Single letter "short" options (omitting the "@-@" prefix, obviously).
@@ -117,13 +117,13 @@ main = do
             Valid values are "event", "debug", and "none" (the default
             if you don't specify the verbose option).
           |]
-        , 'Option' "logging" 'Nothing' [here|
+        , 'Option' "logging" 'Nothing' [quote|
             Valid values are "console", "file:\/path\/to\/file.log", and "syslog"
           |]
-        , 'Option' "quiet" (Just \'q\') [here|
+        , 'Option' "quiet" (Just \'q\') [quote|
             Supress normal output.
           |]
-        , 'Argument' "filename" [here|
+        , 'Argument' "filename" [quote|
             The file you want to frobnicate.
           |]
         ])
@@ -248,7 +248,7 @@ data Parameters
 baselineConfig :: Config
 baselineConfig =
     simple [
-        Option "verbose" (Just 'v') [here|
+        Option "verbose" (Just 'v') [quote|
             Turn on event level logging to console.
         |]
     ]
@@ -274,7 +274,7 @@ instance Exception InvalidCommandLine where
         InvalidOption arg ->
           let
             one = "Option '" ++ arg ++ "' illegal.\n\n"
-            two = [here|
+            two = [quote|
 Options must either be long form with a double dash, for example:
 
     --verbose
@@ -302,19 +302,19 @@ For options valid in this program, please see --help.
         UnexpectedArguments args ->
           let
             quoted = List.intercalate "', '" args
-          in [here|
+          in [quote|
 Unexpected trailing arguments:
 
-|] ++ quoted ++ [here|
+|] ++ quoted ++ [quote|
 
 For arguments expected by this program, please see --help.
 |]
         UnknownCommand first -> "Hm. Command '" ++ first ++ "' not recognized."
-        NoCommandFound -> [here|
+        NoCommandFound -> [quote|
 No command specified.
 Usage is of the form:
 
-    |] ++ programName ++ [here| [GLOBAL OPTIONS] COMMAND [LOCAL OPTIONS] [ARGUMENTS]
+    |] ++ programName ++ [quote| [GLOBAL OPTIONS] COMMAND [LOCAL OPTIONS] [ARGUMENTS]
 
 See --help for details.
 |]

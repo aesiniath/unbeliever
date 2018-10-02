@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
 module CheckRopeBehaviour where
@@ -11,6 +12,7 @@ import qualified Data.Text.Short as S
 import Test.Hspec
 
 import Core.Text.Rope
+import Core.Text.Utilities
 
 hydrogen = "H₂" :: Rope
 sulfate = "SO₄" :: Rope
@@ -56,4 +58,13 @@ checkRopeBehaviour = do
 
         it "exports to Text (Lazy)" $ do
             fromRope sulfuric_acid `shouldBe` U.pack "H₂SO₄"
+
+        it "QuasiQuoted string literal is IsString" $ do
+            [quote|Hello|] `shouldBe` ("Hello" :: String)
+            [quote|Hello|] `shouldBe` ("Hello" :: Rope)
+
+        it "handles multi-line string literals" $ do
+            [quote|
+Hello
+            |] `shouldBe` ("Hello\n" :: Rope)
 

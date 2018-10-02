@@ -21,7 +21,6 @@ dependencies:
  - exceptions
  - fingertree
  - hashable
- - heredoc
  - hourglass
  - mtl
  - prettyprinter
@@ -29,6 +28,7 @@ dependencies:
  - safe-exceptions
  - scientific
  - stm
+ - template-haskell
  - terminal-size
  - text
  - text-short

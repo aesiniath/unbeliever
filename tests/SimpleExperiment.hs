@@ -14,7 +14,6 @@ import qualified Data.ByteString.Char8 as S
 import qualified Data.HashMap.Strict as HashMap
 import Data.Text.Prettyprint.Doc (layoutPretty, defaultLayoutOptions, Pretty(..))
 import Data.Text.Prettyprint.Doc.Render.Text (renderStrict)
-import Text.Heredoc
 
 import Core.Text
 import Core.Encoding
@@ -92,18 +91,18 @@ program = do
 main :: IO ()
 main = do
     context <- configure None (simple
-        [ Option "verbose" (Just 'v') [here|
+        [ Option "verbose" (Just 'v') [quote|
             Turn on event level logging to console.
             Valid values are "event", "debug", and "none" (the default
             if you don't specify the verbose option).
           |]
-        , Option "logging" Nothing [here|
-            Valid values are "console", "file:/path/to/file.log", and "syslog"
+        , Option "logging" Nothing [quote|
+            Valid values are "console", "file:/path/to/file.log", and "syslog".
           |]
-        , Option "quiet" (Just 'q') [here|
+        , Option "quiet" (Just 'q') [quote|
             Supress normal output.
           |]
-        , Argument "filename" [here|
+        , Argument "filename" [quote|
             The file you want to frobnicate.
           |]
         ])
