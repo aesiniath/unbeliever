@@ -109,32 +109,39 @@ import GHC.Generics (Generic)
 import System.IO (Handle)
 
 {-|
-A type for textual data. A rope is text backed by a tree data structure, rather than
-a single large continguous array, as is the case for strings.
+A type for textual data. A rope is text backed by a tree data structure,
+rather than a single large continguous array, as is the case for strings.
 
 There are three use cases:
 
- - referencing large blocks of data sourced
-from external systems. Ideally we would hold onto this without copying the
-memory, but (in the case of ByteString) before we can treat it as text we
-have to validate the UTF-8 content. Safety first. We also have to copy it
-out of pinned memory.
+/Referencing externally sourced data/
 
- - assembling text to go out. This involves considerable
-appending of data, very very occaisionally inserting it. Often the pieces
-are tiny.
+Often we interpret large blocks of data sourced from external systems as
+text. Ideally we would hold onto this without copying the memory, but (as
+in the case of @ByteString@ which is the most common source of data) before
+we can treat it as text we have to validate the UTF-8 content. Safety
+first. We also copy it out of pinned memory, allowing the Haskell runtime
+to manage the storage.
 
- - interoperating with other libraries. The only constant of the Haskell
-universe is that you won't have the right combination of {strict,lazy} ×
-{Text,ByteString,String,[Word8]} for the next function call. The 'Textual'
-typeclass provides for converting between these representations.
+/Interoperating with other libraries/
 
-To add text to a Rope use 'append' as below or ('Data.Monoid.<>') from
-"Data.Monoid" (like you would have with a Builder).
-
-To convert between Rope and something else use 'fromRope' or 'intoRope'.
+The only constant of the Haskell universe is that you won't have the right
+combination of {strict, lazy} × {@Text@, @ByteString@, @String@, @[Word8]@,
+etc} you need for the next function call. The 'Textual' typeclass provides
+for moving between different text representations. To convert between
+@Rope@ and something else use 'fromRope'; to construct a @Rope@ from
+textual content in another type use 'intoRope'.
 
 You can get at the underlying finger tree with the 'unRope' function.
+
+/Assembling text to go out/
+
+This involves considerable appending of data, very very occaisionally
+inserting it. Often the pieces are tiny. To add text to a @Rope@ use the
+'append' method as below or ('Data.Semigroup.<>') from "Data.Monoid" (like you
+would have with a @Builder@).
+
+Output to a @Handle@ can be done efficiently with 'hOutput'.
 -}
 data Rope
     = Rope (F.FingerTree Width S.ShortText)
@@ -354,7 +361,7 @@ Write the 'Rope' to the given 'Handle'.
 
 @
 import "Core.Text"
-import "Core.System" -- rexports stdout
+import "Core.System" -- re-exports stdout
 
 main :: IO ()
 main =
@@ -373,6 +380,9 @@ of intermediate allocation and copying because we can go from the
 'Data.ByteString.Builder.Builder' to the 'System.IO.Handle''s output buffer
 in one go.
 
+If you're working in the 'Core.Program.Execute.Program' monad, then
+'Core.Program.Execute.write' provides an efficient way to write a @Rope@ to
+@stdout@.
 -}
 
 hOutput :: Handle -> Rope -> IO ()
