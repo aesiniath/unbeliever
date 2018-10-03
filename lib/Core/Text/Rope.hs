@@ -20,23 +20,23 @@ any kind of scale.
 
 In modern Haskell there are two primary ways to represent text.
 
-First is via the [rather poorly named] 'ByteString' from the __bytestring__
+First is via the [rather poorly named] @ByteString@ from the __bytestring__
 package (which is an array of bytes in pinned memory). The
 "Data.ByteString.Char8" submodule gives you ways to manipulate those arrays
 as if they were ASCII characters. Confusingly there are both strict
 (@Data.ByteString@) and lazy (@Data.ByteString.Lazy@) variants which are
 often hard to tell the difference between when reading function signatures
 or haddock documentation. The performance problem an immutable array backed
-data type runs into is that appending a character (that is, ascii byte) or
-concatonating a string (that is, another array of ascii bytes) is very
+data type runs into is that appending a character (that is, ASCII byte) or
+concatonating a string (that is, another array of ASCII bytes) is very
 expensive and requires allocating a new larger array and copying the whole
-thing into it. This led to the development of \"Builders\" which amortize
+thing into it. This led to the development of \"builders\" which amortize
 this reallocation cost over time, but it can be cumbersome to switch
-between 'Builder', the lazy 'Data.ByteString.Lazy.ByteString' that results,
-and then having to inevitably convert to a strict 'ByteString' because
-that's what the next function in your sequence requires.
+between @Builder@, the lazy @ByteString@ that results, and then having to
+inevitably convert to a strict @ByteString@ because that's what the next
+function in your sequence requires.
 
-The second way is through the opaque 'Text' type of "Data.Text" from the
+The second way is through the opaque @Text@ type of "Data.Text" from the
 __text__ package, which is well tuned and high-performing but suffers from
 the same design; it is likewise backed by arrays. Rather surprisingly, the
 storage backing Text objects are encoded in UTF-16, meaning every time you
@@ -60,7 +60,7 @@ to using a Builder, without being forced to use a Builder.
 
 'Rope' is used as the text type throughout this library. If you use the
 functions within this package (rather than converting to other text types)
-operations are very efficient. When you do need to convert to another type
+operations are quite efficient. When you do need to convert to another type
 you can use 'fromRope' or 'intoRope' from the 'Textual' typeclass.
 
 Note that we haven't tried to cover the entire gamut of operations or
@@ -74,7 +74,6 @@ a network socket.
 module Core.Text.Rope
     ( {-* Rope type -}
       Rope
-    , unRope
     , width
     , split
     , contains
@@ -83,6 +82,7 @@ module Core.Text.Rope
     , unsafeIntoRope
     , hOutput
       {-* Internals -}
+    , unRope
     , Width(..)
     ) where
 
@@ -118,7 +118,7 @@ There are three use cases:
 from external systems. Ideally we would hold onto this without copying the
 memory, but (in the case of ByteString) before we can treat it as text we
 have to validate the UTF-8 content. Safety first. We also have to copy it
-out of pinned memory
+out of pinned memory.
 
  - assembling text to go out. This involves considerable
 appending of data, very very occaisionally inserting it. Often the pieces
@@ -129,16 +129,12 @@ universe is that you won't have the right combination of {strict,lazy} ×
 {Text,ByteString,String,[Word8]} for the next function call. The 'Textual'
 typeclass provides for converting between these representations.
 
-/Usage/
-
-To add text to a Rope use 'append'.
-
-To join two Ropes together use 'append' from 'Textual' below or
-('Data.Monoid.<>') from "Data.Monoid" (like you would have with a Builder).
-
-You can get at the underlying finger tree with the 'unRope' function.
+To add text to a Rope use 'append' as below or ('Data.Monoid.<>') from
+"Data.Monoid" (like you would have with a Builder).
 
 To convert between Rope and something else use 'fromRope' or 'intoRope'.
+
+You can get at the underlying finger tree with the 'unRope' function.
 -}
 data Rope
     = Rope (F.FingerTree Width S.ShortText)
@@ -157,7 +153,7 @@ instance Eq Rope where
 
 
 {-|
-Access the finger tree underlying the 'Rope'. You'll want the following
+Access the finger tree underlying the @Rope@. You'll want the following
 imports:
 
 @
@@ -171,8 +167,8 @@ unRope (Rope x) = x
 
 
 {-|
-The length of the Rope, in characters. This is the monoid used to structure
-the finger tree underlying the Rope.
+The length of the @Rope@, in characters. This is the monoid used to
+structure the finger tree underlying the @Rope@.
 -}
 newtype Width = Width Int
     deriving (Eq, Ord, Show, Num, Generic)
@@ -259,11 +255,11 @@ instance Hashable Rope where
 
 {-|
 Machinery to interpret a type as containing valid Unicode that can be
-represented as a Rope object.
+represented as a @Rope@ object.
 
 /Implementation notes/
 
-Given that Rope is backed by a finger tree, 'append' is relatively
+Given that @Rope@ is backed by a finger tree, 'append' is relatively
 inexpensive, plus whatever the cost of conversion is. There is a subtle
 trap, however: if adding small fragments of that were obtained by slicing
 (for example) a large ByteString we would end up holding on to a reference
@@ -272,8 +268,8 @@ reduce heap fragmentation by letting the Haskell runtime and garbage
 collector manage the memory, so instances are expected to /copy/ these
 substrings out of pinned memory.
 
-The ByteString instance requires that its content be valid UTF-8. If not an
-empty Rope will be returned.
+The @ByteString@ instance requires that its content be valid UTF-8. If not an
+empty @Rope@ will be returned.
 
 Several of the 'fromRope' implementations are expensive and involve a lot
 of intermiate allocation and copying. If you're ultimately writing to a
@@ -281,15 +277,15 @@ handle prefer 'hOutput' which will write directly to the output buffer.
 -}
 class Textual α where
     {-|
-Convert a Rope into another text-like type.
+Convert a @Rope@ into another text-like type.
     -}
     fromRope :: Rope -> α
     {-|
-Take another text-like type and convert it to a Rope.
+Take another text-like type and convert it to a @Rope@.
     -}
     intoRope :: α -> Rope
     {-|
-Append some text to this Rope. The default implementation is basically a
+Append some text to this @Rope@. The default implementation is basically a
 convenience wrapper around calling 'intoRope' and 'mappend'ing it to your
 text (which will work just fine, but for some types more efficient
 implementations are possible)t.
@@ -342,7 +338,7 @@ instance Textual B.ByteString where
 
 {-|
 If you /know/ the input bytes are valid UTF-8 encoded characters, then
-you can use this function to convert to a piece of Rope.
+you can use this function to convert to a piece of @Rope@.
 -}
 unsafeIntoRope :: B.ByteString -> Rope
 unsafeIntoRope = Rope . F.singleton . S.fromByteStringUnsafe
@@ -385,9 +381,9 @@ hOutput handle (Rope x) = B.hPutBuilder handle (foldr j mempty x)
     j piece built = (<>) (S.toBuilder piece) built
 
 {-|
-Does this Text contain this character?
+Does the text contain this character?
 
-We've used it to ask whether there are newlines present, for
+We've used it to ask whether there are newlines present in a @Rope@, for
 example:
 
 @
