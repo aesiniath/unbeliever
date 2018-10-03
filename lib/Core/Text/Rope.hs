@@ -211,6 +211,19 @@ width = foldr' f 0 . unRope
 
 {-|
 Break the text into two pieces at the specified offset.
+
+Examples:
+
+@
+λ> __split 0 "abcdef"__
+("", "abcdef")
+λ> __split 3 "abcdef"__
+("abc", "def")
+λ> __split 6 "abcdef"__
+("abcdef","")
+λ> __split 7 "abcdef"__
+("abcdef","")
+@
 -}
 split :: Int -> Rope -> (Rope,Rope)
 split mark text@(Rope x) =
