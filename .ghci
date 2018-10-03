@@ -3,3 +3,7 @@
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+
+import qualified Data.FingerTree as F
+import qualified Data.Text.Short as S
+

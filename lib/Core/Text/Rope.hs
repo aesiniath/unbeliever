@@ -76,6 +76,7 @@ module Core.Text.Rope
       Rope
     , unRope
     , width
+    , split
     , contains
       {-* Interoperation and Output -}
     , Textual(..)
@@ -92,7 +93,7 @@ import qualified Data.ByteString.Builder as B (toLazyByteString
 import qualified Data.ByteString.Lazy as L (toStrict)
 import Data.String (IsString(..))
 import qualified Data.FingerTree as F (FingerTree, Measured(..), empty
-    , singleton, (><), (<|), (|>))
+    , singleton, (><), (<|), (|>), search, SearchResult(..))
 import Data.Foldable (foldr, foldr', foldMap, toList, any)
 import qualified Data.Text as T (Text)
 import qualified Data.Text.Lazy as U (Text, fromChunks, foldrChunks
@@ -101,7 +102,7 @@ import qualified Data.Text.Lazy.Builder as U (Builder, toLazyText
     , fromText)
 import qualified Data.Text.Short as S (ShortText, length, any
     , fromText, toText, fromByteString, pack, unpack
-    , append, empty, toBuilder)
+    , append, empty, toBuilder, splitAt)
 import qualified Data.Text.Short.Unsafe as S (fromByteStringUnsafe)
 import Data.Hashable (Hashable, hashWithSalt)
 import GHC.Generics (Generic)
@@ -200,10 +201,46 @@ instance Monoid Rope where
     mempty = Rope F.empty
     mappend = (<>)
 
+{-|
+Get the length of this text, in characters.
+-}
 width :: Rope -> Int
 width = foldr' f 0 . unRope
   where
     f piece count = S.length piece + count
+
+{-|
+Break the text into two pieces at the specified offset.
+
+Examples:
+
+@
+λ> __split 0 "abcdef"__
+("", "abcdef")
+λ> __split 3 "abcdef"__
+("abc", "def")
+λ> __split 6 "abcdef"__
+("abcdef","")
+λ> __split 7 "abcdef"__
+("abcdef","")
+@
+-}
+split :: Int -> Rope -> (Rope,Rope)
+split mark text@(Rope x) =
+  let
+    pos = Width mark
+    result = F.search (\w1 w2 -> w1 >= pos) x
+  in
+    case result of
+        F.Position before piece after ->
+          let
+            (Width lsize) = F.measure before
+            (one,two) = S.splitAt (mark - lsize) piece
+          in
+            (Rope ((F.|>) before one),Rope ((F.<|) two after))
+        F.OnLeft -> (Rope F.empty, text)
+        F.OnRight -> (text, Rope F.empty)
+        F.Nowhere -> error "Position not found in split. Probable cause: predicate function given not monotonic. This is supposed to be unreachable"
 
 --
 -- Manual instance to get around the fact that FingerTree doesn't have a

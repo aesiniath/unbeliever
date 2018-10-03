@@ -5,6 +5,7 @@
 module CheckRopeBehaviour where
 
 import qualified Data.FingerTree as F
+import qualified Data.List as List
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Lazy as U
@@ -18,6 +19,8 @@ hydrogen = "H₂" :: Rope
 sulfate = "SO₄" :: Rope
 
 sulfuric_acid = hydrogen <> sulfate
+
+compound = "3" <> "-" <> "ethyl" <> "-" <> "4" <> "-" <> "methyl" <> "hexane" :: Rope
 
 checkRopeBehaviour :: Spec
 checkRopeBehaviour = do
@@ -59,12 +62,44 @@ checkRopeBehaviour = do
         it "exports to Text (Lazy)" $ do
             fromRope sulfuric_acid `shouldBe` U.pack "H₂SO₄"
 
-        it "QuasiQuoted string literal is IsString" $ do
+        it "does the splits" $ do
+            -- compare behaviour on Haskell lists
+            List.splitAt 0 ("123456789" :: String) `shouldBe` ("", "123456789")
+            List.splitAt 3 ("123456789" :: String) `shouldBe` ("123", "456789")
+
+            -- expect same behaviour of Rope
+            split 0 ("123456789" :: Rope) `shouldBe` ("", "123456789")
+            split 3 ("123456789" :: Rope) `shouldBe` ("123", "456789")
+            split 9 ("123456789" :: Rope) `shouldBe` ("123456789","")
+            split 10 ("123456789" :: Rope) `shouldBe` ("123456789","")
+            split (-1) ("123456789" :: Rope) `shouldBe` ("", "123456789")
+
+            split 0 compound `shouldBe` ("", "3-ethyl-4-methylhexane")
+            split 1 compound `shouldBe` ("3", "-ethyl-4-methylhexane")
+            split 2 compound `shouldBe` ("3-", "ethyl-4-methylhexane")
+            split 4 compound `shouldBe` ("3-et", "hyl-4-methylhexane")
+            --                             1234567890
+            split 10 compound `shouldBe` ("3-ethyl-4-", "methylhexane")
+            split 11 compound `shouldBe` ("3-ethyl-4-m", "ethylhexane")
+            split 16 compound `shouldBe` ("3-ethyl-4-methyl", "hexane")
+            split 21 compound `shouldBe` ("3-ethyl-4-methylhexan", "e")
+            width compound `shouldBe` 22
+            split 22 compound `shouldBe` ("3-ethyl-4-methylhexane", "")
+            split 23 compound `shouldBe` ("3-ethyl-4-methylhexane", "")
+            split (-1) compound `shouldBe` ("", "3-ethyl-4-methylhexane")
+
+    describe "quote QuasiQuoted string literals" $
+      do
+        it "string literal is IsString" $ do
             [quote|Hello|] `shouldBe` ("Hello" :: String)
             [quote|Hello|] `shouldBe` ("Hello" :: Rope)
 
-        it "handles multi-line string literals" $ do
+        it "trims multi-line string literal" $ do
             [quote|
 Hello
             |] `shouldBe` ("Hello\n" :: Rope)
+            [quote|
+Hello
+World
+            |] `shouldBe` ("Hello\nWorld\n" :: Rope)
 
