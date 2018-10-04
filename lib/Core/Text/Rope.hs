@@ -76,6 +76,7 @@ module Core.Text.Rope
       Rope
     , width
     , split
+    , insert
     , contains
       {-* Interoperation and Output -}
     , Textual(..)
@@ -218,32 +219,60 @@ Break the text into two pieces at the specified offset.
 Examples:
 
 @
-λ> __split 0 "abcdef"__
-("", "abcdef")
-λ> __split 3 "abcdef"__
-("abc", "def")
-λ> __split 6 "abcdef"__
-("abcdef","")
-λ> __split 7 "abcdef"__
-("abcdef","")
+λ> __split 0 \"abcdef\"__
+(\"\", \"abcdef\")
+λ> __split 3 \"abcdef\"__
+(\"abc\", \"def\")
+λ> __split 6 \"abcdef\"__
+(\"abcdef\",\"\")
+@
+
+Going off either end behaves sensibly:
+
+@
+λ> __split 7 \"abcdef\"__
+(\"abcdef\",\"\")
+λ> __split (-1) \"abcdef\"__
+(\"\", \"abcdef\")
 @
 -}
 split :: Int -> Rope -> (Rope,Rope)
-split mark text@(Rope x) =
+split i text@(Rope x) =
   let
-    pos = Width mark
+    pos = Width i
     result = F.search (\w1 w2 -> w1 >= pos) x
   in
     case result of
         F.Position before piece after ->
           let
-            (Width lsize) = F.measure before
-            (one,two) = S.splitAt (mark - lsize) piece
+            (Width w) = F.measure before
+            (one,two) = S.splitAt (i - w) piece
           in
             (Rope ((F.|>) before one),Rope ((F.<|) two after))
         F.OnLeft -> (Rope F.empty, text)
         F.OnRight -> (text, Rope F.empty)
         F.Nowhere -> error "Position not found in split. Probable cause: predicate function given not monotonic. This is supposed to be unreachable"
+
+{-|
+Insert a new piece of text into an existing @Rope@ at the specified offset.
+
+Examples:
+
+@
+λ> __insert 3 \"Con\" \"Def 1\"__
+"DefCon 1"
+λ> __insert 0 \"United \" \"Nations\"__
+"United Nations"
+@
+-}
+insert :: Int -> Rope -> Rope -> Rope
+insert 0 (Rope new) (Rope x) = Rope ((F.><) new x)
+insert i (Rope new) text =
+  let
+    (Rope before,Rope after) = split i text
+  in
+    Rope (mconcat [before, new, after])
+
 
 --
 -- Manual instance to get around the fact that FingerTree doesn't have a
@@ -295,7 +324,7 @@ Take another text-like type and convert it to a @Rope@.
 Append some text to this @Rope@. The default implementation is basically a
 convenience wrapper around calling 'intoRope' and 'mappend'ing it to your
 text (which will work just fine, but for some types more efficient
-implementations are possible)t.
+implementations are possible).
     -}
     append :: α -> Rope -> Rope
     append thing text = text <> intoRope thing

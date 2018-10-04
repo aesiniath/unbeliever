@@ -74,6 +74,7 @@ checkRopeBehaviour = do
             split 10 ("123456789" :: Rope) `shouldBe` ("123456789","")
             split (-1) ("123456789" :: Rope) `shouldBe` ("", "123456789")
 
+            -- exercise splitting at and between piece boundaries
             split 0 compound `shouldBe` ("", "3-ethyl-4-methylhexane")
             split 1 compound `shouldBe` ("3", "-ethyl-4-methylhexane")
             split 2 compound `shouldBe` ("3-", "ethyl-4-methylhexane")
@@ -87,6 +88,12 @@ checkRopeBehaviour = do
             split 22 compound `shouldBe` ("3-ethyl-4-methylhexane", "")
             split 23 compound `shouldBe` ("3-ethyl-4-methylhexane", "")
             split (-1) compound `shouldBe` ("", "3-ethyl-4-methylhexane")
+
+        it "does insertion correctly" $ do
+            insert 3 "two" "onethree" `shouldBe` "onetwothree"
+            insert 3 "Con" "Def 1" `shouldBe` "DefCon 1"
+            insert 0 "one" "twothree" `shouldBe` "onetwothree"
+            insert 6 "three" "onetwo" `shouldBe` "onetwothree"
 
     describe "quote QuasiQuoted string literals" $
       do
