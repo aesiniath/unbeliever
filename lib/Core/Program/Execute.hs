@@ -66,6 +66,8 @@ module Core.Program.Execute
       , write
       , writeS
       , writeR
+        {-* Concurrency -}
+      , Thread
       , fork
       , sleep
         {-* Internals -}
@@ -370,13 +372,32 @@ output h b = liftIO $ do
         B.hPut h (fromBytes b)
 
 {-|
-Fork a thread.
+A thread for concurrent computation. Haskell uses green threads: small
+lines of work that are scheduled down onto actual execution contexts, set
+by default by this library to be one per core. They are incredibly
+lightweight, and you are encouraged to use them freely. Haskell provides a
+rich ecosystem of tools to do work concurrently and to communicate safely
+between threads
+
+(this wraps __async__'s 'Async')
+-}
+newtype Thread α = Thread (Async α)
+
+unThread :: Thread α -> Async α
+unThread (Thread a) = a
+
+{-|
+Fork a thread. The child thread will run in the same @Context@ as the
+calling @Program@, including sharing the user-defined application state
+type.
+
+(this wraps __async__'s 'async' which in turn wraps __base__'s 'Control.Concurrent.forkIO')
 -}
 --
--- TODO change Async to a wrapper called Thread
--- TODO documentation about launching threads
+-- TODO is this correct now that we have application state? Should it
+-- not be shared (ie, a different type)?
 --
-fork :: Program τ α -> Program τ (Async α)
+fork :: Program τ α -> Program τ (Thread α)
 fork program = do
     v <- ask
     liftIO $ do
@@ -384,7 +405,7 @@ fork program = do
         a <- async $ do
             runProgram context program
         link a
-        return a
+        return (Thread a)
 
 {-|
 Pause the current thread for the given number of seconds. For

@@ -338,11 +338,13 @@ instance Textual Rope where
     intoRope = id
     append (Rope x2) (Rope x1) = Rope ((F.><) x1 x2)
 
+{-| from "Data.Text.Short" -}
 instance Textual S.ShortText where
     fromRope = foldr S.append S.empty . unRope
     intoRope = Rope . F.singleton
     append piece (Rope x) = Rope ((F.|>) x piece)
 
+{-| from "Data.Text" Strict -}
 instance Textual T.Text where
     fromRope = U.toStrict . U.toLazyText . foldr f mempty . unRope
       where
@@ -352,10 +354,12 @@ instance Textual T.Text where
     intoRope t = Rope (F.singleton (S.fromText t))
     append chunk (Rope x) = Rope ((F.|>) x (S.fromText chunk))
 
+{-| from "Data.Text.Lazy" -}
 instance Textual U.Text where
     fromRope (Rope x) = U.fromChunks . fmap S.toText . toList $ x
     intoRope t = Rope (U.foldrChunks ((F.<|) . S.fromText) F.empty t)
 
+{-| from "Data.ByteString" Strict -}
 instance Textual B.ByteString where
     fromRope = L.toStrict . B.toLazyByteString . foldr g mempty . unRope
       where
@@ -379,6 +383,7 @@ you can use this function to convert to a piece of @Rope@.
 unsafeIntoRope :: B.ByteString -> Rope
 unsafeIntoRope = Rope . F.singleton . S.fromByteStringUnsafe
 
+{-| "Data.String" -}
 instance Textual [Char] where
     fromRope (Rope x) = foldr h [] x
       where
