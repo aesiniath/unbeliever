@@ -27,11 +27,13 @@ import qualified Data.List as List (foldl', dropWhile, dropWhileEnd)
 import Data.Monoid ((<>))
 import qualified Data.Text as T
 import qualified Data.Text.Lazy.Builder as T
-import qualified Data.Text.Short as S (uncons)
+import qualified Data.Text.Short as S (ShortText, uncons, toText)
 import Data.Text.Prettyprint.Doc (Doc, layoutPretty , reAnnotateS
+    , pretty, emptyDoc
     , LayoutOptions(LayoutOptions)
     , PageWidth(AvailablePerLine))
-import Data.Text.Prettyprint.Doc.Render.Terminal (renderStrict, AnsiStyle)
+import Data.Text.Prettyprint.Doc.Render.Terminal (renderStrict, AnsiStyle
+    , color, Color(..))
 import Language.Haskell.TH (litE, stringL)
 import Language.Haskell.TH.Quote (QuasiQuoter(QuasiQuoter))
 
@@ -64,12 +66,15 @@ tokens.
     -}
     intoDocA :: α -> Doc (Token α)
 
-{-
 instance Render Rope where
-    type Token Rope = 
-    colourize = 
-    intoDocA x = x
+    type Token Rope = ()
+    colourize = const mempty
+    intoDocA = foldr f emptyDoc . unRope
+      where
+        f :: S.ShortText -> Doc () -> Doc ()
+        f piece built = (<>) (pretty (S.toText piece)) built
 
+{-
 instance Render [Rope] where
     intoDocA = intoRope . F.fromList . concatMap toList . fmap unRope
 
@@ -116,7 +121,6 @@ indefinite text =
             Just (c,_)  -> if c `elem` ['A','E','I','O','U','a','e','i','o','u']
                 then intoRope ("an " F.<| x)
                 else intoRope ("a " F.<| x)
-
 
 {-|
 Often the input text represents a paragraph, but does not have any internal
