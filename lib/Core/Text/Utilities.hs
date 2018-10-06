@@ -88,10 +88,20 @@ Rope saturated with ANSI escape codes representing syntax highlighting or
 similar colouring, wrapping at the specified @width@.
 
 The obvious expectation is that the next thing you're going to do is send
-the Rope to console with @'Core.Program.Execute.write' (render thing)@.
-However, the /better/ thing to do is to use 'Core.Program.Execute.writeR'
-instead, which is able to pretty print the document text respecting the
-available width of the terminal.
+the Rope to console with:
+
+@
+    'Core.Program.Execute.write' ('render' 80 thing)
+@
+
+However, the /better/ thing to do is to instead use:
+
+@
+    'Core.Program.Execute.writeR' thing
+@
+
+which is able to pretty print the document text respecting the available
+width of the terminal.
 -}
 -- the annotation (_ :: α) of the parameter is to bring type a into scope
 -- at term level so that it can be used by TypedApplications. Which then
