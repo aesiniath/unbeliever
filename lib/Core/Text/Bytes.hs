@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE StrictData #-}
@@ -38,11 +39,13 @@ import qualified Data.ByteString as B (ByteString, foldl', splitAt
 import Data.ByteString.Internal (c2w, w2c)
 import qualified Data.ByteString.Lazy as L (ByteString, fromStrict, toStrict)
 import Data.Hashable (Hashable)
+import qualified Data.List as List
 import Data.Word (Word8)
 import GHC.Generics (Generic)
 import Data.Text.Prettyprint.Doc
-    ( Doc, emptyDoc, pretty, annotate, (<+>), line, softline, hsep
-    , space, punctuate, hcat
+    ( Doc, emptyDoc, pretty, annotate, (<+>), hsep
+    , space, punctuate, hcat, group, flatAlt, sep, fillSep
+    , line, line', softline, softline', hardline
     )
 import Data.Text.Prettyprint.Doc.Render.Terminal (
     color, colorDull, bold, Color(..))
@@ -85,10 +88,22 @@ instance Render Bytes where
     intoDocA = prettyBytes
     
 prettyBytes :: Bytes -> Doc ()
-prettyBytes (StrictBytes b') = annotate () . hcat . punctuate spacer
+prettyBytes (StrictBytes b') = annotate () . fillSep . twoWords
     . fmap wordToHex . chunk $ b'
+
+twoWords :: [Doc ann] -> [Doc ann]
+twoWords ds = go ds
   where
-    spacer = space <> softline -- or flatAlt or similar
+    go [] = []
+    go [x] = [softline' <> x]
+    go xs =
+      let
+        (one:two:[], remainder) = List.splitAt 2 xs
+      in
+        group (one <> spacer <> two) : go remainder
+
+    spacer = flatAlt softline' "  "
+
 
 chunk :: B.ByteString -> [B.ByteString]
 chunk = reverse . go []
