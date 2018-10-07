@@ -42,6 +42,7 @@ import Data.Word (Word8)
 import GHC.Generics (Generic)
 import Data.Text.Prettyprint.Doc
     ( Doc, emptyDoc, pretty, annotate, (<+>), line, softline, hsep
+    , space, punctuate, hcat
     )
 import Data.Text.Prettyprint.Doc.Render.Terminal (
     color, colorDull, bold, Color(..))
@@ -84,17 +85,10 @@ instance Render Bytes where
     intoDocA = prettyBytes
     
 prettyBytes :: Bytes -> Doc ()
-prettyBytes (StrictBytes b') = annotate () . go emptyDoc $ b'
+prettyBytes (StrictBytes b') = annotate () . hcat . punctuate spacer
+    . fmap wordToHex . chunk $ b'
   where
-    go :: Doc ann -> B.ByteString -> Doc ann
-    go acc ws =
-      let
-        (eight, remainder) = B.splitAt 8 ws
-        acc' = acc <+> softline <> wordToHex eight
-      in
-        if B.length eight < 8
-            then acc'
-            else go acc' remainder
+    spacer = space <> softline -- or flatAlt or similar
 
 chunk :: B.ByteString -> [B.ByteString]
 chunk = reverse . go []
