@@ -70,6 +70,18 @@ executables:
 
     ghc-prof-options: -fprof-auto
 
+  snippet:
+    dependencies:
+     - unbeliever
+
+    ghc-options: -threaded -Wall -Wwarn -fwarn-tabs
+
+    source-dirs: tests
+    main: Snippet.hs
+    other-modules: []
+
+    ghc-prof-options: -fprof-auto
+
 tests:
   check:
     dependencies:

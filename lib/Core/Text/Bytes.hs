@@ -31,14 +31,15 @@ module Core.Text.Bytes
 
 import Data.Bits (Bits (..))
 import Data.Char (intToDigit)
-import qualified Data.ByteString as B (ByteString, foldl')
+import qualified Data.ByteString as B (ByteString, foldl', splitAt
+    , unpack, length)
 import Data.ByteString.Internal (c2w, w2c)
 import qualified Data.ByteString.Lazy as L (ByteString, fromStrict, toStrict)
 import Data.Hashable (Hashable)
 import Data.Word (Word8)
 import GHC.Generics (Generic)
 import Data.Text.Prettyprint.Doc
-    ( Doc, emptyDoc, pretty, annotate, (<+>), line, softline
+    ( Doc, emptyDoc, pretty, annotate, (<+>), line, softline, hsep
     )
 import Data.Text.Prettyprint.Doc.Render.Terminal (
     color, colorDull, bold, Color(..))
@@ -78,14 +79,29 @@ instance Binary L.ByteString where
 instance Render Bytes where
     type Token Bytes = ()
     colourize = const (color Green)
-    intoDocA (StrictBytes b') = annotate () . snd . B.foldl' f (-1,emptyDoc) $ b'
-      where
-        f :: (Int, Doc ann) -> Word8 -> (Int, Doc ann)
-        f (-1, _ ) w = (1, byteToHex w)
-        f (0, acc) w = (1, acc <+> softline <> byteToHex w)
-        f (!i,acc) w = case i of
-            7 -> (0,   acc <+> byteToHex w)
-            _ -> (i+1, acc <+> byteToHex w)
+    intoDocA = prettyBytes
+    
+prettyBytes :: Bytes -> Doc ()
+prettyBytes (StrictBytes b') = annotate () . go emptyDoc $ b'
+  where
+    go :: Doc ann -> B.ByteString -> Doc ann
+    go acc ws =
+      let
+        (eight, remainder) = B.splitAt 8 ws
+        acc' = acc <+> softline <> wordToHex eight
+      in
+        if B.length eight < 8
+            then acc'
+            else go acc' remainder
+
+-- Take an [up to] 8 byte (64 bit) word
+wordToHex :: B.ByteString -> Doc ann
+wordToHex eight =
+  let
+    ws = B.unpack eight
+    ds = fmap byteToHex ws
+  in
+    hsep ds
 
 byteToHex :: Word8 -> Doc ann
 byteToHex c = pretty hi <> pretty low
