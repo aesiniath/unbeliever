@@ -6,6 +6,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}        -- FIXME
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}   -- FIXME
+{-# OPTIONS_HADDOCK prune #-}
 
 {-|
 Binary (as opposed to textual) data is encountered in weird corners of the
@@ -27,6 +28,7 @@ or consuming bytes.
 module Core.Text.Bytes
     ( Bytes(..)
     , Binary(fromBytes, intoBytes)
+    , chunk
     ) where
 
 import Data.Bits (Bits (..))
@@ -93,6 +95,17 @@ prettyBytes (StrictBytes b') = annotate () . go emptyDoc $ b'
         if B.length eight < 8
             then acc'
             else go acc' remainder
+
+chunk :: B.ByteString -> [B.ByteString]
+chunk = reverse . go []
+  where
+    go acc blob =
+      let
+        (eight, remainder) = B.splitAt 8 blob
+      in
+        if B.length remainder == 0
+            then eight : acc
+            else go (eight : acc) remainder
 
 -- Take an [up to] 8 byte (64 bit) word
 wordToHex :: B.ByteString -> Doc ann
