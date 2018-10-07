@@ -62,6 +62,7 @@ module Core.Program.Execute
       , setApplicationState
       , retrieve
       , update
+      , setTerminalWidth
         {-* Useful actions -}
       , write
       , writeS
@@ -318,6 +319,17 @@ retrieve = getApplicationState
 Alias for 'setApplicationState'.
 -}
 update = setApplicationState
+
+-- undocumented
+setTerminalWidth :: Int -> Program τ ()
+setTerminalWidth columns = do
+    v <- ask
+    context <- liftIO (readMVar v)
+    let context' = context {
+        terminalWidthFrom = columns
+    }
+    liftIO (modifyMVar_ v (\_ -> pure context'))
+
 
 {-|
 Write the supplied text to @stdout@.
