@@ -67,6 +67,7 @@ module Core.Program.Execute
       , write
       , writeS
       , writeR
+      , output
         {-* Concurrency -}
       , Thread
       , fork
@@ -379,8 +380,23 @@ writeR thing = do
         atomically (writeTChan out text)
 
 {-|
-Write the supplied bytes to the given handle
-(in contrast to 'write' we don't output a trailing newline)
+Write the supplied @Bytes@ to the given @Handle@. Note that in contrast to
+'write' we don't output a trailing newline.
+
+@
+    output h b
+@
+
+Do not use this to output to @stdout@ as that would bypass the mechanism
+used by the @write*@ functions to sequence output correctly. If you wish to
+write to the terminal use:
+
+@
+    write (intoRope b)
+@
+
+(which is not /unsafe/, but will lead to unexpected results if the binary
+blob you pass in is not UTF-8 text).
 -}
 output :: Handle -> Bytes -> Program τ ()
 output h b = liftIO $ do
