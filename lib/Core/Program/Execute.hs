@@ -87,8 +87,8 @@ import Control.Concurrent.Async (Async, async, link, cancel
 import Control.Concurrent.MVar (MVar, newMVar, readMVar
     , putMVar, modifyMVar_)
 import Control.Concurrent.STM (atomically, check)
-import Control.Concurrent.STM.TChan (TChan, readTChan
-    , writeTChan, isEmptyTChan)
+import Control.Concurrent.STM.TQueue (TQueue, readTQueue
+    , writeTQueue, isEmptyTQueue)
 import qualified Control.Exception as Base (throwIO)
 import Control.Exception.Safe (SomeException, Exception(displayException))
 import qualified Control.Exception.Safe as Safe (throw, catchesAsync)
@@ -208,10 +208,10 @@ executeWith context program = do
 
     -- drain message queues
     atomically $ do
-        done2 <- isEmptyTChan log
+        done2 <- isEmptyTQueue log
         check done2
 
-        done1 <- isEmptyTChan out
+        done1 <- isEmptyTQueue out
         check done1
 
     threadDelay 100 -- instead of yield
@@ -226,20 +226,20 @@ executeWith context program = do
         else (Base.throwIO code)
 
 
-processStandardOutput :: TChan Rope -> IO ()
+processStandardOutput :: TQueue Rope -> IO ()
 processStandardOutput out = do
     forever $ do
-        text <- atomically (readTChan out)
+        text <- atomically (readTQueue out)
 
         hOutput stdout text
         B.hPut stdout (C.singleton '\n')
 
-processDebugMessages :: TChan Message -> IO ()
+processDebugMessages :: TQueue Message -> IO ()
 processDebugMessages log = do
     forever $ do
         -- TODO do sactually do something with log messages
         -- Message now severity text potentialValue <- ...
-        _ <- atomically (readTChan log)
+        _ <- atomically (readTQueue log)
 
         return ()
 
@@ -351,7 +351,7 @@ write text = do
         context <- readMVar v
         let out = outputChannelFrom context
 
-        atomically (writeTChan out text)
+        atomically (writeTQueue out text)
 
 {-|
 Call 'show' on the supplied argument and write the resultant text to
@@ -377,7 +377,7 @@ writeR thing = do
 
         let text = render columns thing
 
-        atomically (writeTChan out text)
+        atomically (writeTQueue out text)
 
 {-|
 Write the supplied @Bytes@ to the given @Handle@. Note that in contrast to

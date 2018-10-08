@@ -22,7 +22,7 @@ module Core.Program.Context
 
 import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
 import Control.Concurrent.MVar (MVar, newEmptyMVar)
-import Control.Concurrent.STM.TChan (TChan, newTChanIO)
+import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
 import Control.Exception.Safe (displayException)
 import qualified Control.Exception.Safe as Safe (throw)
 import Control.Monad.Catch (MonadThrow(throwM))
@@ -71,8 +71,8 @@ data Context τ = Context {
     , exitSemaphoreFrom :: MVar ExitCode
     , startTimeFrom :: TimeStamp
     , terminalWidthFrom :: Int
-    , outputChannelFrom :: TChan Rope
-    , loggerChannelFrom :: TChan Message
+    , outputChannelFrom :: TQueue Rope
+    , loggerChannelFrom :: TQueue Message
     , applicationDataFrom :: τ
 }
 
@@ -181,8 +181,8 @@ configure user config = do
     parameters <- handleCommandLine config
     quit <- newEmptyMVar
     columns <- getConsoleWidth
-    output <- newTChanIO
-    logger <- newTChanIO
+    output <- newTQueueIO
+    logger <- newTQueueIO
 
     return $! Context {
           programNameFrom = (intoRope name)

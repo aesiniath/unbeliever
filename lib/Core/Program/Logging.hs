@@ -16,7 +16,7 @@ module Core.Program.Logging
 import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
 import Control.Concurrent.MVar (readMVar)
 import Control.Concurrent.STM (atomically)
-import Control.Concurrent.STM.TChan (writeTChan)
+import Control.Concurrent.STM.TQueue (writeTQueue)
 import Control.Monad.Reader.Class (MonadReader(ask))
 import Data.Fixed
 import Data.Hourglass (timePrint, TimeFormatElem(..))
@@ -55,8 +55,8 @@ putMessage context message@(Message now nature text potentialValue) = do
     let result = formatLogMessage start now display
 
     atomically $ do
-        writeTChan output result
-        writeTChan logger message
+        writeTQueue output result
+        writeTQueue logger message
 
 
 formatLogMessage :: TimeStamp -> TimeStamp -> Rope -> Rope
