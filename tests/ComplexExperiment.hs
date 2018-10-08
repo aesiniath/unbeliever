@@ -36,9 +36,11 @@ main = do
             , Option "quiet" (Just 'q') [quote|
                 Supress normal output.
               |]
+            , Variable "GITHUB_TOKEN" "OAuth token to access GitHub."
             ]
         , Command "add" "Add a file."
             [ Argument "filename" "File to add."
+            , Variable "OVERRIDE_BROKEN" "Deal with broken line endings on Windows"
             ]
 
         , Command "commit" "Commit your changes to the repository."
@@ -54,11 +56,7 @@ main = do
             , Argument "main-output-device" [quote|
                 The device you want to draw the pretty picture to.
               |]
-            ]
-  
-        , Environment
-            [ Variable "CRAZY_MODE" "Specify how many crazies to activate."
-            , Variable "GITHUB_TOKEN" "OAuth token to access GitHub."
+            , Variable "CRAZY_MODE" "Specify how many crazies to activate."
             ]
         ])
   
