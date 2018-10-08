@@ -43,7 +43,7 @@ import qualified Data.List as List
 import Data.Word (Word8)
 import GHC.Generics (Generic)
 import Data.Text.Prettyprint.Doc
-    ( Doc, emptyDoc, pretty, annotate, (<+>), hsep
+    ( Doc, emptyDoc, pretty, annotate, (<+>), hsep, vcat
     , space, punctuate, hcat, group, flatAlt, sep, fillSep
     , line, line', softline, softline', hardline
     )
@@ -88,7 +88,7 @@ instance Render Bytes where
     intoDocA = prettyBytes
     
 prettyBytes :: Bytes -> Doc ()
-prettyBytes (StrictBytes b') = annotate () . fillSep . twoWords
+prettyBytes (StrictBytes b') = annotate () . vcat . twoWords
     . fmap wordToHex . chunk $ b'
 
 twoWords :: [Doc ann] -> [Doc ann]
