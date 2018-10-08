@@ -34,9 +34,9 @@ module Core.Program.Arguments
         {-* Programs with Commands -}
       , complex
       , Commands(..)
-      , Variables(..)
         {-* Internals -}
       , parseCommandLine
+      , extractValidEnvironments
       , InvalidCommandLine(..)
       , buildUsage
     ) where
@@ -48,6 +48,7 @@ import qualified Data.HashMap.Strict as HashMap
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as HashSet
 import qualified Data.List as List
+import Data.Maybe (fromMaybe)
 import Data.Text.Prettyprint.Doc (Doc, Pretty(..), nest, fillCat
     , emptyDoc, hardline, softline, fillBreak, align, (<+>), fillSep, indent)
 import Data.Text.Prettyprint.Doc.Util (reflow)
@@ -67,9 +68,6 @@ type ShortName = Char
 The description of an option, command, or environment variable (for use
 when rendering usage information in response to @--help@ on the
 command-line).
-
-By convention a description is one or more complete sentences each of which
-ends with a full stop.
 -}
 type Description = Rope
 
@@ -147,17 +145,30 @@ options and arguments as needed.
 complex :: [Commands] -> Config
 complex commands = Complex commands
 
+{-|
+Description of the command-line structure of a program which has
+\"commands\" (sometimes referred to as \"subcommands\") representing
+different modes of operation. This is familiar from tools like /git/
+and /docker/.
+-}
 data Commands 
     = Global [Options]
     | Command LongName Description [Options]
-    | Environment [Variables]
 
 {-|
 Declaration of an optional switch or mandatory argument expected by a
 program.
 
-By convention these are /lower case/. If the identifier is two or more
-words they are joined with a hyphen. Examples:
+'Option' takes a long name for the option, a short single character
+abbreviation if offered for convenience, and a description for use when
+displaying usage via @--help@.
+
+'Argument' indicates a mandatory argument and takes the long name used
+to identify the parsed value from the command-line, and likewise a
+description for @--help@ output.
+
+By convention these are both /lower case/. If the identifier is two or
+more words they are joined with a hyphen. Examples:
 
 @
         [ 'Option' \"dry-run\" 'Nothing' "Don't actually execute commands, just simulate what would happen."
@@ -166,34 +177,32 @@ words they are joined with a hyphen. Examples:
         ]
 @
 
-Option takes a long name for the option, a short single character
-abbreviation if offered for convenience, and a description for use when
-displaying usage via @--help@. Mandatory argument takes the long name used
-to identify the parsed value from the command-line, and likewise a
-description for @--help@ output.
+By convention a /description/ is one or more complete sentences each of
+which ends with a full stop.
+
+'Variable' declares an /environment variable/ that, if present, will be
+read by the program and stored in its runtime context. By convention these
+are /upper case/. If the identifier is two or more words they are joined
+with an underscore:
+
+@
+        [ ...
+        , 'Variable' \"CRAZY_MODE\" "Specify how many crazies to activate."
+        , ...
+        ]
+@
 -}
 data Options
     = Option LongName (Maybe ShortName) Description
     | Argument LongName Description
+    | Variable LongName Description
+
 
 {-|
-Declaration of an environment variable that, if present, will be
-interpreted by the program and stored in its runtime context.
-
-By convention these are /upper case/. If the identifier is two or more
-words they are joined with an underscore:
-
-@
-        [ 'Variable' \"CRAZY_MODE\" "Specify how many crazies to activate."
-        , ...
-        ]
-@
-
-Environment variables are only available in 'complex' configurations.
+Individual parameters read in off the command-line can either have a value
+(in the case of arguments and options taking a value) or be empty (in the
+case of options that are just flags).
 -}
-data Variables
-    = Variable LongName Description
-
 data ParameterValue
     = Value String
     | Empty
@@ -224,7 +233,7 @@ declared in the 'Argument' entry) and a value being the Admiral's CV. This
 would be returned as:
 
 @
-Parameters Nothing [("username","gbmh"), ("filename","GraceHopper_Resume.pdf")] []
+'Parameters' 'Nothing' [("username","gbmh"), ("filename","GraceHopper_Resume.pdf")] []
 @
 
 The case of a complex command such as /git/ or /stack/, you get the specific
@@ -237,7 +246,7 @@ $ missiles launch --all
 would be parsed as:
 
 @
-Parameters (Just "missiles") [("all",Empty)] []
+'Parameters' ('Just' "missiles") [("all",Empty)] []
 @
 
 -}
@@ -336,7 +345,7 @@ in options is unrecognized or if there is some other problem handling
 options or arguments (because at that point, we want to rabbit right back
 to the top and bail out; there's no recovering).
 
-This isn't somethin you'll ever need to call directly; it's exposed for
+This isn't something you'll ever need to call directly; it's exposed for
 testing convenience. This function is invoked when you call
 'Core.Program.Context.configure' or 'Core.Program.Execute.execute' (which
 calls 'configure' with a default @Config@ when initializing).
@@ -499,6 +508,43 @@ splitCommandLine args =
         Nothing -> if (List.elem "--help" possibles)
             then Left (HelpRequest Nothing)
             else Left NoCommandFound
+
+--
+-- Environment variable handling
+--
+
+extractValidEnvironments :: Maybe LongName -> Config -> HashSet LongName
+extractValidEnvironments mode config = case config of
+    Simple options -> extractVariableNames options
+
+    Complex commands ->
+      let
+        globals = extractGlobalOptions commands
+        variables1 = extractVariableNames globals
+
+        locals = extractLocalVariables commands (fromMaybe "" mode)
+        variables2 = extractVariableNames locals
+      in
+        variables1 <> variables2
+
+extractLocalVariables :: [Commands] -> LongName -> [Options]
+extractLocalVariables commands mode =
+    foldr k [] commands
+  where
+    k :: Commands -> [Options] -> [Options]
+    k (Command name _ options) acc = if name == mode then options else acc
+    k _ acc = acc
+
+
+extractVariableNames :: [Options] -> HashSet LongName
+extractVariableNames options =
+    foldr f HashSet.empty options
+  where
+    f :: Options -> HashSet LongName -> HashSet LongName
+    f (Variable longname _) valids = HashSet.insert longname valids
+    f _ valids = valids
+
+
 
 --
 -- The code from here on is formatting code. It's fairly repetative
