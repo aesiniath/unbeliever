@@ -68,9 +68,6 @@ type ShortName = Char
 The description of an option, command, or environment variable (for use
 when rendering usage information in response to @--help@ on the
 command-line).
-
-By convention a description is one or more complete sentences each of which
-ends with a full stop.
 -}
 type Description = Rope
 
@@ -148,6 +145,12 @@ options and arguments as needed.
 complex :: [Commands] -> Config
 complex commands = Complex commands
 
+{-|
+Description of the command-line structure of a program which has
+\"commands\" (sometimes referred to as \"subcommands\") representing
+different modes of operation. This is familiar from tools like /git/
+and /docker/.
+-}
 data Commands 
     = Global [Options]
     | Command LongName Description [Options]
@@ -156,8 +159,16 @@ data Commands
 Declaration of an optional switch or mandatory argument expected by a
 program.
 
-By convention these are /lower case/. If the identifier is two or more
-words they are joined with a hyphen. Examples:
+'Option' takes a long name for the option, a short single character
+abbreviation if offered for convenience, and a description for use when
+displaying usage via @--help@.
+
+'Argument' indicates a mandatory argument and takes the long name used
+to identify the parsed value from the command-line, and likewise a
+description for @--help@ output.
+
+By convention these are both /lower case/. If the identifier is two or
+more words they are joined with a hyphen. Examples:
 
 @
         [ 'Option' \"dry-run\" 'Nothing' "Don't actually execute commands, just simulate what would happen."
@@ -166,32 +177,26 @@ words they are joined with a hyphen. Examples:
         ]
 @
 
-Option takes a long name for the option, a short single character
-abbreviation if offered for convenience, and a description for use when
-displaying usage via @--help@. Mandatory argument takes the long name used
-to identify the parsed value from the command-line, and likewise a
-description for @--help@ output.
+By convention a /description/ is one or more complete sentences each of
+which ends with a full stop.
+
+'Variable' declares an /environment variable/ that, if present, will be
+read by the program and stored in its runtime context. By convention these
+are /upper case/. If the identifier is two or more words they are joined
+with an underscore:
+
+@
+        [ ...
+        , 'Variable' \"CRAZY_MODE\" "Specify how many crazies to activate."
+        , ...
+        ]
+@
 -}
 data Options
     = Option LongName (Maybe ShortName) Description
     | Argument LongName Description
     | Variable LongName Description
 
-{-|
-Declaration of an environment variable that, if present, will be
-interpreted by the program and stored in its runtime context.
-
-By convention these are /upper case/. If the identifier is two or more
-words they are joined with an underscore:
-
-@
-        [ 'Variable' \"CRAZY_MODE\" "Specify how many crazies to activate."
-        , ...
-        ]
-@
-
-Environment variables are only available in 'complex' configurations.
--}
 
 {-|
 Individual parameters read in off the command-line can either have a value
@@ -228,7 +233,7 @@ declared in the 'Argument' entry) and a value being the Admiral's CV. This
 would be returned as:
 
 @
-Parameters Nothing [("username","gbmh"), ("filename","GraceHopper_Resume.pdf")] []
+'Parameters' 'Nothing' [("username","gbmh"), ("filename","GraceHopper_Resume.pdf")] []
 @
 
 The case of a complex command such as /git/ or /stack/, you get the specific
@@ -241,7 +246,7 @@ $ missiles launch --all
 would be parsed as:
 
 @
-Parameters (Just "missiles") [("all",Empty)] []
+'Parameters' ('Just' "missiles") [("all",Empty)] []
 @
 
 -}

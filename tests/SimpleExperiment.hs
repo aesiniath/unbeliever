@@ -105,6 +105,7 @@ main = do
         , Argument "filename" [quote|
             The file you want to frobnicate.
           |]
+        , Variable "HOME" "Home directory"
         ])
 
     executeWith context program
