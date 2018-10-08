@@ -34,9 +34,9 @@ module Core.Program.Arguments
         {-* Programs with Commands -}
       , complex
       , Commands(..)
-      , Variables(..)
         {-* Internals -}
       , parseCommandLine
+      , extractValidEnvironments
       , InvalidCommandLine(..)
       , buildUsage
     ) where
@@ -48,6 +48,7 @@ import qualified Data.HashMap.Strict as HashMap
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as HashSet
 import qualified Data.List as List
+import Data.Maybe (fromMaybe)
 import Data.Text.Prettyprint.Doc (Doc, Pretty(..), nest, fillCat
     , emptyDoc, hardline, softline, fillBreak, align, (<+>), fillSep, indent)
 import Data.Text.Prettyprint.Doc.Util (reflow)
@@ -150,7 +151,6 @@ complex commands = Complex commands
 data Commands 
     = Global [Options]
     | Command LongName Description [Options]
-    | Environment [Variables]
 
 {-|
 Declaration of an optional switch or mandatory argument expected by a
@@ -175,6 +175,7 @@ description for @--help@ output.
 data Options
     = Option LongName (Maybe ShortName) Description
     | Argument LongName Description
+    | Variable LongName Description
 
 {-|
 Declaration of an environment variable that, if present, will be
@@ -191,9 +192,12 @@ words they are joined with an underscore:
 
 Environment variables are only available in 'complex' configurations.
 -}
-data Variables
-    = Variable LongName Description
 
+{-|
+Individual parameters read in off the command-line can either have a value
+(in the case of arguments and options taking a value) or be empty (in the
+case of options that are just flags).
+-}
 data ParameterValue
     = Value String
     | Empty
@@ -336,7 +340,7 @@ in options is unrecognized or if there is some other problem handling
 options or arguments (because at that point, we want to rabbit right back
 to the top and bail out; there's no recovering).
 
-This isn't somethin you'll ever need to call directly; it's exposed for
+This isn't something you'll ever need to call directly; it's exposed for
 testing convenience. This function is invoked when you call
 'Core.Program.Context.configure' or 'Core.Program.Execute.execute' (which
 calls 'configure' with a default @Config@ when initializing).
@@ -499,6 +503,43 @@ splitCommandLine args =
         Nothing -> if (List.elem "--help" possibles)
             then Left (HelpRequest Nothing)
             else Left NoCommandFound
+
+--
+-- Environment variable handling
+--
+
+extractValidEnvironments :: Maybe LongName -> Config -> HashSet LongName
+extractValidEnvironments mode config = case config of
+    Simple options -> extractVariableNames options
+
+    Complex commands ->
+      let
+        globals = extractGlobalOptions commands
+        variables1 = extractVariableNames globals
+
+        locals = extractLocalVariables commands (fromMaybe "" mode)
+        variables2 = extractVariableNames locals
+      in
+        variables1 <> variables2
+
+extractLocalVariables :: [Commands] -> LongName -> [Options]
+extractLocalVariables commands mode =
+    foldr k [] commands
+  where
+    k :: Commands -> [Options] -> [Options]
+    k (Command name _ options) acc = if name == mode then options else acc
+    k _ acc = acc
+
+
+extractVariableNames :: [Options] -> HashSet LongName
+extractVariableNames options =
+    foldr f HashSet.empty options
+  where
+    f :: Options -> HashSet LongName -> HashSet LongName
+    f (Variable longname _) valids = HashSet.insert longname valids
+    f _ valids = valids
+
+
 
 --
 -- The code from here on is formatting code. It's fairly repetative

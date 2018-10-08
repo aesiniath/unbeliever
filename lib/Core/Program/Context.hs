@@ -29,10 +29,11 @@ import Control.Monad.Catch (MonadThrow(throwM))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader.Class (MonadReader(..))
 import Control.Monad.Trans.Reader (ReaderT(..))
+import Data.Foldable (foldrM)
 import Data.Text.Prettyprint.Doc (layoutPretty, LayoutOptions(..), PageWidth(..))
 import Data.Text.Prettyprint.Doc.Render.Text (renderIO)
 import qualified System.Console.Terminal.Size as Terminal (Window(..), size)
-import System.Environment (getArgs, getProgName)
+import System.Environment (getArgs, getProgName, lookupEnv)
 import System.Exit (ExitCode(..), exitWith)
 
 import Core.System.Base
@@ -222,7 +223,9 @@ handleCommandLine config = do
     argv <- getArgs
     let result = parseCommandLine config argv
     case result of
-        Right parameters -> return parameters
+        Right parameters -> do
+            pairs <- lookupEnvironmentVariables config parameters
+            return parameters { environmentValuesFrom = pairs }
         Left e -> case e of
             HelpRequest mode -> do
                 columns <- getConsoleWidth
@@ -237,3 +240,17 @@ handleCommandLine config = do
                 hFlush stdout
                 exitWith (ExitFailure 1)
 
+lookupEnvironmentVariables :: Config -> Parameters -> IO [(LongName,ParameterValue)]
+lookupEnvironmentVariables config params = do
+    let mode = commandNameFrom params
+    let valids = extractValidEnvironments mode config
+
+    result <- foldrM f [] valids
+    return result
+  where
+    f :: LongName -> [(LongName, ParameterValue)] -> IO [(LongName, ParameterValue)]
+    f name@(LongName var) acc = do
+        result <- lookupEnv var
+        return $ case result of
+            Just value  -> (name,Value value):acc
+            Nothing     -> acc
