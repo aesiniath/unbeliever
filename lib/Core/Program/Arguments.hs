@@ -576,11 +576,6 @@ buildUsage config mode = case config of
         modes = extractValidModes commands
 
         (oG,_) = partitionParameters globalOptions
-        (oL,aL) = case mode of
-            Just longname -> case HashMap.lookup longname modes of 
-                Just localOptions -> partitionParameters localOptions
-                Nothing -> error "Illegal State"
-            Nothing -> ([],[])
       in
         "Usage:" <> hardline <> hardline <> case mode of
             Nothing ->

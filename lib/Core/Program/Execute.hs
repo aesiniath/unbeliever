@@ -75,16 +75,19 @@ module Core.Program.Execute
       , Context
       , None(..)
       , isNone
+      , unProgram
+      , unThread
     ) where
 
+import Prelude hiding (log)
 import Control.Concurrent (threadDelay)
-import Control.Concurrent.Async (Async, async, link, cancel,
-    ExceptionInLinkedThread(..), AsyncCancelled)
-import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar, readMVar,
-    putMVar, modifyMVar_)
+import Control.Concurrent.Async (Async, async, link, cancel
+    , ExceptionInLinkedThread(..), AsyncCancelled)
+import Control.Concurrent.MVar (MVar, newMVar, readMVar
+    , putMVar, modifyMVar_)
 import Control.Concurrent.STM (atomically, check)
-import Control.Concurrent.STM.TChan (TChan, newTChanIO, readTChan,
-    writeTChan, isEmptyTChan)
+import Control.Concurrent.STM.TChan (TChan, readTChan
+    , writeTChan, isEmptyTChan)
 import qualified Control.Exception as Base (throwIO)
 import Control.Exception.Safe (SomeException, Exception(displayException))
 import qualified Control.Exception.Safe as Safe (throw, catchesAsync)
@@ -95,9 +98,8 @@ import Control.Monad.Reader.Class (MonadReader(ask))
 import Control.Monad.Trans.Reader (ReaderT(runReaderT))
 import qualified Data.ByteString as B (hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
-import qualified Data.ByteString.Lazy as L (hPut)
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
-import System.Exit (ExitCode(..), exitWith)
+import System.Exit (ExitCode(..))
 
 import Core.Text.Bytes
 import Core.Text.Rope
@@ -108,8 +110,8 @@ import Core.Program.Logging
 import Core.Program.Signal
 import Core.Program.Arguments
 
-unwrapProgram :: Program τ α -> ReaderT (MVar (Context τ)) IO α
-unwrapProgram (Program reader) = reader
+unProgram :: Program τ α -> ReaderT (MVar (Context τ)) IO α
+unProgram (Program reader) = reader
 
 runProgram :: Context τ -> Program τ a -> IO a
 runProgram context (Program reader) = do
@@ -136,7 +138,7 @@ executeAction context program =
 escapeHandlers :: Context c -> [Handler IO ()]
 escapeHandlers context = [
     Handler (\ (exit :: ExitCode) -> done exit)
-  , Handler (\ (e :: AsyncCancelled) -> pass)
+  , Handler (\ (_ :: AsyncCancelled) -> pass)
   , Handler (\ (ExceptionInLinkedThread _ e) -> bail e)
   , Handler (\ (e :: SomeException) -> bail e)
   ]
@@ -179,19 +181,19 @@ executeWith context program = do
     when (numCapabilities == 1) (getNumProcessors >>= setNumCapabilities)
 
     let quit = exitSemaphoreFrom context
-        output = outputChannelFrom context
-        logger = loggerChannelFrom context
+        out = outputChannelFrom context
+        log = loggerChannelFrom context
 
     -- set up standard output
     o <- async $ do
-        processStandardOutput output
+        processStandardOutput out
 
     -- set up debug logger
     l <- async $ do
-        processDebugMessages logger
+        processDebugMessages log
 
     -- set up signal handlers
-    s <- async $ do
+    _ <- async $ do
         setupSignalHandlers quit
 
     -- run actual program, ensuring to trap uncaught exceptions
@@ -205,10 +207,10 @@ executeWith context program = do
 
     -- drain message queues
     atomically $ do
-        done2 <- isEmptyTChan logger
+        done2 <- isEmptyTChan log
         check done2
 
-        done1 <- isEmptyTChan output
+        done1 <- isEmptyTChan out
         check done1
 
     threadDelay 100 -- instead of yield
@@ -224,17 +226,19 @@ executeWith context program = do
 
 
 processStandardOutput :: TChan Rope -> IO ()
-processStandardOutput output = do
+processStandardOutput out = do
     forever $ do
-        text <- atomically (readTChan output)
+        text <- atomically (readTChan out)
 
         hOutput stdout text
         B.hPut stdout (C.singleton '\n')
 
 processDebugMessages :: TChan Message -> IO ()
-processDebugMessages logger = do
+processDebugMessages log = do
     forever $ do
-        Message now severity text potentialValue <- atomically (readTChan logger)
+        -- TODO do sactually do something with log messages
+        -- Message now severity text potentialValue <- ...
+        _ <- atomically (readTChan log)
 
         return ()
 
@@ -310,11 +314,13 @@ setApplicationState user = do
 {-|
 Alias for 'getApplicationState'.
 -}
+retrieve :: Program τ τ
 retrieve = getApplicationState
 
 {-|
 Alias for 'setApplicationState'.
 -}
+update :: τ -> Program τ ()
 update = setApplicationState
 
 -- undocumented
@@ -342,9 +348,9 @@ write text = do
     v <- ask
     liftIO $ do
         context <- readMVar v
-        let chan = outputChannelFrom context
+        let out = outputChannelFrom context
 
-        atomically (writeTChan chan text)
+        atomically (writeTChan out text)
 
 {-|
 Call 'show' on the supplied argument and write the resultant text to
@@ -365,12 +371,12 @@ writeR thing = do
     v <- ask
     liftIO $ do
         context <- readMVar v
-        let chan = outputChannelFrom context
-        let width = terminalWidthFrom context
+        let out = outputChannelFrom context
+        let columns = terminalWidthFrom context
 
-        let text = render width thing
+        let text = render columns thing
 
-        atomically (writeTChan chan text)
+        atomically (writeTChan out text)
 
 {-|
 Write the supplied bytes to the given handle

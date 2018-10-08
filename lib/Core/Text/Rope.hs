@@ -240,7 +240,7 @@ split :: Int -> Rope -> (Rope,Rope)
 split i text@(Rope x) =
   let
     pos = Width i
-    result = F.search (\w1 w2 -> w1 >= pos) x
+    result = F.search (\w1 _ -> w1 >= pos) x
   in
     case result of
         F.Position before piece after ->

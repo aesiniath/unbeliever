@@ -91,20 +91,20 @@ will get you:
 
 import qualified Data.Aeson as Aeson
 import qualified Data.ByteString as S
-import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy as L
 import Data.Coerce
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable (Hashable)
-import Data.Text.Prettyprint.Doc (Doc, Pretty(..), viaShow, dquote, comma,
-    punctuate, lbracket, rbracket, emptyDoc, hsep, vsep, (<+>), indent,
-    lbrace, rbrace, line, sep, layoutPretty, defaultLayoutOptions, hcat,
-    annotate, unAnnotate, reAnnotateS, line', group, nest, hang,
-    LayoutOptions(..), PageWidth(..))
-import Data.Text.Prettyprint.Doc.Render.Terminal (renderStrict,
-    color, colorDull, Color(..))
-import Data.Text.Prettyprint.Doc.Util (reflow)
+import Data.Text.Prettyprint.Doc
+    ( Doc, Pretty(..), viaShow, dquote, comma, punctuate, lbracket
+    , rbracket, vsep, (<+>), indent, lbrace, rbrace
+    , line, sep, hcat, annotate
+    , unAnnotate, line', group, nest
+    )
+import Data.Text.Prettyprint.Doc.Render.Terminal
+    ( color, colorDull, Color(..)
+    )
 import Data.Text.Prettyprint.Doc.Render.Terminal (AnsiStyle)
 import Data.Scientific (Scientific)
 import qualified Data.Scientific as Scientific
@@ -301,7 +301,7 @@ prettyValue value = case value of
             pairs = HashMap.toList xm
             entries = fmap (\(k, v) -> (prettyKey k) <> annotate SymbolToken ":" <+> clear v (prettyValue v)) pairs
 
-            clear value doc = case value of
+            clear v doc = case v of
                 (JsonObject _)  -> line <> doc
                 (JsonArray _)   -> group doc
                 _               -> doc

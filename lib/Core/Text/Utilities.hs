@@ -32,8 +32,7 @@ import Data.Text.Prettyprint.Doc (Doc, layoutPretty , reAnnotateS
     , pretty, emptyDoc
     , LayoutOptions(LayoutOptions)
     , PageWidth(AvailablePerLine))
-import Data.Text.Prettyprint.Doc.Render.Terminal (renderStrict, AnsiStyle
-    , color, Color(..))
+import Data.Text.Prettyprint.Doc.Render.Terminal (renderStrict, AnsiStyle)
 import Language.Haskell.TH (litE, stringL)
 import Language.Haskell.TH.Quote (QuasiQuoter(QuasiQuoter))
 
