@@ -79,7 +79,7 @@ module Core.Text.Rope
     , insert
     , contains
       {-* Interoperation and Output -}
-    , Textual(..)
+    , Textual(fromRope, intoRope, append)
     , unsafeIntoRope
     , hOutput
       {-* Internals -}

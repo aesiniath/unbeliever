@@ -68,6 +68,7 @@ program = do
     let (Just y) = decodeFromUTF8 b
     writeS y
     writeS (encodeToUTF8 y)
+    writeR (encodeToUTF8 y)
     writeS (encodeToUTF8 r)
 
     debugR "packet" j

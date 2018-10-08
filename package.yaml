@@ -68,7 +68,19 @@ executables:
     main: SimpleExperiment.hs
     other-modules: []
 
-    ghc-prof-options: -fprof-auto
+    ghc-prof-options: -fprof-auto-top
+
+  snippet:
+    dependencies:
+     - unbeliever
+
+    ghc-options: -threaded -Wall -Wwarn -fwarn-tabs
+
+    source-dirs: tests
+    main: Snippet.hs
+    other-modules: []
+
+    ghc-prof-options: -fprof-auto-top
 
 tests:
   check:
@@ -83,6 +95,7 @@ tests:
     main: TestSuite.hs
     other-modules:
      - CheckRopeBehaviour
+     - CheckBytesBehaviour
      - CheckJsonWrapper
      - CheckArgumentsParsing
      - CheckProgramMonad

@@ -27,11 +27,13 @@ import qualified Data.List as List (foldl', dropWhile, dropWhileEnd)
 import Data.Monoid ((<>))
 import qualified Data.Text as T
 import qualified Data.Text.Lazy.Builder as T
-import qualified Data.Text.Short as S (uncons)
+import qualified Data.Text.Short as S (ShortText, uncons, toText)
 import Data.Text.Prettyprint.Doc (Doc, layoutPretty , reAnnotateS
+    , pretty, emptyDoc
     , LayoutOptions(LayoutOptions)
     , PageWidth(AvailablePerLine))
-import Data.Text.Prettyprint.Doc.Render.Terminal (renderStrict, AnsiStyle)
+import Data.Text.Prettyprint.Doc.Render.Terminal (renderStrict, AnsiStyle
+    , color, Color(..))
 import Language.Haskell.TH (litE, stringL)
 import Language.Haskell.TH.Quote (QuasiQuoter(QuasiQuoter))
 
@@ -64,12 +66,15 @@ tokens.
     -}
     intoDocA :: α -> Doc (Token α)
 
-{-
 instance Render Rope where
-    type Token Rope = 
-    colourize = 
-    intoDocA x = x
+    type Token Rope = ()
+    colourize = const mempty
+    intoDocA = foldr f emptyDoc . unRope
+      where
+        f :: S.ShortText -> Doc () -> Doc ()
+        f piece built = (<>) (pretty (S.toText piece)) built
 
+{-
 instance Render [Rope] where
     intoDocA = intoRope . F.fromList . concatMap toList . fmap unRope
 
@@ -83,10 +88,20 @@ Rope saturated with ANSI escape codes representing syntax highlighting or
 similar colouring, wrapping at the specified @width@.
 
 The obvious expectation is that the next thing you're going to do is send
-the Rope to console with @'Core.Program.Execute.write' (render thing)@.
-However, the /better/ thing to do is to use 'Core.Program.Execute.writeR'
-instead, which is able to pretty print the document text respecting the
-available width of the terminal.
+the Rope to console with:
+
+@
+    'Core.Program.Execute.write' ('render' 80 thing)
+@
+
+However, the /better/ thing to do is to instead use:
+
+@
+    'Core.Program.Execute.writeR' thing
+@
+
+which is able to pretty print the document text respecting the available
+width of the terminal.
 -}
 -- the annotation (_ :: α) of the parameter is to bring type a into scope
 -- at term level so that it can be used by TypedApplications. Which then
@@ -116,7 +131,6 @@ indefinite text =
             Just (c,_)  -> if c `elem` ['A','E','I','O','U','a','e','i','o','u']
                 then intoRope ("an " F.<| x)
                 else intoRope ("a " F.<| x)
-
 
 {-|
 Often the input text represents a paragraph, but does not have any internal
