@@ -94,7 +94,6 @@ import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy as L
 import Data.Coerce
-import Data.Foldable (foldl')
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable (Hashable)
@@ -116,7 +115,7 @@ import GHC.Generics
 
 import Core.Text.Bytes (Bytes(StrictBytes))
 import Core.Text.Rope (Rope, Textual, intoRope, fromRope)
-import Core.Text.Utilities (Render(..), render)
+import Core.Text.Utilities (Render(..))
 
 {-|
 Given a JSON value, encode it to UTF-8 bytes

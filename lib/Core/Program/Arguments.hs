@@ -648,6 +648,7 @@ buildUsage config mode = case config of
     f :: Options -> ([Options],[Options]) -> ([Options],[Options])
     f o@(Option _ _ _) (opts,args) = (o:opts,args)
     f a@(Argument _ _) (opts,args) = (opts,a:args)
+    f (Variable _ _) (opts,args) = (opts,args)
 
     formatParameters :: [Options] -> Doc ann
     formatParameters [] = emptyDoc
@@ -673,6 +674,12 @@ buildUsage config mode = case config of
       in
         fillBreak 16 (s <> l <> " ") <+> align (reflow d) <> hardline <> acc
     g (Argument longname description) acc =
+      let
+        l = pretty longname
+        d = fromRope description
+      in
+        fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
+    g (Variable longname description) acc =
       let
         l = pretty longname
         d = fromRope description

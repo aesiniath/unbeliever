@@ -14,9 +14,9 @@ module Core.Program.Logging
     ) where
 
 import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
-import Control.Concurrent.MVar (MVar, readMVar)
+import Control.Concurrent.MVar (readMVar)
 import Control.Concurrent.STM (atomically)
-import Control.Concurrent.STM.TChan (TChan, writeTChan)
+import Control.Concurrent.STM.TChan (writeTChan)
 import Control.Monad.Reader.Class (MonadReader(ask))
 import qualified Data.ByteString as S (pack, hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
@@ -24,9 +24,7 @@ import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.Fixed
 import Data.Hourglass (timePrint, TimeFormatElem(..))
 import qualified Data.Text.Short as S (replicate)
-import Time.System (timezoneCurrent)
 
-import Core.Text.Bytes
 import Core.Text.Rope
 import Core.Text.Utilities
 import Core.System.Base
@@ -47,7 +45,6 @@ instance MonadLog Text IO where
 putMessage :: Context τ -> Message -> IO ()
 putMessage context message@(Message now nature text potentialValue) = do
     let start = startTimeFrom context
-    let width = terminalWidthFrom context
     let output = outputChannelFrom context
     let logger = loggerChannelFrom context
 
@@ -182,10 +179,10 @@ debugR label thing = do
         context <- readMVar v
         now <- getCurrentTimeNanoseconds
 
-        let width = terminalWidthFrom context
+        let columns = terminalWidthFrom context
 
         -- TODO take into account width already consumed by timestamp
         -- TODO move render to putMessage? putMessageR?
-        let value = render width thing
+        let value = render columns thing
 
         putMessage context (Message now Debug label (Just value))

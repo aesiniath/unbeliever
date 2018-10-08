@@ -23,7 +23,7 @@ module Core.Text.Utilities (
 ) where
 
 import qualified Data.FingerTree as F ((<|), ViewL(..), viewl)
-import qualified Data.List as List (foldl', dropWhile, dropWhileEnd)
+import qualified Data.List as List (foldl', dropWhileEnd)
 import Data.Monoid ((<>))
 import qualified Data.Text as T
 import qualified Data.Text.Lazy.Builder as T

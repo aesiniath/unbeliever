@@ -77,8 +77,8 @@ module Core.Program.Execute
       , isNone
     ) where
 
-import Control.Concurrent (yield, threadDelay)
-import Control.Concurrent.Async (Async, async, link, cancel, wait,
+import Control.Concurrent (threadDelay)
+import Control.Concurrent.Async (Async, async, link, cancel,
     ExceptionInLinkedThread(..), AsyncCancelled)
 import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar, readMVar,
     putMVar, modifyMVar_)
@@ -93,14 +93,11 @@ import Control.Monad.Catch (Handler(..))
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Reader.Class (MonadReader(ask))
 import Control.Monad.Trans.Reader (ReaderT(runReaderT))
-import qualified Data.ByteString as B (pack, hPut)
+import qualified Data.ByteString as B (hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
 import qualified Data.ByteString.Lazy as L (hPut)
-import Data.Hourglass (timePrint, TimeFormatElem(..))
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
 import System.Exit (ExitCode(..), exitWith)
-import System.IO.Unsafe (unsafePerformIO)
-import Time.System (timezoneCurrent)
 
 import Core.Text.Bytes
 import Core.Text.Rope
@@ -126,7 +123,7 @@ executeAction context program =
   let
     quit = exitSemaphoreFrom context
   in do
-    runProgram context program
+    _ <- runProgram context program
     putMVar quit ExitSuccess
 
 --
