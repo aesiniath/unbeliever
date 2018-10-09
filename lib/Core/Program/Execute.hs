@@ -76,6 +76,7 @@ module Core.Program.Execute
       , Context
       , None(..)
       , isNone
+      , getVerbosityLevel
       , unProgram
       , unThread
     ) where
@@ -255,6 +256,13 @@ terminate code =
         _ -> ExitFailure code
   in do
     liftIO (Safe.throw exit)
+
+-- undocumented
+getVerbosityLevel :: Program τ Nature
+getVerbosityLevel = do
+    v <- ask
+    context <- liftIO (readMVar v)
+    return (verbosityLevelFrom context)
 
 
 {-|

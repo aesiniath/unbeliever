@@ -395,6 +395,7 @@ parsePossibleOptions mode valids shorts args = mapM f args
   where
     f arg = case arg of
         "--help" -> Left (HelpRequest mode)
+        "-?"     -> Left (HelpRequest mode)
         ('-':'-':name) -> considerLongOption name
         ('-':c:[]) -> considerShortOption c
         _ -> Left (InvalidOption arg)

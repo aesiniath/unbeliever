@@ -71,6 +71,7 @@ data Context τ = Context {
     , exitSemaphoreFrom :: MVar ExitCode
     , startTimeFrom :: TimeStamp
     , terminalWidthFrom :: Int
+    , verbosityLevelFrom :: Nature
     , outputChannelFrom :: TQueue Rope
     , loggerChannelFrom :: TQueue Message
     , applicationDataFrom :: τ
@@ -100,6 +101,7 @@ isNone _ = True
 data Message = Message TimeStamp Nature Rope (Maybe Rope)
 
 data Nature = Output | Event | Debug
+    deriving Show
 
 {-|
 The type of a top-level program.
@@ -184,12 +186,15 @@ configure user config = do
     output <- newTQueueIO
     logger <- newTQueueIO
 
+    level <- handleVerbosityLevel parameters
+
     return $! Context {
           programNameFrom = (intoRope name)
         , commandLineFrom = parameters
         , exitSemaphoreFrom = quit
         , startTimeFrom = start
         , terminalWidthFrom = columns
+        , verbosityLevelFrom = level
         , outputChannelFrom = output
         , loggerChannelFrom = logger
         , applicationDataFrom = user
@@ -254,3 +259,29 @@ lookupEnvironmentVariables config params = do
         return $ case result of
             Just value  -> (name,Value value):acc
             Nothing     -> acc
+
+
+handleVerbosityLevel :: Parameters -> IO Nature
+handleVerbosityLevel params = do
+    let result = queryVerbosityLevel params
+    case result of
+        Right level -> do
+            return level
+        Left exit -> do
+            putStrLn "error: Unknown value supplied to --verbose."
+            putStrLn "Valid values are \"none\", \"event\", and \"debug\"."
+            hFlush stdout
+            exitWith exit
+
+queryVerbosityLevel :: Parameters -> Either ExitCode Nature
+queryVerbosityLevel params = foldrM q Output (parameterValuesFrom params)
+  where
+    q :: (LongName,ParameterValue) -> Nature -> Either ExitCode Nature
+    q ("verbose",value) _ = case value of
+        Empty -> Right Event
+        Value "debug" -> Right Debug
+        Value "event" -> Right Event
+        Value "none"  -> Right Output
+        Value _ -> Left (ExitFailure 2)
+    q _ acc = Right acc
+
