@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
 module CheckArgumentsParsing where

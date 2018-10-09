@@ -48,6 +48,9 @@ program = do
     params <- getCommandLine
     debugS "params" params
 
+    level <- getVerbosityLevel
+    debugS "level" level
+
     name <- getProgramName
     debug "programName" name
 

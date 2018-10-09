@@ -30,6 +30,8 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader.Class (MonadReader(..))
 import Control.Monad.Trans.Reader (ReaderT(..))
 import Data.Foldable (foldrM)
+import Data.HashMap.Strict (HashMap)
+import qualified Data.HashMap.Strict as HashMap
 import Data.Text.Prettyprint.Doc (layoutPretty, LayoutOptions(..), PageWidth(..))
 import Data.Text.Prettyprint.Doc.Render.Text (renderIO)
 import qualified System.Console.Terminal.Size as Terminal (Window(..), size)
@@ -245,19 +247,19 @@ handleCommandLine config = do
                 hFlush stdout
                 exitWith (ExitFailure 1)
 
-lookupEnvironmentVariables :: Config -> Parameters -> IO [(LongName,ParameterValue)]
+lookupEnvironmentVariables :: Config -> Parameters -> IO (HashMap LongName ParameterValue)
 lookupEnvironmentVariables config params = do
     let mode = commandNameFrom params
     let valids = extractValidEnvironments mode config
 
-    result <- foldrM f [] valids
+    result <- foldrM f HashMap.empty valids
     return result
   where
-    f :: LongName -> [(LongName, ParameterValue)] -> IO [(LongName, ParameterValue)]
+    f :: LongName -> (HashMap LongName ParameterValue) -> IO (HashMap LongName ParameterValue)
     f name@(LongName var) acc = do
         result <- lookupEnv var
         return $ case result of
-            Just value  -> (name,Value value):acc
+            Just value  -> HashMap.insert name (Value value) acc
             Nothing     -> acc
 
 
@@ -274,14 +276,16 @@ handleVerbosityLevel params = do
             exitWith exit
 
 queryVerbosityLevel :: Parameters -> Either ExitCode Nature
-queryVerbosityLevel params = foldrM q Output (parameterValuesFrom params)
-  where
-    q :: (LongName,ParameterValue) -> Nature -> Either ExitCode Nature
-    q ("verbose",value) _ = case value of
-        Empty -> Right Event
-        Value "debug" -> Right Debug
-        Value "event" -> Right Event
-        Value "none"  -> Right Output
-        Value _ -> Left (ExitFailure 2)
-    q _ acc = Right acc
+queryVerbosityLevel params =
+  let
+    result = HashMap.lookup "verbose" (parameterValuesFrom params)
+  in
+    case result of
+        Nothing             -> Right Output
+        Just value -> case value of
+            Empty           -> Right Event
+            Value "debug"   -> Right Debug
+            Value "event"   -> Right Event
+            Value "none"    -> Right Output
+            Value _         -> Left (ExitFailure 2)
 

@@ -253,8 +253,8 @@ would be parsed as:
 data Parameters
     = Parameters {
           commandNameFrom :: Maybe LongName
-        , parameterValuesFrom :: [(LongName, ParameterValue)]
-        , environmentValuesFrom :: [(LongName, ParameterValue)]
+        , parameterValuesFrom :: HashMap LongName ParameterValue
+        , environmentValuesFrom :: HashMap LongName ParameterValue
     } deriving (Show, Eq)
 
 baselineConfig :: Config
@@ -354,7 +354,7 @@ parseCommandLine :: Config -> [String] -> Either InvalidCommandLine Parameters
 parseCommandLine config argv = case config of
     Simple options -> do
         params <- extractor Nothing options argv
-        return (Parameters Nothing params [])
+        return (Parameters Nothing params HashMap.empty)
 
     Complex commands ->
       let
@@ -365,10 +365,10 @@ parseCommandLine config argv = case config of
         params1 <- extractor Nothing globalOptions possibles
         (mode,localOptions) <- parseIndicatedCommand modes first
         params2 <- extractor (Just mode) localOptions remainingArgs
-        return (Parameters (Just mode) (params1 ++ params2) [])
+        return (Parameters (Just mode) (HashMap.union params1 params2) HashMap.empty)
   where
 
-    extractor :: Maybe LongName -> [Options] -> [String] -> Either InvalidCommandLine [(LongName,ParameterValue)]
+    extractor :: Maybe LongName -> [Options] -> [String] -> Either InvalidCommandLine (HashMap LongName ParameterValue)
     extractor mode options args =
       let
         (possibles,arguments) = List.partition isOption args
@@ -378,7 +378,7 @@ parseCommandLine config argv = case config of
       in do
         list1 <- parsePossibleOptions mode valids shorts possibles
         list2 <- parseRequiredArguments needed arguments
-        return (list1 ++ list2)
+        return (HashMap.union (HashMap.fromList list1) (HashMap.fromList list2))
 
 isOption :: String -> Bool
 isOption arg = case arg of
