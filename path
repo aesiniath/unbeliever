@@ -1,0 +1,19 @@
+#!/bin/sh
+
+BINDIR=`stack path --local-install-root`/bin
+
+link () {
+	NAME="$1"
+
+	if [ -L ./${NAME} ] ; then
+		rm -f ./${NAME}
+	fi
+	if [ -f ./${NAME} ] ; then
+		exit
+	fi
+	ln -s ${BINDIR}/${NAME} ${NAME}
+}
+
+link snippet
+link experiment
+
