@@ -62,7 +62,6 @@ module Core.Program.Execute
       , setApplicationState
       , retrieve
       , update
-      , setTerminalWidth
         {-* Useful actions -}
       , write
       , writeS
@@ -112,13 +111,12 @@ import Core.Program.Logging
 import Core.Program.Signal
 import Core.Program.Arguments
 
-unProgram :: Program τ α -> ReaderT (MVar (Context τ)) IO α
+unProgram :: Program τ α -> ReaderT (Context τ) IO α
 unProgram (Program reader) = reader
 
 runProgram :: Context τ -> Program τ a -> IO a
 runProgram context (Program reader) = do
-    v <- newMVar context
-    runReaderT reader v
+    runReaderT reader context
 
 
 -- execute actual "main"
@@ -261,11 +259,10 @@ terminate code =
 -- undocumented
 getVerbosityLevel :: Program τ Verbosity
 getVerbosityLevel = do
-    v <- ask
-    context <- liftIO (readMVar v)
-    context <- liftIO (readMVar v)
-    let level = verbosityLevelFrom context
-    liftIO (readMVar level)
+    context <- ask
+    liftIO $ do
+        level <- readMVar (verbosityLevelFrom context)
+        return level
 
 
 {-|
@@ -274,12 +271,10 @@ idea. Nothing makes use of this at the moment. @:/@
 -}
 setProgramName :: Rope -> Program τ ()
 setProgramName name = do
-    v <- ask
-    context <- liftIO (readMVar v)
-    let context' = context {
-        programNameFrom = name
-    }
-    liftIO (modifyMVar_ v (\_ -> pure context'))
+    context <- ask
+    liftIO $ do
+        let v = programNameFrom context
+        modifyMVar_ v (\_ -> pure name)
 
 {-|
 Get the program name as invoked from the command-line (or as overridden by
@@ -287,9 +282,10 @@ Get the program name as invoked from the command-line (or as overridden by
 -}
 getProgramName :: Program τ Rope
 getProgramName = do
-    v <- ask
-    context <- liftIO (readMVar v)
-    return (programNameFrom context)
+    context <- ask
+    liftIO $ do
+        let v = programNameFrom context
+        readMVar v
 
 {-|
 Get the user supplied application state as originally supplied to
@@ -302,9 +298,10 @@ Get the user supplied application state as originally supplied to
 -}
 getApplicationState :: Program τ τ
 getApplicationState = do
-    v <- ask
-    context <- liftIO (readMVar v)
-    return (applicationDataFrom context)
+    context <- ask
+    liftIO $ do
+        let v = applicationDataFrom context
+        readMVar v
 
 {-|
 Update the user supplied top-level application state.
@@ -316,12 +313,10 @@ Update the user supplied top-level application state.
 -}
 setApplicationState :: τ -> Program τ ()
 setApplicationState user = do
-    v <- ask
-    context <- liftIO (readMVar v)
-    let context' = context {
-        applicationDataFrom = user
-    }
-    liftIO (modifyMVar_ v (\_ -> pure context'))
+    context <- ask
+    liftIO $ do
+        let v = applicationDataFrom context
+        modifyMVar_ v (\_ -> pure user)
 
 {-|
 Alias for 'getApplicationState'.
@@ -335,17 +330,6 @@ Alias for 'setApplicationState'.
 update :: τ -> Program τ ()
 update = setApplicationState
 
--- undocumented
-setTerminalWidth :: Int -> Program τ ()
-setTerminalWidth columns = do
-    v <- ask
-    context <- liftIO (readMVar v)
-    let context' = context {
-        terminalWidthFrom = columns
-    }
-    liftIO (modifyMVar_ v (\_ -> pure context'))
-
-
 {-|
 Write the supplied text to @stdout@.
 
@@ -357,9 +341,8 @@ This is for normal program output.
 -}
 write :: Rope -> Program τ ()
 write text = do
-    v <- ask
+    context <- ask
     liftIO $ do
-        context <- readMVar v
         let out = outputChannelFrom context
 
         atomically (writeTQueue out text)
@@ -380,9 +363,8 @@ function, resulting in appopriate line wrapping when rendering your value.
 -}
 writeR :: Render α => α -> Program τ ()
 writeR thing = do
-    v <- ask
+    context <- ask
     liftIO $ do
-        context <- readMVar v
         let out = outputChannelFrom context
         let columns = terminalWidthFrom context
 
@@ -435,15 +417,10 @@ type.
 
 (this wraps __async__'s 'async' which in turn wraps __base__'s 'Control.Concurrent.forkIO')
 -}
---
--- TODO is this correct now that we have application state? Should it
--- not be shared (ie, a different type)?
---
 fork :: Program τ α -> Program τ (Thread α)
 fork program = do
-    v <- ask
+    context <- ask
     liftIO $ do
-        context <- readMVar v
         a <- async $ do
             runProgram context program
         link a
@@ -475,7 +452,5 @@ supplied by the user on the command-line.
 -}
 getCommandLine :: Program τ (Parameters)
 getCommandLine = do
-    v <- ask
-    liftIO $ do
-        context <- readMVar v
-        return (commandLineFrom context)
+    context <- ask
+    return (commandLineFrom context)

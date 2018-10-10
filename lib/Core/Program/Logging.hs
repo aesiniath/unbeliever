@@ -114,9 +114,8 @@ Messages sent to syslog will be logged at @Info@ level severity.
 -}
 event :: Rope -> Program τ ()
 event text = do
-    v <- ask
+    context <- ask
     liftIO $ do
-        context <- readMVar v
         level <- readMVar (verbosityLevelFrom context)
         when (isEvent level) $ do
             now <- getCurrentTimeNanoseconds
@@ -156,9 +155,8 @@ Messages sent to syslog will be logged at @Debug@ level severity.
 -}
 debug :: Rope -> Rope -> Program τ ()
 debug label value = do
-    v <- ask
+    context <- ask
     liftIO $ do
-        context <- readMVar v
         level <- readMVar (verbosityLevelFrom context)
         when (isDebug level) $ do
             now <- getCurrentTimeNanoseconds
@@ -181,9 +179,8 @@ console the default width of @80@ will be applied).
 -}
 debugR :: Render α => Rope -> α -> Program τ ()
 debugR label thing = do
-    v <- ask
+    context <- ask
     liftIO $ do
-        context <- readMVar v
         level <- readMVar (verbosityLevelFrom context)
         when (isDebug level) $ do
             now <- getCurrentTimeNanoseconds

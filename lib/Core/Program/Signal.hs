@@ -6,7 +6,7 @@ module Core.Program.Signal
 )
 where
 
-import Control.Concurrent.MVar (MVar, putMVar, readMVar)
+import Control.Concurrent.MVar (MVar, putMVar, readMVar, modifyMVar_)
 import Foreign.C.Types (CInt)
 import System.Exit (ExitCode(..))
 import System.IO (hPutStrLn, hFlush, stdout)
@@ -43,15 +43,13 @@ terminateHandler quit = Catch $ do
     putMVar quit (code sigTERM)
 
 logLevelHandler :: MVar Verbosity -> Handler
-logLevelHandler level = Catch $ do
+logLevelHandler v = Catch $ do
     hPutStrLn stdout "\nQuit"
     hFlush stdout
-    c <- readMVar level
-    let c' = case c of
-            Output -> Debug
-            Event  -> Debug
-            Debug  -> Output
-    putMVar level c'
+    modifyMVar_ v (\level -> case level of
+            Output -> pure Debug
+            Event  -> pure Debug
+            Debug  -> pure Output)
 
 --
 -- | Install signal handlers for SIGINT and SIGTERM that set the exit

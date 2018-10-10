@@ -68,7 +68,7 @@ application data of type @τ@ which can be retrieved with
 -- that field name as a local variable name.
 --
 data Context τ = Context {
-      programNameFrom :: Rope
+      programNameFrom :: MVar Rope
     , commandLineFrom :: Parameters
     , exitSemaphoreFrom :: MVar ExitCode
     , startTimeFrom :: TimeStamp
@@ -76,7 +76,7 @@ data Context τ = Context {
     , verbosityLevelFrom :: MVar Verbosity
     , outputChannelFrom :: TQueue Rope
     , loggerChannelFrom :: TQueue Message
-    , applicationDataFrom :: τ
+    , applicationDataFrom :: MVar τ
 }
 
 {-|
@@ -153,8 +153,8 @@ project each with a @main@ function. So you're best off putting your
 top-level 'Program' actions in a separate modules so you can refer to them
 from test suites and example snippets.
 -}
-newtype Program τ α = Program (ReaderT (MVar (Context τ)) IO α)
-    deriving (Functor, Applicative, Monad, MonadIO, MonadReader (MVar (Context τ)))
+newtype Program τ α = Program (ReaderT (Context τ) IO α)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadReader (Context τ))
 
 --
 -- This is complicated. The **safe-exceptions** library exports a
@@ -178,28 +178,30 @@ putting in place various semaphores for internal program communication.
 See "Core.Program.Arguments" for details.
 -}
 configure :: τ -> Config -> IO (Context τ)
-configure user config = do
+configure t config = do
     start <- getCurrentTimeNanoseconds
 
-    name <- getProgName
-    parameters <- handleCommandLine config
-    quit <- newEmptyMVar
+    arg0 <- getProgName
+    n <- newMVar (intoRope arg0)
+    p <- handleCommandLine config
+    q <- newEmptyMVar
     columns <- getConsoleWidth
-    output <- newTQueueIO
-    logger <- newTQueueIO
+    out <- newTQueueIO
+    log <- newTQueueIO
+    u <- newMVar t
 
-    level <- handleVerbosityLevel parameters
+    l <- handleVerbosityLevel p
 
     return $! Context {
-          programNameFrom = (intoRope name)
-        , commandLineFrom = parameters
-        , exitSemaphoreFrom = quit
+          programNameFrom = n
+        , commandLineFrom = p
+        , exitSemaphoreFrom = q
         , startTimeFrom = start
         , terminalWidthFrom = columns
-        , verbosityLevelFrom = level
-        , outputChannelFrom = output
-        , loggerChannelFrom = logger
-        , applicationDataFrom = user
+        , verbosityLevelFrom = l
+        , outputChannelFrom = out
+        , loggerChannelFrom = log
+        , applicationDataFrom = u
     }
 
 --
