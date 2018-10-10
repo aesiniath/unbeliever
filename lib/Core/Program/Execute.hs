@@ -183,6 +183,7 @@ executeWith context program = do
     when (numCapabilities == 1) (getNumProcessors >>= setNumCapabilities)
 
     let quit = exitSemaphoreFrom context
+        level = verbosityLevelFrom context
         out = outputChannelFrom context
         log = loggerChannelFrom context
 
@@ -196,7 +197,7 @@ executeWith context program = do
 
     -- set up signal handlers
     _ <- async $ do
-        setupSignalHandlers quit
+        setupSignalHandlers quit level
 
     -- run actual program, ensuring to trap uncaught exceptions
     m <- async $ do
@@ -258,11 +259,13 @@ terminate code =
     liftIO (Safe.throw exit)
 
 -- undocumented
-getVerbosityLevel :: Program τ Nature
+getVerbosityLevel :: Program τ Verbosity
 getVerbosityLevel = do
     v <- ask
     context <- liftIO (readMVar v)
-    return (verbosityLevelFrom context)
+    context <- liftIO (readMVar v)
+    let level = verbosityLevelFrom context
+    liftIO (readMVar level)
 
 
 {-|

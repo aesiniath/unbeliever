@@ -15,13 +15,13 @@ module Core.Program.Context
       , isNone
       , configure
       , Message(..)
-      , Nature(..)
+      , Verbosity(..)
       , Program(..)
       , getConsoleWidth
     ) where
 
 import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
-import Control.Concurrent.MVar (MVar, newEmptyMVar)
+import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
 import Control.Exception.Safe (displayException)
 import qualified Control.Exception.Safe as Safe (throw)
@@ -73,7 +73,7 @@ data Context τ = Context {
     , exitSemaphoreFrom :: MVar ExitCode
     , startTimeFrom :: TimeStamp
     , terminalWidthFrom :: Int
-    , verbosityLevelFrom :: Nature
+    , verbosityLevelFrom :: MVar Verbosity
     , outputChannelFrom :: TQueue Rope
     , loggerChannelFrom :: TQueue Message
     , applicationDataFrom :: τ
@@ -100,9 +100,9 @@ isNone :: None -> Bool
 isNone _ = True
 
 
-data Message = Message TimeStamp Nature Rope (Maybe Rope)
+data Message = Message TimeStamp Verbosity Rope (Maybe Rope)
 
-data Nature = Output | Event | Debug
+data Verbosity = Output | Event | Debug
     deriving Show
 
 {-|
@@ -263,19 +263,19 @@ lookupEnvironmentVariables config params = do
             Nothing     -> acc
 
 
-handleVerbosityLevel :: Parameters -> IO Nature
+handleVerbosityLevel :: Parameters -> IO (MVar Verbosity)
 handleVerbosityLevel params = do
     let result = queryVerbosityLevel params
     case result of
         Right level -> do
-            return level
+            newMVar level
         Left exit -> do
             putStrLn "error: Unknown value supplied to --verbose."
             putStrLn "Valid values are \"none\", \"event\", and \"debug\"."
             hFlush stdout
             exitWith exit
 
-queryVerbosityLevel :: Parameters -> Either ExitCode Nature
+queryVerbosityLevel :: Parameters -> Either ExitCode Verbosity
 queryVerbosityLevel params =
   let
     result = HashMap.lookup "verbose" (parameterValuesFrom params)
