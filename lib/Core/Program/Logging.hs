@@ -17,6 +17,7 @@ import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
 import Control.Concurrent.MVar (readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (writeTQueue)
+import Control.Monad (when)
 import Control.Monad.Reader.Class (MonadReader(ask))
 import Data.Fixed
 import Data.Hourglass (timePrint, TimeFormatElem(..))
@@ -30,13 +31,6 @@ import Core.Program.Context
 {-
 class Monad m => MonadLog a m where
     logMessage :: Monoid a => Severity -> a -> m () 
-
-instance MonadLog Text IO where
-    logMessage severity message = do
-        tick <- getCurrentTimeNanoseconds
-        
-        let line = show tick ++ " [" ++ show severity ++ "] " ++ show message
-        hPutStrLn stdout line
 -}
 
 putMessage :: Context τ -> Message -> IO ()
@@ -123,8 +117,22 @@ event text = do
     v <- ask
     liftIO $ do
         context <- readMVar v
-        now <- getCurrentTimeNanoseconds
-        putMessage context (Message now Event text Nothing)
+        level <- readMVar (verbosityLevelFrom context)
+        when (isEvent level) $ do
+            now <- getCurrentTimeNanoseconds
+            putMessage context (Message now Event text Nothing)
+
+isEvent :: Verbosity -> Bool
+isEvent level = case level of
+    Output -> False
+    Event  -> True
+    Debug  -> True
+
+isDebug :: Verbosity -> Bool
+isDebug level = case level of
+    Output -> False
+    Event  -> False
+    Debug  -> True
 
 {-|
 Output a debugging message formed from a label and a value. This is like
@@ -151,8 +159,10 @@ debug label value = do
     v <- ask
     liftIO $ do
         context <- readMVar v
-        now <- getCurrentTimeNanoseconds
-        putMessage context (Message now Debug label (Just value))
+        level <- readMVar (verbosityLevelFrom context)
+        when (isDebug level) $ do
+            now <- getCurrentTimeNanoseconds
+            putMessage context (Message now Debug label (Just value))
 
 {-|
 Convenience for the common case of needing to inspect the value
@@ -174,12 +184,15 @@ debugR label thing = do
     v <- ask
     liftIO $ do
         context <- readMVar v
-        now <- getCurrentTimeNanoseconds
+        level <- readMVar (verbosityLevelFrom context)
+        when (isDebug level) $ do
+            now <- getCurrentTimeNanoseconds
 
-        let columns = terminalWidthFrom context
+            let columns = terminalWidthFrom context
 
-        -- TODO take into account width already consumed by timestamp
-        -- TODO move render to putMessage? putMessageR?
-        let value = render columns thing
+            -- TODO take into account 22 width already consumed by timestamp
+            -- TODO move render to putMessage? putMessageR?
+            let value = render columns thing
 
-        putMessage context (Message now Debug label (Just value))
+            putMessage context (Message now Debug label (Just value))
+
