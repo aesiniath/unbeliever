@@ -11,7 +11,7 @@ import Foreign.C.Types (CInt)
 import System.Exit (ExitCode(..))
 import System.IO (hPutStrLn, hFlush, stdout)
 import System.Posix.Signals (Handler(Catch), installHandler,
-    sigINT, sigTERM, sigQUIT)
+    sigINT, sigTERM, sigUSR1)
 
 import Core.Program.Context
 
@@ -44,7 +44,7 @@ terminateHandler quit = Catch $ do
 
 logLevelHandler :: MVar Verbosity -> Handler
 logLevelHandler v = Catch $ do
-    hPutStrLn stdout "\nQuit"
+    hPutStrLn stdout "Signal"
     hFlush stdout
     modifyMVar_ v (\level -> case level of
             Output -> pure Debug
@@ -59,5 +59,5 @@ setupSignalHandlers :: MVar ExitCode -> MVar Verbosity -> IO ()
 setupSignalHandlers quit level = do
     installHandler sigINT (interruptHandler quit) Nothing
     installHandler sigTERM (terminateHandler quit) Nothing
-    installHandler sigQUIT (logLevelHandler level) Nothing
+    installHandler sigUSR1 (logLevelHandler level) Nothing
     return ()
