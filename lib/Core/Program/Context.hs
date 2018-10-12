@@ -176,6 +176,10 @@ administrative actions, including setting up output channels, parsing
 command-line arguments (according to the supplied configuration), and
 putting in place various semaphores for internal program communication.
 See "Core.Program.Arguments" for details.
+
+This is also where you specify the initial {blank, empty, default) value
+for the top-level user-defined application state, if you have one. Specify
+'None' if you aren't using this feature.
 -}
 configure :: τ -> Config -> IO (Context τ)
 configure t config = do

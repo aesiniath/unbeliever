@@ -148,7 +148,7 @@ simple options = Simple (options ++ baselineOptions)
 
 {-|
 Declare a complex configuration (implying a larger tool with various
-"[sub]commands" or "modes") for a program. You can specify global options
+"[sub]commands" or "modes"} for a program. You can specify global options
 applicable to all commands, a list of commands, and environment variables
 that will be honoured by the program. Each command can have a list of local
 options and arguments as needed.

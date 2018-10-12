@@ -174,7 +174,8 @@ execute program = do
 
 {-|
 Embelish a program with useful behaviours, supplying a configuration
-for command-line options & argument parsing.
+for command-line options & argument parsing and an initial value for
+the top-level application state, if appropriate.
 -}
 executeWith :: Context τ -> Program τ α -> IO ()
 executeWith context program = do
