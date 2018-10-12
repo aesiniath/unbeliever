@@ -105,8 +105,8 @@ data Config
 --
 
 {-|
-A completely empty Config, such that your program really won't have any
-command-line configurability.
+A completely empty configuration, such that your program really won't
+express any command-line options or arguments.
 -}
 blank :: Config
 blank = Blank
@@ -119,15 +119,17 @@ of optional parameters and mandatory arguments. For example:
 main :: 'IO' ()
 main = do
     context <- 'Core.Program.Execute.configure' 'Core.Program.Execute.None' ('simple'
-        [ 'Option' "verbose" ('Just' \'v\') ['quote'|
-            Turn on event level logging to console.
-            Valid values are "event", "debug", and "none" (the default
-            if you don't specify the verbose option).
+        [ 'Option' "hostname" ('Just' \'h\') ['quote'|
+            Specify an alternate host to connect to when performing the
+            frobnication. The default is \"localhost\".
           |]
-        , 'Option' "logging" 'Nothing' ['quote'|
-            Valid values are "console", "file:\/path\/to\/file.log", and "syslog"
+        , 'Option' "port" ('Just' \'p\') ['quote'|
+            Specify an alternate port to connect to when frobnicating.
           |]
-        , 'Option' "quiet" (Just \'q\') ['quote'|
+        , 'Option' "dry-run" 'Nothing' ['quote'|
+            Perform a trial run but don't actually do anything.
+          |]
+        , 'Option' "quiet" ('Just' \'q\') ['quote'|
             Supress normal output.
           |]
         , 'Argument' "filename" ['quote'|
