@@ -96,17 +96,6 @@ data Config
     | Simple [Options]
     | Complex [Commands]
 
-{- TODO erase
-combine :: [Options] -> Config -> Config
-combine baseline config = case config of
-    Simple options -> Simple (options ++ baseline)
-    Complex commands -> Complex (foldr f [] commands)
-  where
-    f :: Commands -> [Commands] -> [Commands]
-    f (Global options) acc = Global (options ++ baseline) : acc
-    f command acc = command : acc
--}
-
 --
 -- Those constructors are not exposed [and functions wrapping them are] partly
 -- for documentation convenience, partly for aesthetics (after a point too many

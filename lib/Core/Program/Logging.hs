@@ -7,6 +7,7 @@
 module Core.Program.Logging
     (
         putMessage
+      , Verbosity(..)
       , event
       , debug
       , debugS

@@ -57,6 +57,8 @@ module Core.Program.Execute
         {-* Accessing program context -}
       , getProgramName
       , setProgramName
+      , getVerbosityLevel
+      , setVerbosityLevel
       , getCommandLine
       , getApplicationState
       , setApplicationState
@@ -75,7 +77,6 @@ module Core.Program.Execute
       , Context
       , None(..)
       , isNone
-      , getVerbosityLevel
       , unProgram
       , unThread
     ) where
@@ -168,7 +169,7 @@ calls 'configure' with an appropriate default when initializing.
 -}
 execute :: Program None α -> IO ()
 execute program = do
-    context <- configure None baselineConfig
+    context <- configure None (simple [])
     executeWith context program
 
 {-|
@@ -263,6 +264,19 @@ getVerbosityLevel = do
     liftIO $ do
         level <- readMVar (verbosityLevelFrom context)
         return level
+
+{-|
+Change the verbosity level of the program's logging output. This changes
+whether 'event' and the 'debug' family of functions emit to the logging
+stream; they do /not/ affect 'write'ing to the terminal on the standard
+output stream.
+-}
+setVerbosityLevel :: Verbosity -> Program τ ()
+setVerbosityLevel level = do
+    context <- ask
+    liftIO $ do
+        let v = verbosityLevelFrom context
+        modifyMVar_ v (\_ -> pure level)
 
 
 {-|
