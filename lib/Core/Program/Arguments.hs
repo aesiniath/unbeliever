@@ -271,11 +271,15 @@ data Parameters
 baselineOptions :: [Options]
 baselineOptions =
     [ Option "verbose" (Just 'v') [quote|
-        Turn on event level logging. By default this will go
-        to console; you can change that with the --logging option.
+        Turn on event tracing. By default the logging stream will go to
+        standard output on your terminal.
     |]
     , Option "debug" Nothing [quote|
         Turn on debug level logging. Implies --verbose.
+    |]
+    , Option "logging" Nothing [quote|
+        Change where log messages are sent. Valid values are "console",
+        "file:/path/to/filename.log", and "syslog".
     |]
     ]
 
