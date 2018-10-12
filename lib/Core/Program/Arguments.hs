@@ -22,8 +22,9 @@ module Core.Program.Arguments
     ( 
         {-* Setup -}
         Config
+      , blank
       , simple
-      , baselineConfig
+      , baselineOptions
       , Parameters(..)
       , ParameterValue(..)
         {-* Options and Arguments -}
@@ -91,8 +92,20 @@ a @Config@ with 'simple' or 'complex', and pass it to
 'Core.Program.Context.configure'.
 -}
 data Config
-    = Simple [Options]
+    = Blank
+    | Simple [Options]
     | Complex [Commands]
+
+{- TODO erase
+combine :: [Options] -> Config -> Config
+combine baseline config = case config of
+    Simple options -> Simple (options ++ baseline)
+    Complex commands -> Complex (foldr f [] commands)
+  where
+    f :: Commands -> [Commands] -> [Commands]
+    f (Global options) acc = Global (options ++ baseline) : acc
+    f command acc = command : acc
+-}
 
 --
 -- Those constructors are not exposed [and functions wrapping them are] partly
@@ -101,6 +114,13 @@ data Config
 -- configure's argument turns into a monad like RequestBuilder we have
 -- somewhere to make that change.
 --
+
+{-|
+A completely empty Config, such that your program really won't have any
+command-line configurability.
+-}
+blank :: Config
+blank = Blank
 
 {-|
 Declare a simple (as in normal) configuration for a program with any number
@@ -133,7 +153,7 @@ For information on how to use multi-line string literals this way, see
 'quote' in "Core.Text.Utilities".
 -}
 simple :: [Options] -> Config
-simple options = Simple options
+simple options = Simple (options ++ baselineOptions)
 
 {-|
 Declare a complex configuration (implying a larger tool with various
@@ -143,7 +163,7 @@ that will be honoured by the program. Each command can have a list of local
 options and arguments as needed.
 -}
 complex :: [Commands] -> Config
-complex commands = Complex commands
+complex commands = Complex (commands ++ [Global baselineOptions])
 
 {-|
 Description of the command-line structure of a program which has
@@ -257,12 +277,15 @@ data Parameters
         , environmentValuesFrom :: HashMap LongName ParameterValue
     } deriving (Show, Eq)
 
-baselineConfig :: Config
-baselineConfig =
-    simple [
-        Option "verbose" (Just 'v') [quote|
-            Turn on event level logging to console.
-        |]
+baselineOptions :: [Options]
+baselineOptions =
+    [ Option "verbose" (Just 'v') [quote|
+        Turn on event level logging. By default this will go
+        to console; you can change that with the --logging option.
+    |]
+    , Option "debug" Nothing [quote|
+        Turn on debug level logging. Implies --verbose.
+    |]
     ]
 
 {-|
@@ -352,6 +375,8 @@ calls 'configure' with a default @Config@ when initializing).
 -}
 parseCommandLine :: Config -> [String] -> Either InvalidCommandLine Parameters
 parseCommandLine config argv = case config of
+    Blank -> return (Parameters Nothing HashMap.empty HashMap.empty)
+
     Simple options -> do
         params <- extractor Nothing options argv
         return (Parameters Nothing params HashMap.empty)
@@ -516,6 +541,8 @@ splitCommandLine args =
 
 extractValidEnvironments :: Maybe LongName -> Config -> HashSet LongName
 extractValidEnvironments mode config = case config of
+    Blank -> HashSet.empty
+
     Simple options -> extractVariableNames options
 
     Complex commands ->
@@ -556,6 +583,8 @@ extractVariableNames options =
 
 buildUsage :: Config -> Maybe LongName -> Doc ann
 buildUsage config mode = case config of
+    Blank -> emptyDoc
+
     Simple options ->
       let
         (o,a) = partitionParameters options
