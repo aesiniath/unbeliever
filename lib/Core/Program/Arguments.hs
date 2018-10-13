@@ -22,8 +22,10 @@ module Core.Program.Arguments
     ( 
         {-* Setup -}
         Config
+      , blank
       , simple
-      , baselineConfig
+      , complex
+      , baselineOptions
       , Parameters(..)
       , ParameterValue(..)
         {-* Options and Arguments -}
@@ -32,7 +34,6 @@ module Core.Program.Arguments
       , Description
       , Options(..)
         {-* Programs with Commands -}
-      , complex
       , Commands(..)
         {-* Internals -}
       , parseCommandLine
@@ -91,7 +92,8 @@ a @Config@ with 'simple' or 'complex', and pass it to
 'Core.Program.Context.configure'.
 -}
 data Config
-    = Simple [Options]
+    = Blank
+    | Simple [Options]
     | Complex [Commands]
 
 --
@@ -103,6 +105,14 @@ data Config
 --
 
 {-|
+A completely empty configuration, without the default debugging and logging
+options. Your program won't process any command-line options or arguments,
+which would be weird in most cases. Prefer 'simple'.
+-}
+blank :: Config
+blank = Blank
+
+{-|
 Declare a simple (as in normal) configuration for a program with any number
 of optional parameters and mandatory arguments. For example:
 
@@ -110,15 +120,17 @@ of optional parameters and mandatory arguments. For example:
 main :: 'IO' ()
 main = do
     context <- 'Core.Program.Execute.configure' 'Core.Program.Execute.None' ('simple'
-        [ 'Option' "verbose" ('Just' \'v\') ['quote'|
-            Turn on event level logging to console.
-            Valid values are "event", "debug", and "none" (the default
-            if you don't specify the verbose option).
+        [ 'Option' "host" ('Just' \'h\') ['quote'|
+            Specify an alternate host to connect to when performing the
+            frobnication. The default is \"localhost\".
           |]
-        , 'Option' "logging" 'Nothing' ['quote'|
-            Valid values are "console", "file:\/path\/to\/file.log", and "syslog"
+        , 'Option' "port" ('Just' \'p\') ['quote'|
+            Specify an alternate port to connect to when frobnicating.
           |]
-        , 'Option' "quiet" (Just \'q\') ['quote'|
+        , 'Option' "dry-run" 'Nothing' ['quote'|
+            Perform a trial run but don't actually do anything.
+          |]
+        , 'Option' "quiet" ('Just' \'q\') ['quote'|
             Supress normal output.
           |]
         , 'Argument' "filename" ['quote'|
@@ -129,21 +141,123 @@ main = do
     'Core.Program.Execute.executeWith' context program
 @
 
-For information on how to use multi-line string literals this way, see
-'quote' in "Core.Text.Utilities".
+which, if you build that into an executable called @snippet@ and invoke it
+with @--help@, would result in:
+
+@
+$ __./snippet --help__
+Usage:
+
+    snippet [OPTIONS] filename
+
+Available options:
+
+  -h, --host     Specify an alternate host to connect to when performing the
+                 frobnication. The default is \"localhost\".
+  -p, --port     Specify an alternate port to connect to when frobnicating.
+      --dry-run  Perform a trial run but don't actually do anything.
+  -q, --quiet    Supress normal output.
+  -v, --verbose  Turn on event tracing. By default the logging stream will go
+                 to standard output on your terminal.
+      --debug    Turn on debug level logging. Implies --verbose.
+      --logging  Change where log messages are sent. Valid values are
+                 \"console\", \"file:\/path\/to\/filename.log\", and \"syslog\".
+
+Required arguments:
+
+  filename       The file you want to frobnicate.
+$ __|__
+@
+
+For information on how to use the multi-line string literals shown here,
+see 'quote' in "Core.Text.Utilities".
 -}
 simple :: [Options] -> Config
-simple options = Simple options
+simple options = Simple (options ++ baselineOptions)
 
 {-|
 Declare a complex configuration (implying a larger tool with various
-"[sub]commands" or "modes") for a program. You can specify global options
+"[sub]commands" or "modes"} for a program. You can specify global options
 applicable to all commands, a list of commands, and environment variables
 that will be honoured by the program. Each command can have a list of local
-options and arguments as needed.
+options and arguments as needed. For example:
+
+@
+program :: 'Core.Program.Execute.Program' MusicAppStatus ()
+program = ...
+
+main :: 'IO' ()
+main = do
+    context <- 'Core.Program.Execute.configure' 'mempty' ('complex'
+        [ 'Global'
+            [ 'Option' "station-name" ('Just' \'s\') ['quote'|
+                Specify an alternate radio station to connect to when performing
+                actions. The default is \"BBC Radio 1\".
+              |]
+            , 'Variable' \"PLAYER_FORCE_HEADPHONES\" ['quote'|
+                If set to @1@, override the audio subsystem to force output
+                to go to the user's headphone jack.
+              |]
+            ]
+        , 'Command' \"play\" \"Play the music.\"
+            [ 'Option' "repeat" 'Nothing' ['quote'|
+                Request that they play the same song over and over and over
+                again, simulating the effect of listening to a Top 40 radio
+                station.
+              |]
+            ]
+        , 'Command' \"rate\" \"Vote on whether you like the song or not.\"
+            [ 'Option' "academic" 'Nothing' ['quote'|
+                The rating you wish to apply, from A+ to F. This is the
+                default, so there is no reason whatsoever to specify this.
+                But some people are obsessive, compulsive, and have time on
+                their hands.
+              |]
+            , 'Option' "numeric" 'Nothing' ['quote'|
+                Specify a score as a number from 0 to 100 instead of an
+                academic style letter grade. Note that negative values are
+                not valid scores, despite how vicerally satisfying that
+                would be for music produced in the 1970s.
+              |]
+            , 'Option' "unicode" ('Just' \'c\') ['quote'|
+                Instead of a score, indicate your rating with a single
+                character.  This allows you to use emoji, so that you can
+                rate a piece \'💩\', as so many songs deserve.
+              |]
+            , 'Argument' "score" ['quote'|
+                The rating you wish to apply.
+              |]
+            ]
+        ])
+
+    'Core.Program.Execute.executeWith' context program
+@
+
+is a program with one global option (in addition to the default ones) [and
+an environment variable] and two commands: @play@, with one option; and
+@rate@, with two options and a required argument. It also is set up to
+carry its top-level application state around in a type called
+@MusicAppStatus@ (implementing 'Monoid' and so initialized here with
+'mempty'. This is a good pattern to use given we are so early in the
+program's lifetime).
+
+The resultant program could be invoked as in these examples:
+
+@
+$ __./player --station-name=\"KBBL-FM 102.5\" play__
+$
+@
+
+@
+$ __./player -v rate --numeric 76__
+$
+@
+
+For information on how to use the multi-line string literals shown here,
+see 'quote' in "Core.Text.Utilities".
 -}
 complex :: [Commands] -> Config
-complex commands = Complex commands
+complex commands = Complex (commands ++ [Global baselineOptions])
 
 {-|
 Description of the command-line structure of a program which has
@@ -253,16 +367,23 @@ would be parsed as:
 data Parameters
     = Parameters {
           commandNameFrom :: Maybe LongName
-        , parameterValuesFrom :: [(LongName, ParameterValue)]
-        , environmentValuesFrom :: [(LongName, ParameterValue)]
+        , parameterValuesFrom :: HashMap LongName ParameterValue
+        , environmentValuesFrom :: HashMap LongName ParameterValue
     } deriving (Show, Eq)
 
-baselineConfig :: Config
-baselineConfig =
-    simple [
-        Option "verbose" (Just 'v') [quote|
-            Turn on event level logging to console.
-        |]
+baselineOptions :: [Options]
+baselineOptions =
+    [ Option "verbose" (Just 'v') [quote|
+        Turn on event tracing. By default the logging stream will go to
+        standard output on your terminal.
+    |]
+    , Option "debug" Nothing [quote|
+        Turn on debug level logging. Implies --verbose.
+    |]
+    , Option "logging" Nothing [quote|
+        Change where log messages are sent. Valid values are "console",
+        "file:/path/to/filename.log", and "syslog".
+    |]
     ]
 
 {-|
@@ -352,9 +473,11 @@ calls 'configure' with a default @Config@ when initializing).
 -}
 parseCommandLine :: Config -> [String] -> Either InvalidCommandLine Parameters
 parseCommandLine config argv = case config of
+    Blank -> return (Parameters Nothing HashMap.empty HashMap.empty)
+
     Simple options -> do
         params <- extractor Nothing options argv
-        return (Parameters Nothing params [])
+        return (Parameters Nothing params HashMap.empty)
 
     Complex commands ->
       let
@@ -365,10 +488,10 @@ parseCommandLine config argv = case config of
         params1 <- extractor Nothing globalOptions possibles
         (mode,localOptions) <- parseIndicatedCommand modes first
         params2 <- extractor (Just mode) localOptions remainingArgs
-        return (Parameters (Just mode) (params1 ++ params2) [])
+        return (Parameters (Just mode) (HashMap.union params1 params2) HashMap.empty)
   where
 
-    extractor :: Maybe LongName -> [Options] -> [String] -> Either InvalidCommandLine [(LongName,ParameterValue)]
+    extractor :: Maybe LongName -> [Options] -> [String] -> Either InvalidCommandLine (HashMap LongName ParameterValue)
     extractor mode options args =
       let
         (possibles,arguments) = List.partition isOption args
@@ -378,7 +501,7 @@ parseCommandLine config argv = case config of
       in do
         list1 <- parsePossibleOptions mode valids shorts possibles
         list2 <- parseRequiredArguments needed arguments
-        return (list1 ++ list2)
+        return (HashMap.union (HashMap.fromList list1) (HashMap.fromList list2))
 
 isOption :: String -> Bool
 isOption arg = case arg of
@@ -395,6 +518,7 @@ parsePossibleOptions mode valids shorts args = mapM f args
   where
     f arg = case arg of
         "--help" -> Left (HelpRequest mode)
+        "-?"     -> Left (HelpRequest mode)
         ('-':'-':name) -> considerLongOption name
         ('-':c:[]) -> considerShortOption c
         _ -> Left (InvalidOption arg)
@@ -515,6 +639,8 @@ splitCommandLine args =
 
 extractValidEnvironments :: Maybe LongName -> Config -> HashSet LongName
 extractValidEnvironments mode config = case config of
+    Blank -> HashSet.empty
+
     Simple options -> extractVariableNames options
 
     Complex commands ->
@@ -555,6 +681,8 @@ extractVariableNames options =
 
 buildUsage :: Config -> Maybe LongName -> Doc ann
 buildUsage config mode = case config of
+    Blank -> emptyDoc
+
     Simple options ->
       let
         (o,a) = partitionParameters options

@@ -57,12 +57,13 @@ module Core.Program.Execute
         {-* Accessing program context -}
       , getProgramName
       , setProgramName
+      , getVerbosityLevel
+      , setVerbosityLevel
       , getCommandLine
       , getApplicationState
       , setApplicationState
       , retrieve
       , update
-      , setTerminalWidth
         {-* Useful actions -}
       , write
       , writeS
@@ -111,13 +112,12 @@ import Core.Program.Logging
 import Core.Program.Signal
 import Core.Program.Arguments
 
-unProgram :: Program τ α -> ReaderT (MVar (Context τ)) IO α
+unProgram :: Program τ α -> ReaderT (Context τ) IO α
 unProgram (Program reader) = reader
 
 runProgram :: Context τ -> Program τ a -> IO a
 runProgram context (Program reader) = do
-    v <- newMVar context
-    runReaderT reader v
+    runReaderT reader context
 
 
 -- execute actual "main"
@@ -169,12 +169,13 @@ calls 'configure' with an appropriate default when initializing.
 -}
 execute :: Program None α -> IO ()
 execute program = do
-    context <- configure None baselineConfig
+    context <- configure None (simple [])
     executeWith context program
 
 {-|
 Embelish a program with useful behaviours, supplying a configuration
-for command-line options & argument parsing.
+for command-line options & argument parsing and an initial value for
+the top-level application state, if appropriate.
 -}
 executeWith :: Context τ -> Program τ α -> IO ()
 executeWith context program = do
@@ -182,6 +183,7 @@ executeWith context program = do
     when (numCapabilities == 1) (getNumProcessors >>= setNumCapabilities)
 
     let quit = exitSemaphoreFrom context
+        level = verbosityLevelFrom context
         out = outputChannelFrom context
         log = loggerChannelFrom context
 
@@ -195,7 +197,7 @@ executeWith context program = do
 
     -- set up signal handlers
     _ <- async $ do
-        setupSignalHandlers quit
+        setupSignalHandlers quit level
 
     -- run actual program, ensuring to trap uncaught exceptions
     m <- async $ do
@@ -256,6 +258,27 @@ terminate code =
   in do
     liftIO (Safe.throw exit)
 
+-- undocumented
+getVerbosityLevel :: Program τ Verbosity
+getVerbosityLevel = do
+    context <- ask
+    liftIO $ do
+        level <- readMVar (verbosityLevelFrom context)
+        return level
+
+{-|
+Change the verbosity level of the program's logging output. This changes
+whether 'event' and the 'debug' family of functions emit to the logging
+stream; they do /not/ affect 'write'ing to the terminal on the standard
+output stream.
+-}
+setVerbosityLevel :: Verbosity -> Program τ ()
+setVerbosityLevel level = do
+    context <- ask
+    liftIO $ do
+        let v = verbosityLevelFrom context
+        modifyMVar_ v (\_ -> pure level)
+
 
 {-|
 Override the program name used for logging, etc. At least, that was the
@@ -263,12 +286,10 @@ idea. Nothing makes use of this at the moment. @:/@
 -}
 setProgramName :: Rope -> Program τ ()
 setProgramName name = do
-    v <- ask
-    context <- liftIO (readMVar v)
-    let context' = context {
-        programNameFrom = name
-    }
-    liftIO (modifyMVar_ v (\_ -> pure context'))
+    context <- ask
+    liftIO $ do
+        let v = programNameFrom context
+        modifyMVar_ v (\_ -> pure name)
 
 {-|
 Get the program name as invoked from the command-line (or as overridden by
@@ -276,9 +297,10 @@ Get the program name as invoked from the command-line (or as overridden by
 -}
 getProgramName :: Program τ Rope
 getProgramName = do
-    v <- ask
-    context <- liftIO (readMVar v)
-    return (programNameFrom context)
+    context <- ask
+    liftIO $ do
+        let v = programNameFrom context
+        readMVar v
 
 {-|
 Get the user supplied application state as originally supplied to
@@ -291,9 +313,10 @@ Get the user supplied application state as originally supplied to
 -}
 getApplicationState :: Program τ τ
 getApplicationState = do
-    v <- ask
-    context <- liftIO (readMVar v)
-    return (applicationDataFrom context)
+    context <- ask
+    liftIO $ do
+        let v = applicationDataFrom context
+        readMVar v
 
 {-|
 Update the user supplied top-level application state.
@@ -305,12 +328,10 @@ Update the user supplied top-level application state.
 -}
 setApplicationState :: τ -> Program τ ()
 setApplicationState user = do
-    v <- ask
-    context <- liftIO (readMVar v)
-    let context' = context {
-        applicationDataFrom = user
-    }
-    liftIO (modifyMVar_ v (\_ -> pure context'))
+    context <- ask
+    liftIO $ do
+        let v = applicationDataFrom context
+        modifyMVar_ v (\_ -> pure user)
 
 {-|
 Alias for 'getApplicationState'.
@@ -324,17 +345,6 @@ Alias for 'setApplicationState'.
 update :: τ -> Program τ ()
 update = setApplicationState
 
--- undocumented
-setTerminalWidth :: Int -> Program τ ()
-setTerminalWidth columns = do
-    v <- ask
-    context <- liftIO (readMVar v)
-    let context' = context {
-        terminalWidthFrom = columns
-    }
-    liftIO (modifyMVar_ v (\_ -> pure context'))
-
-
 {-|
 Write the supplied text to @stdout@.
 
@@ -346,9 +356,8 @@ This is for normal program output.
 -}
 write :: Rope -> Program τ ()
 write text = do
-    v <- ask
+    context <- ask
     liftIO $ do
-        context <- readMVar v
         let out = outputChannelFrom context
 
         atomically (writeTQueue out text)
@@ -369,9 +378,8 @@ function, resulting in appopriate line wrapping when rendering your value.
 -}
 writeR :: Render α => α -> Program τ ()
 writeR thing = do
-    v <- ask
+    context <- ask
     liftIO $ do
-        context <- readMVar v
         let out = outputChannelFrom context
         let columns = terminalWidthFrom context
 
@@ -424,15 +432,10 @@ type.
 
 (this wraps __async__'s 'async' which in turn wraps __base__'s 'Control.Concurrent.forkIO')
 -}
---
--- TODO is this correct now that we have application state? Should it
--- not be shared (ie, a different type)?
---
 fork :: Program τ α -> Program τ (Thread α)
 fork program = do
-    v <- ask
+    context <- ask
     liftIO $ do
-        context <- readMVar v
         a <- async $ do
             runProgram context program
         link a
@@ -464,7 +467,5 @@ supplied by the user on the command-line.
 -}
 getCommandLine :: Program τ (Parameters)
 getCommandLine = do
-    v <- ask
-    liftIO $ do
-        context <- readMVar v
-        return (commandLineFrom context)
+    context <- ask
+    return (commandLineFrom context)

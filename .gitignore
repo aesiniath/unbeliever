@@ -2,3 +2,7 @@
 /tags
 /*.cabal
 /.vscode
+
+# symlinks to executables
+/experiment
+/snippet

@@ -15,13 +15,13 @@ module Core.Program.Context
       , isNone
       , configure
       , Message(..)
-      , Nature(..)
+      , Verbosity(..)
       , Program(..)
       , getConsoleWidth
     ) where
 
 import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
-import Control.Concurrent.MVar (MVar, newEmptyMVar)
+import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
 import Control.Exception.Safe (displayException)
 import qualified Control.Exception.Safe as Safe (throw)
@@ -30,6 +30,8 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader.Class (MonadReader(..))
 import Control.Monad.Trans.Reader (ReaderT(..))
 import Data.Foldable (foldrM)
+import Data.HashMap.Strict (HashMap)
+import qualified Data.HashMap.Strict as HashMap
 import Data.Text.Prettyprint.Doc (layoutPretty, LayoutOptions(..), PageWidth(..))
 import Data.Text.Prettyprint.Doc.Render.Text (renderIO)
 import qualified System.Console.Terminal.Size as Terminal (Window(..), size)
@@ -66,14 +68,15 @@ application data of type @τ@ which can be retrieved with
 -- that field name as a local variable name.
 --
 data Context τ = Context {
-      programNameFrom :: Rope
+      programNameFrom :: MVar Rope
     , commandLineFrom :: Parameters
     , exitSemaphoreFrom :: MVar ExitCode
     , startTimeFrom :: TimeStamp
     , terminalWidthFrom :: Int
+    , verbosityLevelFrom :: MVar Verbosity
     , outputChannelFrom :: TQueue Rope
     , loggerChannelFrom :: TQueue Message
-    , applicationDataFrom :: τ
+    , applicationDataFrom :: MVar τ
 }
 
 {-|
@@ -97,9 +100,10 @@ isNone :: None -> Bool
 isNone _ = True
 
 
-data Message = Message TimeStamp Nature Rope (Maybe Rope)
+data Message = Message TimeStamp Verbosity Rope (Maybe Rope)
 
-data Nature = Output | Event | Debug
+data Verbosity = Output | Event | Debug
+    deriving Show
 
 {-|
 The type of a top-level program.
@@ -149,8 +153,8 @@ project each with a @main@ function. So you're best off putting your
 top-level 'Program' actions in a separate modules so you can refer to them
 from test suites and example snippets.
 -}
-newtype Program τ α = Program (ReaderT (MVar (Context τ)) IO α)
-    deriving (Functor, Applicative, Monad, MonadIO, MonadReader (MVar (Context τ)))
+newtype Program τ α = Program (ReaderT (Context τ) IO α)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadReader (Context τ))
 
 --
 -- This is complicated. The **safe-exceptions** library exports a
@@ -172,27 +176,36 @@ administrative actions, including setting up output channels, parsing
 command-line arguments (according to the supplied configuration), and
 putting in place various semaphores for internal program communication.
 See "Core.Program.Arguments" for details.
+
+This is also where you specify the initial {blank, empty, default) value
+for the top-level user-defined application state, if you have one. Specify
+'None' if you aren't using this feature.
 -}
 configure :: τ -> Config -> IO (Context τ)
-configure user config = do
+configure t config = do
     start <- getCurrentTimeNanoseconds
 
-    name <- getProgName
-    parameters <- handleCommandLine config
-    quit <- newEmptyMVar
+    arg0 <- getProgName
+    n <- newMVar (intoRope arg0)
+    p <- handleCommandLine config
+    q <- newEmptyMVar
     columns <- getConsoleWidth
-    output <- newTQueueIO
-    logger <- newTQueueIO
+    out <- newTQueueIO
+    log <- newTQueueIO
+    u <- newMVar t
+
+    l <- handleVerbosityLevel p
 
     return $! Context {
-          programNameFrom = (intoRope name)
-        , commandLineFrom = parameters
-        , exitSemaphoreFrom = quit
+          programNameFrom = n
+        , commandLineFrom = p
+        , exitSemaphoreFrom = q
         , startTimeFrom = start
         , terminalWidthFrom = columns
-        , outputChannelFrom = output
-        , loggerChannelFrom = logger
-        , applicationDataFrom = user
+        , verbosityLevelFrom = l
+        , outputChannelFrom = out
+        , loggerChannelFrom = log
+        , applicationDataFrom = u
     }
 
 --
@@ -240,17 +253,45 @@ handleCommandLine config = do
                 hFlush stdout
                 exitWith (ExitFailure 1)
 
-lookupEnvironmentVariables :: Config -> Parameters -> IO [(LongName,ParameterValue)]
+lookupEnvironmentVariables :: Config -> Parameters -> IO (HashMap LongName ParameterValue)
 lookupEnvironmentVariables config params = do
     let mode = commandNameFrom params
     let valids = extractValidEnvironments mode config
 
-    result <- foldrM f [] valids
+    result <- foldrM f HashMap.empty valids
     return result
   where
-    f :: LongName -> [(LongName, ParameterValue)] -> IO [(LongName, ParameterValue)]
+    f :: LongName -> (HashMap LongName ParameterValue) -> IO (HashMap LongName ParameterValue)
     f name@(LongName var) acc = do
         result <- lookupEnv var
         return $ case result of
-            Just value  -> (name,Value value):acc
+            Just value  -> HashMap.insert name (Value value) acc
             Nothing     -> acc
+
+
+handleVerbosityLevel :: Parameters -> IO (MVar Verbosity)
+handleVerbosityLevel params = do
+    let result = queryVerbosityLevel params
+    case result of
+        Right level -> do
+            newMVar level
+        Left exit -> do
+            putStrLn "error: Unknown value supplied to --verbose."
+            putStrLn "Valid values are \"none\", \"event\", and \"debug\"."
+            hFlush stdout
+            exitWith exit
+
+queryVerbosityLevel :: Parameters -> Either ExitCode Verbosity
+queryVerbosityLevel params =
+  let
+    result = HashMap.lookup "verbose" (parameterValuesFrom params)
+  in
+    case result of
+        Nothing             -> Right Output
+        Just value -> case value of
+            Empty           -> Right Event
+            Value "debug"   -> Right Debug
+            Value "event"   -> Right Event
+            Value "none"    -> Right Output
+            Value _         -> Left (ExitFailure 2)
+

@@ -48,6 +48,9 @@ program = do
     params <- getCommandLine
     debugS "params" params
 
+    level <- getVerbosityLevel
+    debugS "level" level
+
     name <- getProgramName
     debug "programName" name
 
@@ -92,15 +95,7 @@ program = do
 main :: IO ()
 main = do
     context <- configure None (simple
-        [ Option "verbose" (Just 'v') [quote|
-            Turn on event level logging to console.
-            Valid values are "event", "debug", and "none" (the default
-            if you don't specify the verbose option).
-          |]
-        , Option "logging" Nothing [quote|
-            Valid values are "console", "file:/path/to/file.log", and "syslog".
-          |]
-        , Option "quiet" (Just 'q') [quote|
+        [ Option "quiet" (Just 'q') [quote|
             Supress normal output.
           |]
         , Argument "filename" [quote|
