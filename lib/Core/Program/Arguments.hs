@@ -169,8 +169,8 @@ Required arguments:
 $ __|__
 @
 
-For information on how to use multi-line string literals this way, see
-'quote' in "Core.Text.Utilities".
+For information on how to use the multi-line string literals shown here,
+see 'quote' in "Core.Text.Utilities".
 -}
 simple :: [Options] -> Config
 simple options = Simple (options ++ baselineOptions)
@@ -180,33 +180,52 @@ Declare a complex configuration (implying a larger tool with various
 "[sub]commands" or "modes"} for a program. You can specify global options
 applicable to all commands, a list of commands, and environment variables
 that will be honoured by the program. Each command can have a list of local
-options and arguments as needed.
+options and arguments as needed. For example:
 
 @
-program :: Program MusicAppStatus ()
+program :: 'Core.Program.Execute.Program' MusicAppStatus ()
 program = ...
 
 main :: 'IO' ()
 main = do
     context <- 'Core.Program.Execute.configure' 'mempty' ('complex'
         [ 'Global'
-            [ 'Option' "host" ('Just' \'h\') ['quote'|
-                Specify an alternate music server to connect to when performing
-                actions. The default is the mpd instance at \"localhost\".
+            [ 'Option' "station-name" ('Just' \'s\') ['quote'|
+                Specify an alternate radio station to connect to when performing
+                actions. The default is \"BBC Radio 1\".
               |]
-            , 'Option' "port" ('Just' \'p\') ['quote'|
-                Specify a alternate port to connect to instead of 4713.
+            , 'Variable' \"PLAYER_FORCE_HEADPHONES\" ['quote'|
+                If set to @1@, override the audio subsystem to force output
+                to go to the user's headphone jack.
               |]
             ]
         , 'Command' \"play\" \"Play the music.\"
             [ 'Option' "repeat" 'Nothing' ['quote'|
-                Play the same song over and over and over again, simulating
-                the effect of listening to a Top 40 radio station.
+                Request that they play the same song over and over and over
+                again, simulating the effect of listening to a Top 40 radio
+                station.
               |]
             ]
         , 'Command' \"rate\" \"Vote on whether you like the song or not.\"
-            [ 'Argument' "score" ['quote'|
-                The rating you wish to apply, from 0-100.
+            [ 'Option' "academic" 'Nothing' ['quote'|
+                The rating you wish to apply, from A+ to F. This is the
+                default, so there is no reason whatsoever to specify this.
+                But some people are obsessive, compulsive, and have time on
+                their hands.
+              |]
+            , 'Option' "numeric" 'Nothing' ['quote'|
+                Specify a score as a number from 0 to 100 instead of an
+                academic style letter grade. Note that negative values are
+                not valid scores, despite how vicerally satisfying that
+                would be for music produced in the 1970s.
+              |]
+            , 'Option' "unicode" ('Just' \'c\') ['quote'|
+                Instead of a score, indicate your rating with a single
+                character.  This allows you to use emoji, so that you can
+                rate a piece \'💩\', as so many songs deserve.
+              |]
+            , 'Argument' "score" ['quote'|
+                The rating you wish to apply.
               |]
             ]
         ])
@@ -214,8 +233,28 @@ main = do
     'Core.Program.Execute.executeWith' context program
 @
 
-For information on how to use multi-line string literals this way, see
-'quote' in "Core.Text.Utilities".
+is a program with one global option (in addition to the default ones) [and
+an environment variable] and two commands: @play@, with one option; and
+@rate@, with two options and a required argument. It also is set up to
+carry its top-level application state around in a type called
+@MusicAppStatus@ (implementing 'Monoid' and so initialized here with
+'mempty'. This is a good pattern to use given we are so early in the
+program's lifetime).
+
+The resultant program could be invoked as in these examples:
+
+@
+$ __./player --station-name=\"KBBL-FM 102.5\" play__
+$
+@
+
+@
+$ __./player -v rate --numeric 76__
+$
+@
+
+For information on how to use the multi-line string literals shown here,
+see 'quote' in "Core.Text.Utilities".
 -}
 complex :: [Commands] -> Config
 complex commands = Complex (commands ++ [Global baselineOptions])
