@@ -24,6 +24,7 @@ module Core.Program.Arguments
         Config
       , blank
       , simple
+      , complex
       , baselineOptions
       , Parameters(..)
       , ParameterValue(..)
@@ -33,7 +34,6 @@ module Core.Program.Arguments
       , Description
       , Options(..)
         {-* Programs with Commands -}
-      , complex
       , Commands(..)
         {-* Internals -}
       , parseCommandLine
@@ -105,8 +105,9 @@ data Config
 --
 
 {-|
-A completely empty configuration, such that your program really won't
-express any command-line options or arguments.
+A completely empty configuration, without the default debugging and logging
+options. Your program won't process any command-line options or arguments,
+which would be weird in most cases. Prefer 'simple'.
 -}
 blank :: Config
 blank = Blank
@@ -119,7 +120,7 @@ of optional parameters and mandatory arguments. For example:
 main :: 'IO' ()
 main = do
     context <- 'Core.Program.Execute.configure' 'Core.Program.Execute.None' ('simple'
-        [ 'Option' "hostname" ('Just' \'h\') ['quote'|
+        [ 'Option' "host" ('Just' \'h\') ['quote'|
             Specify an alternate host to connect to when performing the
             frobnication. The default is \"localhost\".
           |]
@@ -138,6 +139,34 @@ main = do
         ])
 
     'Core.Program.Execute.executeWith' context program
+@
+
+which, if you build that into an executable called @snippet@ and invoke it
+with @--help@, would result in:
+
+@
+$ __./snippet --help__
+Usage:
+
+    snippet [OPTIONS] filename
+
+Available options:
+
+  -h, --host     Specify an alternate host to connect to when performing the
+                 frobnication. The default is \"localhost\".
+  -p, --port     Specify an alternate port to connect to when frobnicating.
+      --dry-run  Perform a trial run but don't actually do anything.
+  -q, --quiet    Supress normal output.
+  -v, --verbose  Turn on event tracing. By default the logging stream will go
+                 to standard output on your terminal.
+      --debug    Turn on debug level logging. Implies --verbose.
+      --logging  Change where log messages are sent. Valid values are
+                 \"console\", \"file:\/path\/to\/filename.log\", and \"syslog\".
+
+Required arguments:
+
+  filename       The file you want to frobnicate.
+$ __|__
 @
 
 For information on how to use multi-line string literals this way, see
