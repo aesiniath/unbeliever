@@ -181,6 +181,41 @@ Declare a complex configuration (implying a larger tool with various
 applicable to all commands, a list of commands, and environment variables
 that will be honoured by the program. Each command can have a list of local
 options and arguments as needed.
+
+@
+program :: Program MusicAppStatus ()
+program = ...
+
+main :: 'IO' ()
+main = do
+    context <- 'Core.Program.Execute.configure' 'mempty' ('complex'
+        [ 'Global'
+            [ 'Option' "host" ('Just' \'h\') ['quote'|
+                Specify an alternate music server to connect to when performing
+                actions. The default is the mpd instance at \"localhost\".
+              |]
+            , 'Option' "port" ('Just' \'p\') ['quote'|
+                Specify a alternate port to connect to instead of 4713.
+              |]
+            ]
+        , 'Command' \"play\" \"Play the music.\"
+            [ 'Option' "repeat" 'Nothing' ['quote'|
+                Play the same song over and over and over again, simulating
+                the effect of listening to a Top 40 radio station.
+              |]
+            ]
+        , 'Command' \"rate\" \"Vote on whether you like the song or not.\"
+            [ 'Argument' "score" ['quote'|
+                The rating you wish to apply, from 0-100.
+              |]
+            ]
+        ])
+
+    'Core.Program.Execute.executeWith' context program
+@
+
+For information on how to use multi-line string literals this way, see
+'quote' in "Core.Text.Utilities".
 -}
 complex :: [Commands] -> Config
 complex commands = Complex (commands ++ [Global baselineOptions])
