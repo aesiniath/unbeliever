@@ -43,7 +43,7 @@ runTextToFile build = do
 runRopeToFile :: Rope -> IO ()
 runRopeToFile text = do 
     withFile "/tmp/garbage-rope.txt" WriteMode $ \handle -> do
-        hOutput handle text
+        hWrite handle text
 
 ----
 

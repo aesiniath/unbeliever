@@ -32,7 +32,7 @@ j = JsonObject
                 ]))
         ]
 
-b = StrictBytes (S.pack "{\"cost\": 4500}")
+b = intoBytes (S.pack "{\"cost\": 4500}")
 
 r = JsonArray [JsonBool False, JsonNull, 42]
 

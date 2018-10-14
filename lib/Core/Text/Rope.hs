@@ -81,7 +81,7 @@ module Core.Text.Rope
       {-* Interoperation and Output -}
     , Textual(fromRope, intoRope, append)
     , unsafeIntoRope
-    , hOutput
+    , hWrite
       {-* Internals -}
     , unRope
     , Width(..)
@@ -142,7 +142,7 @@ inserting it. Often the pieces are tiny. To add text to a @Rope@ use the
 'append' method as below or ('Data.Semigroup.<>') from "Data.Monoid" (like you
 would have with a @Builder@).
 
-Output to a @Handle@ can be done efficiently with 'hOutput'.
+Output to a @Handle@ can be done efficiently with 'hWrite'.
 -}
 data Rope
     = Rope (F.FingerTree Width S.ShortText)
@@ -309,7 +309,7 @@ empty @Rope@ will be returned.
 
 Several of the 'fromRope' implementations are expensive and involve a lot
 of intermiate allocation and copying. If you're ultimately writing to a
-handle prefer 'hOutput' which will write directly to the output buffer.
+handle prefer 'hWrite' which will write directly to the output buffer.
 -}
 class Textual α where
     {-|
@@ -383,7 +383,7 @@ you can use this function to convert to a piece of @Rope@.
 unsafeIntoRope :: B.ByteString -> Rope
 unsafeIntoRope = Rope . F.singleton . S.fromByteStringUnsafe
 
-{-| "Data.String" -}
+{-| from "Data.String" -}
 instance Textual [Char] where
     fromRope (Rope x) = foldr h [] x
       where
@@ -403,7 +403,7 @@ main =
     text :: 'Rope'
     text = "Hello World"
   in
-    'hOutput' 'System.IO.stdout' text
+    'hWrite' 'System.IO.stdout' text
 @
 because it's tradition.
 
@@ -418,9 +418,8 @@ If you're working in the 'Core.Program.Execute.Program' monad, then
 'Core.Program.Execute.write' provides an efficient way to write a @Rope@ to
 @stdout@.
 -}
-
-hOutput :: Handle -> Rope -> IO ()
-hOutput handle (Rope x) = B.hPutBuilder handle (foldr j mempty x)
+hWrite :: Handle -> Rope -> IO ()
+hWrite handle (Rope x) = B.hPutBuilder handle (foldr j mempty x)
   where
     j piece built = (<>) (S.toBuilder piece) built
 

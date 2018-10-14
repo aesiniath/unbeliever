@@ -6,7 +6,7 @@ module Core.Program.Signal
 )
 where
 
-import Control.Concurrent.MVar (MVar, putMVar, readMVar, modifyMVar_)
+import Control.Concurrent.MVar (MVar, putMVar, modifyMVar_)
 import Foreign.C.Types (CInt)
 import System.Exit (ExitCode(..))
 import System.IO (hPutStrLn, hFlush, stdout)

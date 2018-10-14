@@ -23,7 +23,7 @@ j2 = JsonObject (HashMap.fromList
                 ]))
         ])
 
-b = StrictBytes (C.pack "{\"cost\": 4500}")
+b = intoBytes (C.pack "{\"cost\": 4500}")
 
 r = JsonArray [JsonBool False, JsonNull, JsonNumber 42]
 

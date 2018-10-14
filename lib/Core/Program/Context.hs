@@ -20,6 +20,7 @@ module Core.Program.Context
       , getConsoleWidth
     ) where
 
+import Prelude hiding (log)
 import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
 import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)

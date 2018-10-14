@@ -27,15 +27,16 @@ binary data to make it easier to interoperate with libraries supplying
 or consuming bytes.
 -}
 module Core.Text.Bytes
-    ( Bytes(..)
+    ( Bytes
     , Binary(fromBytes, intoBytes)
+    , hOutput
     , chunk
     ) where
 
 import Data.Bits (Bits (..))
 import Data.Char (intToDigit)
 import qualified Data.ByteString as B (ByteString, foldl', splitAt
-    , unpack, length)
+    , pack, unpack, length, hPut)
 import Data.ByteString.Internal (c2w, w2c)
 import qualified Data.ByteString.Lazy as L (ByteString, fromStrict, toStrict)
 import Data.Hashable (Hashable)
@@ -49,6 +50,7 @@ import Data.Text.Prettyprint.Doc
     )
 import Data.Text.Prettyprint.Doc.Render.Terminal (
     color, colorDull, bold, Color(..))
+import System.IO (Handle)
 
 import Core.Text.Utilities
 
@@ -57,8 +59,6 @@ A block of data in binary form.
 -}
 data Bytes
     = StrictBytes B.ByteString
-    | LazyBytes L.ByteString
-    | ListBytes [Word8]
     deriving (Show, Eq)
 
 {-|
@@ -72,13 +72,45 @@ class Binary α where
     fromBytes :: Bytes -> α
     intoBytes :: α -> Bytes
 
+{-| from "Data.ByteString" Strict -}
 instance Binary B.ByteString where
     fromBytes (StrictBytes b') = b'
     intoBytes b' = StrictBytes b'
 
+{-| from "Data.ByteString.Lazy" -}
 instance Binary L.ByteString where
     fromBytes (StrictBytes b') = L.fromStrict b'
     intoBytes b' = StrictBytes (L.toStrict b')      -- expensive
+
+{-| from "Data.Word" -}
+instance Binary [Word8] where
+    fromBytes (StrictBytes b') = B.unpack b'
+    intoBytes = StrictBytes . B.pack
+
+{-|
+Output the content of the 'Bytes' to the specified 'Handle'.
+
+@
+    hOutput h b
+@
+
+'Core.Program.Execute.output' provides a convenient way to write a @Bytes@
+to a file or socket handle from within the 'Core.Program.Execute.Program'
+monad.
+
+Don't use this function to write to @stdout@ if you are using any of the
+other output or logging facililities of this libarary as you will corrupt
+the ordering of output on the user's terminal. Instead do:
+
+@
+    write (intoRope b)
+@
+
+on the assumption that the bytes in question are UTF-8 (or plain ASCII)
+encoded.
+-}
+hOutput :: Handle -> Bytes -> IO ()
+hOutput handle (StrictBytes b') = B.hPut handle b'
 
 -- (), aka Unit, aka **1**, aka something with only one inhabitant
 
