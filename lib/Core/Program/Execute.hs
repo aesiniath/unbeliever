@@ -232,7 +232,7 @@ processStandardOutput out = do
     forever $ do
         text <- atomically (readTQueue out)
 
-        hOutput stdout text
+        hWrite stdout text
         B.hPut stdout (C.singleton '\n')
 
 processDebugMessages :: TQueue Message -> IO ()
