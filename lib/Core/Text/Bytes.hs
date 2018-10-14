@@ -27,7 +27,7 @@ binary data to make it easier to interoperate with libraries supplying
 or consuming bytes.
 -}
 module Core.Text.Bytes
-    ( Bytes(..)
+    ( Bytes
     , Binary(fromBytes, intoBytes)
     , chunk
     ) where
@@ -35,7 +35,7 @@ module Core.Text.Bytes
 import Data.Bits (Bits (..))
 import Data.Char (intToDigit)
 import qualified Data.ByteString as B (ByteString, foldl', splitAt
-    , unpack, length)
+    , pack, unpack, length)
 import Data.ByteString.Internal (c2w, w2c)
 import qualified Data.ByteString.Lazy as L (ByteString, fromStrict, toStrict)
 import Data.Hashable (Hashable)
@@ -57,8 +57,6 @@ A block of data in binary form.
 -}
 data Bytes
     = StrictBytes B.ByteString
-    | LazyBytes L.ByteString
-    | ListBytes [Word8]
     deriving (Show, Eq)
 
 {-|
@@ -72,13 +70,20 @@ class Binary α where
     fromBytes :: Bytes -> α
     intoBytes :: α -> Bytes
 
+{-| from "Data.ByteString" Strict -}
 instance Binary B.ByteString where
     fromBytes (StrictBytes b') = b'
     intoBytes b' = StrictBytes b'
 
+{-| "Data.ByteString.Lazy" -}
 instance Binary L.ByteString where
     fromBytes (StrictBytes b') = L.fromStrict b'
     intoBytes b' = StrictBytes (L.toStrict b')      -- expensive
+
+{-| "Data.Word" -}
+instance Binary [Word8] where
+    fromBytes (StrictBytes b') = B.unpack b'
+    intoBytes = StrictBytes . B.pack
 
 -- (), aka Unit, aka **1**, aka something with only one inhabitant
 

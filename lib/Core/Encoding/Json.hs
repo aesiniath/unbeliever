@@ -90,8 +90,6 @@ will get you:
     ) where
 
 import qualified Data.Aeson as Aeson
-import qualified Data.ByteString as S
-import qualified Data.ByteString.Lazy as L
 import Data.Coerce
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
@@ -113,7 +111,7 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics
 
-import Core.Text.Bytes (Bytes(StrictBytes))
+import Core.Text.Bytes (Bytes, intoBytes, fromBytes)
 import Core.Text.Rope (Rope, Textual, intoRope, fromRope)
 import Core.Text.Utilities (Render(..))
 
@@ -124,16 +122,16 @@ I know we're not /supposed/ to rely on types to document functions, but
 really, this one does what it says on the tin.
 -}
 encodeToUTF8 :: JsonValue -> Bytes
-encodeToUTF8 = StrictBytes . S.concat . L.toChunks . Aeson.encode . intoAeson
+encodeToUTF8 = intoBytes . Aeson.encode . intoAeson
 
 {-|
 Given an array of bytes, attempt to decode it as a JSON value.
 -}
 decodeFromUTF8 :: Bytes -> Maybe JsonValue
-decodeFromUTF8 (StrictBytes b') =
+decodeFromUTF8 b =
   let
     x :: Maybe Aeson.Value
-    x = Aeson.decodeStrict' b'
+    x = Aeson.decodeStrict' (fromBytes b)
   in
     fmap fromAeson x
 
