@@ -85,8 +85,7 @@ import Prelude hiding (log)
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (Async, async, link, cancel
     , ExceptionInLinkedThread(..), AsyncCancelled)
-import Control.Concurrent.MVar (MVar, newMVar, readMVar
-    , putMVar, modifyMVar_)
+import Control.Concurrent.MVar (readMVar, putMVar, modifyMVar_)
 import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.STM.TQueue (TQueue, readTQueue
     , writeTQueue, isEmptyTQueue)
