@@ -70,18 +70,6 @@ executables:
 
     ghc-prof-options: -fprof-auto-top
 
-  snippet:
-    dependencies:
-     - unbeliever
-
-    ghc-options: -threaded -Wall -Wwarn -fwarn-tabs
-
-    source-dirs: tests
-    main: Snippet.hs
-    other-modules: []
-
-    ghc-prof-options: -fprof-auto-top
-
 tests:
   check:
     dependencies:
@@ -99,6 +87,18 @@ tests:
      - CheckJsonWrapper
      - CheckArgumentsParsing
      - CheckProgramMonad
+
+  snippet:
+    dependencies:
+     - unbeliever
+
+    ghc-options: -threaded -Wall -Wwarn -fwarn-tabs
+
+    source-dirs: tests
+    main: Snippet.hs
+    other-modules: []
+
+    ghc-prof-options: -fprof-auto-top
 
 benchmarks:
   performance:
