@@ -276,22 +276,23 @@ handleVerbosityLevel params = do
         Right level -> do
             newMVar level
         Left exit -> do
-            putStrLn "error: Unknown value supplied to --verbose."
-            putStrLn "Valid values are \"none\", \"event\", and \"debug\"."
+            putStrLn "error: To set logging level use --verbose or --debug; neither take values."
             hFlush stdout
             exitWith exit
 
 queryVerbosityLevel :: Parameters -> Either ExitCode Verbosity
 queryVerbosityLevel params =
   let
-    result = HashMap.lookup "verbose" (parameterValuesFrom params)
+    debug = HashMap.lookup "debug" (parameterValuesFrom params)
+    verbose = HashMap.lookup "verbose" (parameterValuesFrom params)
   in
-    case result of
-        Nothing             -> Right Output
+    case debug of
         Just value -> case value of
-            Empty           -> Right Event
-            Value "debug"   -> Right Debug
-            Value "event"   -> Right Event
-            Value "none"    -> Right Output
-            Value _         -> Left (ExitFailure 2)
+            Empty   -> Right Debug
+            Value _ -> Left (ExitFailure 2)
+        Nothing -> case verbose of
+            Just value -> case value of
+                Empty   -> Right Event
+                Value _ -> Left (ExitFailure 2)
+            Nothing -> Right Output
 
