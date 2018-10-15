@@ -78,6 +78,8 @@ module Core.Program.Execute
       , None(..)
       , isNone
       , unProgram
+      , getContext
+      , subProgram
       , unThread
     ) where
 
@@ -114,8 +116,8 @@ import Core.Program.Arguments
 unProgram :: Program τ α -> ReaderT (Context τ) IO α
 unProgram (Program reader) = reader
 
-runProgram :: Context τ -> Program τ a -> IO a
-runProgram context (Program reader) = do
+subProgram :: Context τ -> Program τ a -> IO a
+subProgram context (Program reader) = do
     runReaderT reader context
 
 
@@ -125,7 +127,7 @@ executeAction context program =
   let
     quit = exitSemaphoreFrom context
   in do
-    _ <- runProgram context program
+    _ <- subProgram context program
     putMVar quit ExitSuccess
 
 --
@@ -157,7 +159,7 @@ escapeHandlers context = [
       let
         text = intoRope (displayException e)
       in do
-        runProgram context (event text)
+        subProgram context (event text)
         putMVar quit (ExitFailure 127)
 
 
@@ -436,7 +438,7 @@ fork program = do
     context <- ask
     liftIO $ do
         a <- async $ do
-            runProgram context program
+            subProgram context program
         link a
         return (Thread a)
 
@@ -468,3 +470,8 @@ getCommandLine :: Program τ (Parameters)
 getCommandLine = do
     context <- ask
     return (commandLineFrom context)
+
+getContext :: Program τ (Context τ)
+getContext = do
+    context <- ask
+    return context
