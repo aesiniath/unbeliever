@@ -79,10 +79,10 @@ module Core.Program.Execute
       , None(..)
       , isNone
       , unProgram
-      , getContext
-      , subProgram
       , unThread
       , withContext
+      , getContext
+      , subProgram
     ) where
 
 import Prelude hiding (log)
@@ -118,7 +118,10 @@ import Core.Program.Arguments
 unProgram :: Program τ α -> ReaderT (Context τ) IO α
 unProgram (Program reader) = reader
 
-subProgram :: Context τ -> Program τ a -> IO a
+{-|
+Run a subprogram from within a lifted 'IO' block.
+-}
+subProgram :: Context τ -> Program τ α -> IO α
 subProgram context (Program reader) = do
     runReaderT reader context
 
@@ -473,6 +476,9 @@ getCommandLine = do
     context <- ask
     return (commandLineFrom context)
 
+{-|
+Get the internal @Context@ of the running @Program@.
+-}
 getContext :: Program τ (Context τ)
 getContext = do
     context <- ask
@@ -581,6 +587,18 @@ assume you mean what you say with the last statement of do-notation block.
 If you've got the type wrong you'll get an error, but in an odd place,
 probably at the top. This can be confusing. If you're having trouble with
 the types try putting @return ()@ at the end of your subprogram.
+
+This function is named 'withContext' because it is a convenience around the
+following pattern:
+
+@
+    context <- 'getContext'
+    liftIO $ do
+        ...
+        'subProgram' context $ do
+            -- now in Program monad
+        ...
+@
 -}
 -- I think I just discovered the same pattern as **unliftio**? Certainly
 -- the signature is similar. I'm not sure if there is any benefit to
