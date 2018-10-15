@@ -5,6 +5,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_HADDOCK prune #-}
 
@@ -81,6 +82,7 @@ module Core.Program.Execute
       , getContext
       , subProgram
       , unThread
+      , withContext
     ) where
 
 import Prelude hiding (log)
@@ -475,3 +477,16 @@ getContext :: Program τ (Context τ)
 getContext = do
     context <- ask
     return context
+
+-- I think I just discovered the same pattern as **unliftio**? Certainly
+-- the signature is similar. I'm not sure if there is any benefit to
+-- restating this as a `withRunInIO` action; we're deliberately trying to
+-- constrain the types.
+withContext
+    :: ((forall β. Program τ β -> IO β) -> IO α)
+    -> Program τ α
+withContext action = do
+    context <- getContext
+    let runThing = subProgram context
+    liftIO (action runThing)
+
