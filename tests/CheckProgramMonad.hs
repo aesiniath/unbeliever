@@ -7,6 +7,7 @@ import Test.Hspec
 
 import Core.Program.Arguments
 import Core.Program.Execute
+import Core.Program.Unlift
 
 options =
     [ Option "all" (Just 'a') "Good will to everyone"

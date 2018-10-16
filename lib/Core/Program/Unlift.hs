@@ -108,23 +108,6 @@ import Core.Program.Context
 import Core.System.Base
 
 {-|
-Get the internal @Context@ of the running @Program@. There is ordinarily no
-reason to use this; to access your top-level application data @τ@ within
-the @Context@ use 'Core.Program.Execute.getApplicationState'.
--}
-getContext :: Program τ (Context τ)
-getContext = do
-    context <- ask
-    return context
-
-{-|
-Run a subprogram from within a lifted @IO@ block.
--}
-subProgram :: Context τ -> Program τ α -> IO α
-subProgram context (Program reader) = do
-    runReaderT reader context
-
-{-|
 This gives you a function that you can use within your lifted 'IO' actions
 to return to the 'Program' monad.
 

@@ -7,7 +7,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_HADDOCK hide #-}
 
--- This is an Internal module
+-- This is an Internal module, hidden from Haddock
 module Core.Program.Context
     ( 
         Context(..)
@@ -17,6 +17,8 @@ module Core.Program.Context
       , Message(..)
       , Verbosity(..)
       , Program(..)
+      , getContext
+      , subProgram
       , getConsoleWidth
     ) where
 
@@ -156,6 +158,23 @@ from test suites and example snippets.
 -}
 newtype Program τ α = Program (ReaderT (Context τ) IO α)
     deriving (Functor, Applicative, Monad, MonadIO, MonadReader (Context τ))
+
+{-|
+Get the internal @Context@ of the running @Program@. There is ordinarily no
+reason to use this; to access your top-level application data @τ@ within
+the @Context@ use 'Core.Program.Execute.getApplicationState'.
+-}
+getContext :: Program τ (Context τ)
+getContext = do
+    context <- ask
+    return context
+
+{-|
+Run a subprogram from within a lifted @IO@ block.
+-}
+subProgram :: Context τ -> Program τ α -> IO α
+subProgram context (Program reader) = do
+    runReaderT reader context
 
 --
 -- This is complicated. The **safe-exceptions** library exports a

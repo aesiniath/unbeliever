@@ -111,7 +111,6 @@ import Core.Program.Context
 import Core.Program.Logging
 import Core.Program.Signal
 import Core.Program.Arguments
-import Core.Program.Unlift
 
 unProgram :: Program τ α -> ReaderT (Context τ) IO α
 unProgram (Program reader) = reader
