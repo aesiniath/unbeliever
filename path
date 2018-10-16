@@ -1,19 +1,39 @@
 #!/bin/sh
 
-BINDIR=`stack path --local-install-root`/bin
+set -x
+
+ROOTDIR=`stack path --local-install-root`
+DISTDIR=`stack path --dist-dir`
 
 link () {
-	NAME="$1"
+	NAME="$2"
+	ORIGIN="$1"
 
 	if [ -L ./${NAME} ] ; then
 		rm -f ./${NAME}
 	fi
 	if [ -f ./${NAME} ] ; then
-		exit
+		exit 1
 	fi
-	ln -s ${BINDIR}/${NAME} ${NAME}
+	ln -s ${ORIGIN} ${NAME}
 }
 
-link snippet
-link experiment
+# symlink a "executable" binary
+e () {
+	NAME="$1"
+	ln -s "${ROOTDIR}/bin/${NAME}" "${NAME}"
+}
+
+# symlink a "test-suite" binary
+t () {
+	NAME="$1"
+	link "${DISTDIR}/build/${NAME}/${NAME}" "${NAME}"
+}
+
+
+# main
+e experiment
+t check
+t snippet
+
 
