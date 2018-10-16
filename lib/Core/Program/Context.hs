@@ -28,8 +28,8 @@ import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
 import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
 import Control.Exception.Safe (displayException)
-import qualified Control.Exception.Safe as Safe (throw)
-import Control.Monad.Catch (MonadThrow(throwM), MonadCatch)
+import qualified Control.Exception.Safe as Safe (throw, catch)
+import Control.Monad.Catch (MonadThrow(throwM), MonadCatch(catch))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader.Class (MonadReader(..))
 import Control.Monad.Trans.Reader (ReaderT(..))
@@ -42,7 +42,7 @@ import qualified System.Console.Terminal.Size as Terminal (Window(..), size)
 import System.Environment (getArgs, getProgName, lookupEnv)
 import System.Exit (ExitCode(..), exitWith)
 
-import Core.System.Base
+import Core.System.Base hiding (throw, catch)
 import Core.Text.Rope
 import Core.Program.Arguments
 
@@ -190,7 +190,8 @@ subProgram context (Program r) = do
 instance MonadThrow (Program τ) where
     throwM = liftIO . Safe.throw
 
-deriving instance MonadCatch (Program τ)
+instance MonadCatch (Program τ) where
+    catch = Safe.catch
 
 
 {-|
