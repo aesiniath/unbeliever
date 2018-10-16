@@ -173,8 +173,8 @@ getContext = do
 Run a subprogram from within a lifted @IO@ block.
 -}
 subProgram :: Context τ -> Program τ α -> IO α
-subProgram context (Program reader) = do
-    runReaderT reader context
+subProgram context (Program r) = do
+    runReaderT r context
 
 --
 -- This is complicated. The **safe-exceptions** library exports a

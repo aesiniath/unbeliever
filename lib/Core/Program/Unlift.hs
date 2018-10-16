@@ -1,21 +1,22 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# OPTIONS_HADDOCK prune #-}
 
 {-|
 The 'Program' monad is an instance of 'MonadIO', which makes sense; it's
 just a wrapper around doing 'IO' and you call it using
-'Core.Program.Execute.execute' from the top-level @main@ action that is the
+'execute' from the top-level @main@ action that is the
 entrypoint to any program.  So when you need to actually do some I/O or
 interact with other major libraries in the Haskell ecosystem, you need to
 get back to 'IO' and you use 'liftIO' to do it:
 
 @
 main :: 'IO' ()
-main = 'Core.Program.Execute.execute' $ do
+main = 'execute' $ do
     -- now in the Program monad
-    'Core.Program.Execute.write' "Hello there"
+    'write' "Hello there"
 
     'liftIO' $ do
         -- now something in IO
@@ -23,21 +24,21 @@ main = 'Core.Program.Execute.execute' $ do
         compileSourceCode source
 
     -- back in Program monad
-    'Core.Program.Execute.write' \"Finished\"
+    'write' \"Finished\"
 @
 
 and this is a perfectly reasonable pattern.
 
 Sometimes, however, you want to get to the 'Program' monad from /there/,
-and that's tricky; you can't just 'Core.Program.Execute.execute' a new
+and that's tricky; you can't just 'execute' a new
 program (and don't try: we've already initialized output and logging
 channels, signal handlers, your application context, etc).
 
 @
 main :: 'IO' ()
-main = 'Core.Program.Execute.execute' $ do
+main = 'execute' $ do
     -- now in the Program monad
-    'Core.Program.Execute.write' "Hello there"
+    'write' "Hello there"
 
     'liftIO' $ do
         -- now something in IO
@@ -49,7 +50,7 @@ main = 'Core.Program.Execute.execute' $ do
             Left err     -> -- debug the error  ... FIXME how???
 
     -- back in Program monad
-    'Core.Program.Execute.write' \"Finished\"
+    'write' \"Finished\"
 @
 
 We have a problem, because we'd like to do is use, say, 'debug' to log the
@@ -61,9 +62,9 @@ you can then use within your lifted 'IO' to run a (sub)'Program' action:
 
 @
 main :: 'IO' ()
-main = 'Core.Program.Execute.execute' $ do
+main = 'execute' $ do
     -- now in the Program monad
-    'Core.Program.Execute.write' "Hello there"
+    'write' "Hello there"
 
     'withContext' $ \\runProgram -> do
         -- now lifted to IO
@@ -71,18 +72,18 @@ main = 'Core.Program.Execute.execute' $ do
 
         runProgram $ do
             -- now \"unlifted\" back to Program monad!
-            'Core.Program.Logging.event' \"Starting compile...\"
-            'Core.Program.Logging.event' \"Nah. Changed our minds\"
-            'Core.Program.Logging.event' \"Ok, fine, compile the thing\"
+            'event' \"Starting compile...\"
+            'event' \"Nah. Changed our minds\"
+            'event' \"Ok, fine, compile the thing\"
 
         -- more IO
         result <- compileSourceCode source
         case result of
             'Right' object -> linkObjectCode object
-            'Left' err     -> runProgram ('Core.Program.Logging.debugS' err)
+            'Left' err     -> runProgram ('debugS' err)
 
     -- back in Program monad
-    'Core.Program.Execute.write' \"Finished\"
+    'write' \"Finished\"
 @
 
 Sometimes Haskell type inference can give you trouble because it tends to
@@ -101,10 +102,9 @@ module Core.Program.Unlift
       , subProgram
     ) where
 
-import Control.Monad.Reader.Class (MonadReader(ask))
-import Control.Monad.Trans.Reader (ReaderT(runReaderT))
-
 import Core.Program.Context
+import Core.Program.Execute
+import Core.Program.Logging
 import Core.System.Base
 
 {-|
@@ -119,7 +119,7 @@ a larger action in a do-notation block:
 
 @
 main :: IO ()
-main = 'Core.Program.Execute.execute' $ do
+main = 'execute' $ do
     'withContext' $ \\runProgram -> do
         -- in IO monad, lifted
         -- (just as if you had used liftIO)
