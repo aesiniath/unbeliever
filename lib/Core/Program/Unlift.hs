@@ -5,51 +5,51 @@
 
 {-|
 The 'Program' monad is an instance of 'MonadIO', which makes sense; it's
-just a wrapper around doing 'IO' and you call it using 'execute' from the
-top-level @main@ action that is the entrypoint to any program.  So when you
-need to actually do some I/O or interact with other major libraries in the
-Haskell ecosystem, you need to get back to 'IO' and you use 'liftIO' to do
-it:
+just a wrapper around doing 'IO' and you call it using
+'Core.Program.Execute.execute' from the top-level @main@ action that is the
+entrypoint to any program.  So when you need to actually do some I/O or
+interact with other major libraries in the Haskell ecosystem, you need to
+get back to 'IO' and you use 'liftIO' to do it:
 
 @
 main :: 'IO' ()
-main = 'execute' $ do
+main = 'Core.Program.Execute.execute' $ do
     -- now in the Program monad
-    'write' "Hello there"
+    'Core.Program.Execute.write' "Hello there"
 
     'liftIO' $ do
-        -- do something in IO
+        -- now something in IO
         source <- readFile "hello.c"
         compileSourceCode source
 
     -- back in Program monad
-    'write' \"Finished\"
+    'Core.Program.Execute.write' \"Finished\"
 @
 
-and this is a perfectly reasonably pattern.
+and this is a perfectly reasonable pattern.
 
-Sometimes, however, you want to somehow get back to the 'Program' monad
-from there, and that's tricky; you can't just 'execute' a new program (and
-don't try: we've already initialized output and logging channels, signal
-handlers, your application context, etc).
+Sometimes, however, you want to get to the 'Program' monad from /there/,
+and that's tricky; you can't just 'Core.Program.Execute.execute' a new
+program (and don't try: we've already initialized output and logging
+channels, signal handlers, your application context, etc).
 
 @
 main :: 'IO' ()
-main = 'execute' $ do
+main = 'Core.Program.Execute.execute' $ do
     -- now in the Program monad
-    'write' "Hello there"
+    'Core.Program.Execute.write' "Hello there"
 
     'liftIO' $ do
-        -- do something in IO
+        -- now something in IO
         source <- readFile "hello.c"
-        -- log that we're starting compile      ... how???
+        -- log that we're starting compile      ... FIXME how???
         result <- compileSourceCode source
         case result of
             Right object -> linkObjectCode object
-            Left err     -> -- debug the error  ... how???
+            Left err     -> -- debug the error  ... FIXME how???
 
     -- back in Program monad
-    'write' \"Finished\"
+    'Core.Program.Execute.write' \"Finished\"
 @
 
 We have a problem, because we'd like to do is use, say, 'debug' to log the
@@ -57,43 +57,44 @@ compiler error, but we have no way to unlift back out of 'IO' to get to the
 'Program' monad.
 
 To workaround this, we offer 'withContext'. It gives you a function that
-you can use within your lifted 'IO' to run a 'Program' action:
+you can then use within your lifted 'IO' to run a (sub)'Program' action:
 
 @
 main :: 'IO' ()
-main = 'execute' $ do
+main = 'Core.Program.Execute.execute' $ do
     -- now in the Program monad
-    'write' "Hello there"
+    'Core.Program.Execute.write' "Hello there"
 
     'withContext' $ \\runProgram -> do
-        -- do something in IO
+        -- now lifted to IO
         source <- readFile "hello.c"
 
         runProgram $ do
-            -- now in Program monad
-            'event' \"Starting compile...\"
-            'event' \"Nah. Changed our minds\"
-            'event' \"Ok, fine, compile the thing\"
+            -- now \"unlifted\" back to Program monad!
+            'Core.Program.Logging.event' \"Starting compile...\"
+            'Core.Program.Logging.event' \"Nah. Changed our minds\"
+            'Core.Program.Logging.event' \"Ok, fine, compile the thing\"
 
         -- more IO
         result <- compileSourceCode source
         case result of
             'Right' object -> linkObjectCode object
-            'Left' err     -> runProgram ('debugS' err)
+            'Left' err     -> runProgram ('Core.Program.Logging.debugS' err)
 
     -- back in Program monad
-    'write' \"Finished\"
+    'Core.Program.Execute.write' \"Finished\"
 @
 
 Sometimes Haskell type inference can give you trouble because it tends to
 assume you mean what you say with the last statement of do-notation block.
 If you've got the type wrong you'll get an error, but in an odd place,
-probably at the top. This can be confusing. If you're having trouble with
-the types try putting @return ()@ at the end of your subprogram.
+probably at the top where you have the lambda. This can be confusing. If
+you're having trouble with the types try putting @return ()@ at the end of
+your subprogram.
 -}
 module Core.Program.Unlift
     (
-        {-* Useful actions -}
+        {-* Unlifting -}
         withContext
         {-* Internals -}
       , getContext
@@ -107,7 +108,9 @@ import Core.Program.Context
 import Core.System.Base
 
 {-|
-Get the internal @Context@ of the running @Program@.
+Get the internal @Context@ of the running @Program@. There is ordinarily no
+reason to use this; to access your top-level application data @τ@ within
+the @Context@ use 'Core.Program.Execute.getApplicationState'.
 -}
 getContext :: Program τ (Context τ)
 getContext = do
@@ -115,7 +118,7 @@ getContext = do
     return context
 
 {-|
-Run a subprogram from within a lifted 'IO' block.
+Run a subprogram from within a lifted @IO@ block.
 -}
 subProgram :: Context τ -> Program τ α -> IO α
 subProgram context (Program reader) = do
@@ -133,14 +136,14 @@ a larger action in a do-notation block:
 
 @
 main :: IO ()
-main = execute $ do
+main = 'Core.Program.Execute.execute' $ do
     'withContext' $ \\runProgram -> do
         -- in IO monad, lifted
         -- (just as if you had used liftIO)
 
         ...
 
-        __runProgram__ $ do
+        runProgram $ do
             -- now unlifted, back to Program monad
 
         ...
