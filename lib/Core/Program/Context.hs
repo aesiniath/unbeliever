@@ -4,12 +4,13 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_HADDOCK hide #-}
 
 -- This is an Internal module
 module Core.Program.Context
-    ( 
+    (
         Context(..)
       , None(..)
       , isNone
@@ -26,7 +27,7 @@ import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
 import Control.Exception.Safe (displayException)
 import qualified Control.Exception.Safe as Safe (throw)
-import Control.Monad.Catch (MonadThrow(throwM))
+import Control.Monad.Catch (MonadThrow(throwM), MonadCatch)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader.Class (MonadReader(..))
 import Control.Monad.Trans.Reader (ReaderT(..))
@@ -169,6 +170,8 @@ newtype Program τ α = Program (ReaderT (Context τ) IO α)
 --
 instance MonadThrow (Program τ) where
     throwM = liftIO . Safe.throw
+
+deriving instance MonadCatch (Program τ)
 
 
 {-|
