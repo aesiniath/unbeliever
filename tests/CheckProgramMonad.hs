@@ -46,7 +46,16 @@ checkProgramMonad = do
                     -- command-line arguments through to us.
                     params `shouldBe` (Parameters Nothing [] [])
 
+        -- not strictly necessary but sets up next spec item
         it "sub-programs can be run" $ do
             context <- configure None blank
-            result <- subProgram context (getApplicationState)
-            result `shouldBe` None
+            user <- subProgram context (getApplicationState)
+            user `shouldBe` None
+
+        it "unlifting from lifted IO works" $
+            execute $ do
+                user1 <- getApplicationState
+                withContext $ \runProgram -> do
+                    user1 `shouldBe` None
+                    user2 <- runProgram getApplicationState -- unlift!
+                    user2 `shouldBe` user1
