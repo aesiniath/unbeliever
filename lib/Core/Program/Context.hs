@@ -8,7 +8,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_HADDOCK hide #-}
 
--- This is an Internal module
+-- This is an Internal module, hidden from Haddock
 module Core.Program.Context
     (
         Context(..)
@@ -18,6 +18,8 @@ module Core.Program.Context
       , Message(..)
       , Verbosity(..)
       , Program(..)
+      , getContext
+      , subProgram
       , getConsoleWidth
     ) where
 
@@ -158,13 +160,30 @@ from test suites and example snippets.
 newtype Program τ α = Program (ReaderT (Context τ) IO α)
     deriving (Functor, Applicative, Monad, MonadIO, MonadReader (Context τ))
 
+{-|
+Get the internal @Context@ of the running @Program@. There is ordinarily no
+reason to use this; to access your top-level application data @τ@ within
+the @Context@ use 'Core.Program.Execute.getApplicationState'.
+-}
+getContext :: Program τ (Context τ)
+getContext = do
+    context <- ask
+    return context
+
+{-|
+Run a subprogram from within a lifted @IO@ block.
+-}
+subProgram :: Context τ -> Program τ α -> IO α
+subProgram context (Program r) = do
+    runReaderT r context
+
 --
 -- This is complicated. The **safe-exceptions** library exports a
 -- `throwM` which is not the `throwM` class method from MonadThrow.
 -- See https://github.com/fpco/safe-exceptions/issues/31 for
 -- discussion. In any event, the re-exports flow back to
 -- Control.Monad.Catch from **exceptions** and Control.Exceptions in
--- **base**. In _this_ module, we need to catch everything (including
+-- **base**. In the execute actions, we need to catch everything (including
 -- asynchronous exceptions); elsewhere we will use and wrap/export
 -- **safe-exceptions**'s variants of the functions.
 --

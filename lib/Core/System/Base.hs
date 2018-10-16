@@ -10,6 +10,7 @@ module Core.System.Base
       {-** from Control.Monad.IO.Class -}
       {-| Re-exported from "Control.Monad.IO.Class" in __base__: -}
       liftIO
+    , MonadIO
       {-** from System.IO -}
       {-| Re-exported from "System.IO" in __base__: -}
     , Handle
@@ -26,7 +27,7 @@ module Core.System.Base
     ) where
 
 import Control.Exception.Safe (Exception(..), throw, bracket, catch)
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.IO (Handle, stdin, stdout, stderr, hFlush)
 import System.IO.Unsafe (unsafePerformIO)
 
