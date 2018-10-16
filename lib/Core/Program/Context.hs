@@ -182,7 +182,7 @@ subProgram context (Program r) = do
 -- See https://github.com/fpco/safe-exceptions/issues/31 for
 -- discussion. In any event, the re-exports flow back to
 -- Control.Monad.Catch from **exceptions** and Control.Exceptions in
--- **base**. In _this_ module, we need to catch everything (including
+-- **base**. In the execute actions, we need to catch everything (including
 -- asynchronous exceptions); elsewhere we will use and wrap/export
 -- **safe-exceptions**'s variants of the functions.
 --
