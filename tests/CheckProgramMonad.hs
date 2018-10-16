@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module CheckProgramMonad where
 
@@ -23,10 +24,18 @@ commands =
         []
     ]
 
+data Boom = Boom
+    deriving Show
+
+instance Exception Boom
+
+boom :: Selector Boom
+boom = const True
+
 checkProgramMonad :: Spec
 checkProgramMonad = do
     describe "Context type" $ do
-        it "Eq instance for None behaves" $
+        it "Eq instance for None behaves" $ do
             None `shouldBe` None
 
     describe "Program monad" $ do
@@ -52,10 +61,21 @@ checkProgramMonad = do
             user <- subProgram context (getApplicationState)
             user `shouldBe` None
 
-        it "unlifting from lifted IO works" $
+        it "unlifting from lifted IO works" $ do
             execute $ do
                 user1 <- getApplicationState
                 withContext $ \runProgram -> do
                     user1 `shouldBe` None
                     user2 <- runProgram getApplicationState -- unlift!
                     user2 `shouldBe` user1
+
+        it "thrown Exceptions can be caught" $ do
+            context <- configure None blank
+            (subProgram context (throw Boom)) `shouldThrow` boom
+
+            -- ok, so with that established, now try **safe-exceptions**'s
+            -- code. Note if we move the exception handling code from
+            -- `execute` to `subProgram` this will have to adapt.
+            catch
+                (subProgram context (throw Boom))
+                (\(e :: Boom) -> return ())
