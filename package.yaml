@@ -10,6 +10,12 @@ author: Andrew Cowie <andrew@operationaldynamics.com>
 maintainer: Andrew Cowie <andrew@operationaldynamics.com>
 copyright: © 2018 Operational Dynamics Consulting Pty Ltd, and Others
 tested-with: GHC == 8.4
+ghc-options: -Wall -Wwarn -fwarn-tabs
+
+flags:
+  development:
+    manual: true
+    default: false
 
 dependencies:
  - aeson
@@ -60,15 +66,33 @@ library:
 
 executables:
   experiment:
+    when:
+      - condition: flag(development)
+        then:
+          buildable: true
+        else:
+          buildable: false
     dependencies:
      - unbeliever
-   
-    ghc-options: -threaded -Wall -Wwarn -fwarn-tabs
-   
+    ghc-options: -threaded
     source-dirs: tests
     main: SimpleExperiment.hs
     other-modules: []
+    ghc-prof-options: -fprof-auto-top
 
+  snippet:
+    when:
+      - condition: flag(development)
+        then:
+          buildable: true
+        else:
+          buildable: false
+    dependencies:
+     - unbeliever
+    ghc-options: -threaded
+    source-dirs: tests
+    main: Snippet.hs
+    other-modules: []
     ghc-prof-options: -fprof-auto-top
 
 tests:
@@ -76,9 +100,7 @@ tests:
     dependencies:
      - hspec
      - unbeliever
-
-    ghc-options: -threaded -Wall -Wwarn -fwarn-tabs
-
+    ghc-options: -threaded
     source-dirs:
      - tests
     main: TestSuite.hs
@@ -89,26 +111,12 @@ tests:
      - CheckArgumentsParsing
      - CheckProgramMonad
 
-  snippet:
-    dependencies:
-     - unbeliever
-
-    ghc-options: -threaded -Wall -Wwarn -fwarn-tabs
-
-    source-dirs: tests
-    main: Snippet.hs
-    other-modules: []
-
-    ghc-prof-options: -fprof-auto-top
-
 benchmarks:
   performance:
     dependencies:
      - gauge
      - unbeliever
-
-    ghc-options: -threaded -Wall -Wwarn -fwarn-tabs
-
+    ghc-options: -threaded
     source-dirs:
      - bench
     main: GeneralPerformance.hs
