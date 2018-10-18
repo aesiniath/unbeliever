@@ -100,6 +100,7 @@ import Control.Monad.Reader.Class (MonadReader(ask))
 import Control.Monad.Trans.Reader (ReaderT)
 import qualified Data.ByteString as B (hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
+import Data.Text.Prettyprint.Doc.Render.Terminal (renderIO)
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
 import System.Exit (ExitCode(..))
 
@@ -224,12 +225,12 @@ executeWith context program = do
         else (Base.throwIO code)
 
 
-processStandardOutput :: TQueue Rope -> IO ()
+processStandardOutput :: TQueue (Handle -> IO ()) -> IO ()
 processStandardOutput out = do
     forever $ do
-        text <- atomically (readTQueue out)
+        action <- atomically (readTQueue out)
 
-        hWrite stdout text
+        action stdout
         B.hPut stdout (C.singleton '\n')
 
 processDebugMessages :: TQueue Message -> IO ()
@@ -356,7 +357,7 @@ write text = do
     liftIO $ do
         let out = outputChannelFrom context
 
-        atomically (writeTQueue out text)
+        atomically (writeTQueue out (\h -> hWrite h text))
 
 {-|
 Call 'show' on the supplied argument and write the resultant text to
@@ -381,7 +382,8 @@ writeR thing = do
 
         let text = render columns thing
 
-        atomically (writeTQueue out text)
+        atomically (writeTQueue out
+            (\h -> renderIO h (render' columns thing)))
 
 {-|
 Write the supplied @Bytes@ to the given @Handle@. Note that in contrast to

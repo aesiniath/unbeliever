@@ -14,6 +14,7 @@ module Core.Text.Utilities (
       {-* Pretty printing -}
       Render(..)
     , render
+    , render'
       {-* Helpers -}
     , indefinite
     , wrap
@@ -29,7 +30,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy.Builder as T
 import qualified Data.Text.Short as S (ShortText, uncons, toText)
 import Data.Text.Prettyprint.Doc (Doc, layoutPretty , reAnnotateS
-    , pretty, emptyDoc
+    , pretty, emptyDoc, SimpleDocStream
     , LayoutOptions(LayoutOptions)
     , PageWidth(AvailablePerLine))
 import Data.Text.Prettyprint.Doc.Render.Terminal (renderStrict, AnsiStyle)
@@ -114,6 +115,17 @@ render columns (thing :: α) =
     options = LayoutOptions (AvailablePerLine (columns - 1) 1.0)
   in
     intoRope . renderStrict . reAnnotateS (colourize @α)
+                . layoutPretty options . intoDocA $ thing
+
+-- used internally in output queues to avoid allocating a strict Text
+-- and then wrapping it in a Rope; prettyprint-ansi-terminal provides a
+-- `renderIO` function which we use at the output site.
+render' :: Render α => Int -> α -> SimpleDocStream AnsiStyle
+render' columns (thing :: α) =
+  let
+    options = LayoutOptions (AvailablePerLine (columns - 1) 1.0)
+  in
+    reAnnotateS (colourize @α)
                 . layoutPretty options . intoDocA $ thing
 
 --

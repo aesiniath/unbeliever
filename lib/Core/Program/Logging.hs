@@ -50,7 +50,7 @@ putMessage context message@(Message now _ text potentialValue) = do
     let result = formatLogMessage start now display
 
     atomically $ do
-        writeTQueue output result
+        writeTQueue output (\handle -> hWrite handle result)
         writeTQueue logger message
 
 

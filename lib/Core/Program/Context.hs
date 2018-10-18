@@ -77,7 +77,7 @@ data Context τ = Context {
     , startTimeFrom :: TimeStamp
     , terminalWidthFrom :: Int
     , verbosityLevelFrom :: MVar Verbosity
-    , outputChannelFrom :: TQueue Rope
+    , outputChannelFrom :: TQueue (Handle -> IO ())
     , loggerChannelFrom :: TQueue Message
     , applicationDataFrom :: MVar τ
 }
