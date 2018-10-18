@@ -32,7 +32,7 @@ import Data.Text.Prettyprint.Doc (Doc, layoutPretty , reAnnotateS
     , pretty, emptyDoc
     , LayoutOptions(LayoutOptions)
     , PageWidth(AvailablePerLine))
-import Data.Text.Prettyprint.Doc.Render.Terminal (renderStrict, AnsiStyle)
+import Data.Text.Prettyprint.Doc.Render.Terminal (renderLazy, AnsiStyle)
 import Language.Haskell.TH (litE, stringL)
 import Language.Haskell.TH.Quote (QuasiQuoter(QuasiQuoter))
 
@@ -113,7 +113,7 @@ render columns (thing :: α) =
   let
     options = LayoutOptions (AvailablePerLine (columns - 1) 1.0)
   in
-    intoRope . renderStrict . reAnnotateS (colourize @α)
+    intoRope . renderLazy . reAnnotateS (colourize @α)
                 . layoutPretty options . intoDocA $ thing
 
 --
