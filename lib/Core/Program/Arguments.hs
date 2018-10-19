@@ -28,6 +28,7 @@ module Core.Program.Arguments
       , baselineOptions
       , Parameters(..)
       , ParameterValue(..)
+      , lookupArgument
         {-* Options and Arguments -}
       , LongName(..)
       , ShortName
@@ -370,6 +371,22 @@ data Parameters
         , parameterValuesFrom :: HashMap LongName ParameterValue
         , environmentValuesFrom :: HashMap LongName ParameterValue
     } deriving (Show, Eq)
+
+{-|
+Arguments are mandatory, so by the time your program is running a value
+has already been identified. This returns the value for that parameter.
+-}
+lookupArgument :: LongName -> Parameters -> String
+lookupArgument name params =
+    case HashMap.lookup name (parameterValuesFrom params) of
+        Nothing -> invalid
+        Just argument -> case argument of
+            Empty -> invalid
+            Value value -> value
+
+-- Illegal internal state resulting from programmer error
+invalid :: a
+invalid = error "Invalid State"
 
 baselineOptions :: [Options]
 baselineOptions =
