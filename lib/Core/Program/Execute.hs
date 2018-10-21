@@ -80,6 +80,7 @@ module Core.Program.Execute
       , isNone
       , unProgram
       , unThread
+      , invalid
     ) where
 
 import Prelude hiding (log)

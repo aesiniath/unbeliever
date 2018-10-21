@@ -29,6 +29,9 @@ module Core.Program.Arguments
       , Parameters(..)
       , ParameterValue(..)
       , lookupArgument
+      , lookupOptionValue
+      , lookupOptionFlag
+      , invalid
         {-* Options and Arguments -}
       , LongName(..)
       , ShortName
@@ -376,13 +379,31 @@ data Parameters
 Arguments are mandatory, so by the time your program is running a value
 has already been identified. This returns the value for that parameter.
 -}
-lookupArgument :: LongName -> Parameters -> String
+-- this is Maybe because you can inadvertently ask for an unconfigured name
+-- this could be fixed with a much stronger Config type, potentially.
+lookupArgument :: LongName -> Parameters -> Maybe String
 lookupArgument name params =
     case HashMap.lookup name (parameterValuesFrom params) of
         Nothing -> invalid
         Just argument -> case argument of
             Empty -> invalid
-            Value value -> value
+            Value value -> Just value
+
+lookupOptionValue :: LongName -> Parameters -> Maybe String
+lookupOptionValue name params =
+    case HashMap.lookup name (parameterValuesFrom params) of
+        Nothing -> Nothing
+        Just argument -> case argument of
+            Empty -> invalid    -- FIXME, no not invalid. User error
+            Value value -> Just value
+
+lookupOptionFlag :: LongName -> Parameters -> Maybe ()
+lookupOptionFlag name params =
+    case HashMap.lookup name (parameterValuesFrom params) of
+        Nothing -> Nothing
+        Just argument -> case argument of
+            _ -> Just ()        -- nom, nom
+
 
 -- Illegal internal state resulting from programmer error
 invalid :: a
