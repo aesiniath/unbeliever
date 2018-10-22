@@ -28,9 +28,9 @@ module Core.Program.Arguments
       , baselineOptions
       , Parameters(..)
       , ParameterValue(..)
-      , lookupArgument
-      , lookupOptionValue
       , lookupOptionFlag
+      , lookupOptionValue
+      , lookupArgument
       , invalid
         {-* Options and Arguments -}
       , LongName(..)
