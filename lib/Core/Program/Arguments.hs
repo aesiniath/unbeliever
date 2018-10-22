@@ -28,10 +28,6 @@ module Core.Program.Arguments
       , baselineOptions
       , Parameters(..)
       , ParameterValue(..)
-      , lookupOptionFlag
-      , lookupOptionValue
-      , lookupArgument
-      , invalid
         {-* Options and Arguments -}
       , LongName(..)
       , ShortName
@@ -375,48 +371,6 @@ data Parameters
         , environmentValuesFrom :: HashMap LongName ParameterValue
     } deriving (Show, Eq)
 
-{-|
-Arguments are mandatory, so by the time your program is running a value
-has already been identified. This returns the value for that parameter.
--}
--- this is Maybe because you can inadvertently ask for an unconfigured name
--- this could be fixed with a much stronger Config type, potentially.
-lookupArgument :: LongName -> Parameters -> Maybe String
-lookupArgument name params =
-    case HashMap.lookup name (parameterValuesFrom params) of
-        Nothing -> invalid
-        Just argument -> case argument of
-            Empty -> invalid
-            Value value -> Just value
-
-{-|
-Look to see if the user supplied a valued option and if so, what it's value
-was.
--}
-lookupOptionValue :: LongName -> Parameters -> Maybe String
-lookupOptionValue name params =
-    case HashMap.lookup name (parameterValuesFrom params) of
-        Nothing -> Nothing
-        Just argument -> case argument of
-            Empty -> Nothing
-            Value value -> Just value
-
-{-|
-Returns @Just True@ if the option is present, and @Nothing@ if it is not.
--}
--- The type is boolean to support a possible future extension of negated
--- arguments.
-lookupOptionFlag :: LongName -> Parameters -> Maybe Bool
-lookupOptionFlag name params =
-    case HashMap.lookup name (parameterValuesFrom params) of
-        Nothing -> Nothing
-        Just argument -> case argument of
-            _ -> Just True        -- nom, nom
-
-
--- Illegal internal state resulting from programmer error
-invalid :: a
-invalid = error "Invalid State"
 
 baselineOptions :: [Options]
 baselineOptions =

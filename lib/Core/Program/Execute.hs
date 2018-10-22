@@ -56,11 +56,14 @@ module Core.Program.Execute
         {-* Exiting a program -}
       , terminate
         {-* Accessing program context -}
+      , getCommandLine
+      , lookupOptionFlag
+      , lookupOptionValue
+      , lookupArgument
       , getProgramName
       , setProgramName
       , getVerbosityLevel
       , setVerbosityLevel
-      , getCommandLine
       , getApplicationState
       , setApplicationState
       , retrieve
@@ -101,6 +104,7 @@ import Control.Monad.Reader.Class (MonadReader(ask))
 import Control.Monad.Trans.Reader (ReaderT)
 import qualified Data.ByteString as B (hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
+import qualified Data.HashMap.Strict as HashMap
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
 import System.Exit (ExitCode(..))
 
@@ -474,25 +478,75 @@ import qualified "Data.HashMap.Strict" as HashMap
 You can query this map directly:
 
 @
+program = do
     params <- 'getCommandLine'
     let result = HashMap.'Data.HashMap.Strict.lookup' \"silence\" params
     case result of
-        'Nothing' -> 'terminate' 1
+        'Nothing' -> 'return' ()
         'Just' quiet = case quiet of
-            'Value' _ ->  -- complain that the silence flag doesn't take a value
-            'Empty'   -> 'write' "You should be quiet now"
+            'Value' _ -> 'throw' NotQuiteRight               -- complain that flag doesn't take value
+            'Empty'   -> 'write' \"You should be quiet now\"   -- much better
+    ...
 @
 
 which is pattern matching to answer "was this option specified by the
-user?" or "what was the value of this [mandatory] argument?"
+user?" or "what was the value of this [mandatory] argument?", and then "if
+so, did the parameter have a value?"
 
 This is available should you need to differentiate between an @Value@ and
 @Empty@ 'ParameterValue', but for many cases as a convenience you can use
 the 'lookupOptionFlag', 'lookupOptionValue', and 'lookupArgument' functions
-below, which are just wrappers around a code block like the example shown
-here.
+below (which are just wrappers around a code block like the example shown
+here).
 -}
 getCommandLine :: Program τ (Parameters)
 getCommandLine = do
     context <- ask
     return (commandLineFrom context)
+
+{-|
+Arguments are mandatory, so by the time your program is running a value
+has already been identified. This returns the value for that parameter.
+-}
+-- this is Maybe because you can inadvertently ask for an unconfigured name
+-- this could be fixed with a much stronger Config type, potentially.
+lookupArgument :: LongName -> Parameters -> Maybe String
+lookupArgument name params =
+    case HashMap.lookup name (parameterValuesFrom params) of
+        Nothing -> Nothing
+        Just argument -> case argument of
+            Empty -> error "Invalid State"
+            Value value -> Just value
+
+{-|
+Look to see if the user supplied a valued option and if so, what its value
+was.
+-}
+-- Should this be more severe if it encounters Empty?
+lookupOptionValue :: LongName -> Parameters -> Maybe String
+lookupOptionValue name params =
+    case HashMap.lookup name (parameterValuesFrom params) of
+        Nothing -> Nothing
+        Just argument -> case argument of
+            Empty -> Nothing
+            Value value -> Just value
+
+{-|
+Returns @Just True@ if the option is present, and @Nothing@ if it is not.
+-}
+-- The type is boolean to support a possible future extension of negated
+-- arguments.
+lookupOptionFlag :: LongName -> Parameters -> Maybe Bool
+lookupOptionFlag name params =
+    case HashMap.lookup name (parameterValuesFrom params) of
+        Nothing -> Nothing
+        Just argument -> case argument of
+            _ -> Just True        -- nom, nom
+
+
+{-|
+Illegal internal state resulting from what should be unreachable code
+or otherwise a programmer error.
+-}
+invalid :: Program τ α
+invalid = error "Invalid State"
