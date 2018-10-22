@@ -389,20 +389,29 @@ lookupArgument name params =
             Empty -> invalid
             Value value -> Just value
 
+{-|
+Look to see if the user supplied a valued option and if so, what it's value
+was.
+-}
 lookupOptionValue :: LongName -> Parameters -> Maybe String
 lookupOptionValue name params =
     case HashMap.lookup name (parameterValuesFrom params) of
         Nothing -> Nothing
         Just argument -> case argument of
-            Empty -> invalid    -- FIXME, no not invalid. User error
+            Empty -> Nothing
             Value value -> Just value
 
-lookupOptionFlag :: LongName -> Parameters -> Maybe ()
+{-|
+Returns @Just True@ if the option is present, and @Nothing@ if it is not.
+-}
+-- The type is boolean to support a possible future extension of negated
+-- arguments.
+lookupOptionFlag :: LongName -> Parameters -> Maybe Bool
 lookupOptionFlag name params =
     case HashMap.lookup name (parameterValuesFrom params) of
         Nothing -> Nothing
         Just argument -> case argument of
-            _ -> Just ()        -- nom, nom
+            _ -> Just True        -- nom, nom
 
 
 -- Illegal internal state resulting from programmer error
