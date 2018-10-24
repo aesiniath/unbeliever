@@ -480,7 +480,7 @@ You can query this map directly:
 @
 program = do
     params <- 'getCommandLine'
-    let result = HashMap.'Data.HashMap.Strict.lookup' \"silence\" params
+    let result = HashMap.'Data.HashMap.Strict.lookup' \"silence\" (paramterValuesFrom params)
     case result of
         'Nothing' -> 'return' ()
         'Just' quiet = case quiet of

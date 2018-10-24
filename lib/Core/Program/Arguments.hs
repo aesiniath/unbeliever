@@ -360,7 +360,7 @@ $ missiles launch --all
 would be parsed as:
 
 @
-'Parameters' ('Just' "missiles") [("all",Empty)] []
+'Parameters' ('Just' \"launch\") [("all",Empty)] []
 @
 
 -}
