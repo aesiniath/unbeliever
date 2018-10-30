@@ -91,7 +91,8 @@ import Control.DeepSeq (NFData(..))
 import qualified Data.ByteString as B (ByteString)
 import qualified Data.ByteString.Builder as B (toLazyByteString
     , hPutBuilder)
-import qualified Data.ByteString.Lazy as L (toStrict)
+import qualified Data.ByteString.Lazy as L (ByteString, toStrict
+    , foldrChunks)
 import Data.String (IsString(..))
 import qualified Data.FingerTree as F (FingerTree, Measured(..), empty
     , singleton, (><), (<|), (|>), search, SearchResult(..))
@@ -375,6 +376,18 @@ instance Textual B.ByteString where
     append b' (Rope x) = case S.fromByteString b' of
         Just piece -> Rope ((F.|>) x piece)
         Nothing -> (Rope x)             -- bad
+
+{-| from "Data.ByteString.Lazy" -}
+instance Textual L.ByteString where
+    fromRope = B.toLazyByteString . foldr g mempty . unRope
+      where
+        g piece built = (<>) (S.toBuilder piece) built
+
+    intoRope b' = Rope (L.foldrChunks ((F.<|) . check) F.empty b')
+      where
+        check chunk = case S.fromByteString chunk of
+            Just piece -> piece
+            Nothing -> S.empty          -- very bad
 
 {-|
 If you /know/ the input bytes are valid UTF-8 encoded characters, then
