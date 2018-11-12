@@ -95,7 +95,7 @@ program = do
 main :: IO ()
 main = do
     context <- configure None (simple
-        [ Option "quiet" (Just 'q') [quote|
+        [ Option "quiet" (Just 'q') Empty [quote|
             Supress normal output.
           |]
         , Argument "filename" [quote|

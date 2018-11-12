@@ -307,7 +307,7 @@ with an underscore:
 @
 -}
 data Options
-    = Option LongName (Maybe ShortName) Description
+    = Option LongName (Maybe ShortName) ParameterValue Description
     | Argument LongName Description
     | Variable LongName Description
 
@@ -374,14 +374,14 @@ data Parameters
 
 baselineOptions :: [Options]
 baselineOptions =
-    [ Option "verbose" (Just 'v') [quote|
+    [ Option "verbose" (Just 'v') Empty [quote|
         Turn on event tracing. By default the logging stream will go to
         standard output on your terminal.
     |]
-    , Option "debug" Nothing [quote|
+    , Option "debug" Nothing Empty [quote|
         Turn on debug level logging. Implies --verbose.
     |]
-    , Option "logging" Nothing [quote|
+    , Option "logging" Nothing (Value "WHERE") [quote|
         Change where log messages are sent. Valid values are "console",
         "file:/path/to/filename.log", and "syslog".
     |]
@@ -585,7 +585,7 @@ extractValidNames options =
     foldr f HashSet.empty options
   where
     f :: Options -> HashSet LongName -> HashSet LongName
-    f (Option longname _ _) valids = HashSet.insert longname valids
+    f (Option longname _ _ _) valids = HashSet.insert longname valids
     f _ valids = valids
 
 extractShortNames :: [Options] -> HashMap ShortName LongName
@@ -593,7 +593,7 @@ extractShortNames options =
     foldr g HashMap.empty options
   where
     g :: Options -> HashMap ShortName LongName -> HashMap ShortName LongName
-    g (Option longname shortname _) shorts = case shortname of
+    g (Option longname shortname _ _) shorts = case shortname of
         Just shortchar -> HashMap.insert shortchar longname shorts
         Nothing -> shorts
     g _ shorts = shorts
@@ -770,7 +770,7 @@ buildUsage config mode = case config of
     commandHeading modes = if HashMap.size modes > 0 then hardline <> "Available commands:" <> hardline else emptyDoc
 
     f :: Options -> ([Options],[Options]) -> ([Options],[Options])
-    f o@(Option _ _ _) (opts,args) = (o:opts,args)
+    f o@(Option _ _ _ _) (opts,args) = (o:opts,args)
     f a@(Argument _ _) (opts,args) = (opts,a:args)
     f (Variable _ _) (opts,args) = (opts,args)
 
@@ -788,15 +788,19 @@ buildUsage config mode = case config of
 --
 
     g :: Options -> Doc ann -> Doc ann
-    g (Option longname shortname description) acc =
+    g (Option longname shortname valued description) acc =
       let
         s = case shortname of
                 Just shortchar -> "  -" <> pretty shortchar <> ", --"
                 Nothing -> "      --"
         l = pretty longname
         d = fromRope description
-      in
-        fillBreak 16 (s <> l <> " ") <+> align (reflow d) <> hardline <> acc
+      in case valued of
+        Empty ->
+            fillBreak 16 (s <> l <> " ") <+> align (reflow d) <> hardline <> acc
+        Value label ->
+            fillBreak 16 (s <> l <> "=" <> pretty label <> " ") <+> align (reflow d) <> hardline <> acc
+
     g (Argument longname description) acc =
       let
         l = pretty longname
