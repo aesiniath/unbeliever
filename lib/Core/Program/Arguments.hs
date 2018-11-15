@@ -120,7 +120,7 @@ of optional parameters and mandatory arguments. For example:
 @
 main :: 'IO' ()
 main = do
-    context <- 'Core.Program.Execute.configure' 'Core.Program.Execute.None' ('simple'
+    context <- 'Core.Program.Execute.configure' \"1.0\" 'Core.Program.Execute.None' ('simple'
         [ 'Option' "host" ('Just' \'h\') 'Empty' ['quote'|
             Specify an alternate host to connect to when performing the
             frobnication. The default is \"localhost\".
@@ -193,7 +193,7 @@ program = ...
 
 main :: 'IO' ()
 main = do
-    context <- 'Core.Program.Execute.configure' 'mempty' ('complex'
+    context <- 'Core.Program.Execute.configure' ('Core.Program.Execute.fromPackage' version) 'mempty' ('complex'
         [ 'Global'
             [ 'Option' "station-name" 'Nothing' ('Value' \"NAME\") ['quote'|
                 Specify an alternate radio station to connect to when performing
