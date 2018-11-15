@@ -40,6 +40,7 @@ module Core.Program.Arguments
       , extractValidEnvironments
       , InvalidCommandLine(..)
       , buildUsage
+      , buildVersion
     ) where
 
 import Control.Exception.Safe (Exception(displayException))
@@ -119,7 +120,7 @@ of optional parameters and mandatory arguments. For example:
 @
 main :: 'IO' ()
 main = do
-    context <- 'Core.Program.Execute.configure' 'Core.Program.Execute.None' ('simple'
+    context <- 'Core.Program.Execute.configure' \"1.0\" 'Core.Program.Execute.None' ('simple'
         [ 'Option' "host" ('Just' \'h\') 'Empty' ['quote'|
             Specify an alternate host to connect to when performing the
             frobnication. The default is \"localhost\".
@@ -192,7 +193,7 @@ program = ...
 
 main :: 'IO' ()
 main = do
-    context <- 'Core.Program.Execute.configure' 'mempty' ('complex'
+    context <- 'Core.Program.Execute.configure' ('Core.Program.Execute.fromPackage' version) 'mempty' ('complex'
         [ 'Global'
             [ 'Option' "station-name" 'Nothing' ('Value' \"NAME\") ['quote'|
                 Specify an alternate radio station to connect to when performing
@@ -407,6 +408,8 @@ data InvalidCommandLine
     | NoCommandFound        {-^ In a complex configuration, user didn't specify a command. -}
     | HelpRequest (Maybe LongName)
                             {-^ In a complex configuration, usage information was requested with @--help@, either globally or for the supplied command. -}
+    | VersionRequest
+                            {-^ Display of the program version requested with @--version@. -}
     deriving (Show, Eq)
 
 instance Exception InvalidCommandLine where
@@ -460,6 +463,9 @@ See --help for details.
 |]
         -- handled by parent module calling back into here buildUsage
         HelpRequest _ -> ""
+
+        -- handled by parent module calling back into here buildVersion
+        VersionRequest -> ""
 
 programName :: String
 programName = unsafePerformIO getProgName
@@ -526,6 +532,7 @@ parsePossibleOptions mode valids shorts args = mapM f args
     f arg = case arg of
         "--help" -> Left (HelpRequest mode)
         "-?"     -> Left (HelpRequest mode)
+        "--version" -> Left VersionRequest
         ('-':'-':name) -> considerLongOption name
         ('-':c:[]) -> considerShortOption c
         _ -> Left (InvalidOption arg)
@@ -831,4 +838,8 @@ buildUsage config mode = case config of
       in
         fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
     h _ acc = acc
+
+buildVersion :: String -> Doc ann
+buildVersion version =
+    pretty programName <+> "version" <+> pretty version <> hardline
 

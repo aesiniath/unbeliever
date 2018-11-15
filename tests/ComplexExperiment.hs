@@ -23,7 +23,7 @@ program = do
 
 main :: IO ()
 main = do
-    context <- configure None (complex
+    context <- configure "42.0" None (complex
         [ Global
             [ Option "logging-and-cutting" Nothing (Value "PLACE") [quote|
                 Valid values are "console", "file:/path/to/file.log", and "syslog".

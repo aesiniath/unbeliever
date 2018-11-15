@@ -20,6 +20,8 @@ module Core.Program.Context
       , getContext
       , subProgram
       , getConsoleWidth
+      , Version(..)
+      , fromPackage
     ) where
 
 import Prelude hiding (log)
@@ -37,6 +39,8 @@ import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Text.Prettyprint.Doc (layoutPretty, LayoutOptions(..), PageWidth(..))
 import Data.Text.Prettyprint.Doc.Render.Text (renderIO)
+import Data.String
+import qualified Data.Version as Base (Version(..), showVersion)
 import qualified System.Console.Terminal.Size as Terminal (Window(..), size)
 import System.Environment (getArgs, getProgName, lookupEnv)
 import System.Exit (ExitCode(..), exitWith)
@@ -72,6 +76,7 @@ application data of type @τ@ which can be retrieved with
 --
 data Context τ = Context {
       programNameFrom :: MVar Rope
+    , versionFrom :: Version
     , commandLineFrom :: Parameters
     , exitSemaphoreFrom :: MVar ExitCode
     , startTimeFrom :: TimeStamp
@@ -201,13 +206,13 @@ This is also where you specify the initial {blank, empty, default) value
 for the top-level user-defined application state, if you have one. Specify
 'None' if you aren't using this feature.
 -}
-configure :: τ -> Config -> IO (Context τ)
-configure t config = do
+configure :: Version -> τ -> Config -> IO (Context τ)
+configure version t config = do
     start <- getCurrentTimeNanoseconds
 
     arg0 <- getProgName
     n <- newMVar (intoRope arg0)
-    p <- handleCommandLine config
+    p <- handleCommandLine version config
     q <- newEmptyMVar
     columns <- getConsoleWidth
     out <- newTQueueIO
@@ -218,6 +223,7 @@ configure t config = do
 
     return $! Context {
           programNameFrom = n
+        , versionFrom = version
         , commandLineFrom = p
         , exitSemaphoreFrom = q
         , startTimeFrom = start
@@ -251,8 +257,8 @@ getConsoleWidth = do
     called that in Core.Program.Arguments). And, returning here lets us set
     up the layout width to match (one off the) actual width of console.
 -}
-handleCommandLine :: Config -> IO Parameters
-handleCommandLine config = do
+handleCommandLine :: Version -> Config -> IO Parameters
+handleCommandLine (Version version) config = do
     argv <- getArgs
     let result = parseCommandLine config argv
     case result of
@@ -261,17 +267,23 @@ handleCommandLine config = do
             return parameters { environmentValuesFrom = pairs }
         Left e -> case e of
             HelpRequest mode -> do
-                columns <- getConsoleWidth
-                let options = LayoutOptions (AvailablePerLine (columns - 1) 1.0)
-                let usage = buildUsage config mode
-                renderIO stdout (layoutPretty options usage)
-                hFlush stdout
+                render (buildUsage config mode)
+                exitWith (ExitFailure 1)
+            VersionRequest -> do
+                render (buildVersion version)
                 exitWith (ExitFailure 1)
             _ -> do
                 putStr "error: "
                 putStrLn (displayException e)
                 hFlush stdout
                 exitWith (ExitFailure 1)
+  where
+    render message = do
+        columns <- getConsoleWidth
+        let options = LayoutOptions (AvailablePerLine (columns - 1) 1.0)
+        renderIO stdout (layoutPretty options message)
+        hFlush stdout
+
 
 lookupEnvironmentVariables :: Config -> Parameters -> IO (HashMap LongName ParameterValue)
 lookupEnvironmentVariables config params = do
@@ -315,4 +327,37 @@ queryVerbosityLevel params =
                 Empty   -> Right Event
                 Value _ -> Left (ExitFailure 2)
             Nothing -> Right Output
+
+{-|
+The version number of this piece of software. This is supplied to your
+program when you call 'configure'. This value is used, along with the
+proram name, if the user requests it by specifying the @--version@ option
+on the command-line. You can also call 'getVersionNumber'.
+-}
+newtype Version = Version String
+
+instance IsString Version where
+    fromString = Version
+
+{-|
+If your project is named __acme__, then the Haskell compiler will create a
+module called @Paths_acme@ you can use to access various bits of useful
+build-time information, including the number from the version field
+declared in the /package.yaml/ or /acme.cabal/ file. So as an idiom, we
+support using that version number rather than having to specify it in
+multiple places:
+
+@
+import Paths_acme (version)
+
+main :: IO ()
+main = do
+    context <- 'configure' ('fromPackage' version) 'None' ('simple' ...
+@
+
+(this wraps __base__'s 'Data.Version.showVersion' and saves you from having
+to import Data.Version or use it directly)
+-}
+fromPackage :: Base.Version -> Version
+fromPackage = Version . Base.showVersion
 
