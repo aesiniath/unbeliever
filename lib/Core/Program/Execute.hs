@@ -81,6 +81,8 @@ module Core.Program.Execute
       , Context
       , None(..)
       , isNone
+      , Version
+      , fromPackage
       , unProgram
       , unThread
       , invalid
@@ -170,7 +172,7 @@ calls 'configure' with an appropriate default when initializing.
 -}
 execute :: Program None α -> IO ()
 execute program = do
-    context <- configure None (simple [])
+    context <- configure "" None (simple [])
     executeWith context program
 
 {-|

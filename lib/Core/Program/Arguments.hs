@@ -40,6 +40,7 @@ module Core.Program.Arguments
       , extractValidEnvironments
       , InvalidCommandLine(..)
       , buildUsage
+      , buildVersion
     ) where
 
 import Control.Exception.Safe (Exception(displayException))
@@ -407,6 +408,8 @@ data InvalidCommandLine
     | NoCommandFound        {-^ In a complex configuration, user didn't specify a command. -}
     | HelpRequest (Maybe LongName)
                             {-^ In a complex configuration, usage information was requested with @--help@, either globally or for the supplied command. -}
+    | VersionRequest
+                            {-^ Display of the program version requested with @--version@. -}
     deriving (Show, Eq)
 
 instance Exception InvalidCommandLine where
@@ -460,6 +463,9 @@ See --help for details.
 |]
         -- handled by parent module calling back into here buildUsage
         HelpRequest _ -> ""
+
+        -- handled by parent module calling back into here buildVersion
+        VersionRequest -> ""
 
 programName :: String
 programName = unsafePerformIO getProgName
@@ -526,6 +532,7 @@ parsePossibleOptions mode valids shorts args = mapM f args
     f arg = case arg of
         "--help" -> Left (HelpRequest mode)
         "-?"     -> Left (HelpRequest mode)
+        "--version" -> Left VersionRequest
         ('-':'-':name) -> considerLongOption name
         ('-':c:[]) -> considerShortOption c
         _ -> Left (InvalidOption arg)
@@ -831,4 +838,8 @@ buildUsage config mode = case config of
       in
         fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
     h _ acc = acc
+
+buildVersion :: String -> Doc ann
+buildVersion version =
+    pretty programName <+> "version" <+> pretty version <> hardline
 

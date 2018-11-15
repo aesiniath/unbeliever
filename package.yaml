@@ -1,5 +1,5 @@
 name: unbeliever
-version: 0.5.1
+version: 0.6.1
 synopsis: Opinionated Haskell Interoperability
 description: |
   A library to help build command-line programs, both tools and
@@ -77,7 +77,8 @@ executables:
     ghc-options: -threaded
     source-dirs: tests
     main: SimpleExperiment.hs
-    other-modules: []
+    other-modules:
+     - Paths_unbeliever
     ghc-prof-options: -fprof-auto-top
 
   snippet:
