@@ -13,7 +13,7 @@ import Core.System.Base
 
 options :: [Options]
 options =
-    [ Option "all" (Just 'a') "Good will to everyone"
+    [ Option "all" (Just 'a') Empty "Good will to everyone"
     ]
 
 commands :: [Commands]

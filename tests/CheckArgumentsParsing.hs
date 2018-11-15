@@ -9,18 +9,18 @@ import Test.Hspec
 import Core.Program.Arguments
 
 options1 =
-    [ Option "verbose" (Just 'v') "Make the program verbose"
-    , Option "quiet" (Just 'q') "Be very very quiet, we're hunting wabbits"
-    , Option "dry-run" Nothing "Before trapping Road Runner, best to do a dry-run"
+    [ Option "verbose" (Just 'v') Empty "Make the program verbose"
+    , Option "quiet" (Just 'q') Empty "Be very very quiet, we're hunting wabbits"
+    , Option "dry-run" Nothing (Value "WHEN") "Before trapping Road Runner, best to do a dry-run"
     ]
 
 options2 =
-    [ Option "recursive" Nothing "Descend into darkness"
+    [ Option "recursive" Nothing Empty "Descend into darkness"
     , Argument "filename" "The file that you want"
     ]
 
 options3 =
-    [ Option "all" (Just 'a') "Good will to everyone"
+    [ Option "all" (Just 'a') Empty "Good will to everyone"
     ]
 
 
@@ -64,6 +64,16 @@ checkArgumentsParsing = do
             actual `shouldBe` Right expect
 
         it "recognizes required arguments" $
+          let
+            config = simple options2
+            actual = parseCommandLine config ["hello.txt"]
+            expect = Parameters Nothing
+              [ ("filename", Value "hello.txt")
+              ] []
+          in
+            actual `shouldBe` Right expect
+
+        it "handles valued parameter" $
           let
             config = simple options2
             actual = parseCommandLine config ["hello.txt"]
