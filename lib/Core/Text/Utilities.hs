@@ -32,7 +32,7 @@ import Data.Text.Prettyprint.Doc (Doc, layoutPretty , reAnnotateS
     , pretty, emptyDoc
     , LayoutOptions(LayoutOptions)
     , PageWidth(AvailablePerLine))
-import Data.Text.Prettyprint.Doc.Render.Terminal (renderStrict, AnsiStyle)
+import Data.Text.Prettyprint.Doc.Render.Terminal (renderLazy, AnsiStyle)
 import Language.Haskell.TH (litE, stringL)
 import Language.Haskell.TH.Quote (QuasiQuoter(QuasiQuoter))
 
@@ -73,13 +73,15 @@ instance Render Rope where
         f :: S.ShortText -> Doc () -> Doc ()
         f piece built = (<>) (pretty (S.toText piece)) built
 
-{-
-instance Render [Rope] where
-    intoDocA = intoRope . F.fromList . concatMap toList . fmap unRope
-
 instance Render [Char] where
-    intoDocA cs = intoRope cs
--}
+    type Token [Char] = ()
+    colourize = const mempty
+    intoDocA cs = pretty cs
+
+instance Render T.Text where
+    type Token T.Text = ()
+    colourize = const mempty
+    intoDocA t = pretty t
 
 {-|
 Given an object of a type with a 'Render' instance, transform it into a
@@ -111,7 +113,7 @@ render columns (thing :: α) =
   let
     options = LayoutOptions (AvailablePerLine (columns - 1) 1.0)
   in
-    intoRope . renderStrict . reAnnotateS (colourize @α)
+    intoRope . renderLazy . reAnnotateS (colourize @α)
                 . layoutPretty options . intoDocA $ thing
 
 --

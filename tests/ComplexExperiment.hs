@@ -23,12 +23,12 @@ program = do
 
 main :: IO ()
 main = do
-    context <- configure None (complex
+    context <- configure "42.0" None (complex
         [ Global
-            [ Option "logging-and-cutting" Nothing [quote|
+            [ Option "logging-and-cutting" Nothing (Value "PLACE") [quote|
                 Valid values are "console", "file:/path/to/file.log", and "syslog".
               |]
-            , Option "quiet" (Just 'q') [quote|
+            , Option "quiet" (Just 'q') Empty [quote|
                 Supress normal output.
               |]
             , Variable "GITHUB_TOKEN" "OAuth token to access GitHub."
@@ -39,12 +39,12 @@ main = do
             ]
 
         , Command "commit" "Commit your changes to the repository."
-            [ Option "message" (Just 'm') "Specify commit message (instead of using editor)."
+            [ Option "message" Nothing (Value "MESSAGE") "Specify commit message (instead of using editor)."
             ]
 
         , Command "launch" "Fire the weapons at the alien horde."
-            [ Option "all" (Just 'a') "Target all the baddies."
-            , Option "other" Nothing "Another option."
+            [ Option "all" (Just 'a') Empty "Target all the baddies."
+            , Option "other" Nothing (Value "THING") "Another option."
             , Argument "input-file" [quote|
                 The file you want to read the launch codes from.
               |]

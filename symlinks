@@ -21,7 +21,7 @@ link () {
 # symlink a "executable" binary
 e () {
 	NAME="$1"
-	ln -s "${ROOTDIR}/bin/${NAME}" "${NAME}"
+	link "${ROOTDIR}/bin/${NAME}" "${NAME}"
 }
 
 # symlink a "test-suite" binary
@@ -33,7 +33,7 @@ t () {
 
 # main
 e experiment
+e snippet
 t check
-t snippet
 
 

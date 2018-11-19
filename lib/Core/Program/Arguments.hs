@@ -40,6 +40,7 @@ module Core.Program.Arguments
       , extractValidEnvironments
       , InvalidCommandLine(..)
       , buildUsage
+      , buildVersion
     ) where
 
 import Control.Exception.Safe (Exception(displayException))
@@ -119,18 +120,19 @@ of optional parameters and mandatory arguments. For example:
 @
 main :: 'IO' ()
 main = do
-    context <- 'Core.Program.Execute.configure' 'Core.Program.Execute.None' ('simple'
-        [ 'Option' "host" ('Just' \'h\') ['quote'|
+    context <- 'Core.Program.Execute.configure' \"1.0\" 'Core.Program.Execute.None' ('simple'
+        [ 'Option' "host" ('Just' \'h\') 'Empty' ['quote'|
             Specify an alternate host to connect to when performing the
             frobnication. The default is \"localhost\".
           |]
-        , 'Option' "port" ('Just' \'p\') ['quote'|
+        , 'Option' "port" ('Just' \'p\') 'Empty' ['quote'|
             Specify an alternate port to connect to when frobnicating.
           |]
-        , 'Option' "dry-run" 'Nothing' ['quote'|
-            Perform a trial run but don't actually do anything.
+        , 'Option' "dry-run" 'Nothing' ('Value' \"TIME\") ['quote'|
+            Perform a trial run at the specified time but don't actually
+            do anything.
           |]
-        , 'Option' "quiet" ('Just' \'q\') ['quote'|
+        , 'Option' "quiet" ('Just' \'q\') 'Empty' ['quote'|
             Supress normal output.
           |]
         , 'Argument' "filename" ['quote'|
@@ -155,12 +157,15 @@ Available options:
   -h, --host     Specify an alternate host to connect to when performing the
                  frobnication. The default is \"localhost\".
   -p, --port     Specify an alternate port to connect to when frobnicating.
-      --dry-run  Perform a trial run but don't actually do anything.
+      --dry-run=TIME
+                 Perform a trial run at the specified time but don't
+                 actually do anything.
   -q, --quiet    Supress normal output.
   -v, --verbose  Turn on event tracing. By default the logging stream will go
                  to standard output on your terminal.
       --debug    Turn on debug level logging. Implies --verbose.
-      --logging  Change where log messages are sent. Valid values are
+      --logging=WHERE
+                 Change where log messages are sent. Valid values are
                  \"console\", \"file:\/path\/to\/filename.log\", and \"syslog\".
 
 Required arguments:
@@ -188,9 +193,9 @@ program = ...
 
 main :: 'IO' ()
 main = do
-    context <- 'Core.Program.Execute.configure' 'mempty' ('complex'
+    context <- 'Core.Program.Execute.configure' ('Core.Program.Execute.fromPackage' version) 'mempty' ('complex'
         [ 'Global'
-            [ 'Option' "station-name" ('Just' \'s\') ['quote'|
+            [ 'Option' "station-name" 'Nothing' ('Value' \"NAME\") ['quote'|
                 Specify an alternate radio station to connect to when performing
                 actions. The default is \"BBC Radio 1\".
               |]
@@ -200,26 +205,26 @@ main = do
               |]
             ]
         , 'Command' \"play\" \"Play the music.\"
-            [ 'Option' "repeat" 'Nothing' ['quote'|
+            [ 'Option' "repeat" 'Nothing' 'Empty' ['quote'|
                 Request that they play the same song over and over and over
                 again, simulating the effect of listening to a Top 40 radio
                 station.
               |]
             ]
         , 'Command' \"rate\" \"Vote on whether you like the song or not.\"
-            [ 'Option' "academic" 'Nothing' ['quote'|
+            [ 'Option' "academic" 'Nothing' 'Empty' ['quote'|
                 The rating you wish to apply, from A+ to F. This is the
                 default, so there is no reason whatsoever to specify this.
                 But some people are obsessive, compulsive, and have time on
                 their hands.
               |]
-            , 'Option' "numeric" 'Nothing' ['quote'|
+            , 'Option' "numeric" 'Nothing' 'Empty' ['quote'|
                 Specify a score as a number from 0 to 100 instead of an
                 academic style letter grade. Note that negative values are
                 not valid scores, despite how vicerally satisfying that
                 would be for music produced in the 1970s.
               |]
-            , 'Option' "unicode" ('Just' \'c\') ['quote'|
+            , 'Option' "unicode" ('Just' \'c\') 'Empty' ['quote'|
                 Instead of a score, indicate your rating with a single
                 character.  This allows you to use emoji, so that you can
                 rate a piece \'💩\', as so many songs deserve.
@@ -274,25 +279,27 @@ Declaration of an optional switch or mandatory argument expected by a
 program.
 
 'Option' takes a long name for the option, a short single character
-abbreviation if offered for convenience, and a description for use when
-displaying usage via @--help@.
+abbreviation if offered for convenience, whether or not the option takes a
+value (and what label to show in help output) and a description for use
+when displaying usage via @--help@.
 
 'Argument' indicates a mandatory argument and takes the long name used
 to identify the parsed value from the command-line, and likewise a
 description for @--help@ output.
 
-By convention these are both /lower case/. If the identifier is two or
-more words they are joined with a hyphen. Examples:
+By convention option and argument names are both /lower case/. If the
+identifier is two or more words they are joined with a hyphen. Examples:
 
 @
-        [ 'Option' \"dry-run\" 'Nothing' "Don't actually execute commands, just simulate what would happen."
-        , 'Option' \"quiet\" ('Just' \'q'\) "Keep the noise to a minimum."
-        , 'Argument' \"username\" "The user to delete from the system."
+        [ 'Option' \"quiet\" ('Just' \'q'\) 'Empty' \"Keep the noise to a minimum.\"
+        , 'Option' \"dry-run\" 'Nothing' ('Value' \"TIME\") \"Run a simulation of what would happen at the specified time.\"
+        , 'Argument' \"username\" \"The user to delete from the system.\"
         ]
 @
 
 By convention a /description/ is one or more complete sentences each of
-which ends with a full stop.
+which ends with a full stop. For options that take values, use /upper case/
+when specifying the label to be used in help output.
 
 'Variable' declares an /environment variable/ that, if present, will be
 read by the program and stored in its runtime context. By convention these
@@ -307,7 +314,7 @@ with an underscore:
 @
 -}
 data Options
-    = Option LongName (Maybe ShortName) Description
+    = Option LongName (Maybe ShortName) ParameterValue Description
     | Argument LongName Description
     | Variable LongName Description
 
@@ -360,7 +367,7 @@ $ missiles launch --all
 would be parsed as:
 
 @
-'Parameters' ('Just' "missiles") [("all",Empty)] []
+'Parameters' ('Just' \"launch\") [("all",Empty)] []
 @
 
 -}
@@ -371,16 +378,17 @@ data Parameters
         , environmentValuesFrom :: HashMap LongName ParameterValue
     } deriving (Show, Eq)
 
+
 baselineOptions :: [Options]
 baselineOptions =
-    [ Option "verbose" (Just 'v') [quote|
+    [ Option "verbose" (Just 'v') Empty [quote|
         Turn on event tracing. By default the logging stream will go to
         standard output on your terminal.
     |]
-    , Option "debug" Nothing [quote|
+    , Option "debug" Nothing Empty [quote|
         Turn on debug level logging. Implies --verbose.
     |]
-    , Option "logging" Nothing [quote|
+    , Option "logging" Nothing (Value "WHERE") [quote|
         Change where log messages are sent. Valid values are "console",
         "file:/path/to/filename.log", and "syslog".
     |]
@@ -400,6 +408,8 @@ data InvalidCommandLine
     | NoCommandFound        {-^ In a complex configuration, user didn't specify a command. -}
     | HelpRequest (Maybe LongName)
                             {-^ In a complex configuration, usage information was requested with @--help@, either globally or for the supplied command. -}
+    | VersionRequest
+                            {-^ Display of the program version requested with @--version@. -}
     deriving (Show, Eq)
 
 instance Exception InvalidCommandLine where
@@ -453,6 +463,9 @@ See --help for details.
 |]
         -- handled by parent module calling back into here buildUsage
         HelpRequest _ -> ""
+
+        -- handled by parent module calling back into here buildVersion
+        VersionRequest -> ""
 
 programName :: String
 programName = unsafePerformIO getProgName
@@ -519,6 +532,7 @@ parsePossibleOptions mode valids shorts args = mapM f args
     f arg = case arg of
         "--help" -> Left (HelpRequest mode)
         "-?"     -> Left (HelpRequest mode)
+        "--version" -> Left VersionRequest
         ('-':'-':name) -> considerLongOption name
         ('-':c:[]) -> considerShortOption c
         _ -> Left (InvalidOption arg)
@@ -584,7 +598,7 @@ extractValidNames options =
     foldr f HashSet.empty options
   where
     f :: Options -> HashSet LongName -> HashSet LongName
-    f (Option longname _ _) valids = HashSet.insert longname valids
+    f (Option longname _ _ _) valids = HashSet.insert longname valids
     f _ valids = valids
 
 extractShortNames :: [Options] -> HashMap ShortName LongName
@@ -592,7 +606,7 @@ extractShortNames options =
     foldr g HashMap.empty options
   where
     g :: Options -> HashMap ShortName LongName -> HashMap ShortName LongName
-    g (Option longname shortname _) shorts = case shortname of
+    g (Option longname shortname _ _) shorts = case shortname of
         Just shortchar -> HashMap.insert shortchar longname shorts
         Nothing -> shorts
     g _ shorts = shorts
@@ -769,7 +783,7 @@ buildUsage config mode = case config of
     commandHeading modes = if HashMap.size modes > 0 then hardline <> "Available commands:" <> hardline else emptyDoc
 
     f :: Options -> ([Options],[Options]) -> ([Options],[Options])
-    f o@(Option _ _ _) (opts,args) = (o:opts,args)
+    f o@(Option _ _ _ _) (opts,args) = (o:opts,args)
     f a@(Argument _ _) (opts,args) = (opts,a:args)
     f (Variable _ _) (opts,args) = (opts,args)
 
@@ -787,15 +801,19 @@ buildUsage config mode = case config of
 --
 
     g :: Options -> Doc ann -> Doc ann
-    g (Option longname shortname description) acc =
+    g (Option longname shortname valued description) acc =
       let
         s = case shortname of
                 Just shortchar -> "  -" <> pretty shortchar <> ", --"
                 Nothing -> "      --"
         l = pretty longname
         d = fromRope description
-      in
-        fillBreak 16 (s <> l <> " ") <+> align (reflow d) <> hardline <> acc
+      in case valued of
+        Empty ->
+            fillBreak 16 (s <> l <> " ") <+> align (reflow d) <> hardline <> acc
+        Value label ->
+            fillBreak 16 (s <> l <> "=" <> pretty label <> " ") <+> align (reflow d) <> hardline <> acc
+
     g (Argument longname description) acc =
       let
         l = pretty longname
@@ -820,4 +838,8 @@ buildUsage config mode = case config of
       in
         fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
     h _ acc = acc
+
+buildVersion :: String -> Doc ann
+buildVersion version =
+    pretty programName <+> "version" <+> pretty version <> hardline
 

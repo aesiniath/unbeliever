@@ -14,7 +14,7 @@ import Core.System.Base
 
 options :: [Options]
 options =
-    [ Option "all" (Just 'a') "Good will to everyone"
+    [ Option "all" (Just 'a') Empty "Good will to everyone"
     ]
 
 commands :: [Commands]
@@ -41,14 +41,14 @@ checkProgramMonad = do
 
     describe "Program monad" $ do
         it "execute with blank Context as expected" $ do
-            context <- configure None blank
+            context <- configure "0.1" None blank
             executeWith context $ do
                 user <- getApplicationState
                 liftIO $ do
                     user `shouldBe` None
 
         it "execute with simple Context as expected" $ do
-            context <- configure None (simple options)
+            context <- configure "0.1" None (simple options)
             executeWith context $ do
                 params <- getCommandLine
                 liftIO $ do
@@ -58,7 +58,7 @@ checkProgramMonad = do
 
         -- not strictly necessary but sets up next spec item
         it "sub-programs can be run" $ do
-            context <- configure None blank
+            context <- configure "0.1" None blank
             user <- subProgram context (getApplicationState)
             user `shouldBe` None
 
@@ -71,7 +71,7 @@ checkProgramMonad = do
                     user2 `shouldBe` user1
 
         it "thrown Exceptions can be caught" $ do
-            context <- configure None blank
+            context <- configure "0.1" None blank
             (subProgram context (throw Boom)) `shouldThrow` boom
 
             -- ok, so with that established, now try **safe-exceptions**'s

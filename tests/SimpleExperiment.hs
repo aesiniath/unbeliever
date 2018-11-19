@@ -14,6 +14,7 @@ import qualified Data.ByteString.Char8 as S
 import qualified Data.HashMap.Strict as HashMap
 import Data.Text.Prettyprint.Doc (layoutPretty, defaultLayoutOptions, Pretty(..))
 import Data.Text.Prettyprint.Doc.Render.Text (renderStrict)
+import Paths_unbeliever (version)
 
 import Core.Text
 import Core.Encoding
@@ -91,11 +92,10 @@ program = do
     event "Brr! It's cold"
     terminate 0
 
-
 main :: IO ()
 main = do
-    context <- configure None (simple
-        [ Option "quiet" (Just 'q') [quote|
+    context <- configure (fromPackage version) None (simple
+        [ Option "quiet" (Just 'q') Empty [quote|
             Supress normal output.
           |]
         , Argument "filename" [quote|

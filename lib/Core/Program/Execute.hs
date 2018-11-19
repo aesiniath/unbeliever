@@ -56,11 +56,14 @@ module Core.Program.Execute
         {-* Exiting a program -}
       , terminate
         {-* Accessing program context -}
+      , getCommandLine
+      , lookupOptionFlag
+      , lookupOptionValue
+      , lookupArgument
       , getProgramName
       , setProgramName
       , getVerbosityLevel
       , setVerbosityLevel
-      , getCommandLine
       , getApplicationState
       , setApplicationState
       , retrieve
@@ -78,8 +81,11 @@ module Core.Program.Execute
       , Context
       , None(..)
       , isNone
+      , Version
+      , fromPackage
       , unProgram
       , unThread
+      , invalid
     ) where
 
 import Prelude hiding (log)
@@ -100,6 +106,7 @@ import Control.Monad.Reader.Class (MonadReader(ask))
 import Control.Monad.Trans.Reader (ReaderT)
 import qualified Data.ByteString as B (hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
+import qualified Data.HashMap.Strict as HashMap
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
 import System.Exit (ExitCode(..))
 
@@ -165,7 +172,7 @@ calls 'configure' with an appropriate default when initializing.
 -}
 execute :: Program None α -> IO ()
 execute program = do
-    context <- configure None (simple [])
+    context <- configure "" None (simple [])
     executeWith context program
 
 {-|
@@ -460,8 +467,88 @@ sleep seconds =
 {-|
 Retrieve the values of parameters parsed from options and arguments
 supplied by the user on the command-line.
+
+The command-line parameters are returned in a 'Data.HashMap.Strict.HashMap'
+mapping from from the option or argument name to the supplied value. With
+the somewhat traditional qualified import from the __unordered-containers__
+package:
+
+@
+import qualified "Data.HashMap.Strict" as HashMap
+@
+
+You can query this map directly:
+
+@
+program = do
+    params <- 'getCommandLine'
+    let result = HashMap.'Data.HashMap.Strict.lookup' \"silence\" (paramterValuesFrom params)
+    case result of
+        'Nothing' -> 'return' ()
+        'Just' quiet = case quiet of
+            'Value' _ -> 'throw' NotQuiteRight               -- complain that flag doesn't take value
+            'Empty'   -> 'write' \"You should be quiet now\"   -- much better
+    ...
+@
+
+which is pattern matching to answer "was this option specified by the
+user?" or "what was the value of this [mandatory] argument?", and then "if
+so, did the parameter have a value?"
+
+This is available should you need to differentiate between an @Value@ and
+@Empty@ 'ParameterValue', but for many cases as a convenience you can use
+the 'lookupOptionFlag', 'lookupOptionValue', and 'lookupArgument' functions
+below (which are just wrappers around a code block like the example shown
+here).
 -}
 getCommandLine :: Program τ (Parameters)
 getCommandLine = do
     context <- ask
     return (commandLineFrom context)
+
+{-|
+Arguments are mandatory, so by the time your program is running a value
+has already been identified. This returns the value for that parameter.
+-}
+-- this is Maybe because you can inadvertently ask for an unconfigured name
+-- this could be fixed with a much stronger Config type, potentially.
+lookupArgument :: LongName -> Parameters -> Maybe String
+lookupArgument name params =
+    case HashMap.lookup name (parameterValuesFrom params) of
+        Nothing -> Nothing
+        Just argument -> case argument of
+            Empty -> error "Invalid State"
+            Value value -> Just value
+
+{-|
+Look to see if the user supplied a valued option and if so, what its value
+was.
+-}
+-- Should this be more severe if it encounters Empty?
+lookupOptionValue :: LongName -> Parameters -> Maybe String
+lookupOptionValue name params =
+    case HashMap.lookup name (parameterValuesFrom params) of
+        Nothing -> Nothing
+        Just argument -> case argument of
+            Empty -> Nothing
+            Value value -> Just value
+
+{-|
+Returns @Just True@ if the option is present, and @Nothing@ if it is not.
+-}
+-- The type is boolean to support a possible future extension of negated
+-- arguments.
+lookupOptionFlag :: LongName -> Parameters -> Maybe Bool
+lookupOptionFlag name params =
+    case HashMap.lookup name (parameterValuesFrom params) of
+        Nothing -> Nothing
+        Just argument -> case argument of
+            _ -> Just True        -- nom, nom
+
+
+{-|
+Illegal internal state resulting from what should be unreachable code
+or otherwise a programmer error.
+-}
+invalid :: Program τ α
+invalid = error "Invalid State"
