@@ -25,6 +25,7 @@ dependencies:
  - Cabal
  - chronologique
  - deepseq
+ - directory
  - exceptions
  - fingertree
  - hashable
@@ -64,6 +65,7 @@ library:
   other-modules:
    - Core.Program.Context
    - Core.Program.Signal
+   - Core.Program.Metadata
 
 executables:
   experiment:
