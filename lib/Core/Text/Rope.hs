@@ -160,6 +160,9 @@ instance Eq Rope where
       where
         stream x = foldMap S.unpack x
 
+instance Ord Rope where
+    compare (Rope x1) (Rope x2) = compare x1 x2
+
 
 {-|
 Access the finger tree underlying the @Rope@. You'll want the following
