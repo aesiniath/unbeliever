@@ -7,16 +7,22 @@ module Core.Data.Structures
       {-* Map type -}
       Map
     , Key
-    , insertAt
-    , lookupAt
-    , Set
+    , insert1
+    , lookup1
     , Dictionary(fromMap, intoMap)
 
       {-* Internals -}
     , unMap
-    , containsAt
+    , contains1
 )
 where
+
+{-
+Naming convention: the trouble is `lookupMap` etc collides with the
+convetion inherent in `concatMap`. Tried `lookupIn`, `lookupOf`,
+`lookupInMap`, etc. `lookupOne` wasn't bad ("lookup the one in"). Settled
+on `lookup1` because brevity.
+-}
 
 import Data.Hashable (Hashable)
 import qualified Data.HashMap.Strict as Unordered
@@ -38,14 +44,20 @@ instance Key String
 instance Key Rope 
 instance Key Bytes 
 
-insertAt  :: Key κ => κ -> ν -> Map κ ν -> Map κ ν
-insertAt k v (Map p) = Map (Unordered.insert k v p)
+empty1  :: Map κ ν
+empty1 = Map (Unordered.empty)
 
-lookupAt :: Key κ => κ -> Map κ ν -> Maybe ν
-lookupAt k (Map p) = Unordered.lookup k p
+singleton1  :: Key κ => κ -> ν -> Map κ ν
+singleton1 k v = Map (Unordered.singleton)
 
-containsAt :: Key κ => κ -> Map κ ν -> Bool
-containsAt k (Map p) = Unordered.member k p
+insert1  :: Key κ => κ -> ν -> Map κ ν -> Map κ ν
+insert1 k v (Map p) = Map (Unordered.insert k v p)
+
+lookup1 :: Key κ => κ -> Map κ ν -> Maybe ν
+lookup1 k (Map p) = Unordered.lookup k p
+
+contains1 :: Key κ => κ -> Map κ ν -> Bool
+contains1 k (Map p) = Unordered.member k p
 
 
 type Set κ = Map κ ()
