@@ -8,12 +8,63 @@ meaningful fields.
 module Core.Program.Metadata where
 
 import qualified Data.List as List
+import Data.String
 import Distribution.Types.GenericPackageDescription (GenericPackageDescription, packageDescription)
 import Distribution.Types.PackageDescription (synopsis)
 import Distribution.PackageDescription.Parsec (readGenericPackageDescription)
 import Distribution.Verbosity (normal)
-import Language.Haskell.TH (Q, runQ, runIO, Exp(..), Lit(..))
+import Language.Haskell.TH (Q, runIO, Exp(..), Lit(..))
 import System.Directory (listDirectory)
+
+{-|
+The version number of this piece of software. This is supplied to your
+program when you call 'configure'. This value is used, along with the
+proram name, if the user requests it by specifying the @--version@ option
+on the command-line. You can also call 'getVersionNumber'.
+-}
+newtype Version = Version String
+
+instance IsString Version where
+    fromString = Version
+
+{-|
+This is a splice which includes key built-time metadata, including the
+number from the version field from your project's /.cabal/ file (as written
+by hand or generated from /package.yaml/).
+
+While we generally discourage the use of Template Haskell by beginners
+(there are more important things to learn first) it is a way to execute
+code at compile time and that is what what we need in order to have the
+version number extracted from the /.cabal/ file rather than requiring the
+user to specify (and synchornize) it in multiple places.
+
+To use this, enable the Template Haskell language extension in your
+/Main.hs/ file:
+
+@
+\{\-\# LANGUAGE TemplateHaskell \#\-\}
+@
+
+Then use the special @$( ... ) "insert splice here" syntax that extension
+provides to get a 'Version' object with the desired metadata about your
+project:
+
+@
+version :: Version
+version = $(fromPackage)
+
+main :: IO ()
+main = do
+    context <- 'configure' version 'None' ('simple' ...
+@
+
+(this wraps the extensive machinery in the __Cabal__ library, notably
+'PackageDescription'. The upside of this technique is that it avoids
+linking the Haskell build machinery into your executable, saving you about
+10 MB)
+-}
+fromPackage :: Q Exp
+fromPackage = projectSynopsis1
 
 
 findCabalFile :: IO FilePath
