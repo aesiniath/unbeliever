@@ -41,7 +41,3 @@ projectSynopsis1 = do
     desc <- readCabalFile
     return ((LitE . StringL . synopsis . packageDescription) desc)
 
-projectSynopsis :: IO String
-projectSynopsis = do
-    desc <- runQ readCabalFile
-    return (synopsis (packageDescription desc))
