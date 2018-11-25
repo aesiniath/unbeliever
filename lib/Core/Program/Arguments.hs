@@ -164,9 +164,6 @@ Available options:
   -v, --verbose  Turn on event tracing. By default the logging stream will go
                  to standard output on your terminal.
       --debug    Turn on debug level logging. Implies --verbose.
-      --logging=WHERE
-                 Change where log messages are sent. Valid values are
-                 \"console\", \"file:\/path\/to\/filename.log\", and \"syslog\".
 
 Required arguments:
 
@@ -387,10 +384,6 @@ baselineOptions =
     |]
     , Option "debug" Nothing Empty [quote|
         Turn on debug level logging. Implies --verbose.
-    |]
-    , Option "logging" Nothing (Value "WHERE") [quote|
-        Change where log messages are sent. Valid values are "console",
-        "file:/path/to/filename.log", and "syslog".
     |]
     ]
 
