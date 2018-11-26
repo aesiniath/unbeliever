@@ -102,6 +102,7 @@ import qualified Data.Text.Lazy as U (Text, fromChunks, foldrChunks
     , toStrict)
 import qualified Data.Text.Lazy.Builder as U (Builder, toLazyText
     , fromText)
+import Data.Text.Prettyprint.Doc (Doc, Pretty(..), emptyDoc)
 import qualified Data.Text.Short as S (ShortText, length, any
     , fromText, toText, fromByteString, pack, unpack
     , append, empty, toBuilder, splitAt)
@@ -160,6 +161,8 @@ instance Eq Rope where
       where
         stream x = foldMap S.unpack x
 
+instance Pretty Rope where
+    pretty (Rope x) = foldr ((<>) . pretty . S.toText) emptyDoc x 
 
 {-|
 Access the finger tree underlying the @Rope@. You'll want the following
