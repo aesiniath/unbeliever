@@ -105,7 +105,6 @@ import Data.Text.Prettyprint.Doc.Render.Terminal
     )
 import Data.Text.Prettyprint.Doc.Render.Terminal (AnsiStyle)
 import Data.Scientific (Scientific)
-import qualified Data.Scientific as Scientific
 import Data.String (IsString(..))
 import qualified Data.Text as T
 import qualified Data.Vector as V

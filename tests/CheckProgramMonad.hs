@@ -78,4 +78,4 @@ checkProgramMonad = do
             -- `execute` to `subProgram` this will have to adapt.
             catch
                 (subProgram context (throw Boom))
-                (\(e :: Boom) -> return ())
+                (\(_ :: Boom) -> return ())
