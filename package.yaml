@@ -61,11 +61,11 @@ library:
    - Core.Program.Arguments
    - Core.Program.Execute
    - Core.Program.Logging
+   - Core.Program.Metadata
    - Core.Program.Unlift
   other-modules:
    - Core.Program.Context
    - Core.Program.Signal
-   - Core.Program.Metadata
 
 executables:
   experiment:

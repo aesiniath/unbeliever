@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveLift #-}
 
 {-|
-Dig metadata out of the .cabal file of your project.
+Dig metadata out of the description of your project.
 
 This uses the evil /Template Haskell/ to run code at compile time that
 parses the .cabal file for your Haskell project and extracts various
@@ -10,8 +10,13 @@ meaningful fields.
 -}
 module Core.Program.Metadata
 (
-      Version(..)
-    , fromPackage
+      {-* Splice -}
+      fromPackage
+      {-* Internals -}
+    , Version
+    , projectNameFrom
+    , projectSynopsisFrom
+    , versionNumberFrom
 )
 where
 
@@ -30,11 +35,11 @@ import System.Directory (listDirectory)
 
 {-|
 Information about the version number of this piece of software and other
-related metadata related to the project it was built from. This is supplied to your
-program when you call 'configure'. This value is used, along with the
-proram name, if the user requests it by specifying the @--version@ option
-on the command-line. You can also call 'getVersionNumber'.
-FIXME
+related metadata related to the project it was built from. This is supplied
+to your program when you call 'configure'. This value is used if the user
+requests it by specifying the @--version@ option on the command-line. You
+can also call various accessors like 'versionNumberFrom' to access
+individual fields.
 -}
 data Version = Version {
       projectNameFrom :: String
@@ -66,7 +71,7 @@ To use this, enable the Template Haskell language extension in your
 \{\-\# LANGUAGE TemplateHaskell \#\-\}
 @
 
-Then use the special @$( ... ) "insert splice here" syntax that extension
+Then use the special @$( ... )@ "insert splice here" syntax that extension
 provides to get a 'Version' object with the desired metadata about your
 project:
 
