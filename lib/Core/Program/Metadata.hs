@@ -5,7 +5,12 @@ This uses the evil /Template Haskell/ to run code at compile time that
 parses the .cabal file for your Haskell project and extracts various
 meaningful fields.
 -}
-module Core.Program.Metadata where
+module Core.Program.Metadata
+(
+      Version(..)
+    , fromPackage
+)
+where
 
 import qualified Data.List as List
 import Data.String
@@ -16,16 +21,27 @@ import Distribution.Verbosity (normal)
 import Language.Haskell.TH (Q, runIO, Exp(..), Lit(..))
 import System.Directory (listDirectory)
 
+import Core.Text.Rope
+
 {-|
-The version number of this piece of software. This is supplied to your
+Information about the version number of this piece of software and other
+related metadata related to the project it was built from. This is supplied to your
 program when you call 'configure'. This value is used, along with the
 proram name, if the user requests it by specifying the @--version@ option
 on the command-line. You can also call 'getVersionNumber'.
+FIXME
 -}
-newtype Version = Version String
+data Version = Version {
+      projectNameFrom :: Rope
+    , projectVersionFrom :: Rope
+    , projectSynopsisFrom :: Rope
+}
+
+emptyVersion :: Version
+emptyVersion = Version mempty mempty mempty
 
 instance IsString Version where
-    fromString = Version
+    fromString x = emptyVersion { projectVersionFrom = intoRope x }
 
 {-|
 This is a splice which includes key built-time metadata, including the
@@ -50,8 +66,8 @@ provides to get a 'Version' object with the desired metadata about your
 project:
 
 @
-version :: Version
-version = $(fromPackage)
+version :: 'Version'
+version = $('fromPackage')
 
 main :: IO ()
 main = do

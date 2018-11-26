@@ -60,6 +60,7 @@ import System.Environment (getProgName)
 import Core.System.Base
 import Core.Text.Rope
 import Core.Text.Utilities
+import Core.Program.Metadata
 
 {-|
 Single letter "short" options (omitting the "@-@" prefix, obviously).
@@ -832,7 +833,10 @@ buildUsage config mode = case config of
         fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
     h _ acc = acc
 
-buildVersion :: String -> Doc ann
+buildVersion :: Version -> Doc ann
 buildVersion version =
-    pretty programName <+> "version" <+> pretty version <> hardline
+    pretty programName
+    <+> "version"
+    <+> pretty (projectVersionFrom version)
+    <> hardline
 

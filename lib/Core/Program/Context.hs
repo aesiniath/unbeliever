@@ -255,7 +255,7 @@ getConsoleWidth = do
     up the layout width to match (one off the) actual width of console.
 -}
 handleCommandLine :: Version -> Config -> IO Parameters
-handleCommandLine (Version version) config = do
+handleCommandLine version config = do
     argv <- getArgs
     let result = parseCommandLine config argv
     case result of
