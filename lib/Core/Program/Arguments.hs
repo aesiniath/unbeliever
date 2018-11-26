@@ -836,7 +836,7 @@ buildUsage config mode = case config of
 buildVersion :: Version -> Doc ann
 buildVersion version =
     pretty programName
-    <+> "version"
-    <+> pretty (projectVersionFrom version)
+    <+> "v"
+    <> pretty (versionNumberFrom version)
     <> hardline
 

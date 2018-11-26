@@ -22,6 +22,7 @@ import Distribution.Types.PackageDescription (synopsis, package)
 import Distribution.Types.PackageId (pkgName, pkgVersion)
 import Distribution.Types.PackageName (unPackageName)
 import Distribution.PackageDescription.Parsec (readGenericPackageDescription)
+import Distribution.Pretty (prettyShow)
 import Distribution.Verbosity (normal)
 import Language.Haskell.TH (Q, runIO)
 import Language.Haskell.TH.Syntax (Lift, Exp(..))
@@ -37,15 +38,15 @@ FIXME
 -}
 data Version = Version {
       projectNameFrom :: String
-    , projectVersionFrom :: String
     , projectSynopsisFrom :: String
+    , versionNumberFrom :: String
 } deriving (Show, Lift)
 
 emptyVersion :: Version
-emptyVersion = Version "" "" ""
+emptyVersion = Version "" "" "0"
 
 instance IsString Version where
-    fromString x = emptyVersion { projectVersionFrom = x }
+    fromString x = emptyVersion { versionNumberFrom = x }
 
 {-|
 This is a splice which includes key built-time metadata, including the
@@ -89,19 +90,18 @@ fromPackage = do
     let desc = packageDescription generic
         version = Version
             { projectNameFrom = unPackageName . pkgName . package $ desc
-            , projectVersionFrom = show . pkgVersion . package $ desc
             , projectSynopsisFrom = synopsis desc
+            , versionNumberFrom = prettyShow . pkgVersion . package $ desc
             }
 
---  I would have preferred 
+--  I would have preferred
 --
 --  let e = AppE (VarE ...
 --  return e
 --
 --  but that's not happening. So more voodoo TH nonsense instead.
+
     [e|version|]
-
-
 
 
 {-
