@@ -1,3 +1,6 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveLift #-}
+
 {-|
 Dig metadata out of the .cabal file of your project.
 
@@ -15,13 +18,14 @@ where
 import qualified Data.List as List
 import Data.String
 import Distribution.Types.GenericPackageDescription (GenericPackageDescription, packageDescription)
-import Distribution.Types.PackageDescription (synopsis)
+import Distribution.Types.PackageDescription (synopsis, package)
+import Distribution.Types.PackageId (pkgName, pkgVersion)
+import Distribution.Types.PackageName (unPackageName)
 import Distribution.PackageDescription.Parsec (readGenericPackageDescription)
 import Distribution.Verbosity (normal)
-import Language.Haskell.TH (Q, runIO, Exp(..), Lit(..))
+import Language.Haskell.TH (Q, runIO)
+import Language.Haskell.TH.Syntax (Lift, Exp(..))
 import System.Directory (listDirectory)
-
-import Core.Text.Rope
 
 {-|
 Information about the version number of this piece of software and other
@@ -32,16 +36,16 @@ on the command-line. You can also call 'getVersionNumber'.
 FIXME
 -}
 data Version = Version {
-      projectNameFrom :: Rope
-    , projectVersionFrom :: Rope
-    , projectSynopsisFrom :: Rope
-}
+      projectNameFrom :: String
+    , projectVersionFrom :: String
+    , projectSynopsisFrom :: String
+} deriving (Show, Lift)
 
 emptyVersion :: Version
-emptyVersion = Version mempty mempty mempty
+emptyVersion = Version "" "" ""
 
 instance IsString Version where
-    fromString x = emptyVersion { projectVersionFrom = intoRope x }
+    fromString x = emptyVersion { projectVersionFrom = x }
 
 {-|
 This is a splice which includes key built-time metadata, including the
@@ -80,8 +84,31 @@ linking the Haskell build machinery into your executable, saving you about
 10 MB)
 -}
 fromPackage :: Q Exp
-fromPackage = projectSynopsis1
+fromPackage = do
+    generic <- readCabalFile
+    let desc = packageDescription generic
+        version = Version
+            { projectNameFrom = unPackageName . pkgName . package $ desc
+            , projectVersionFrom = show . pkgVersion . package $ desc
+            , projectSynopsisFrom = synopsis desc
+            }
 
+--  I would have preferred 
+--
+--  let e = AppE (VarE ...
+--  return e
+--
+--  but that's not happening. So more voodoo TH nonsense instead.
+    [e|version|]
+
+
+
+
+{-
+Locate the .cabal file in the present working directory (assumed to be the
+build root) and use the **Cabal** library to parse the few bits we need out
+of it.
+-}
 
 findCabalFile :: IO FilePath
 findCabalFile = do
@@ -102,9 +129,4 @@ readCabalFile = runIO $ do
     -- pass to calling program
     return desc
 
-
-projectSynopsis1 :: Q Exp
-projectSynopsis1 = do
-    desc <- readCabalFile
-    return ((LitE . StringL . synopsis . packageDescription) desc)
 
