@@ -21,6 +21,7 @@ A top-level Program type giving you unified access to logging, concurrency,
 and more.
 -}
         module Core.Program.Execute
+      , module Core.Program.Unlift
 
         {-* Command-line argument parsing -}
 {-|
@@ -39,4 +40,5 @@ Facilities for noting events through your program and doing debugging.
 import Core.Program.Arguments
 import Core.Program.Logging
 import Core.Program.Execute
+import Core.Program.Unlift
 

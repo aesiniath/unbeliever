@@ -5,6 +5,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_HADDOCK prune #-}
 
@@ -78,8 +79,6 @@ module Core.Program.Execute
       , None(..)
       , isNone
       , unProgram
-      , getContext
-      , subProgram
       , unThread
     ) where
 
@@ -98,7 +97,7 @@ import Control.Monad (when, forever)
 import Control.Monad.Catch (Handler(..))
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Reader.Class (MonadReader(ask))
-import Control.Monad.Trans.Reader (ReaderT(runReaderT))
+import Control.Monad.Trans.Reader (ReaderT)
 import qualified Data.ByteString as B (hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
@@ -114,11 +113,7 @@ import Core.Program.Signal
 import Core.Program.Arguments
 
 unProgram :: Program τ α -> ReaderT (Context τ) IO α
-unProgram (Program reader) = reader
-
-subProgram :: Context τ -> Program τ a -> IO a
-subProgram context (Program reader) = do
-    runReaderT reader context
+unProgram (Program r) = r
 
 
 -- execute actual "main"
@@ -470,8 +465,3 @@ getCommandLine :: Program τ (Parameters)
 getCommandLine = do
     context <- ask
     return (commandLineFrom context)
-
-getContext :: Program τ (Context τ)
-getContext = do
-    context <- ask
-    return context
