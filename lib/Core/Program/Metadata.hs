@@ -10,10 +10,10 @@ meaningful fields.
 -}
 module Core.Program.Metadata
 (
+      Version
       {-* Splice -}
-      fromPackage
+    , fromPackage
       {-* Internals -}
-    , Version
     , projectNameFrom
     , projectSynopsisFrom
     , versionNumberFrom
@@ -36,10 +36,23 @@ import System.Directory (listDirectory)
 {-|
 Information about the version number of this piece of software and other
 related metadata related to the project it was built from. This is supplied
-to your program when you call 'configure'. This value is used if the user
-requests it by specifying the @--version@ option on the command-line. You
-can also call various accessors like 'versionNumberFrom' to access
-individual fields.
+to your program when you call 'Core.Program.Execute.configure'. This value
+is used if the user requests it by specifying the @--version@ option on the
+command-line.
+
+Simply providing a string literal such as version @\"1.0\"@ will give
+you a 'Version' with that value:
+
+@
+main :: 'IO' ()
+main = do
+    context <- 'Core.Program.Execute.configure' \"1.0\" 'Core.Program.Execute.None' ('Core.Program.Arguments.simple' ...
+@
+
+
+For more complex usage you can populate a 'Version' object using the
+'fromPackage' splice below. You can then call various accessors like
+'versionNumberFrom' to access individual fields.
 -}
 data Version = Version {
       projectNameFrom :: String
@@ -71,7 +84,7 @@ To use this, enable the Template Haskell language extension in your
 \{\-\# LANGUAGE TemplateHaskell \#\-\}
 @
 
-Then use the special @$( ... )@ "insert splice here" syntax that extension
+Then use the special @$( ... )@ \"insert splice here\" syntax that extension
 provides to get a 'Version' object with the desired metadata about your
 project:
 
@@ -79,9 +92,9 @@ project:
 version :: 'Version'
 version = $('fromPackage')
 
-main :: IO ()
+main :: 'IO' ()
 main = do
-    context <- 'configure' version 'None' ('simple' ...
+    context <- 'Core.Program.Execute.configure' version 'Core.Program.Execute.None' ('Core.Program.Arguments.simple' ...
 @
 
 (this wraps the extensive machinery in the __Cabal__ library, notably
