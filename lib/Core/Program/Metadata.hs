@@ -62,7 +62,7 @@ While we generally discourage the use of Template Haskell by beginners
 (there are more important things to learn first) it is a way to execute
 code at compile time and that is what what we need in order to have the
 version number extracted from the /.cabal/ file rather than requiring the
-user to specify (and synchornize) it in multiple places.
+user to specify (and synchronize) it in multiple places.
 
 To use this, enable the Template Haskell language extension in your
 /Main.hs/ file:
@@ -85,9 +85,9 @@ main = do
 @
 
 (this wraps the extensive machinery in the __Cabal__ library, notably
-'PackageDescription'. The upside of this technique is that it avoids
-linking the Haskell build machinery into your executable, saving you about
-10 MB)
+'PackageDescription'. Using Template Haskell slows down compilation of this
+file, but the upside of this technique is that it avoids linking the
+Haskell build machinery into your executable, saving you about 10 MB)
 -}
 fromPackage :: Q Exp
 fromPackage = do
