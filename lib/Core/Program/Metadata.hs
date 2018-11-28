@@ -5,7 +5,7 @@
 Dig metadata out of the description of your project.
 
 This uses the evil /Template Haskell/ to run code at compile time that
-parses the .cabal file for your Haskell project and extracts various
+parses the /.cabal/ file for your Haskell project and extracts various
 meaningful fields.
 -}
 module Core.Program.Metadata
@@ -14,9 +14,9 @@ module Core.Program.Metadata
       {-* Splice -}
     , fromPackage
       {-* Internals -}
+    , versionNumberFrom
     , projectNameFrom
     , projectSynopsisFrom
-    , versionNumberFrom
 )
 where
 
@@ -40,10 +40,12 @@ to your program when you call 'Core.Program.Execute.configure'. This value
 is used if the user requests it by specifying the @--version@ option on the
 command-line.
 
-Simply providing a string literal such as version @\"1.0\"@ will give
-you a 'Version' with that value:
+Simply providing an overloaded string literal such as version @\"1.0\"@
+will give you a 'Version' with that value:
 
 @
+\{\-\# LANGUAGE OverloadedStrings \#\-\}
+
 main :: 'IO' ()
 main = do
     context <- 'Core.Program.Execute.configure' \"1.0\" 'Core.Program.Execute.None' ('Core.Program.Arguments.simple' ...
@@ -78,17 +80,13 @@ version number extracted from the /.cabal/ file rather than requiring the
 user to specify (and synchronize) it in multiple places.
 
 To use this, enable the Template Haskell language extension in your
-/Main.hs/ file:
+/Main.hs/ file. Then use the special @$( ... )@ \"insert splice here\"
+syntax that extension provides to get a 'Version' object with the desired
+metadata about your project:
 
 @
 \{\-\# LANGUAGE TemplateHaskell \#\-\}
-@
 
-Then use the special @$( ... )@ \"insert splice here\" syntax that extension
-provides to get a 'Version' object with the desired metadata about your
-project:
-
-@
 version :: 'Version'
 version = $('fromPackage')
 
