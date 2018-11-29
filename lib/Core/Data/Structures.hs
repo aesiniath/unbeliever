@@ -15,6 +15,7 @@ module Core.Data.Structures
     , insert1
     , lookup1
     , fromList1
+    , intoList1
     , Dictionary(fromMap, intoMap)
 
       {-* Internals -}
@@ -75,6 +76,9 @@ contains1 k (Map p) = Unordered.member k p
 
 fromList1 :: Key κ => [(κ,ν)] -> Map κ ν
 fromList1 pairs = Map (Unordered.fromList pairs)
+
+intoList1 :: Key κ => Map κ ν -> [(κ,ν)]
+intoList1 (Map p) = Unordered.toList p
 
 instance Key κ => Semigroup (Map κ ν) where
     (<>) (Map p1) (Map p2) = Map (Unordered.union p1 p2)

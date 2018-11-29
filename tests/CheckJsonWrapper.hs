@@ -4,21 +4,21 @@
 module CheckJsonWrapper where
 
 import qualified Data.ByteString.Char8 as C
-import qualified Data.HashMap.Strict as HashMap
 import Test.Hspec
 
+import Core.Data
 import Core.Text
 import Core.Encoding.Json
 
 k = JsonKey "intro"
 v = JsonString "Hello"
 
-j = JsonObject (HashMap.fromList [(k, v)])
+j = JsonObject (fromList1 [(k, v)])
 
-j2 = JsonObject (HashMap.fromList
+j2 = JsonObject (fromList1
         [ (JsonKey "song", JsonString "Thriller")
         , (JsonKey "other", JsonString "A very long name for the \"shadow of the moon\".")
-        , (JsonKey "four", JsonObject (HashMap.fromList
+        , (JsonKey "four", JsonObject (fromList1
                 [ (JsonKey "n1", r)
                 ]))
         ])
@@ -42,7 +42,7 @@ checkJsonWrapper = do
             encodeToUTF8 j `shouldBe` intoBytes (C.pack "{\"intro\":\"Hello\"}")
 
         it "decoding an Object parses" $ do
-            decodeFromUTF8 b `shouldBe` Just (JsonObject (HashMap.fromList [(JsonKey "cost", JsonNumber 4500)]))
+            decodeFromUTF8 b `shouldBe` Just (JsonObject (fromList1 [(JsonKey "cost", JsonNumber 4500)]))
 
         it "complex JSON Object round trips" $ do
             decodeFromUTF8 (encodeToUTF8 j2) `shouldBe` Just j2
