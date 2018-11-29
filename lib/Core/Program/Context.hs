@@ -33,14 +33,13 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader.Class (MonadReader(..))
 import Control.Monad.Trans.Reader (ReaderT(..))
 import Data.Foldable (foldrM)
-import Data.HashMap.Strict (HashMap)
-import qualified Data.HashMap.Strict as HashMap
 import Data.Text.Prettyprint.Doc (layoutPretty, LayoutOptions(..), PageWidth(..))
 import Data.Text.Prettyprint.Doc.Render.Text (renderIO)
 import qualified System.Console.Terminal.Size as Terminal (Window(..), size)
 import System.Environment (getArgs, getProgName, lookupEnv)
 import System.Exit (ExitCode(..), exitWith)
 
+import Core.Data.Structures
 import Core.System.Base
 import Core.Text.Rope
 import Core.Program.Arguments
@@ -282,19 +281,19 @@ handleCommandLine version config = do
         hFlush stdout
 
 
-lookupEnvironmentVariables :: Config -> Parameters -> IO (HashMap LongName ParameterValue)
+lookupEnvironmentVariables :: Config -> Parameters -> IO (Map LongName ParameterValue)
 lookupEnvironmentVariables config params = do
     let mode = commandNameFrom params
     let valids = extractValidEnvironments mode config
 
-    result <- foldrM f HashMap.empty valids
+    result <- foldrM f empty1 valids
     return result
   where
-    f :: LongName -> (HashMap LongName ParameterValue) -> IO (HashMap LongName ParameterValue)
+    f :: LongName -> (Map LongName ParameterValue) -> IO (Map LongName ParameterValue)
     f name@(LongName var) acc = do
         result <- lookupEnv var
         return $ case result of
-            Just value  -> HashMap.insert name (Value value) acc
+            Just value  -> insert1 name (Value value) acc
             Nothing     -> acc
 
 
@@ -312,8 +311,8 @@ handleVerbosityLevel params = do
 queryVerbosityLevel :: Parameters -> Either ExitCode Verbosity
 queryVerbosityLevel params =
   let
-    debug = HashMap.lookup "debug" (parameterValuesFrom params)
-    verbose = HashMap.lookup "verbose" (parameterValuesFrom params)
+    debug = lookup1 "debug" (parameterValuesFrom params)
+    verbose = lookup1 "verbose" (parameterValuesFrom params)
   in
     case debug of
         Just value -> case value of
