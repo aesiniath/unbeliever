@@ -24,6 +24,7 @@ dependencies:
  - bytestring
  - Cabal
  - chronologique
+ - containers
  - deepseq
  - directory
  - exceptions
