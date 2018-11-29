@@ -20,8 +20,6 @@ module Core.Program.Context
       , getContext
       , subProgram
       , getConsoleWidth
-      , Version(..)
-      , fromPackage
     ) where
 
 import Prelude hiding (log)
@@ -39,8 +37,6 @@ import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Text.Prettyprint.Doc (layoutPretty, LayoutOptions(..), PageWidth(..))
 import Data.Text.Prettyprint.Doc.Render.Text (renderIO)
-import Data.String
-import qualified Data.Version as Base (Version(..), showVersion)
 import qualified System.Console.Terminal.Size as Terminal (Window(..), size)
 import System.Environment (getArgs, getProgName, lookupEnv)
 import System.Exit (ExitCode(..), exitWith)
@@ -48,6 +44,7 @@ import System.Exit (ExitCode(..), exitWith)
 import Core.System.Base
 import Core.Text.Rope
 import Core.Program.Arguments
+import Core.Program.Metadata
 
 {-|
 Internal context for a running program. You access this via actions in the
@@ -258,7 +255,7 @@ getConsoleWidth = do
     up the layout width to match (one off the) actual width of console.
 -}
 handleCommandLine :: Version -> Config -> IO Parameters
-handleCommandLine (Version version) config = do
+handleCommandLine version config = do
     argv <- getArgs
     let result = parseCommandLine config argv
     case result of
@@ -327,37 +324,3 @@ queryVerbosityLevel params =
                 Empty   -> Right Event
                 Value _ -> Left (ExitFailure 2)
             Nothing -> Right Output
-
-{-|
-The version number of this piece of software. This is supplied to your
-program when you call 'configure'. This value is used, along with the
-proram name, if the user requests it by specifying the @--version@ option
-on the command-line. You can also call 'getVersionNumber'.
--}
-newtype Version = Version String
-
-instance IsString Version where
-    fromString = Version
-
-{-|
-If your project is named __acme__, then the Haskell compiler will create a
-module called @Paths_acme@ you can use to access various bits of useful
-build-time information, including the number from the version field
-declared in the /package.yaml/ or /acme.cabal/ file. So as an idiom, we
-support using that version number rather than having to specify it in
-multiple places:
-
-@
-import Paths_acme (version)
-
-main :: IO ()
-main = do
-    context <- 'configure' ('fromPackage' version) 'None' ('simple' ...
-@
-
-(this wraps __base__'s 'Data.Version.showVersion' and saves you from having
-to import Data.Version or use it directly)
--}
-fromPackage :: Base.Version -> Version
-fromPackage = Version . Base.showVersion
-
