@@ -95,16 +95,15 @@ instance Key κ => IsList (Map κ ν) where
 
 type Set κ = Map κ ()
 
---class Dictionary α where
-class Key κ => Dictionary α κ ν where
-    fromMap :: Map κ ν -> α κ ν
-    intoMap :: α κ ν -> Map κ ν
+class Dictionary α where
+    fromMap :: Key κ => Map κ ν -> α κ ν
+    intoMap :: Key κ => α κ ν -> Map κ ν
 
-instance Key κ => Dictionary Unordered.HashMap κ ν where
+instance Dictionary Unordered.HashMap where
     fromMap (Map p) = p
     intoMap p = Map p
 
-instance Key κ => Dictionary Containers.Map κ ν where
+instance Dictionary Containers.Map where
     fromMap (Map p) = Containers.fromList (Unordered.toList p)
     intoMap o = Map (Unordered.fromList (Containers.toList o))
 
