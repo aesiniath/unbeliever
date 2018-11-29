@@ -33,12 +33,13 @@ convetion inherent in `concatMap`. Tried `lookupIn`, `lookupOf`,
 on `lookup1` because brevity.
 -}
 
+import Data.Foldable (Foldable(..))
 import Data.Hashable (Hashable)
 import qualified Data.HashMap.Strict as Unordered
 import qualified Data.Map.Strict as Containers
 import qualified Data.Text as T (Text)
 import qualified Data.Text.Lazy as U (Text)
-import GHC.Exts (IsList(..))
+import qualified GHC.Exts as Exts (IsList(..))
 
 import Core.Text.Rope (Rope)
 import Core.Text.Bytes (Bytes)
@@ -58,6 +59,11 @@ instance Key Bytes
 instance Key T.Text
 instance Key U.Text
 instance Key Char
+
+instance Foldable (Map κ) where
+    foldr f start (Map p) = Unordered.foldr f start p
+    null (Map p) = Unordered.null p
+    length (Map p) = Unordered.size p
 
 size1 :: Map κ ν -> Int
 size1 (Map p) = Unordered.size p
@@ -110,10 +116,10 @@ instance Key κ => Monoid (Map κ ν) where
     mempty = empty1
     mappend = (<>)
 
-instance Key κ => IsList (Map κ ν) where
+instance Key κ => Exts.IsList (Map κ ν) where
     type Item (Map κ ν) = (κ, ν)
     fromList = fromList1
-    toList (Map p) = toList p
+    toList (Map p) = Unordered.toList p
 
 type Set κ = Map κ ()
 
