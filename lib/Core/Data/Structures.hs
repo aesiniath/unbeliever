@@ -14,9 +14,11 @@ module Core.Data.Structures
     , singleton1
     , insert1
     , lookup1
+
+      {-* Conversions -}
+    , Dictionary(fromMap, intoMap)
     , fromList1
     , intoList1
-    , Dictionary(fromMap, intoMap)
 
       {-* Internals -}
     , unMap
@@ -75,9 +77,29 @@ lookup1 k (Map p) = Unordered.lookup k p
 contains1 :: Key κ => κ -> Map κ ν -> Bool
 contains1 k (Map p) = Unordered.member k p
 
+{-|
+Convert an \"association list\" of key/value pairs into a 'Map'.
+
+Unfortunately we haven't been able to form an instance of 'Dictionary' for
+association lists. If there was one, then this would be replaced with:
+
+@
+fromList1 = intoMap
+@
+-}
 fromList1 :: Key κ => [(κ,ν)] -> Map κ ν
 fromList1 pairs = Map (Unordered.fromList pairs)
 
+{-|
+Convert a 'Map' to an \"association list\" of key/value pairs.
+
+Unfortunately we haven't been able to form an instance of 'Dictionary' for
+association lists. If there was one, then this would be replaced with:
+
+@
+intoList1 = fromMap
+@
+-}
 intoList1 :: Key κ => Map κ ν -> [(κ,ν)]
 intoList1 (Map p) = Unordered.toList p
 
