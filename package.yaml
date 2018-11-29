@@ -48,21 +48,23 @@ dependencies:
 library:
   source-dirs: lib
   exposed-modules:
-   - Core.Text
-   - Core.Text.Bytes
-   - Core.Text.Rope
-   - Core.Text.Utilities
+   - Core.Data
+   - Core.Data.Structures
    - Core.Encoding
    - Core.Encoding.Json
-   - Core.System
-   - Core.System.Base
-   - Core.System.External
    - Core.Program
    - Core.Program.Arguments
    - Core.Program.Execute
    - Core.Program.Logging
    - Core.Program.Metadata
    - Core.Program.Unlift
+   - Core.Text
+   - Core.Text.Bytes
+   - Core.Text.Rope
+   - Core.Text.Utilities
+   - Core.System
+   - Core.System.Base
+   - Core.System.External
   other-modules:
    - Core.Program.Context
    - Core.Program.Signal
