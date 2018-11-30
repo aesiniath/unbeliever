@@ -286,14 +286,14 @@ lookupEnvironmentVariables config params = do
     let mode = commandNameFrom params
     let valids = extractValidEnvironments mode config
 
-    result <- foldrM f empty1 valids
+    result <- foldrM f emptyMap valids
     return result
   where
     f :: LongName -> (Map LongName ParameterValue) -> IO (Map LongName ParameterValue)
     f name@(LongName var) acc = do
         result <- lookupEnv var
         return $ case result of
-            Just value  -> insert1 name (Value value) acc
+            Just value  -> insertMap name (Value value) acc
             Nothing     -> acc
 
 
@@ -311,8 +311,8 @@ handleVerbosityLevel params = do
 queryVerbosityLevel :: Parameters -> Either ExitCode Verbosity
 queryVerbosityLevel params =
   let
-    debug = lookup1 "debug" (parameterValuesFrom params)
-    verbose = lookup1 "verbose" (parameterValuesFrom params)
+    debug = lookupMap "debug" (parameterValuesFrom params)
+    verbose = lookupMap "verbose" (parameterValuesFrom params)
   in
     case debug of
         Just value -> case value of

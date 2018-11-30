@@ -9,28 +9,33 @@ module Core.Data.Structures
       {-* Map type -}
       Map
     , Key
-    , empty1
-    , singleton1
-    , insert1
-    , lookup1
+    , emptyMap
+    , singletonMap
+    , insertMap
+    , lookupMap
 
       {-* Conversions -}
     , Dictionary(fromMap, intoMap)
-    , fromList1
-    , intoList1
+
+      {-* Overloaded lists -}
+{-|
+If you are working with lists in your code and need to convert to and
+from 'Map', try enabling the @OverloadedLists@ extension:
+
+@
+\{\-\# LANGUAGE OverloadedLists \#\-\}
+@
+You can then use list literals directly rather than needing these
+conversion functions.
+-}
+    , fromList
+    , intoList
 
       {-* Internals -}
     , unMap
-    , contains1
+    , containsMap
 )
 where
-
-{-
-Naming convention: the trouble is `lookupMap` etc collides with the
-convetion inherent in `concatMap`. Tried `lookupIn`, `lookupOf`,
-`lookupInMap`, etc. `lookupOne` wasn't bad ("lookup the one in"). Settled
-on `lookup1` because brevity.
--}
 
 import Data.Foldable (Foldable(..))
 import Data.Hashable (Hashable)
@@ -64,20 +69,20 @@ instance Foldable (Map κ) where
     null (Map p) = Unordered.null p
     length (Map p) = Unordered.size p
 
-empty1 :: Map κ ν
-empty1 = Map (Unordered.empty)
+emptyMap :: Map κ ν
+emptyMap = Map (Unordered.empty)
 
-singleton1 :: Key κ => κ -> ν -> Map κ ν
-singleton1 k v = Map (Unordered.singleton k v)
+singletonMap :: Key κ => κ -> ν -> Map κ ν
+singletonMap k v = Map (Unordered.singleton k v)
 
-insert1 :: Key κ => κ -> ν -> Map κ ν -> Map κ ν
-insert1 k v (Map p) = Map (Unordered.insert k v p)
+insertMap :: Key κ => κ -> ν -> Map κ ν -> Map κ ν
+insertMap k v (Map p) = Map (Unordered.insert k v p)
 
-lookup1 :: Key κ => κ -> Map κ ν -> Maybe ν
-lookup1 k (Map p) = Unordered.lookup k p
+lookupMap :: Key κ => κ -> Map κ ν -> Maybe ν
+lookupMap k (Map p) = Unordered.lookup k p
 
-contains1 :: Key κ => κ -> Map κ ν -> Bool
-contains1 k (Map p) = Unordered.member k p
+containsMap :: Key κ => κ -> Map κ ν -> Bool
+containsMap k (Map p) = Unordered.member k p
 
 {-|
 Convert an \"association list\" of key/value pairs into a 'Map'.
@@ -86,11 +91,11 @@ Unfortunately we haven't been able to form an instance of 'Dictionary' for
 association lists. If there was one, then this would be replaced with:
 
 @
-fromList1 = intoMap
+fromList = intoMap
 @
 -}
-fromList1 :: Key κ => [(κ,ν)] -> Map κ ν
-fromList1 pairs = Map (Unordered.fromList pairs)
+fromList :: Key κ => [(κ,ν)] -> Map κ ν
+fromList pairs = Map (Unordered.fromList pairs)
 
 {-|
 Convert a 'Map' to an \"association list\" of key/value pairs.
@@ -99,22 +104,22 @@ Unfortunately we haven't been able to form an instance of 'Dictionary' for
 association lists. If there was one, then this would be replaced with:
 
 @
-intoList1 = fromMap
+intoList = fromMap
 @
 -}
-intoList1 :: Key κ => Map κ ν -> [(κ,ν)]
-intoList1 (Map p) = Unordered.toList p
+intoList :: Key κ => Map κ ν -> [(κ,ν)]
+intoList (Map p) = Unordered.toList p
 
 instance Key κ => Semigroup (Map κ ν) where
     (<>) (Map p1) (Map p2) = Map (Unordered.union p1 p2)
 
 instance Key κ => Monoid (Map κ ν) where
-    mempty = empty1
+    mempty = emptyMap
     mappend = (<>)
 
 instance Key κ => Exts.IsList (Map κ ν) where
     type Item (Map κ ν) = (κ, ν)
-    fromList = fromList1
+    fromList pairs = Map (Unordered.fromList pairs)
     toList (Map p) = Unordered.toList p
 
 type Set κ = Map κ ()

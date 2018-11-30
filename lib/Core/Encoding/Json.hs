@@ -110,7 +110,7 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics
 
-import Core.Data.Structures (Map, intoList1, fromList1, Key)
+import Core.Data.Structures (Map, intoList, fromList, Key)
 import Core.Text.Bytes (Bytes, intoBytes, fromBytes)
 import Core.Text.Rope (Rope, Textual, intoRope, fromRope)
 import Core.Text.Utilities (Render(..))
@@ -175,7 +175,7 @@ intoAeson :: JsonValue -> Aeson.Value
 intoAeson value = case value of
     JsonObject xm ->
         let
-            kvs = intoList1 xm
+            kvs = intoList xm
             tvs = fmap (\(k, v) -> (fromRope (coerce k), intoAeson v)) kvs
             tvm :: HashMap T.Text Aeson.Value
             tvm = HashMap.fromList tvs
@@ -221,7 +221,7 @@ fromAeson value = case value of
             kvs = fmap (\(k, v) -> (JsonKey (intoRope k), fromAeson v)) tvs
 
             kvm :: Map JsonKey JsonValue
-            kvm = fromList1 kvs
+            kvm = fromList kvs
         in
             JsonObject kvm
 
@@ -302,7 +302,7 @@ prettyValue :: JsonValue -> Doc JsonToken
 prettyValue value = case value of
     JsonObject xm ->
         let
-            pairs = intoList1 xm
+            pairs = intoList xm
             entries = fmap (\(k, v) -> (prettyKey k) <> annotate SymbolToken ":" <+> clear v (prettyValue v)) pairs
 
             clear v doc = case v of

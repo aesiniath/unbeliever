@@ -512,7 +512,7 @@ has already been identified. This returns the value for that parameter.
 -- this could be fixed with a much stronger Config type, potentially.
 lookupArgument :: LongName -> Parameters -> Maybe String
 lookupArgument name params =
-    case lookup1 name (parameterValuesFrom params) of
+    case lookupMap name (parameterValuesFrom params) of
         Nothing -> Nothing
         Just argument -> case argument of
             Empty -> error "Invalid State"
@@ -525,7 +525,7 @@ was.
 -- Should this be more severe if it encounters Empty?
 lookupOptionValue :: LongName -> Parameters -> Maybe String
 lookupOptionValue name params =
-    case lookup1 name (parameterValuesFrom params) of
+    case lookupMap name (parameterValuesFrom params) of
         Nothing -> Nothing
         Just argument -> case argument of
             Empty -> Nothing
@@ -538,7 +538,7 @@ Returns @Just True@ if the option is present, and @Nothing@ if it is not.
 -- arguments.
 lookupOptionFlag :: LongName -> Parameters -> Maybe Bool
 lookupOptionFlag name params =
-    case lookup1 name (parameterValuesFrom params) of
+    case lookupMap name (parameterValuesFrom params) of
         Nothing -> Nothing
         Just argument -> case argument of
             _ -> Just True        -- nom, nom

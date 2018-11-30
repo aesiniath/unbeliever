@@ -481,11 +481,11 @@ calls 'configure' with a default @Config@ when initializing).
 -}
 parseCommandLine :: Config -> [String] -> Either InvalidCommandLine Parameters
 parseCommandLine config argv = case config of
-    Blank -> return (Parameters Nothing empty1 empty1)
+    Blank -> return (Parameters Nothing emptyMap emptyMap)
 
     Simple options -> do
         params <- extractor Nothing options argv
-        return (Parameters Nothing params empty1)
+        return (Parameters Nothing params emptyMap)
 
     Complex commands ->
       let
@@ -496,7 +496,7 @@ parseCommandLine config argv = case config of
         params1 <- extractor Nothing globalOptions possibles
         (mode,localOptions) <- parseIndicatedCommand modes first
         params2 <- extractor (Just mode) localOptions remainingArgs
-        return (Parameters (Just mode) ((<>) params1 params2) empty1)
+        return (Parameters (Just mode) ((<>) params1 params2) emptyMap)
   where
 
     extractor :: Maybe LongName -> [Options] -> [String] -> Either InvalidCommandLine (Map LongName ParameterValue)
@@ -509,7 +509,7 @@ parseCommandLine config argv = case config of
       in do
         list1 <- parsePossibleOptions mode valids shorts possibles
         list2 <- parseRequiredArguments needed arguments
-        return ((<>) (fromList1 list1) (fromList1 list2))
+        return ((<>) (fromList list1) (fromList list2))
 
 isOption :: String -> Bool
 isOption arg = case arg of
@@ -548,7 +548,7 @@ parsePossibleOptions mode valids shorts args = mapM f args
 
     considerShortOption :: Char -> Either InvalidCommandLine (LongName,ParameterValue)
     considerShortOption c =
-        case lookup1 c shorts of
+        case lookupMap c shorts of
             Just name -> Right (name,Empty)
             Nothing -> Left (UnknownOption ['-',c])
 
@@ -580,7 +580,7 @@ parseIndicatedCommand modes first =
   let
     candidate = LongName first
   in
-    case lookup1 candidate modes of
+    case lookupMap candidate modes of
         Just options -> Right (candidate,options)
         Nothing -> Left (UnknownCommand first)
 
@@ -598,11 +598,11 @@ extractValidNames options =
 
 extractShortNames :: [Options] -> Map ShortName LongName
 extractShortNames options =
-    foldr g empty1 options
+    foldr g emptyMap options
   where
     g :: Options -> Map ShortName LongName -> Map ShortName LongName
     g (Option longname shortname _ _) shorts = case shortname of
-        Just shortchar -> insert1 shortchar longname shorts
+        Just shortchar -> insertMap shortchar longname shorts
         Nothing -> shorts
     g _ shorts = shorts
 
@@ -624,10 +624,10 @@ extractGlobalOptions commands =
 
 extractValidModes :: [Commands] -> Map LongName [Options]
 extractValidModes commands =
-    foldr k empty1 commands
+    foldr k emptyMap commands
   where
     k :: Commands -> Map LongName [Options] -> Map LongName [Options]
-    k (Command longname _ options) modes = insert1 longname options modes
+    k (Command longname _ options) modes = insertMap longname options modes
     k _ modes = modes
 
 splitCommandLine :: [String] -> Either InvalidCommandLine ([String], String, [String])
@@ -728,7 +728,7 @@ buildUsage config mode = case config of
 
             Just longname ->
               let
-                (oL,aL) = case lookup1 longname modes of
+                (oL,aL) = case lookupMap longname modes of
                     Just localOptions -> partitionParameters localOptions
                     Nothing -> error "Illegal State"
               in

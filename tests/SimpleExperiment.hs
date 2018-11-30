@@ -29,7 +29,7 @@ j = JsonObject
         [ (k, v)
         , (JsonKey "song", JsonString "Thriller")
         , ("other", "A very long name for the \"shadow of the moon\".")
-        , (JsonKey "four", JsonObject (fromList1
+        , (JsonKey "four", JsonObject (fromList
                 [ (JsonKey "n1", r)
                 ]))
         ]
