@@ -548,7 +548,7 @@ parsePossibleOptions mode valids shorts args = mapM f args
 
     considerShortOption :: Char -> Either InvalidCommandLine (LongName,ParameterValue)
     considerShortOption c =
-        case lookupMap c shorts of
+        case lookupKeyValue c shorts of
             Just name -> Right (name,Empty)
             Nothing -> Left (UnknownOption ['-',c])
 
@@ -580,7 +580,7 @@ parseIndicatedCommand modes first =
   let
     candidate = LongName first
   in
-    case lookupMap candidate modes of
+    case lookupKeyValue candidate modes of
         Just options -> Right (candidate,options)
         Nothing -> Left (UnknownCommand first)
 
@@ -602,7 +602,7 @@ extractShortNames options =
   where
     g :: Options -> Map ShortName LongName -> Map ShortName LongName
     g (Option longname shortname _ _) shorts = case shortname of
-        Just shortchar -> insertMap shortchar longname shorts
+        Just shortchar -> insertKeyValue shortchar longname shorts
         Nothing -> shorts
     g _ shorts = shorts
 
@@ -627,7 +627,7 @@ extractValidModes commands =
     foldr k emptyMap commands
   where
     k :: Commands -> Map LongName [Options] -> Map LongName [Options]
-    k (Command longname _ options) modes = insertMap longname options modes
+    k (Command longname _ options) modes = insertKeyValue longname options modes
     k _ modes = modes
 
 splitCommandLine :: [String] -> Either InvalidCommandLine ([String], String, [String])
@@ -728,7 +728,7 @@ buildUsage config mode = case config of
 
             Just longname ->
               let
-                (oL,aL) = case lookupMap longname modes of
+                (oL,aL) = case lookupKeyValue longname modes of
                     Just localOptions -> partitionParameters localOptions
                     Nothing -> error "Illegal State"
               in

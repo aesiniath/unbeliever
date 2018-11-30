@@ -293,7 +293,7 @@ lookupEnvironmentVariables config params = do
     f name@(LongName var) acc = do
         result <- lookupEnv var
         return $ case result of
-            Just value  -> insertMap name (Value value) acc
+            Just value  -> insertKeyValue name (Value value) acc
             Nothing     -> acc
 
 
@@ -311,8 +311,8 @@ handleVerbosityLevel params = do
 queryVerbosityLevel :: Parameters -> Either ExitCode Verbosity
 queryVerbosityLevel params =
   let
-    debug = lookupMap "debug" (parameterValuesFrom params)
-    verbose = lookupMap "verbose" (parameterValuesFrom params)
+    debug = lookupKeyValue "debug" (parameterValuesFrom params)
+    verbose = lookupKeyValue "verbose" (parameterValuesFrom params)
   in
     case debug of
         Just value -> case value of

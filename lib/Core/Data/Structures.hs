@@ -11,8 +11,8 @@ module Core.Data.Structures
     , Key
     , emptyMap
     , singletonMap
-    , insertMap
-    , lookupMap
+    , insertKeyValue
+    , lookupKeyValue
 
       {-* Conversions -}
     , Dictionary(fromMap, intoMap)
@@ -75,11 +75,11 @@ emptyMap = Map (Unordered.empty)
 singletonMap :: Key κ => κ -> ν -> Map κ ν
 singletonMap k v = Map (Unordered.singleton k v)
 
-insertMap :: Key κ => κ -> ν -> Map κ ν -> Map κ ν
-insertMap k v (Map p) = Map (Unordered.insert k v p)
+insertKeyValue :: Key κ => κ -> ν -> Map κ ν -> Map κ ν
+insertKeyValue k v (Map p) = Map (Unordered.insert k v p)
 
-lookupMap :: Key κ => κ -> Map κ ν -> Maybe ν
-lookupMap k (Map p) = Unordered.lookup k p
+lookupKeyValue :: Key κ => κ -> Map κ ν -> Maybe ν
+lookupKeyValue k (Map p) = Unordered.lookup k p
 
 containsMap :: Key κ => κ -> Map κ ν -> Bool
 containsMap k (Map p) = Unordered.member k p
