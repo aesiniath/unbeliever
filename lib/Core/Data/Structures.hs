@@ -9,7 +9,6 @@ module Core.Data.Structures
       {-* Map type -}
       Map
     , Key
-    , size1
     , empty1
     , singleton1
     , insert1
@@ -64,9 +63,6 @@ instance Foldable (Map κ) where
     foldr f start (Map p) = Unordered.foldr f start p
     null (Map p) = Unordered.null p
     length (Map p) = Unordered.size p
-
-size1 :: Map κ ν -> Int
-size1 (Map p) = Unordered.size p
 
 empty1 :: Map κ ν
 empty1 = Map (Unordered.empty)

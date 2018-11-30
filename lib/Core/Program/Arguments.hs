@@ -774,8 +774,8 @@ buildUsage config mode = case config of
     argumentsHeading as = if length as > 0 then hardline <> "Required arguments:" <> hardline else emptyDoc
 
     -- there is a corner case of complex config with no commands
-    commandSummary modes = if size1 modes > 0 then softline <> commandName else emptyDoc
-    commandHeading modes = if size1 modes > 0 then hardline <> "Available commands:" <> hardline else emptyDoc
+    commandSummary modes = if length modes > 0 then softline <> commandName else emptyDoc
+    commandHeading modes = if length modes > 0 then hardline <> "Available commands:" <> hardline else emptyDoc
 
     f :: Options -> ([Options],[Options]) -> ([Options],[Options])
     f o@(Option _ _ _ _) (opts,args) = (o:opts,args)
