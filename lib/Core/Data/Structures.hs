@@ -1,6 +1,5 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -124,15 +123,44 @@ instance Key κ => Exts.IsList (Map κ ν) where
 
 type Set κ = Map κ ()
 
+{-|
+Types that represent key/value pairs that can be converted to 'Map's.
+Haskell's ecosystem has several such. This typeclass provides an adaptor to
+get between them. It also allows you to serialize out to an association
+list.
+-}
+--
+-- Getting an instance for [(k,v)] was very difficult. The approach
+-- implemented below was suggested by Xia Li-yao, @Lysxia was to use
+-- type families.
+--
+-- >   "Maybe you can change your type class to be indexed by the fully
+-- >   applied dictionary type, instead of a type constructor * -> * -> *"
+--
+-- https://stackoverflow.com/questions/53554687/list-instances-for-higher-kinded-types/53556313
+--
+-- Many thanks for an elegant solution to the problem.
+--
 class Dictionary α where
-    fromMap :: Key κ => Map κ ν -> α κ ν
-    intoMap :: Key κ => α κ ν -> Map κ ν
+    type K α :: *
+    type V α :: *
+    fromMap :: Map (K α) (V α) -> α
+    intoMap :: α -> Map (K α) (V α)
 
-instance Dictionary Unordered.HashMap where
+instance Key κ => Dictionary (Unordered.HashMap κ ν)  where
+    type K (Unordered.HashMap κ ν) = κ
+    type V (Unordered.HashMap κ ν) = ν
     fromMap (Map p) = p
     intoMap p = Map p
 
-instance Dictionary Containers.Map where
+instance Key κ => Dictionary (Containers.Map κ ν) where
+    type K (Containers.Map κ ν) = κ
+    type V (Containers.Map κ ν) = ν
     fromMap (Map p) = Containers.fromList (Unordered.toList p)
     intoMap o = Map (Unordered.fromList (Containers.toList o))
 
+instance Key κ => Dictionary [(κ,ν)] where
+    type K [(κ,ν)] = κ
+    type V [(κ,ν)] = ν
+    fromMap (Map p) = Unordered.toList p
+    intoMap kvs = Map (Unordered.fromList kvs)
