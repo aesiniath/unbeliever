@@ -18,7 +18,7 @@ module Core.Data.Structures
 
       {-* Internals -}
     , unMap
-    , containsMap
+    , containsKey
 )
 where
 
@@ -66,8 +66,8 @@ insertKeyValue k v (Map p) = Map (Unordered.insert k v p)
 lookupKeyValue :: Key κ => κ -> Map κ ν -> Maybe ν
 lookupKeyValue k (Map p) = Unordered.lookup k p
 
-containsMap :: Key κ => κ -> Map κ ν -> Bool
-containsMap k (Map p) = Unordered.member k p
+containsKey :: Key κ => κ -> Map κ ν -> Bool
+containsKey k (Map p) = Unordered.member k p
 
 {-|
 -}
@@ -124,12 +124,14 @@ class Dictionary α where
     fromMap :: Map (K α) (V α) -> α
     intoMap :: α -> Map (K α) (V α)
 
+{-| from "Data.HashMap.Strict" -}
 instance Key κ => Dictionary (Unordered.HashMap κ ν)  where
     type K (Unordered.HashMap κ ν) = κ
     type V (Unordered.HashMap κ ν) = ν
     fromMap (Map p) = p
     intoMap p = Map p
 
+{-| from "Data.Map.Strict" -}
 instance Key κ => Dictionary (Containers.Map κ ν) where
     type K (Containers.Map κ ν) = κ
     type V (Containers.Map κ ν) = ν
