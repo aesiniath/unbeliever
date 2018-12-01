@@ -509,7 +509,7 @@ parseCommandLine config argv = case config of
       in do
         list1 <- parsePossibleOptions mode valids shorts possibles
         list2 <- parseRequiredArguments needed arguments
-        return ((<>) (fromList list1) (fromList list2))
+        return ((<>) (intoMap list1) (intoMap list2))
 
 isOption :: String -> Bool
 isOption arg = case arg of

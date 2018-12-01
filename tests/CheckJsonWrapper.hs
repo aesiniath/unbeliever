@@ -13,12 +13,12 @@ import Core.Encoding.Json
 k = JsonKey "intro"
 v = JsonString "Hello"
 
-j = JsonObject (fromList1 [(k, v)])
+j = JsonObject (intoMap [(k, v)])
 
-j2 = JsonObject (fromList1
+j2 = JsonObject (intoMap
         [ (JsonKey "song", JsonString "Thriller")
         , (JsonKey "other", JsonString "A very long name for the \"shadow of the moon\".")
-        , (JsonKey "four", JsonObject (fromList1
+        , (JsonKey "four", JsonObject (intoMap
                 [ (JsonKey "n1", r)
                 ]))
         ])
@@ -42,7 +42,7 @@ checkJsonWrapper = do
             encodeToUTF8 j `shouldBe` intoBytes (C.pack "{\"intro\":\"Hello\"}")
 
         it "decoding an Object parses" $ do
-            decodeFromUTF8 b `shouldBe` Just (JsonObject (fromList1 [(JsonKey "cost", JsonNumber 4500)]))
+            decodeFromUTF8 b `shouldBe` Just (JsonObject (intoMap [(JsonKey "cost", JsonNumber 4500)]))
 
         it "complex JSON Object round trips" $ do
             decodeFromUTF8 (encodeToUTF8 j2) `shouldBe` Just j2

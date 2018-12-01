@@ -54,7 +54,7 @@ checkProgramMonad = do
                 liftIO $ do
                     -- this assumes that hspec isn't passing any
                     -- command-line arguments through to us.
-                    params `shouldBe` (Parameters Nothing empty1 empty1)
+                    params `shouldBe` (Parameters Nothing emptyMap emptyMap)
 
         -- not strictly necessary but sets up next spec item
         it "sub-programs can be run" $ do

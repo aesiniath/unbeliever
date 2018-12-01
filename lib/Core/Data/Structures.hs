@@ -16,20 +16,6 @@ module Core.Data.Structures
       {-* Conversions -}
     , Dictionary(fromMap, intoMap)
 
-      {-* Overloaded lists -}
-{-|
-If you are working with lists in your code and need to convert to and
-from 'Map', try enabling the @OverloadedLists@ extension:
-
-@
-\{\-\# LANGUAGE OverloadedLists \#\-\}
-@
-You can then use list literals directly rather than needing these
-conversion functions.
--}
-    , fromList
-    , intoList
-
       {-* Internals -}
     , unMap
     , containsMap
@@ -84,31 +70,7 @@ containsMap :: Key κ => κ -> Map κ ν -> Bool
 containsMap k (Map p) = Unordered.member k p
 
 {-|
-Convert an \"association list\" of key/value pairs into a 'Map'.
-
-Unfortunately we haven't been able to form an instance of 'Dictionary' for
-association lists. If there was one, then this would be replaced with:
-
-@
-fromList = intoMap
-@
 -}
-fromList :: Key κ => [(κ,ν)] -> Map κ ν
-fromList pairs = Map (Unordered.fromList pairs)
-
-{-|
-Convert a 'Map' to an \"association list\" of key/value pairs.
-
-Unfortunately we haven't been able to form an instance of 'Dictionary' for
-association lists. If there was one, then this would be replaced with:
-
-@
-intoList = fromMap
-@
--}
-intoList :: Key κ => Map κ ν -> [(κ,ν)]
-intoList (Map p) = Unordered.toList p
-
 instance Key κ => Semigroup (Map κ ν) where
     (<>) (Map p1) (Map p2) = Map (Unordered.union p1 p2)
 
@@ -128,9 +90,24 @@ Types that represent key/value pairs that can be converted to 'Map's.
 Haskell's ecosystem has several such. This typeclass provides an adaptor to
 get between them. It also allows you to serialize out to an association
 list.
+
+For example, to convert a 'Map' to an \"association list\" of key/value
+pairs, use 'fromMap':
+
+@
+    answers :: 'Map' 'Rope' 'Int'
+    answers = 'singletonMap' \"Life, The Universe, and Everything\" 42
+
+    list :: [('Rope','Int')]
+    list = 'fromMap' answers
+@
+
+Instances are provided for __containers__'s 'Data.Map.Strict.Map' and
+__unordered-containers__'s 'Data.HashMap.Strict.HashMap' in addition to the
+instance for @[(κ,ν)]@ lists shown above.
 -}
 --
--- Getting an instance for [(k,v)] was very difficult. The approach
+-- Getting an instance for [(κ,ν)] was very difficult. The approach
 -- implemented below was suggested by Xia Li-yao, @Lysxia was to use
 -- type families.
 --

@@ -29,9 +29,9 @@ j = JsonObject
         [ (k, v)
         , (JsonKey "song", JsonString "Thriller")
         , ("other", "A very long name for the \"shadow of the moon\".")
-        , (JsonKey "four", JsonObject (fromList
+        , (JsonKey "four", JsonObject
                 [ (JsonKey "n1", r)
-                ]))
+                ])
         ]
 
 b = intoBytes (S.pack "{\"cost\": 4500}")
