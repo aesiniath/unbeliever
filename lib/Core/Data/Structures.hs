@@ -11,14 +11,22 @@ module Core.Data.Structures
     , emptyMap
     , singletonMap
     , insertKeyValue
+    , containsKey
     , lookupKeyValue
 
       {-* Conversions -}
     , Dictionary(fromMap, intoMap)
 
+      {-* Set type -}
+    , Set
+    , emptySet
+    , singletonSet
+    , insertElement
+    , containsElement
+
       {-* Internals -}
     , unMap
-    , containsKey
+    , unSet
 )
 where
 
@@ -140,5 +148,31 @@ instance Key κ => Dictionary (OrdMap.Map κ ν) where
 instance Key κ => Dictionary [(κ,ν)] where
     type K [(κ,ν)] = κ
     type V [(κ,ν)] = ν
-    fromMap (Map p) = Unordered.toList p
-    intoMap kvs = Map (Unordered.fromList kvs)
+    fromMap (Map p) = HashMap.toList p
+    intoMap kvs = Map (HashMap.fromList kvs)
+
+
+newtype Set ε = Set (HashSet.HashSet ε)
+    deriving (Show, Eq)
+
+unSet :: Set ε -> HashSet.HashSet ε
+unSet (Set s) = s
+{-# INLINE unSet #-}
+
+instance Foldable Set where
+    foldr f start (Set s) = HashSet.foldr f start s
+    null (Set s) = HashSet.null s
+    length (Set s) = HashSet.size s
+
+emptySet :: Key ε => Set ε
+emptySet = Set (HashSet.empty)
+
+singletonSet :: Key ε => ε -> Set ε
+singletonSet e = Set (HashSet.singleton e)
+
+insertElement :: Key ε => ε -> Set ε -> Set ε
+insertElement e (Set s) = Set (HashSet.insert e s)
+
+containsElement :: Key ε => ε -> Set ε -> Bool
+containsElement e (Set s) = HashSet.member e s
+
