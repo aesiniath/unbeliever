@@ -23,6 +23,7 @@ module Core.Data.Structures
     , singletonSet
     , insertElement
     , containsElement
+    , Collection(fromSet, intoSet)
 
       {-* Internals -}
     , unMap
@@ -35,6 +36,7 @@ import Data.Hashable (Hashable)
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.HashSet as HashSet
 import qualified Data.Map.Strict as OrdMap
+import qualified Data.Set as OrdSet
 import qualified Data.Text as T (Text)
 import qualified Data.Text.Lazy as U (Text)
 import qualified GHC.Exts as Exts (IsList(..))
@@ -131,6 +133,12 @@ class Dictionary α where
     fromMap :: Map (K α) (V α) -> α
     intoMap :: α -> Map (K α) (V α)
 
+instance Key κ => Dictionary (Map κ ν) where
+    type K (Map κ ν) = κ
+    type V (Map κ ν) = ν
+    fromMap = id
+    intoMap = id
+
 {-| from "Data.HashMap.Strict" -}
 instance Key κ => Dictionary (HashMap.HashMap κ ν) where
     type K (HashMap.HashMap κ ν) = κ
@@ -182,4 +190,24 @@ insertElement e (Set s) = Set (HashSet.insert e s)
 
 containsElement :: Key ε => ε -> Set ε -> Bool
 containsElement e (Set s) = HashSet.member e s
+
+class Collection α where
+    type E α :: *
+    fromSet :: Set (E α) -> α
+    intoSet :: α -> Set (E α)
+
+instance Key ε => Collection (Set ε) where
+    type E (Set ε) = ε
+    fromSet = id
+    intoSet = id
+
+instance Key ε => Collection (HashSet.HashSet ε) where
+    type E (HashSet.HashSet ε) = ε
+    fromSet (Set s) = s
+    intoSet s = Set s
+
+instance Key ε => Collection (OrdSet.Set ε) where
+    type E (OrdSet.Set ε) = ε
+    fromSet (Set s) = OrdSet.fromList (HashSet.toList s)
+    intoSet o = Set (HashSet.fromList (OrdSet.toList o))
 
