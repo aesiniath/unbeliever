@@ -59,6 +59,7 @@ instance Key Bytes
 instance Key T.Text
 instance Key U.Text
 instance Key Char
+instance Key Int
 
 instance Foldable (Map κ) where
     foldr f start (Map p) = HashMap.foldr f start p
@@ -213,5 +214,5 @@ instance Key ε => Collection (OrdSet.Set ε) where
 
 instance Key ε => Collection [ε] where
     type E [ε] = ε
-    fromSet (Set s) = HashSet.toList s
+    fromSet (Set s) = OrdSet.toList (HashSet.foldr OrdSet.insert OrdSet.empty s)
     intoSet es = Set (HashSet.fromList es)
