@@ -44,11 +44,15 @@ import qualified GHC.Exts as Exts (IsList(..))
 import Core.Text.Rope (Rope)
 import Core.Text.Bytes (Bytes)
 
+-- Naming convention used throughout this file is (Thing u) where u is the
+-- underlying structure [from unordered-containers] wrapped in the Thing
+-- newtype. Leaves p for our Map and s for our Set in tests.
+
 newtype Map κ ν = Map (HashMap.HashMap κ ν)
     deriving (Show, Eq)
 
 unMap :: Map κ ν -> HashMap.HashMap κ ν
-unMap (Map p) = p
+unMap (Map u) = u
 {-# INLINE unMap #-}
 
 class (Hashable κ, Ord κ) => Key κ
@@ -62,9 +66,9 @@ instance Key Char
 instance Key Int
 
 instance Foldable (Map κ) where
-    foldr f start (Map p) = HashMap.foldr f start p
-    null (Map p) = HashMap.null p
-    length (Map p) = HashMap.size p
+    foldr f start (Map u) = HashMap.foldr f start u
+    null (Map u) = HashMap.null u
+    length (Map u) = HashMap.size u
 
 emptyMap :: Map κ ν
 emptyMap = Map (HashMap.empty)
@@ -73,18 +77,18 @@ singletonMap :: Key κ => κ -> ν -> Map κ ν
 singletonMap k v = Map (HashMap.singleton k v)
 
 insertKeyValue :: Key κ => κ -> ν -> Map κ ν -> Map κ ν
-insertKeyValue k v (Map p) = Map (HashMap.insert k v p)
+insertKeyValue k v (Map u) = Map (HashMap.insert k v u)
 
 lookupKeyValue :: Key κ => κ -> Map κ ν -> Maybe ν
-lookupKeyValue k (Map p) = HashMap.lookup k p
+lookupKeyValue k (Map u) = HashMap.lookup k u
 
 containsKey :: Key κ => κ -> Map κ ν -> Bool
-containsKey k (Map p) = HashMap.member k p
+containsKey k (Map u) = HashMap.member k u
 
 {-|
 -}
 instance Key κ => Semigroup (Map κ ν) where
-    (<>) (Map p1) (Map p2) = Map (HashMap.union p1 p2)
+    (<>) (Map u1) (Map u2) = Map (HashMap.union u1 u2)
 
 instance Key κ => Monoid (Map κ ν) where
     mempty = emptyMap
@@ -93,7 +97,7 @@ instance Key κ => Monoid (Map κ ν) where
 instance Key κ => Exts.IsList (Map κ ν) where
     type Item (Map κ ν) = (κ, ν)
     fromList pairs = Map (HashMap.fromList pairs)
-    toList (Map p) = HashMap.toList p
+    toList (Map u) = HashMap.toList u
 
 {-|
 Types that represent key/value pairs that can be converted to 'Map's.
@@ -144,20 +148,20 @@ instance Key κ => Dictionary (Map κ ν) where
 instance Key κ => Dictionary (HashMap.HashMap κ ν) where
     type K (HashMap.HashMap κ ν) = κ
     type V (HashMap.HashMap κ ν) = ν
-    fromMap (Map p) = p
-    intoMap p = Map p
+    fromMap (Map u) = u
+    intoMap u = Map u
 
 {-| from "Data.Map.Strict" -}
 instance Key κ => Dictionary (OrdMap.Map κ ν) where
     type K (OrdMap.Map κ ν) = κ
     type V (OrdMap.Map κ ν) = ν
-    fromMap (Map p) = OrdMap.fromList (HashMap.toList p)
-    intoMap o = Map (HashMap.fromList (OrdMap.toList o))
+    fromMap (Map u) = OrdMap.fromList (HashMap.toList u)
+    intoMap u = Map (HashMap.fromList (OrdMap.toList u))
 
 instance Key κ => Dictionary [(κ,ν)] where
     type K [(κ,ν)] = κ
     type V [(κ,ν)] = ν
-    fromMap (Map p) = HashMap.toList p
+    fromMap (Map u) = HashMap.toList u
     intoMap kvs = Map (HashMap.fromList kvs)
 
 
@@ -165,16 +169,16 @@ newtype Set ε = Set (HashSet.HashSet ε)
     deriving (Show, Eq)
 
 unSet :: Set ε -> HashSet.HashSet ε
-unSet (Set s) = s
+unSet (Set u) = u
 {-# INLINE unSet #-}
 
 instance Foldable Set where
-    foldr f start (Set s) = HashSet.foldr f start s
-    null (Set s) = HashSet.null s
-    length (Set s) = HashSet.size s
+    foldr f utart (Set u) = HashSet.foldr f utart u
+    null (Set u) = HashSet.null u
+    length (Set u) = HashSet.size u
 
 instance Key ε => Semigroup (Set ε) where
-    (<>) (Set s1) (Set s2) = Set (HashSet.union s1 s2)
+    (<>) (Set u1) (Set u2) = Set (HashSet.union u1 u2)
 
 instance Key ε => Monoid (Set ε) where
     mempty = emptySet
@@ -187,10 +191,10 @@ singletonSet :: Key ε => ε -> Set ε
 singletonSet e = Set (HashSet.singleton e)
 
 insertElement :: Key ε => ε -> Set ε -> Set ε
-insertElement e (Set s) = Set (HashSet.insert e s)
+insertElement e (Set u) = Set (HashSet.insert e u)
 
 containsElement :: Key ε => ε -> Set ε -> Bool
-containsElement e (Set s) = HashSet.member e s
+containsElement e (Set u) = HashSet.member e u
 
 class Collection α where
     type E α :: *
@@ -204,15 +208,15 @@ instance Key ε => Collection (Set ε) where
 
 instance Key ε => Collection (HashSet.HashSet ε) where
     type E (HashSet.HashSet ε) = ε
-    fromSet (Set s) = s
-    intoSet s = Set s
+    fromSet (Set u) = u
+    intoSet u = Set u
 
 instance Key ε => Collection (OrdSet.Set ε) where
     type E (OrdSet.Set ε) = ε
-    fromSet (Set s) = OrdSet.fromList (HashSet.toList s)
-    intoSet o = Set (HashSet.fromList (OrdSet.toList o))
+    fromSet (Set u) = HashSet.foldr OrdSet.insert OrdSet.empty u
+    intoSet u = Set (OrdSet.foldr HashSet.insert HashSet.empty u)
 
 instance Key ε => Collection [ε] where
     type E [ε] = ε
-    fromSet (Set s) = OrdSet.toList (HashSet.foldr OrdSet.insert OrdSet.empty s)
+    fromSet (Set u) = OrdSet.toList (HashSet.foldr OrdSet.insert OrdSet.empty u)
     intoSet es = Set (HashSet.fromList es)
