@@ -211,3 +211,7 @@ instance Key ε => Collection (OrdSet.Set ε) where
     fromSet (Set s) = OrdSet.fromList (HashSet.toList s)
     intoSet o = Set (HashSet.fromList (OrdSet.toList o))
 
+instance Key ε => Collection [ε] where
+    type E [ε] = ε
+    fromSet (Set s) = HashSet.toList s
+    intoSet es = Set (HashSet.fromList es)
