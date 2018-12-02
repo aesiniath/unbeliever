@@ -164,6 +164,13 @@ instance Foldable Set where
     null (Set s) = HashSet.null s
     length (Set s) = HashSet.size s
 
+instance Key ε => Semigroup (Set ε) where
+    (<>) (Set s1) (Set s2) = Set (HashSet.union s1 s2)
+
+instance Key ε => Monoid (Set ε) where
+    mempty = emptySet
+    mappend = (<>)
+
 emptySet :: Key ε => Set ε
 emptySet = Set (HashSet.empty)
 

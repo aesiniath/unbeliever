@@ -45,8 +45,6 @@ module Core.Program.Arguments
 
 import Control.Exception.Safe (Exception(displayException))
 import Data.Hashable (Hashable)
-import Data.HashSet (HashSet)
-import qualified Data.HashSet as HashSet
 import qualified Data.List as List
 import Data.Maybe (fromMaybe)
 import Data.Text.Prettyprint.Doc (Doc, Pretty(..), nest, fillCat
@@ -518,7 +516,7 @@ isOption arg = case arg of
 
 parsePossibleOptions
     :: Maybe LongName
-    -> HashSet LongName
+    -> Set LongName
     -> Map ShortName LongName
     -> [String]
     -> Either InvalidCommandLine [(LongName,ParameterValue)]
@@ -542,7 +540,7 @@ parsePossibleOptions mode valids shorts args = mapM f args
             Just (_,remainder) -> Value remainder
             Nothing -> Empty
       in
-        if HashSet.member candidate valids
+        if containsElement candidate valids
             then Right (candidate,value')
             else Left (UnknownOption ("--" ++ name))
 
@@ -588,12 +586,12 @@ parseIndicatedCommand modes first =
 -- Ok, the f,g,h,... was silly. But hey :)
 --
 
-extractValidNames :: [Options] -> HashSet LongName
+extractValidNames :: [Options] -> Set LongName
 extractValidNames options =
-    foldr f HashSet.empty options
+    foldr f emptySet options
   where
-    f :: Options -> HashSet LongName -> HashSet LongName
-    f (Option longname _ _ _) valids = HashSet.insert longname valids
+    f :: Options -> Set LongName -> Set LongName
+    f (Option longname _ _ _) valids = insertElement longname valids
     f _ valids = valids
 
 extractShortNames :: [Options] -> Map ShortName LongName
@@ -646,9 +644,9 @@ splitCommandLine args =
 -- Environment variable handling
 --
 
-extractValidEnvironments :: Maybe LongName -> Config -> HashSet LongName
+extractValidEnvironments :: Maybe LongName -> Config -> Set LongName
 extractValidEnvironments mode config = case config of
-    Blank -> HashSet.empty
+    Blank -> emptySet
 
     Simple options -> extractVariableNames options
 
@@ -671,12 +669,12 @@ extractLocalVariables commands mode =
     k _ acc = acc
 
 
-extractVariableNames :: [Options] -> HashSet LongName
+extractVariableNames :: [Options] -> Set LongName
 extractVariableNames options =
-    foldr f HashSet.empty options
+    foldr f emptySet options
   where
-    f :: Options -> HashSet LongName -> HashSet LongName
-    f (Variable longname _) valids = HashSet.insert longname valids
+    f :: Options -> Set LongName -> Set LongName
+    f (Variable longname _) valids = insertElement longname valids
     f _ valids = valids
 
 
