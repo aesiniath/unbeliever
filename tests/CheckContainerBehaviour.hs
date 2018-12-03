@@ -52,3 +52,10 @@ checkContainerBehaviour = do
         it "converts to list in Ord order" $ do
             let p = intoMap introduction
             fromMap p `shouldBe` [(1,"hello"),(2," "),(3,"world")]
+
+        it "updated values supercede existing values" $ do
+            let p = intoMap introduction
+            let p' = insertKeyValue 2 "&" p
+            containsKey 2 p' `shouldBe` True
+            lookupKeyValue 2 p' `shouldBe` (Just "&")
+

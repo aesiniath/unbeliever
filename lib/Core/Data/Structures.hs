@@ -3,6 +3,11 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+{-|
+Convenience wrappers around dictionary and collection types and tools
+facilitating conversion between them and various map and set types found
+in the Haskell ecosystem.
+-}
 module Core.Data.Structures
 (
       {-* Map type -}
@@ -88,18 +93,36 @@ instance Foldable (Map κ) where
     null (Map u) = HashMap.null u
     length (Map u) = HashMap.size u
 
+{-|
+A dictionary with no key/value mappings.
+-}
 emptyMap :: Map κ ν
 emptyMap = Map (HashMap.empty)
 
+{-|
+Construct a dictionary with only a single key/value pair.
+-}
 singletonMap :: Key κ => κ -> ν -> Map κ ν
 singletonMap k v = Map (HashMap.singleton k v)
 
+{-|
+Insert a key/value pair into the dictionary. If the key is already present
+in the dictionary, the old value will be discarded and replaced with the
+value supplied here.
+-}
 insertKeyValue :: Key κ => κ -> ν -> Map κ ν -> Map κ ν
 insertKeyValue k v (Map u) = Map (HashMap.insert k v u)
 
+{-|
+If the dictionary contains the specified key, return the value associated
+with that key.
+-}
 lookupKeyValue :: Key κ => κ -> Map κ ν -> Maybe ν
 lookupKeyValue k (Map u) = HashMap.lookup k u
 
+{-|
+Does the dictionary contain the specified key?
+-}
 containsKey :: Key κ => κ -> Map κ ν -> Bool
 containsKey k (Map u) = HashMap.member k u
 
@@ -241,7 +264,7 @@ insertElement :: Key ε => ε -> Set ε -> Set ε
 insertElement e (Set u) = Set (HashSet.insert e u)
 
 {-|
-Does the 'Set' contain the specified element?
+Does the collection contain the specified element?
 -}
 containsElement :: Key ε => ε -> Set ε -> Bool
 containsElement e (Set u) = HashSet.member e u
