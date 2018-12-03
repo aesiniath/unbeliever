@@ -95,7 +95,7 @@ checkRopeBehaviour = do
             insert 0 "one" "twothree" `shouldBe` "onetwothree"
             insert 6 "three" "onetwo" `shouldBe` "onetwothree"
 
-    describe "quote QuasiQuoted string literals" $
+    describe "QuasiQuoted string literals" $
       do
         it "string literal is IsString" $ do
             [quote|Hello|] `shouldBe` ("Hello" :: String)
