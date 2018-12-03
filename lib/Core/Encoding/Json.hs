@@ -110,6 +110,7 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics
 
+import Core.Data.Structures (Map, Key, fromMap, intoMap)
 import Core.Text.Bytes (Bytes, intoBytes, fromBytes)
 import Core.Text.Rope (Rope, Textual, intoRope, fromRope)
 import Core.Text.Utilities (Render(..))
@@ -138,7 +139,7 @@ decodeFromUTF8 b =
 A JSON value.
 -}
 data JsonValue
-    = JsonObject (HashMap JsonKey JsonValue)
+    = JsonObject (Map JsonKey JsonValue)
     | JsonArray [JsonValue]
     | JsonString Rope
     | JsonNumber Scientific
@@ -174,7 +175,7 @@ intoAeson :: JsonValue -> Aeson.Value
 intoAeson value = case value of
     JsonObject xm ->
         let
-            kvs = HashMap.toList xm
+            kvs = fromMap xm
             tvs = fmap (\(k, v) -> (fromRope (coerce k), intoAeson v)) kvs
             tvm :: HashMap T.Text Aeson.Value
             tvm = HashMap.fromList tvs
@@ -197,9 +198,10 @@ intoAeson value = case value of
 -}
 newtype JsonKey
     = JsonKey Rope
-    deriving (Eq, Show, Generic, IsString)
+    deriving (Eq, Show, Generic, IsString, Ord)
 
 instance Hashable JsonKey
+instance Key JsonKey
 
 
 -- FIXME what is this instance?
@@ -218,8 +220,8 @@ fromAeson value = case value of
             tvs = HashMap.toList o
             kvs = fmap (\(k, v) -> (JsonKey (intoRope k), fromAeson v)) tvs
 
-            kvm :: HashMap JsonKey JsonValue
-            kvm = HashMap.fromList kvs
+            kvm :: Map JsonKey JsonValue
+            kvm = intoMap kvs
         in
             JsonObject kvm
 
@@ -300,7 +302,7 @@ prettyValue :: JsonValue -> Doc JsonToken
 prettyValue value = case value of
     JsonObject xm ->
         let
-            pairs = HashMap.toList xm
+            pairs = fromMap xm
             entries = fmap (\(k, v) -> (prettyKey k) <> annotate SymbolToken ":" <+> clear v (prettyValue v)) pairs
 
             clear v doc = case v of

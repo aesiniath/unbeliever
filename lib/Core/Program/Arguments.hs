@@ -45,10 +45,6 @@ module Core.Program.Arguments
 
 import Control.Exception.Safe (Exception(displayException))
 import Data.Hashable (Hashable)
-import Data.HashMap.Strict (HashMap)
-import qualified Data.HashMap.Strict as HashMap
-import Data.HashSet (HashSet)
-import qualified Data.HashSet as HashSet
 import qualified Data.List as List
 import Data.Maybe (fromMaybe)
 import Data.Text.Prettyprint.Doc (Doc, Pretty(..), nest, fillCat
@@ -57,6 +53,7 @@ import Data.Text.Prettyprint.Doc.Util (reflow)
 import Data.String
 import System.Environment (getProgName)
 
+import Core.Data.Structures
 import Core.System.Base
 import Core.Text.Rope
 import Core.Text.Utilities
@@ -83,7 +80,9 @@ supplied parameters after the program has initialized.
 Turn on __@OverloadedStrings@__ when specifying configurations, obviously.
 -}
 newtype LongName = LongName String
-    deriving (Show, IsString, Eq, Hashable)
+    deriving (Show, IsString, Eq, Hashable, Ord)
+
+instance Key LongName
 
 instance Pretty LongName where
     pretty (LongName name) = pretty name
@@ -372,8 +371,8 @@ would be parsed as:
 data Parameters
     = Parameters {
           commandNameFrom :: Maybe LongName
-        , parameterValuesFrom :: HashMap LongName ParameterValue
-        , environmentValuesFrom :: HashMap LongName ParameterValue
+        , parameterValuesFrom :: Map LongName ParameterValue
+        , environmentValuesFrom :: Map LongName ParameterValue
     } deriving (Show, Eq)
 
 
@@ -480,11 +479,11 @@ calls 'configure' with a default @Config@ when initializing).
 -}
 parseCommandLine :: Config -> [String] -> Either InvalidCommandLine Parameters
 parseCommandLine config argv = case config of
-    Blank -> return (Parameters Nothing HashMap.empty HashMap.empty)
+    Blank -> return (Parameters Nothing emptyMap emptyMap)
 
     Simple options -> do
         params <- extractor Nothing options argv
-        return (Parameters Nothing params HashMap.empty)
+        return (Parameters Nothing params emptyMap)
 
     Complex commands ->
       let
@@ -495,10 +494,10 @@ parseCommandLine config argv = case config of
         params1 <- extractor Nothing globalOptions possibles
         (mode,localOptions) <- parseIndicatedCommand modes first
         params2 <- extractor (Just mode) localOptions remainingArgs
-        return (Parameters (Just mode) (HashMap.union params1 params2) HashMap.empty)
+        return (Parameters (Just mode) ((<>) params1 params2) emptyMap)
   where
 
-    extractor :: Maybe LongName -> [Options] -> [String] -> Either InvalidCommandLine (HashMap LongName ParameterValue)
+    extractor :: Maybe LongName -> [Options] -> [String] -> Either InvalidCommandLine (Map LongName ParameterValue)
     extractor mode options args =
       let
         (possibles,arguments) = List.partition isOption args
@@ -508,7 +507,7 @@ parseCommandLine config argv = case config of
       in do
         list1 <- parsePossibleOptions mode valids shorts possibles
         list2 <- parseRequiredArguments needed arguments
-        return (HashMap.union (HashMap.fromList list1) (HashMap.fromList list2))
+        return ((<>) (intoMap list1) (intoMap list2))
 
 isOption :: String -> Bool
 isOption arg = case arg of
@@ -517,8 +516,8 @@ isOption arg = case arg of
 
 parsePossibleOptions
     :: Maybe LongName
-    -> HashSet LongName
-    -> HashMap ShortName LongName
+    -> Set LongName
+    -> Map ShortName LongName
     -> [String]
     -> Either InvalidCommandLine [(LongName,ParameterValue)]
 parsePossibleOptions mode valids shorts args = mapM f args
@@ -541,13 +540,13 @@ parsePossibleOptions mode valids shorts args = mapM f args
             Just (_,remainder) -> Value remainder
             Nothing -> Empty
       in
-        if HashSet.member candidate valids
+        if containsElement candidate valids
             then Right (candidate,value')
             else Left (UnknownOption ("--" ++ name))
 
     considerShortOption :: Char -> Either InvalidCommandLine (LongName,ParameterValue)
     considerShortOption c =
-        case HashMap.lookup c shorts of
+        case lookupKeyValue c shorts of
             Just name -> Right (name,Empty)
             Nothing -> Left (UnknownOption ['-',c])
 
@@ -572,14 +571,14 @@ parseRequiredArguments needed argv = iter needed argv
             Right list -> Right ((name,Value arg):list)
 
 parseIndicatedCommand
-    :: HashMap LongName [Options]
+    :: Map LongName [Options]
     -> String
     -> Either InvalidCommandLine (LongName,[Options])
 parseIndicatedCommand modes first =
   let
     candidate = LongName first
   in
-    case HashMap.lookup candidate modes of
+    case lookupKeyValue candidate modes of
         Just options -> Right (candidate,options)
         Nothing -> Left (UnknownCommand first)
 
@@ -587,21 +586,21 @@ parseIndicatedCommand modes first =
 -- Ok, the f,g,h,... was silly. But hey :)
 --
 
-extractValidNames :: [Options] -> HashSet LongName
+extractValidNames :: [Options] -> Set LongName
 extractValidNames options =
-    foldr f HashSet.empty options
+    foldr f emptySet options
   where
-    f :: Options -> HashSet LongName -> HashSet LongName
-    f (Option longname _ _ _) valids = HashSet.insert longname valids
+    f :: Options -> Set LongName -> Set LongName
+    f (Option longname _ _ _) valids = insertElement longname valids
     f _ valids = valids
 
-extractShortNames :: [Options] -> HashMap ShortName LongName
+extractShortNames :: [Options] -> Map ShortName LongName
 extractShortNames options =
-    foldr g HashMap.empty options
+    foldr g emptyMap options
   where
-    g :: Options -> HashMap ShortName LongName -> HashMap ShortName LongName
+    g :: Options -> Map ShortName LongName -> Map ShortName LongName
     g (Option longname shortname _ _) shorts = case shortname of
-        Just shortchar -> HashMap.insert shortchar longname shorts
+        Just shortchar -> insertKeyValue shortchar longname shorts
         Nothing -> shorts
     g _ shorts = shorts
 
@@ -621,12 +620,12 @@ extractGlobalOptions commands =
     j (Global options) valids = options ++ valids
     j _ valids = valids
 
-extractValidModes :: [Commands] -> HashMap LongName [Options]
+extractValidModes :: [Commands] -> Map LongName [Options]
 extractValidModes commands =
-    foldr k HashMap.empty commands
+    foldr k emptyMap commands
   where
-    k :: Commands -> HashMap LongName [Options] -> HashMap LongName [Options]
-    k (Command longname _ options) modes = HashMap.insert longname options modes
+    k :: Commands -> Map LongName [Options] -> Map LongName [Options]
+    k (Command longname _ options) modes = insertKeyValue longname options modes
     k _ modes = modes
 
 splitCommandLine :: [String] -> Either InvalidCommandLine ([String], String, [String])
@@ -645,9 +644,9 @@ splitCommandLine args =
 -- Environment variable handling
 --
 
-extractValidEnvironments :: Maybe LongName -> Config -> HashSet LongName
+extractValidEnvironments :: Maybe LongName -> Config -> Set LongName
 extractValidEnvironments mode config = case config of
-    Blank -> HashSet.empty
+    Blank -> emptySet
 
     Simple options -> extractVariableNames options
 
@@ -670,12 +669,12 @@ extractLocalVariables commands mode =
     k _ acc = acc
 
 
-extractVariableNames :: [Options] -> HashSet LongName
+extractVariableNames :: [Options] -> Set LongName
 extractVariableNames options =
-    foldr f HashSet.empty options
+    foldr f emptySet options
   where
-    f :: Options -> HashSet LongName -> HashSet LongName
-    f (Variable longname _) valids = HashSet.insert longname valids
+    f :: Options -> Set LongName -> Set LongName
+    f (Variable longname _) valids = insertElement longname valids
     f _ valids = valids
 
 
@@ -727,7 +726,7 @@ buildUsage config mode = case config of
 
             Just longname ->
               let
-                (oL,aL) = case HashMap.lookup longname modes of
+                (oL,aL) = case lookupKeyValue longname modes of
                     Just localOptions -> partitionParameters localOptions
                     Nothing -> error "Illegal State"
               in
@@ -773,8 +772,8 @@ buildUsage config mode = case config of
     argumentsHeading as = if length as > 0 then hardline <> "Required arguments:" <> hardline else emptyDoc
 
     -- there is a corner case of complex config with no commands
-    commandSummary modes = if HashMap.size modes > 0 then softline <> commandName else emptyDoc
-    commandHeading modes = if HashMap.size modes > 0 then hardline <> "Available commands:" <> hardline else emptyDoc
+    commandSummary modes = if length modes > 0 then softline <> commandName else emptyDoc
+    commandHeading modes = if length modes > 0 then hardline <> "Available commands:" <> hardline else emptyDoc
 
     f :: Options -> ([Options],[Options]) -> ([Options],[Options])
     f o@(Option _ _ _ _) (opts,args) = (o:opts,args)

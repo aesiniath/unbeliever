@@ -16,6 +16,7 @@ import qualified Data.HashMap.Strict as HashMap
 import Data.Text.Prettyprint.Doc (layoutPretty, defaultLayoutOptions, Pretty(..))
 import Data.Text.Prettyprint.Doc.Render.Text (renderStrict)
 
+import Core.Data
 import Core.Text
 import Core.Encoding
 import Core.Program
@@ -28,9 +29,9 @@ j = JsonObject
         [ (k, v)
         , (JsonKey "song", JsonString "Thriller")
         , ("other", "A very long name for the \"shadow of the moon\".")
-        , (JsonKey "four", JsonObject (HashMap.fromList
+        , (JsonKey "four", JsonObject
                 [ (JsonKey "n1", r)
-                ]))
+                ])
         ]
 
 b = intoBytes (S.pack "{\"cost\": 4500}")

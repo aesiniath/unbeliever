@@ -161,6 +161,9 @@ instance Eq Rope where
       where
         stream x = foldMap S.unpack x
 
+instance Ord Rope where
+    compare (Rope x1) (Rope x2) = compare x1 x2
+
 instance Pretty Rope where
     pretty (Rope x) = foldr ((<>) . pretty . S.toText) emptyDoc x 
 

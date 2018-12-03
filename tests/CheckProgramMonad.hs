@@ -6,6 +6,7 @@ module CheckProgramMonad where
 
 import Test.Hspec hiding (context)
 
+import Core.Data.Structures
 import Core.Program.Arguments
 import Core.Program.Execute
 import Core.Program.Unlift
@@ -53,7 +54,7 @@ checkProgramMonad = do
                 liftIO $ do
                     -- this assumes that hspec isn't passing any
                     -- command-line arguments through to us.
-                    params `shouldBe` (Parameters Nothing [] [])
+                    params `shouldBe` (Parameters Nothing emptyMap emptyMap)
 
         -- not strictly necessary but sets up next spec item
         it "sub-programs can be run" $ do

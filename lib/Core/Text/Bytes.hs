@@ -59,7 +59,9 @@ A block of data in binary form.
 -}
 data Bytes
     = StrictBytes B.ByteString
-    deriving (Show, Eq)
+    deriving (Show, Eq, Ord, Generic)
+
+instance Hashable Bytes
 
 {-|
 Conversion to and from various types containing binary data into our

@@ -4,6 +4,7 @@ import Test.Hspec
 
 import CheckRopeBehaviour
 import CheckBytesBehaviour
+import CheckContainerBehaviour
 import CheckJsonWrapper
 import CheckArgumentsParsing
 import CheckProgramMonad
@@ -17,6 +18,7 @@ suite :: Spec
 suite = do
     checkRopeBehaviour
     checkBytesBehaviour
+    checkContainerBehaviour
     checkJsonWrapper
     checkArgumentsParsing
     checkProgramMonad

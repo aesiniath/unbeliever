@@ -104,10 +104,10 @@ import Control.Monad.Reader.Class (MonadReader(ask))
 import Control.Monad.Trans.Reader (ReaderT)
 import qualified Data.ByteString as B (hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
-import qualified Data.HashMap.Strict as HashMap
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
 import System.Exit (ExitCode(..))
 
+import Core.Data.Structures
 import Core.Text.Bytes
 import Core.Text.Rope
 import Core.Text.Utilities
@@ -512,7 +512,7 @@ has already been identified. This returns the value for that parameter.
 -- this could be fixed with a much stronger Config type, potentially.
 lookupArgument :: LongName -> Parameters -> Maybe String
 lookupArgument name params =
-    case HashMap.lookup name (parameterValuesFrom params) of
+    case lookupKeyValue name (parameterValuesFrom params) of
         Nothing -> Nothing
         Just argument -> case argument of
             Empty -> error "Invalid State"
@@ -525,7 +525,7 @@ was.
 -- Should this be more severe if it encounters Empty?
 lookupOptionValue :: LongName -> Parameters -> Maybe String
 lookupOptionValue name params =
-    case HashMap.lookup name (parameterValuesFrom params) of
+    case lookupKeyValue name (parameterValuesFrom params) of
         Nothing -> Nothing
         Just argument -> case argument of
             Empty -> Nothing
@@ -538,7 +538,7 @@ Returns @Just True@ if the option is present, and @Nothing@ if it is not.
 -- arguments.
 lookupOptionFlag :: LongName -> Parameters -> Maybe Bool
 lookupOptionFlag name params =
-    case HashMap.lookup name (parameterValuesFrom params) of
+    case lookupKeyValue name (parameterValuesFrom params) of
         Nothing -> Nothing
         Just argument -> case argument of
             _ -> Just True        -- nom, nom

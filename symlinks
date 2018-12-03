@@ -1,7 +1,5 @@
 #!/bin/sh
 
-set -x
-
 ROOTDIR=`stack path --local-install-root`
 DISTDIR=`stack path --dist-dir`
 
@@ -15,6 +13,7 @@ link () {
 	if [ -f ./${NAME} ] ; then
 		exit 1
 	fi
+
 	ln -s ${ORIGIN} ${NAME}
 }
 
