@@ -5,14 +5,13 @@
 
 {-|
 Convenience wrappers around dictionary and collection types and tools
-facilitating conversion between them and various map and set types found
-in the Haskell ecosystem.
+facilitating conversion between them and various map and set types in
+common use in the Haskell ecosystem.
 -}
 module Core.Data.Structures
 (
       {-* Map type -}
       Map
-    , Key
     , emptyMap
     , singletonMap
     , insertKeyValue
@@ -20,7 +19,7 @@ module Core.Data.Structures
     , lookupKeyValue
 
       {-* Conversions -}
-    , Dictionary(fromMap, intoMap)
+    , Dictionary(K, V, fromMap, intoMap)
 
       {-* Set type -}
     , Set
@@ -28,9 +27,12 @@ module Core.Data.Structures
     , singletonSet
     , insertElement
     , containsElement
-    , Collection(fromSet, intoSet)
+
+      {-* Conversions -}
+    , Collection(E, fromSet, intoSet)
 
       {-* Internals -}
+    , Key
     , unMap
     , unSet
 )
@@ -78,6 +80,17 @@ unMap :: Map κ ν -> HashMap.HashMap κ ν
 unMap (Map u) = u
 {-# INLINE unMap #-}
 
+{-|
+Types that can be used as keys in dictionaries or elements in collections.
+
+To be an instance of 'Key' a type must implement both 'Hashable' and 'Ord'.
+This requirement means we can subsequently offer easy conversion
+between different the dictionary and collection types you might encounter
+when interacting with other libraries.
+
+Instances for this library's 'Rope' and 'Bytes' are provided here, along
+with many other common types.
+-}
 class (Hashable κ, Ord κ) => Key κ
 
 instance Key String
