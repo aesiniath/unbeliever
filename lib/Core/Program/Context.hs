@@ -18,6 +18,7 @@ module Core.Program.Context
       , Message(..)
       , Verbosity(..)
       , Program(..)
+      , unProgram
       , getContext
       , subProgram
       , getConsoleWidth
@@ -161,6 +162,9 @@ from test suites and example snippets.
 -}
 newtype Program τ α = Program (ReaderT (Context τ) IO α)
     deriving (Functor, Applicative, Monad, MonadIO, MonadReader (Context τ))
+
+unProgram :: Program τ α -> ReaderT (Context τ) IO α
+unProgram (Program r) = r
 
 {-|
 Get the internal @Context@ of the running @Program@. There is ordinarily no
