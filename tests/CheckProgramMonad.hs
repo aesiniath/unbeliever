@@ -79,9 +79,9 @@ checkProgramMonad = do
             -- `execute` to `subProgram` this will have to adapt.
             Safe.catch
                 (subProgram context (throw Boom))
-                (\(e :: Boom) -> return ())
+                (\(_ :: Boom) -> return ())
 
         it "MonadThrow and MonadCatch behave" $ do
-            context <- configure None blank
+            context <- configure "0.1" None blank
             subProgram context $ do
-                Safe.catch (Safe.throw Boom) (\(e :: Boom) -> return ())
+                Safe.catch (Safe.throw Boom) (\(_ :: Boom) -> return ())

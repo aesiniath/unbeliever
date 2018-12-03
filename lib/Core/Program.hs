@@ -22,6 +22,7 @@ and more.
 -}
         module Core.Program.Execute
       , module Core.Program.Unlift
+      , module Core.Program.Metadata
 
         {-* Command-line argument parsing -}
 {-|
@@ -38,7 +39,8 @@ Facilities for noting events through your program and doing debugging.
     ) where
 
 import Core.Program.Arguments
-import Core.Program.Logging
 import Core.Program.Execute
+import Core.Program.Logging
+import Core.Program.Metadata
 import Core.Program.Unlift
 

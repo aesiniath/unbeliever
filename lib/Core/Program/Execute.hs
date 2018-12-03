@@ -81,8 +81,6 @@ module Core.Program.Execute
       , Context
       , None(..)
       , isNone
-      , Version
-      , fromPackage
       , unProgram
       , unThread
       , invalid

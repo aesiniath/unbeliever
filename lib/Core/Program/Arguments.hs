@@ -60,6 +60,7 @@ import System.Environment (getProgName)
 import Core.System.Base
 import Core.Text.Rope
 import Core.Text.Utilities
+import Core.Program.Metadata
 
 {-|
 Single letter "short" options (omitting the "@-@" prefix, obviously).
@@ -164,9 +165,6 @@ Available options:
   -v, --verbose  Turn on event tracing. By default the logging stream will go
                  to standard output on your terminal.
       --debug    Turn on debug level logging. Implies --verbose.
-      --logging=WHERE
-                 Change where log messages are sent. Valid values are
-                 \"console\", \"file:\/path\/to\/filename.log\", and \"syslog\".
 
 Required arguments:
 
@@ -387,10 +385,6 @@ baselineOptions =
     |]
     , Option "debug" Nothing Empty [quote|
         Turn on debug level logging. Implies --verbose.
-    |]
-    , Option "logging" Nothing (Value "WHERE") [quote|
-        Change where log messages are sent. Valid values are "console",
-        "file:/path/to/filename.log", and "syslog".
     |]
     ]
 
@@ -839,7 +833,10 @@ buildUsage config mode = case config of
         fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
     h _ acc = acc
 
-buildVersion :: String -> Doc ann
+buildVersion :: Version -> Doc ann
 buildVersion version =
-    pretty programName <+> "version" <+> pretty version <> hardline
+    pretty (projectNameFrom version)
+    <+> "v"
+    <> pretty (versionNumberFrom version)
+    <> hardline
 

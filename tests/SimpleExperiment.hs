@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
@@ -14,7 +15,6 @@ import qualified Data.ByteString.Char8 as S
 import qualified Data.HashMap.Strict as HashMap
 import Data.Text.Prettyprint.Doc (layoutPretty, defaultLayoutOptions, Pretty(..))
 import Data.Text.Prettyprint.Doc.Render.Text (renderStrict)
-import Paths_unbeliever (version)
 
 import Core.Text
 import Core.Encoding
@@ -92,9 +92,12 @@ program = do
     event "Brr! It's cold"
     terminate 0
 
+version :: Version
+version = $(fromPackage)
+
 main :: IO ()
 main = do
-    context <- configure (fromPackage version) None (simple
+    context <- configure version None (simple
         [ Option "quiet" (Just 'q') Empty [quote|
             Supress normal output.
           |]
