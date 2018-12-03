@@ -48,6 +48,24 @@ import Core.Text.Bytes (Bytes)
 -- underlying structure [from unordered-containers] wrapped in the Thing
 -- newtype. Leaves p for our Map and s for our Set in tests.
 
+{-|
+A mapping from keys to values.
+
+The keys in a map needs to be an instance of the 'Key' typeclass.
+Instances are already provided for many common element types.
+
+'Map' implements 'Foldable', 'Monoid', etc so many common operations such
+as 'foldr' to reduce the structure with a right fold, 'length' to get the
+number of key/value pairs in the dictionary, 'null' to test whether the
+map is empty, and ('<>') to join two maps together are available.
+
+To convert to other dictionary types see 'fromMap' below.
+
+(this is a thin wrapper around __unordered-containers__'s
+'Data.HashMap.Strict.HashMap', but if you use the conversion functions to
+extract the key/value pairs in a list the list will be ordered according to
+the keys' 'Ord' instance)
+-}
 newtype Map κ ν = Map (HashMap.HashMap κ ν)
     deriving (Show, Eq)
 
@@ -57,9 +75,9 @@ unMap (Map u) = u
 
 class (Hashable κ, Ord κ) => Key κ
 
-instance Key String 
-instance Key Rope 
-instance Key Bytes 
+instance Key String
+instance Key Rope
+instance Key Bytes
 instance Key T.Text
 instance Key U.Text
 instance Key Char
@@ -164,7 +182,24 @@ instance Key κ => Dictionary [(κ,ν)] where
     fromMap (Map u) = OrdMap.toList (HashMap.foldrWithKey OrdMap.insert OrdMap.empty u)
     intoMap kvs = Map (HashMap.fromList kvs)
 
+{-|
+A set of unique elements.
 
+The element type needs to be an instance of the same 'Key' typeclass that
+is used for keys in the 'Map' type above. Instances are already provided
+for many common element types.
+
+'Set' implements 'Foldable', 'Monoid', etc so many common operations such
+as 'foldr' to walk the elements and reduce them, 'length' to return the
+size of the collection, 'null' to test whether is empty, and ('<>') to take
+the union of two sets are available.
+
+To convert to other collection types see 'fromSet' below.
+
+(this is a thin wrapper around __unordered-containers__'s
+'Data.HashSet.HashSet', but if you use the conversion functions to extract
+a list the list will be ordered according to the elements' 'Ord' instance)
+-}
 newtype Set ε = Set (HashSet.HashSet ε)
     deriving (Show, Eq)
 
@@ -173,7 +208,7 @@ unSet (Set u) = u
 {-# INLINE unSet #-}
 
 instance Foldable Set where
-    foldr f utart (Set u) = HashSet.foldr f utart u
+    foldr f start (Set u) = HashSet.foldr f start u
     null (Set u) = HashSet.null u
     length (Set u) = HashSet.size u
 
@@ -184,18 +219,46 @@ instance Key ε => Monoid (Set ε) where
     mempty = emptySet
     mappend = (<>)
 
+{-|
+An empty collection. This is used for example as an inital value when
+building up a 'Set' using a fold.
+-}
 emptySet :: Key ε => Set ε
 emptySet = Set (HashSet.empty)
 
+{-|
+Construct a collection comprising only the supplied element.
+-}
 singletonSet :: Key ε => ε -> Set ε
 singletonSet e = Set (HashSet.singleton e)
 
+{-|
+Insert a new element into the collection. Since the 'Set' type does not
+allow duplicates, inserting an element already in the collection has no
+effect.
+-}
 insertElement :: Key ε => ε -> Set ε -> Set ε
 insertElement e (Set u) = Set (HashSet.insert e u)
 
+{-|
+Does the 'Set' contain the specified element?
+-}
 containsElement :: Key ε => ε -> Set ε -> Bool
 containsElement e (Set u) = HashSet.member e u
 
+{-|
+Types that represent collections of elements that can be converted to
+'Set's.  Haskell's ecosystem has several such. This typeclass provides an
+adaptor to convert between them.
+
+This typeclas also provides a mechanism to serialize a 'Set' out to a
+Haskell list. The list will be ordered according to the 'Ord' instance of
+the element type.
+
+Instances are provided for __containers__'s 'Data.Set.Set' and
+__unordered-containers__'s 'Data.HashSet.HashSet' in addition to the
+instance for @[ε]@ lists described above.
+-}
 class Collection α where
     type E α :: *
     fromSet :: Set (E α) -> α
@@ -206,11 +269,13 @@ instance Key ε => Collection (Set ε) where
     fromSet = id
     intoSet = id
 
+{-| from "Data.HashSet" -}
 instance Key ε => Collection (HashSet.HashSet ε) where
     type E (HashSet.HashSet ε) = ε
     fromSet (Set u) = u
     intoSet u = Set u
 
+{-| from "Data.Set" -}
 instance Key ε => Collection (OrdSet.Set ε) where
     type E (OrdSet.Set ε) = ε
     fromSet (Set u) = HashSet.foldr OrdSet.insert OrdSet.empty u

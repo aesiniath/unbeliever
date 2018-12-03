@@ -3,7 +3,6 @@
 
 module CheckContainerBehaviour where
 
-import qualified Data.List as List
 import Test.Hspec
 
 import Core.Data.Structures
