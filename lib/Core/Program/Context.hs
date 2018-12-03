@@ -5,6 +5,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_HADDOCK hide #-}
 
@@ -196,9 +197,21 @@ subProgram context (Program r) = do
 instance MonadThrow (Program τ) where
     throwM = liftIO . Safe.throw
 
-instance MonadCatch (Program τ) where
-    catch = Safe.catch
+unHandler :: (ε -> Program τ α) -> (ε -> ReaderT (Context τ) IO α)
+unHandler = fmap unProgram
 
+instance MonadCatch (Program τ) where
+    catch :: Exception ε => (Program τ) α -> (ε -> (Program τ) α) -> (Program τ) α
+    catch program handler =
+      let
+        r = unProgram program
+        h = unHandler handler
+      in do
+        context <- ask
+        liftIO $ do
+            Safe.catch
+                (runReaderT r context)
+                (\e -> runReaderT (h e) context)
 
 {-|
 Initialize the programs's execution context. This takes care of various
