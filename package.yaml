@@ -112,11 +112,12 @@ tests:
      - tests
     main: TestSuite.hs
     other-modules:
-     - CheckRopeBehaviour
-     - CheckBytesBehaviour
-     - CheckJsonWrapper
      - CheckArgumentsParsing
+     - CheckBytesBehaviour
+     - CheckContainerBehaviour
+     - CheckJsonWrapper
      - CheckProgramMonad
+     - CheckRopeBehaviour
 
 benchmarks:
   performance:

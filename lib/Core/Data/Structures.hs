@@ -155,13 +155,13 @@ instance Key κ => Dictionary (HashMap.HashMap κ ν) where
 instance Key κ => Dictionary (OrdMap.Map κ ν) where
     type K (OrdMap.Map κ ν) = κ
     type V (OrdMap.Map κ ν) = ν
-    fromMap (Map u) = OrdMap.fromList (HashMap.toList u)
-    intoMap u = Map (HashMap.fromList (OrdMap.toList u))
+    fromMap (Map u) = HashMap.foldrWithKey OrdMap.insert OrdMap.empty u
+    intoMap o = Map (OrdMap.foldrWithKey HashMap.insert HashMap.empty o)
 
 instance Key κ => Dictionary [(κ,ν)] where
     type K [(κ,ν)] = κ
     type V [(κ,ν)] = ν
-    fromMap (Map u) = HashMap.toList u
+    fromMap (Map u) = OrdMap.toList (HashMap.foldrWithKey OrdMap.insert OrdMap.empty u)
     intoMap kvs = Map (HashMap.fromList kvs)
 
 
