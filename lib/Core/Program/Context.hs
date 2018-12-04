@@ -4,12 +4,14 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_HADDOCK hide #-}
 
 -- This is an Internal module, hidden from Haddock
 module Core.Program.Context
-    ( 
+    (
         Context(..)
       , None(..)
       , isNone
@@ -17,6 +19,7 @@ module Core.Program.Context
       , Message(..)
       , Verbosity(..)
       , Program(..)
+      , unProgram
       , getContext
       , subProgram
       , getConsoleWidth
@@ -27,8 +30,8 @@ import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
 import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
 import Control.Exception.Safe (displayException)
-import qualified Control.Exception.Safe as Safe (throw)
-import Control.Monad.Catch (MonadThrow(throwM))
+import qualified Control.Exception.Safe as Safe (throw, catch)
+import Control.Monad.Catch (MonadThrow(throwM), MonadCatch(catch))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader.Class (MonadReader(..))
 import Control.Monad.Trans.Reader (ReaderT(..))
@@ -40,7 +43,7 @@ import System.Environment (getArgs, getProgName, lookupEnv)
 import System.Exit (ExitCode(..), exitWith)
 
 import Core.Data.Structures
-import Core.System.Base
+import Core.System.Base hiding (throw, catch)
 import Core.Text.Rope
 import Core.Program.Arguments
 import Core.Program.Metadata
@@ -160,6 +163,9 @@ from test suites and example snippets.
 newtype Program τ α = Program (ReaderT (Context τ) IO α)
     deriving (Functor, Applicative, Monad, MonadIO, MonadReader (Context τ))
 
+unProgram :: Program τ α -> ReaderT (Context τ) IO α
+unProgram (Program r) = r
+
 {-|
 Get the internal @Context@ of the running @Program@. There is ordinarily no
 reason to use this; to access your top-level application data @τ@ within
@@ -190,6 +196,21 @@ subProgram context (Program r) = do
 instance MonadThrow (Program τ) where
     throwM = liftIO . Safe.throw
 
+unHandler :: (ε -> Program τ α) -> (ε -> ReaderT (Context τ) IO α)
+unHandler = fmap unProgram
+
+instance MonadCatch (Program τ) where
+    catch :: Exception ε => (Program τ) α -> (ε -> (Program τ) α) -> (Program τ) α
+    catch program handler =
+      let
+        r = unProgram program
+        h = unHandler handler
+      in do
+        context <- ask
+        liftIO $ do
+            Safe.catch
+                (runReaderT r context)
+                (\e -> runReaderT (h e) context)
 
 {-|
 Initialize the programs's execution context. This takes care of various

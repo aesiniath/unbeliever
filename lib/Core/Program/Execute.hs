@@ -101,7 +101,6 @@ import Control.Monad (when, forever)
 import Control.Monad.Catch (Handler(..))
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Reader.Class (MonadReader(ask))
-import Control.Monad.Trans.Reader (ReaderT)
 import qualified Data.ByteString as B (hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
@@ -116,10 +115,6 @@ import Core.Program.Context
 import Core.Program.Logging
 import Core.Program.Signal
 import Core.Program.Arguments
-
-unProgram :: Program τ α -> ReaderT (Context τ) IO α
-unProgram (Program r) = r
-
 
 -- execute actual "main"
 executeAction :: Context τ -> Program τ α -> IO ()
