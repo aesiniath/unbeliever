@@ -12,7 +12,7 @@ long-running daemons. It provides the following:
   - setting up what command-line parameters your program expects in a
     declarative manner and easily looking up options and arguments at
     runtime;
-  - a mechansim for plumbing top-level application state throughout a
+  - a mechanism for plumbing top-level application state throughout a
     program including support for updating that state;
   - support for extracting metadata from the project's _.cabal_ file for
     use in your program should you need it, for example for use in
@@ -25,13 +25,13 @@ long-running daemons. It provides the following:
   - auto-generated `--help` output that is sensitive to available terminal
     width;
   - wrappers around key/value maps and sets of elements optimized for
-    common cases and facilitiing conversion to other dictionary and
+    common cases and facilitating conversion to other dictionary and
     collection types;
   - and more!
 
 What's so opinionated about this?
 
-This project started as an exercise to record library choices, useful
+This project started as an effort to record library choices, useful
 idioms, and recommended practices for teams writing Haskell programs in a
 large corporate environment. We quickly realized that a cookbook would be
 far less helpful than a library which simply presented these opinions as a
@@ -51,7 +51,7 @@ would not be wrong. Hopefully you'll like the _colour_ of our bikeshed.
 
 Some goals:
 
-  - Be compatable with the builtin prelude from **base**.  One of the
+  - Be compatible with the builtin prelude from **base**.  One of the
     exciting things about Haskell is the degree of experimentation that
     researchers and engineers are able to do with the language itself, its
     library ecosystem, and the development tooling used to build and test
@@ -69,7 +69,7 @@ Some goals:
     top of this package, should you wish.
 
     \[We do _not_ argue that the Haskell language should never change. We'd
-    be the first ones to cheer if String was ripped out and tossed on the
+    be the first ones to cheer if `String` was ripped out and tossed on the
     dungheap of history next to VHS tapes and compters without Esc keys.
     We can fix the textbooks! But in the present tense, if the first thing
     a newcomer has to deal with is basic idioms they've been taught not
@@ -81,7 +81,7 @@ Some goals:
     library converted to the type you need to feed into the next one you
     are calling. This is common with textual types and when dealing with
     sets and maps from the various containers libraries. This library
-    choses one implementation for each of these areas and then supplies a
+    chooses one implementation for each of these areas and then supplies a
     typeclass to permit conversion from our type to the types in common use
     in other libraries.
 
