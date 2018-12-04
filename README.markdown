@@ -4,12 +4,30 @@ A library helping you write Haskell programs
 This library is for writing command-line applications, be they tools or
 long-running daemons. It provides the following:
 
-  - a Program type encapsulating internals of logging, signal
+  - a `Program` type encapsulating internals of logging, signal
     handling, and exception handling;
-  - a mechansim for plumbing application state throughout a program;
-  - setting up command-line parameters parsing,
-  - a simplified UTF-8 text handling type optimized for appending chunks
-    and then its subsequent output to a file handle.
+  - logging handlers for event tracing and application debugging carefully
+    designed so that normal output to console is not corrupted by logging
+    output or error messages;
+  - setting up what command-line parameters your program expects in a
+    declarative manner and easily looking up options and arguments at
+    runtime;
+  - a mechansim for plumbing top-level application state throughout a
+    program including support for updating that state;
+  - support for extracting metadata from the project's _.cabal_ file for
+    use in your program should you need it, for example for use in
+    `--version` output;
+  - simplified UTF-8 text handling via a `Rope` type backed by a
+    finger-tree and optimized for both conveying large passages of text and
+    appending chunks when building up texts for subsequent output to a file
+    handle, along with code facilitating conversion to other textual types;
+  - first class ANSI coloured pretty-printing support;
+  - auto-generated `--help` output that is sensitive to available terminal
+    width;
+  - wrappers around key/value maps and sets of elements optimized for
+    common cases and facilitiing conversion to other dictionary and
+    collection types;
+  - and more!
 
 What's so opinionated about this?
 
@@ -76,7 +94,7 @@ Some goals:
 
   - Provide a place to implement common application functionality. Over
     time, ideas about best practices evolve. Current approaches to
-    structuring programs include an outer layer over IO which carries the
+    structuring programs include an outer layer over `IO `which carries the
     application's state and makes it available to inner layers which can be
     more restricted or better yet pure. This library includes an
     implementation of that pattern.
