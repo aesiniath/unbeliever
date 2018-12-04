@@ -4,6 +4,7 @@
 
 module CheckProgramMonad where
 
+import qualified Control.Exception.Safe as Safe
 import Test.Hspec hiding (context)
 
 import Core.Data.Structures
@@ -77,6 +78,11 @@ checkProgramMonad = do
             -- ok, so with that established, now try **safe-exceptions**'s
             -- code. Note if we move the exception handling code from
             -- `execute` to `subProgram` this will have to adapt.
-            catch
+            Safe.catch
                 (subProgram context (throw Boom))
                 (\(_ :: Boom) -> return ())
+
+        it "MonadThrow and MonadCatch behave" $ do
+            context <- configure "0.1" None blank
+            subProgram context $ do
+                Safe.catch (Safe.throw Boom) (\(_ :: Boom) -> return ())
