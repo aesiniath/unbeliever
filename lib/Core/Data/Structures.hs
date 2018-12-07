@@ -287,7 +287,7 @@ Types that represent collections of elements that can be converted to
 'Set's.  Haskell's ecosystem has several such. This typeclass provides an
 adaptor to convert between them.
 
-This typeclas also provides a mechanism to serialize a 'Set' out to a
+This typeclass also provides a mechanism to serialize a 'Set' out to a
 Haskell list. The list will be ordered according to the 'Ord' instance of
 the element type.
 

@@ -16,7 +16,8 @@ module Core.Data
     (
         {-* Wrappers -}
 {-|
-Exposes 'Map', a wrapper around a dictionary type.
+Exposes 'Map', a wrapper around a dictionary type, and 'Set', for
+collections of elements.
 -}
         module Core.Data.Structures
     ) where

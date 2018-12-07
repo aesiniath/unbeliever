@@ -4,6 +4,9 @@ synopsis: Opinionated Haskell Interoperability
 description: |
   A library to help build command-line programs, both tools and
   longer-running daemons.
+  
+  Useful starting points are "Core.Program.Execute" and "Core.Text.Rope".
+
 stability: experimental
 license: BSD3
 author: Andrew Cowie <andrew@operationaldynamics.com>
@@ -83,8 +86,6 @@ executables:
     ghc-options: -threaded
     source-dirs: tests
     main: SimpleExperiment.hs
-    other-modules:
-     - Paths_unbeliever
     ghc-prof-options: -fprof-auto-top
 
   snippet:

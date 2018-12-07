@@ -165,7 +165,7 @@ debug label value = do
 
 {-|
 Convenience for the common case of needing to inspect the value
-of a general variable which has a Show instance
+of a general variable which has a 'Show' instance
 -}
 debugS :: Show α => Rope -> α -> Program τ ()
 debugS label value = debug label (intoRope (show value))

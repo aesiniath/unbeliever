@@ -111,7 +111,7 @@ import Core.System.Base
 This gives you a function that you can use within your lifted 'IO' actions
 to return to the 'Program' monad.
 
-The type signature of this function is a bit involved, but this example
+The type signature of this function is a bit involved, but the example below
 shows that the lambda gives you a /function/ as its argument (we recommend
 you name it @__runProgram__@ for consistency) which gives you a way to run a
 subprogram, be that a single action like writing to terminal or logging, or

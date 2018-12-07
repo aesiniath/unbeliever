@@ -98,7 +98,8 @@ main = do
 (this wraps the extensive machinery in the __Cabal__ library, notably
 'PackageDescription'. Using Template Haskell slows down compilation of this
 file, but the upside of this technique is that it avoids linking the
-Haskell build machinery into your executable, saving you about 10 MB)
+Haskell build machinery into your executable, saving you about 10 MB in the
+size of the resultant binary)
 -}
 fromPackage :: Q Exp
 fromPackage = do
