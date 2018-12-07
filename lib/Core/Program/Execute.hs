@@ -461,21 +461,14 @@ sleep seconds =
 Retrieve the values of parameters parsed from options and arguments
 supplied by the user on the command-line.
 
-The command-line parameters are returned in a 'Data.HashMap.Strict.HashMap'
-mapping from from the option or argument name to the supplied value. With
-the somewhat traditional qualified import from the __unordered-containers__
-package:
-
-@
-import qualified "Data.HashMap.Strict" as HashMap
-@
-
-You can query this map directly:
+The command-line parameters are returned in a 'Map', mapping from from the
+option or argument name to the supplied value. You can query this map
+directly:
 
 @
 program = do
     params <- 'getCommandLine'
-    let result = HashMap.'Data.HashMap.Strict.lookup' \"silence\" (paramterValuesFrom params)
+    let result = 'lookupKeyValue' \"silence\" (paramterValuesFrom params)
     case result of
         'Nothing' -> 'return' ()
         'Just' quiet = case quiet of
@@ -488,7 +481,7 @@ which is pattern matching to answer "was this option specified by the
 user?" or "what was the value of this [mandatory] argument?", and then "if
 so, did the parameter have a value?"
 
-This is available should you need to differentiate between an @Value@ and
+This is available should you need to differentiate between a @Value@ and an
 @Empty@ 'ParameterValue', but for many cases as a convenience you can use
 the 'lookupOptionFlag', 'lookupOptionValue', and 'lookupArgument' functions
 below (which are just wrappers around a code block like the example shown
