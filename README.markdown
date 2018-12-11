@@ -94,7 +94,7 @@ Some goals:
 
   - Provide a place to implement common application functionality. Over
     time, ideas about best practices evolve. Current approaches to
-    structuring programs include an outer layer over `IO `which carries the
+    structuring programs include an outer layer over `IO` which carries the
     application's state and makes it available to inner layers which can be
     more restricted or better yet pure. This library includes an
     implementation of that pattern.

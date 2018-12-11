@@ -198,14 +198,14 @@ instance Key κ => Dictionary (Map κ ν) where
     fromMap = id
     intoMap = id
 
-{-| from "Data.HashMap.Strict" -}
+{-| from "Data.HashMap.Strict" (and .Lazy) -}
 instance Key κ => Dictionary (HashMap.HashMap κ ν) where
     type K (HashMap.HashMap κ ν) = κ
     type V (HashMap.HashMap κ ν) = ν
     fromMap (Map u) = u
     intoMap u = Map u
 
-{-| from "Data.Map.Strict" -}
+{-| from "Data.Map.Strict" (and .Lazy) -}
 instance Key κ => Dictionary (OrdMap.Map κ ν) where
     type K (OrdMap.Map κ ν) = κ
     type V (OrdMap.Map κ ν) = ν
