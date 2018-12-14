@@ -94,7 +94,7 @@ import Control.Concurrent.MVar (readMVar, putMVar, modifyMVar_)
 import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.STM.TQueue (TQueue, readTQueue
     , writeTQueue, isEmptyTQueue)
-import qualified Control.Exception as Base (throwIO)
+import qualified Control.Exception as Base (throwIO, evaluate)
 import Control.Exception.Safe (SomeException, Exception(displayException))
 import qualified Control.Exception.Safe as Safe (throw, catchesAsync)
 import Control.Monad (when, forever)
@@ -105,6 +105,7 @@ import qualified Data.ByteString as B (hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
 import System.Exit (ExitCode(..))
+import System.Posix.Process (exitImmediately)
 
 import Core.Data.Structures
 import Core.Text.Bytes
@@ -157,6 +158,21 @@ escapeHandlers context = [
         subProgram context (event text)
         putMVar quit (ExitFailure 127)
 
+--
+-- Use `exitImmediately` (which otherwise we would not, as it destroys the
+-- parent process if you're in ghci{,d}) because we really need the process
+-- to go down and we're in an inconsistent state where debug or console
+-- output is no longer possible.
+--
+collapseHandlers :: [Handler IO ()]
+collapseHandlers =
+  [ Handler (\ (e :: AsyncCancelled) -> do
+                Base.throwIO e)
+  , Handler (\ (e :: SomeException) -> do
+                putStrLn "error: Output handler collapsed"
+                print e
+                exitImmediately (ExitFailure 99))
+  ]
 
 {-|
 Embelish a program with useful behaviours. See module header
@@ -185,11 +201,15 @@ executeWith context program = do
 
     -- set up standard output
     o <- async $ do
-        processStandardOutput out
+        Safe.catchesAsync
+            (processStandardOutput out)
+            (collapseHandlers)
 
     -- set up debug logger
     l <- async $ do
-        processDebugMessages log
+        Safe.catchesAsync
+            (processDebugMessages log)
+            (collapseHandlers)
 
     -- set up signal handlers
     _ <- async $ do
