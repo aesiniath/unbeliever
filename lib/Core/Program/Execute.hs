@@ -274,6 +274,9 @@ processDebugMessages log = do
 Safely exit the program with the supplied exit code. Current output and
 debug queues will be flushed, and then the process will terminate.
 -}
+-- putting to the quit MVar initiates the cleanup and exit sequence,
+-- but throwing the exception also aborts execution and starts unwinding
+-- back up the stack.
 terminate :: Int -> Program τ ()
 terminate code =
   let
@@ -281,7 +284,11 @@ terminate code =
         0 -> ExitSuccess
         _ -> ExitFailure code
   in do
-    liftIO (Safe.throw exit)
+    context <- ask
+    let quit = exitSemaphoreFrom context
+    liftIO $ do
+        putMVar quit exit
+        Safe.throw exit
 
 -- undocumented
 getVerbosityLevel :: Program τ Verbosity
