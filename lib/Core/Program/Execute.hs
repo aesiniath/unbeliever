@@ -90,7 +90,7 @@ module Core.Program.Execute
 import Prelude hiding (log)
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (Async, async, link, cancel
-    , ExceptionInLinkedThread(..), AsyncCancelled)
+    , ExceptionInLinkedThread(..), AsyncCancelled, race_)
 import Control.Concurrent.MVar (readMVar, putMVar, modifyMVar_)
 import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.STM.TQueue (TQueue, readTQueue
@@ -227,13 +227,19 @@ executeWith context program = do
     code <- readMVar quit
     cancel m
 
-    -- drain message queues
-    atomically $ do
-        done2 <- isEmptyTQueue log
-        check done2
+    -- drain message queues. Allow 0.1 seconds, then timeout, in case
+    -- something has gone wrong and queues don't empty.
+    race_
+        (do
+            atomically $ do
+                done2 <- isEmptyTQueue log
+                check done2
 
-        done1 <- isEmptyTQueue out
-        check done1
+                done1 <- isEmptyTQueue out
+                check done1)
+        (do
+            threadDelay 100000
+            putStrLn "error: Timeout")
 
     threadDelay 100 -- instead of yield
     hFlush stdout

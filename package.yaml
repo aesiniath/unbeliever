@@ -86,6 +86,7 @@ executables:
     ghc-options: -threaded
     source-dirs: tests
     main: SimpleExperiment.hs
+    other-modules: []
     ghc-prof-options: -fprof-auto-top
 
   snippet:
