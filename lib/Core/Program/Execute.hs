@@ -6,6 +6,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE BangPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_HADDOCK prune #-}
 
@@ -376,7 +377,7 @@ write text = do
     liftIO $ do
         let out = outputChannelFrom context
 
-        text' <- Base.evaluate text
+        !text' <- Base.evaluate text
         atomically (writeTQueue out text')
 
 {-|
@@ -401,7 +402,7 @@ writeR thing = do
         let columns = terminalWidthFrom context
 
         let text = render columns thing
-        text' <- Base.evaluate text
+        !text' <- Base.evaluate text
         atomically (writeTQueue out text')
 
 {-|

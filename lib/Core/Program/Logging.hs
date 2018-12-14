@@ -2,6 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE BangPatterns #-}
 {-# OPTIONS_HADDOCK prune #-}
 
 module Core.Program.Logging
@@ -162,7 +163,7 @@ debug label value = do
         level <- readMVar (verbosityLevelFrom context)
         when (isDebug level) $ do
             now <- getCurrentTimeNanoseconds
-            value' <- evaluate value
+            !value' <- evaluate value
             putMessage context (Message now Debug label (Just value'))
 
 {-|
@@ -193,6 +194,6 @@ debugR label thing = do
             -- TODO take into account 22 width already consumed by timestamp
             -- TODO move render to putMessage? putMessageR?
             let value = render columns thing
-            value' <- evaluate value
+            !value' <- evaluate value
             putMessage context (Message now Debug label (Just value'))
 
