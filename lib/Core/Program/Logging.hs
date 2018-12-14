@@ -18,6 +18,7 @@ import Chrono.TimeStamp (TimeStamp(..), getCurrentTimeNanoseconds)
 import Control.Concurrent.MVar (readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (writeTQueue)
+import Control.Exception (evaluate)
 import Control.Monad (when)
 import Control.Monad.Reader.Class (MonadReader(ask))
 import Data.Fixed
@@ -161,7 +162,8 @@ debug label value = do
         level <- readMVar (verbosityLevelFrom context)
         when (isDebug level) $ do
             now <- getCurrentTimeNanoseconds
-            putMessage context (Message now Debug label (Just value))
+            value' <- evaluate value
+            putMessage context (Message now Debug label (Just value'))
 
 {-|
 Convenience for the common case of needing to inspect the value
@@ -191,6 +193,6 @@ debugR label thing = do
             -- TODO take into account 22 width already consumed by timestamp
             -- TODO move render to putMessage? putMessageR?
             let value = render columns thing
-
-            putMessage context (Message now Debug label (Just value))
+            value' <- evaluate value
+            putMessage context (Message now Debug label (Just value'))
 

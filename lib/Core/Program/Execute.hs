@@ -356,7 +356,8 @@ write text = do
     liftIO $ do
         let out = outputChannelFrom context
 
-        atomically (writeTQueue out text)
+        text' <- Base.evaluate text
+        atomically (writeTQueue out text')
 
 {-|
 Call 'show' on the supplied argument and write the resultant text to
@@ -380,8 +381,8 @@ writeR thing = do
         let columns = terminalWidthFrom context
 
         let text = render columns thing
-
-        atomically (writeTQueue out text)
+        text' <- Base.evaluate text
+        atomically (writeTQueue out text')
 
 {-|
 Write the supplied @Bytes@ to the given @Handle@. Note that in contrast to
