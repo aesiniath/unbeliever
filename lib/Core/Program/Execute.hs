@@ -6,6 +6,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE BangPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_HADDOCK prune #-}
 
@@ -89,12 +90,12 @@ module Core.Program.Execute
 import Prelude hiding (log)
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (Async, async, link, cancel
-    , ExceptionInLinkedThread(..), AsyncCancelled)
+    , ExceptionInLinkedThread(..), AsyncCancelled, race_)
 import Control.Concurrent.MVar (readMVar, putMVar, modifyMVar_)
 import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.STM.TQueue (TQueue, readTQueue
     , writeTQueue, isEmptyTQueue)
-import qualified Control.Exception as Base (throwIO)
+import qualified Control.Exception as Base (throwIO, evaluate)
 import Control.Exception.Safe (SomeException, Exception(displayException))
 import qualified Control.Exception.Safe as Safe (throw, catchesAsync)
 import Control.Monad (when, forever)
@@ -105,6 +106,7 @@ import qualified Data.ByteString as B (hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
 import System.Exit (ExitCode(..))
+import qualified System.Posix.Process as Posix (exitImmediately)
 
 import Core.Data.Structures
 import Core.Text.Bytes
@@ -157,6 +159,23 @@ escapeHandlers context = [
         subProgram context (event text)
         putMVar quit (ExitFailure 127)
 
+--
+-- If an exception occurs in one of the output handlers, its failure causes
+-- a subsequent race condition when the program tries to clean up and drain
+-- the queues. So we use `exitImmediately` (which we normally avoid, as it
+-- unhelpfully destroys the parent process if you're in ghci) because we
+-- really need the process to go down and we're in an inconsistent state
+-- where debug or console output is no longer possible.
+--
+collapseHandlers :: [Handler IO ()]
+collapseHandlers =
+  [ Handler (\ (e :: AsyncCancelled) -> do
+                Base.throwIO e)
+  , Handler (\ (e :: SomeException) -> do
+                putStrLn "error: Output handler collapsed"
+                print e
+                Posix.exitImmediately (ExitFailure 99))
+  ]
 
 {-|
 Embelish a program with useful behaviours. See module header
@@ -185,11 +204,15 @@ executeWith context program = do
 
     -- set up standard output
     o <- async $ do
-        processStandardOutput out
+        Safe.catchesAsync
+            (processStandardOutput out)
+            (collapseHandlers)
 
     -- set up debug logger
     l <- async $ do
-        processDebugMessages log
+        Safe.catchesAsync
+            (processDebugMessages log)
+            (collapseHandlers)
 
     -- set up signal handlers
     _ <- async $ do
@@ -204,13 +227,19 @@ executeWith context program = do
     code <- readMVar quit
     cancel m
 
-    -- drain message queues
-    atomically $ do
-        done2 <- isEmptyTQueue log
-        check done2
+    -- drain message queues. Allow 0.1 seconds, then timeout, in case
+    -- something has gone wrong and queues don't empty.
+    race_
+        (do
+            atomically $ do
+                done2 <- isEmptyTQueue log
+                check done2
 
-        done1 <- isEmptyTQueue out
-        check done1
+                done1 <- isEmptyTQueue out
+                check done1)
+        (do
+            threadDelay 100000
+            putStrLn "error: Timeout")
 
     threadDelay 100 -- instead of yield
     hFlush stdout
@@ -356,7 +385,8 @@ write text = do
     liftIO $ do
         let out = outputChannelFrom context
 
-        atomically (writeTQueue out text)
+        !text' <- Base.evaluate text
+        atomically (writeTQueue out text')
 
 {-|
 Call 'show' on the supplied argument and write the resultant text to
@@ -380,8 +410,8 @@ writeR thing = do
         let columns = terminalWidthFrom context
 
         let text = render columns thing
-
-        atomically (writeTQueue out text)
+        !text' <- Base.evaluate text
+        atomically (writeTQueue out text')
 
 {-|
 Write the supplied @Bytes@ to the given @Handle@. Note that in contrast to
