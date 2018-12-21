@@ -1,5 +1,5 @@
 name: unbeliever
-version: 0.7.3.0
+version: 0.7.3.1
 synopsis: Opinionated Haskell Interoperability
 description: |
   A library to help build command-line programs, both tools and
@@ -16,6 +16,7 @@ copyright: © 2018 Operational Dynamics Consulting Pty Ltd, and Others
 tested-with: GHC == 8.4
 category: System
 ghc-options: -Wall -Wwarn -fwarn-tabs
+github: oprdyn/unbeliever
 
 flags:
   development:
