@@ -4,8 +4,14 @@ synopsis: Opinionated Haskell Interoperability
 description: |
   A library to help build command-line programs, both tools and
   longer-running daemons.
+
+  A description of this package, a list of features, and some background
+  to its design is contained in the
+  <https://github.com/oprdyn/unbeliever/blob/master/README.markdown README>
+  on GitHub.
   
-  Useful starting points are "Core.Program.Execute" and "Core.Text.Rope".
+  Useful starting points in the documentation are "Core.Program.Execute"
+  and "Core.Text.Rope".
 
 stability: experimental
 license: BSD3
