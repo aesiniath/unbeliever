@@ -9,6 +9,9 @@ module Core.Program.Logging
     (
         putMessage
       , Verbosity(..)
+      , write
+      , writeS
+      , writeR
       , event
       , debug
       , debugS
@@ -94,6 +97,49 @@ padWithZeros digits str =
   where
     pad = S.replicate len "0"
     len = digits - length str
+
+{-|
+Write the supplied text to @stdout@.
+
+This is for normal program output.
+
+@
+     'write' "Beginning now"
+@
+-}
+write :: Rope -> Program τ ()
+write text = do
+    context <- ask
+    liftIO $ do
+        let out = outputChannelFrom context
+
+        !text' <- evaluate text
+        atomically (writeTQueue out text')
+
+{-|
+Call 'show' on the supplied argument and write the resultant text to
+@stdout@.
+
+(This is the equivalent of 'print' from __base__)
+-}
+writeS :: Show α => α -> Program τ ()
+writeS = write . intoRope . show
+
+{-|
+Pretty print the supplied argument and write the resultant text to
+@stdout@. This will pass the detected terminal width to the 'render'
+function, resulting in appopriate line wrapping when rendering your value.
+-}
+writeR :: Render α => α -> Program τ ()
+writeR thing = do
+    context <- ask
+    liftIO $ do
+        let out = outputChannelFrom context
+        let columns = terminalWidthFrom context
+
+        let text = render columns thing
+        !text' <- evaluate text
+        atomically (writeTQueue out text')
 
 {-|
 Note a significant event, state transition, status, or debugging

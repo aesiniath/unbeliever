@@ -70,9 +70,6 @@ module Core.Program.Execute
       , retrieve
       , update
         {-* Useful actions -}
-      , write
-      , writeS
-      , writeR
       , output
         {-* Concurrency -}
       , Thread
@@ -93,9 +90,8 @@ import Control.Concurrent.Async (Async, async, link, cancel
     , ExceptionInLinkedThread(..), AsyncCancelled, race_)
 import Control.Concurrent.MVar (readMVar, putMVar, modifyMVar_)
 import Control.Concurrent.STM (atomically, check)
-import Control.Concurrent.STM.TQueue (TQueue, readTQueue
-    , writeTQueue, isEmptyTQueue)
-import qualified Control.Exception as Base (throwIO, evaluate)
+import Control.Concurrent.STM.TQueue (TQueue, readTQueue, isEmptyTQueue)
+import qualified Control.Exception as Base (throwIO)
 import Control.Exception.Safe (SomeException, Exception(displayException))
 import qualified Control.Exception.Safe as Safe (throw, catchesAsync)
 import Control.Monad (when, forever)
@@ -111,7 +107,6 @@ import qualified System.Posix.Process as Posix (exitImmediately)
 import Core.Data.Structures
 import Core.Text.Bytes
 import Core.Text.Rope
-import Core.Text.Utilities
 import Core.System.Base
 import Core.Program.Context
 import Core.Program.Logging
@@ -378,66 +373,23 @@ update :: τ -> Program τ ()
 update = setApplicationState
 
 {-|
-Write the supplied text to @stdout@.
-
-This is for normal program output.
-
-@
-     'write' "Beginning now"
-@
--}
-write :: Rope -> Program τ ()
-write text = do
-    context <- ask
-    liftIO $ do
-        let out = outputChannelFrom context
-
-        !text' <- Base.evaluate text
-        atomically (writeTQueue out text')
-
-{-|
-Call 'show' on the supplied argument and write the resultant text to
-@stdout@.
-
-(This is the equivalent of 'print' from __base__)
--}
-writeS :: Show α => α -> Program τ ()
-writeS = write . intoRope . show
-
-{-|
-Pretty print the supplied argument and write the resultant text to
-@stdout@. This will pass the detected terminal width to the 'render'
-function, resulting in appopriate line wrapping when rendering your value.
--}
-writeR :: Render α => α -> Program τ ()
-writeR thing = do
-    context <- ask
-    liftIO $ do
-        let out = outputChannelFrom context
-        let columns = terminalWidthFrom context
-
-        let text = render columns thing
-        !text' <- Base.evaluate text
-        atomically (writeTQueue out text')
-
-{-|
 Write the supplied @Bytes@ to the given @Handle@. Note that in contrast to
 'write' we don't output a trailing newline.
 
 @
-    output h b
+    'output' h b
 @
 
-Do not use this to output to @stdout@ as that would bypass the mechanism
-used by the @write*@ functions to sequence output correctly. If you wish to
-write to the terminal use:
+Do /not/ use this to output to @stdout@ as that would bypass the mechanism
+used by the 'write'*, 'event', and 'debug'* functions to sequence output
+correctly. If you wish to write to the terminal use:
 
 @
-    write (intoRope b)
+    'write' ('intoRope' b)
 @
 
 (which is not /unsafe/, but will lead to unexpected results if the binary
-blob you pass in is not UTF-8 text).
+blob you pass in is other than UTF-8 text).
 -}
 output :: Handle -> Bytes -> Program τ ()
 output h b = liftIO $ do
