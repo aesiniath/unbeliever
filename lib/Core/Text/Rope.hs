@@ -80,10 +80,10 @@ module Core.Text.Rope
     , contains
       {-* Interoperation and Output -}
     , Textual(fromRope, intoRope, append)
-    , unsafeIntoRope
     , hWrite
       {-* Internals -}
     , unRope
+    , unsafeIntoRope
     , Width(..)
     ) where
 
