@@ -54,8 +54,8 @@ different /kinds/ of output in a unified, safe manner.
 
 /Standard output/
 
-Your program's normal output. This library provides the 'write' (and
-'writeS' and 'writeR') functions to send output to @stdout@.
+Your program's normal output to the terminal. This library provides the
+'write' (and 'writeS' and 'writeR') functions to send output to @stdout@.
 
 /Events/
 
@@ -107,6 +107,13 @@ Passing @--debug@ on the command-line of your program will cause the
 'debug'@*@ actions to write their debug-level messages to the terminal.
 This shares the same output channel as above and again will not cause
 corruption of your program's normal output.
+
+== Logging channel
+
+/Event and debug messages are internally also sent to a "logging channel",/
+/as distinct from the "output" one. This would allow us to send them/
+/directly to a file, syslog, or network logging service, but this is/
+/as-yet unimplemented./
 -}
 module Core.Program.Logging
     (
