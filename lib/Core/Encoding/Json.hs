@@ -19,36 +19,29 @@ can be challenging when the source of the JSON is complex or varying its
 schema over time. For ease of exploration this module simply defines an
 easy to use intermediate type representing JSON as a format.
 
-To use this module, you may find the following imports helpful:
-
-@
-\{\-\# LANGUAGE OverloadedStrings \#\-\}
-\{\-\# LANGUAGE OverloadedLists \#\-\}
-
-import "Data.HashMap.Strict" ('HashMap')
-import qualified "Data.HashMap.Strict" as 'HashMap'  -- from the __unordered-containers__ package.
-import "Data.Scientific" ('Scientific')              -- from the __scientific__ package
-import "Core.Encoding.Json"
-@
-
 Often you'll be working with literals directly in your code. While you can
 write:
 
 @
-    j = JsonObject (HashMap.fromList [(JsonKey "answer", JsonNumber 42)])
+    j = 'JsonObject' ('intoMap' [('JsonKey' "answer", 'JsonNumber' 42)])
 @
 
-and it would be correct, enabling @OverloadedStrings@ and @OverloadedLists@
+and it would be correct, enabling:
+
+@
+\{\-\# LANGUAGE OverloadedStrings \#\-\}
+\{\-\# LANGUAGE OverloadedLists \#\-\}
+@
+
 allows you to write:
 
 @
-    j = JsonObject [("answer", 42)]
+    j = 'JsonObject' [("answer", 42)]
 @
 
-which you is somewhat less cumbersome. You're certainly welcome to use the
-constructors if you find it makes for more readable code or if you need
-the type annotations.
-
+which you is somewhat less cumbersome in declaration-heavy code. You're
+certainly welcome to use the constructors if you find it makes for more
+readable code or if you need the type annotations.
 -}
 --
 -- As currently implemented this module, in conjunction with
