@@ -37,12 +37,18 @@ So with that in mind, in your program you will either be outputting results
 to @stdout@ or not writing there at all, and you will either be describing
 extensively what your application is up to, or not at all. 
 
-There is also \"standard error\" file descriptor available. At best it is
-unclear what is written to @stderr@ and what isn't; at worse it is lost as
-many environments in the wild discard @stderr@ entirely. To avoid this most
-of the time people just combine them in the invoking shell with @2>&1@,
-which inevitably results in @stderr@ text appearing in the middle of normal
-@stdout@ lines corrupting them. We recommend not to use standard error.
+There is also a \"standard error\" file descriptor available. We recommend
+not using it. At best it is unclear what is written to @stderr@ and what
+isn't; at worse it is lost as many environments in the wild discard
+@stderr@ entirely. To avoid this most of the time people just combine them
+in the invoking shell with @2>&1@, which inevitably results in @stderr@
+text appearing in the middle of normal @stdout@ lines corrupting them.
+
+The original idea of standard error was to provde a way to adverse
+conditions without interrupting normal text output, but as we have just
+observed if it happens without context or out of order there isn't much
+point. Instead this library offers a mechanism which caters for the
+different /kinds/ of output in a unified, safe manner.
 
 == Three kinds of output/logging messages
 
