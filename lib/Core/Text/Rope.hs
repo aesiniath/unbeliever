@@ -74,6 +74,7 @@ a network socket.
 module Core.Text.Rope
     ( {-* Rope type -}
       Rope
+    , emptyRope
     , width
     , split
     , insert
@@ -203,14 +204,24 @@ instance Monoid Width where
 -- FingerTree Strand or Builder (Strand)
 
 instance IsString Rope where
-    fromString = Rope . F.singleton . S.pack
+    fromString "" = emptyRope
+    fromString xs = Rope . F.singleton . S.pack $ xs
 
 instance Semigroup Rope where
     (<>) (Rope x1) (Rope x2) = Rope ((F.><) x1 x2) -- god I hate these operators
 
 instance Monoid Rope where
-    mempty = Rope F.empty
+    mempty = emptyRope
     mappend = (<>)
+
+{-|
+An zero-length 'Rope'. You can also use @\"\"@ presuming the
+__@OverloadedStrings@__ language extension is turned on in your source
+file.
+-}
+emptyRope :: Rope
+emptyRope = Rope F.empty
+{-# INLINABLE emptyRope #-}
 
 {-|
 Get the length of this text, in characters.
