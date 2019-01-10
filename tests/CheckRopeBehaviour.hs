@@ -110,3 +110,16 @@ Hello
 World
             |] `shouldBe` ("Hello\nWorld\n" :: Rope)
 
+    describe "Splitting into words" $ do
+        it "single piece" $
+          let
+            text = "This is a test"
+          in do
+            pieces text `shouldBe` ["This","is","a","test"]
+
+        it "single piece, long run of whitespace" $
+          let
+            text = "This is\na    test"
+          in do
+            pieces text `shouldBe` ["This","is","a","test"]
+

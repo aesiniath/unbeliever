@@ -79,6 +79,7 @@ module Core.Text.Rope
     , split
     , insert
     , contains
+    , pieces
       {-* Interoperation and Output -}
     , Textual(fromRope, intoRope, append)
     , hWrite
@@ -94,21 +95,22 @@ import qualified Data.ByteString.Builder as B (toLazyByteString
     , hPutBuilder)
 import qualified Data.ByteString.Lazy as L (ByteString, toStrict
     , foldrChunks)
-import Data.String (IsString(..))
+import Data.Char (isSpace)
 import qualified Data.FingerTree as F (FingerTree, Measured(..), empty
     , singleton, (><), (<|), (|>), search, SearchResult(..))
 import Data.Foldable (foldr, foldr', foldMap, toList, any)
+import Data.Hashable (Hashable, hashWithSalt)
+import Data.String (IsString(..))
 import qualified Data.Text as T (Text)
 import qualified Data.Text.Lazy as U (Text, fromChunks, foldrChunks
     , toStrict)
 import qualified Data.Text.Lazy.Builder as U (Builder, toLazyText
     , fromText)
 import Data.Text.Prettyprint.Doc (Pretty(..), emptyDoc)
-import qualified Data.Text.Short as S (ShortText, length, any
-    , fromText, toText, fromByteString, pack, unpack
-    , append, empty, toBuilder, splitAt)
+import qualified Data.Text.Short as S (ShortText, length, any, null
+    , fromText, toText, fromByteString, pack, unpack, dropWhileEnd
+    , append, empty, toBuilder, splitAt, breakEnd)
 import qualified Data.Text.Short.Unsafe as S (fromByteStringUnsafe)
-import Data.Hashable (Hashable, hashWithSalt)
 import GHC.Generics (Generic)
 import System.IO (Handle)
 
@@ -291,6 +293,18 @@ insert i (Rope new) text =
   in
     Rope (mconcat [before, new, after])
 
+pieces ::  Rope -> [Rope]
+pieces = snd . foldr finder (emptyRope,[]) . unRope
+  where
+    finder :: S.ShortText -> (Rope,[Rope]) -> (Rope,[Rope])
+    finder piece ((Rope x1),ws) =
+      let
+        (remainder,fragment) = S.breakEnd isSpace piece
+        w = Rope ((F.<|) fragment x1)
+        next = S.dropWhileEnd isSpace remainder
+      in case S.null next of
+        True  -> (emptyRope,w:ws)
+        False -> finder next (emptyRope,w:ws)
 
 --
 -- Manual instance to get around the fact that FingerTree doesn't have a
