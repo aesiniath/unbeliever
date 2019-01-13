@@ -142,25 +142,25 @@ newline to finish the paragraph.
 wrap :: Int -> Rope -> Rope
 wrap margin text =
   let
-    built = wrapHelper margin (T.words (fromRope text))
+    built = wrapHelper margin (pieces text)
   in
-    intoRope (T.toLazyText built)
+    built <> "\n"
 
-wrapHelper :: Int -> [T.Text] -> T.Builder
+wrapHelper :: Int -> [Rope] -> Rope
 wrapHelper _ [] = ""
-wrapHelper _ [x]  = T.fromText x
+wrapHelper _ [x]  = x
 wrapHelper margin (x:xs) =
-    snd $ List.foldl' (wrapLine margin) (T.length x, T.fromText x) xs
+    snd $ List.foldl' (wrapLine margin) (width x, x) xs
 
-wrapLine :: Int -> (Int, T.Builder) -> T.Text -> (Int, T.Builder)
+wrapLine :: Int -> (Int, Rope) -> Rope -> (Int, Rope)
 wrapLine margin (pos,builder) word =
   let
-    wide = T.length word
+    wide = width word
     wide' = pos + wide + 1
   in
     if wide' > margin
-        then (wide , builder <> "\n" <> T.fromText word)
-        else (wide', builder <> " "  <> T.fromText word)
+        then (wide , builder <> "\n" <> word)
+        else (wide', builder <> " "  <> word)
 
 
 underline :: Char -> Rope -> Rope

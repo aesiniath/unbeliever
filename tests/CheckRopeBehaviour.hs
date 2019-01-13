@@ -141,3 +141,17 @@ World
           in do
             pieces text `shouldBe` ["stop"]
 
+    describe "Formatting paragraphs" $ do
+        it "multi-line paragraph rewraps correctly" $
+          let
+            para = [quote|
+Hello this is
+a test
+ of the Emergency Broadcast System
+            |]
+          in
+            wrap 20 para `shouldBe` [quote|
+Hello this is a test
+of the Emergency
+Broadcast System
+|]
