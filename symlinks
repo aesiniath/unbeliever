@@ -31,8 +31,8 @@ t () {
 
 
 # main
-e experiment
-e snippet
+t experiment
+t snippet
 t check
 
 

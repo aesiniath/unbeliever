@@ -74,10 +74,12 @@ a network socket.
 module Core.Text.Rope
     ( {-* Rope type -}
       Rope
+    , emptyRope
     , width
     , split
     , insert
     , contains
+    , pieces
       {-* Interoperation and Output -}
     , Textual(fromRope, intoRope, append)
     , hWrite
@@ -93,21 +95,22 @@ import qualified Data.ByteString.Builder as B (toLazyByteString
     , hPutBuilder)
 import qualified Data.ByteString.Lazy as L (ByteString, toStrict
     , foldrChunks)
-import Data.String (IsString(..))
+import Data.Char (isSpace)
 import qualified Data.FingerTree as F (FingerTree, Measured(..), empty
     , singleton, (><), (<|), (|>), search, SearchResult(..))
 import Data.Foldable (foldr, foldr', foldMap, toList, any)
+import Data.Hashable (Hashable, hashWithSalt)
+import Data.String (IsString(..))
 import qualified Data.Text as T (Text)
 import qualified Data.Text.Lazy as U (Text, fromChunks, foldrChunks
     , toStrict)
 import qualified Data.Text.Lazy.Builder as U (Builder, toLazyText
     , fromText)
 import Data.Text.Prettyprint.Doc (Pretty(..), emptyDoc)
-import qualified Data.Text.Short as S (ShortText, length, any
-    , fromText, toText, fromByteString, pack, unpack
-    , append, empty, toBuilder, splitAt)
+import qualified Data.Text.Short as S (ShortText, length, any, null
+    , fromText, toText, fromByteString, pack, unpack, dropWhileEnd
+    , append, empty, toBuilder, splitAt, breakEnd)
 import qualified Data.Text.Short.Unsafe as S (fromByteStringUnsafe)
-import Data.Hashable (Hashable, hashWithSalt)
 import GHC.Generics (Generic)
 import System.IO (Handle)
 
@@ -203,14 +206,24 @@ instance Monoid Width where
 -- FingerTree Strand or Builder (Strand)
 
 instance IsString Rope where
-    fromString = Rope . F.singleton . S.pack
+    fromString "" = emptyRope
+    fromString xs = Rope . F.singleton . S.pack $ xs
 
 instance Semigroup Rope where
     (<>) (Rope x1) (Rope x2) = Rope ((F.><) x1 x2) -- god I hate these operators
 
 instance Monoid Rope where
-    mempty = Rope F.empty
+    mempty = emptyRope
     mappend = (<>)
+
+{-|
+An zero-length 'Rope'. You can also use @\"\"@ presuming the
+__@OverloadedStrings@__ language extension is turned on in your source
+file.
+-}
+emptyRope :: Rope
+emptyRope = Rope F.empty
+{-# INLINABLE emptyRope #-}
 
 {-|
 Get the length of this text, in characters.
@@ -280,6 +293,91 @@ insert i (Rope new) text =
   in
     Rope (mconcat [before, new, after])
 
+{-|
+Split a passage of text into a list of words. A line is broken wherever
+there is one or more whitespace characters, as defined by "Data.Char"'s
+'Data.Char.isSpace'.
+
+Examples:
+
+@
+λ> __pieces \"This is a test\"__
+[\"This\",\"is\",\"a\",\"test\"]
+λ> __pieces (\"St\" <> \"op and \" <> \"go left\")__
+[\"Stop\",\"and\",\"go\",\"left\"]
+λ> __pieces emptyRope__
+[]
+@
+-}
+pieces :: Rope -> [Rope]
+pieces text =
+  let
+    (final,list) = foldr finder (S.empty,[]) (unRope text)
+    l = Rope (F.singleton final)
+  in
+    if S.null final
+        then list
+        else l:list
+  where
+
+    -- λ> S.breakEnd isSpace "a d"
+    -- ("a","d")
+    --
+    -- λ> S.breakEnd isSpace " and"
+    -- (" ","and")
+    --
+    -- λ> S.breakEnd isSpace "and "
+    -- ("and ","")
+    --
+    -- λ> S.breakEnd isSpace ""
+    -- ("","")
+    --
+    -- λ> S.breakEnd isSpace " "
+    -- (" ","")
+
+    finder :: S.ShortText -> (S.ShortText,[Rope]) -> (S.ShortText,[Rope])
+    finder piece (accum,list) =
+      let
+        done = S.null piece
+
+        (remainder,fragment) = S.breakEnd isSpace piece
+
+        -- Are we in the middle of a word? We are if the carry forward is
+        -- non-zero length.
+        --
+        -- Did we find a word in the current piece? If so, then if we are
+        -- in the middle of accumulating a word, we add the new
+        -- piece to it.
+
+        found  = not (S.null fragment)
+        middle = not (S.null accum)
+
+        accum' = if found
+                    then if middle
+                        then S.append fragment accum
+                        else fragment
+                    else accum
+
+        -- Did we find a space? We did if remainder is non-zero length.
+        -- Finding a space means flushing out the accumulator (though
+        -- only if there's actually something there). We have to
+        -- drop that whitespace before iterating.
+
+        space = not (S.null remainder)
+        empty = S.null accum'
+        word = Rope (F.singleton accum')
+
+        list' = if empty
+                    then list
+                    else word:list
+
+        remainder' = S.dropWhileEnd isSpace remainder
+      in
+        if done
+            then (accum',list)
+            else if space
+                then finder remainder' (S.empty,list')
+                else finder remainder (accum',list)
 
 --
 -- Manual instance to get around the fact that FingerTree doesn't have a
@@ -311,8 +409,8 @@ reduce heap fragmentation by letting the Haskell runtime and garbage
 collector manage the memory, so instances are expected to /copy/ these
 substrings out of pinned memory.
 
-The @ByteString@ instance requires that its content be valid UTF-8. If not an
-empty @Rope@ will be returned.
+The @ByteString@ instance requires that its content be valid UTF-8. If not
+an empty @Rope@ will be returned.
 
 Several of the 'fromRope' implementations are expensive and involve a lot
 of intermiate allocation and copying. If you're ultimately writing to a

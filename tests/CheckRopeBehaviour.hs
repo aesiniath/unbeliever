@@ -110,3 +110,48 @@ Hello
 World
             |] `shouldBe` ("Hello\nWorld\n" :: Rope)
 
+    describe "Splitting into words" $ do
+        it "single piece containing multiple words splits correctly" $
+          let
+            text = "This is a test"
+          in do
+            pieces text `shouldBe` ["This","is","a","test"]
+
+        it "single piece, long run of whitespace splits correctly" $
+          let
+            text = "This is\na    test"
+          in do
+            pieces text `shouldBe` ["This","is","a","test"]
+
+        it "text spanning two pieces can be split into words" $
+          let
+            text = "This is " <> "a test"
+          in do
+            pieces text `shouldBe` ["This","is","a","test"]
+
+        it "text spanning many pieces can be split into words" $
+          let
+            text = "st" <> "" <> "op" <> "" <> " " <> " " <> "and go" <> "op"
+          in do
+            pieces text `shouldBe` ["stop","and","goop"]
+
+        it "empty and whitespace-only corner cases handled correctly " $
+          let
+            text = "  " <> "" <> "stop" <> "" <> "  "
+          in do
+            pieces text `shouldBe` ["stop"]
+
+    describe "Formatting paragraphs" $ do
+        it "multi-line paragraph rewraps correctly" $
+          let
+            para = [quote|
+Hello this is
+a test
+ of the Emergency Broadcast System
+            |]
+          in
+            wrap 20 para `shouldBe` [quote|
+Hello this is a test
+of the Emergency
+Broadcast System
+|]
