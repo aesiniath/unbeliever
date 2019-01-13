@@ -97,7 +97,7 @@ import qualified Data.ByteString.Lazy as L (ByteString, toStrict
     , foldrChunks)
 import Data.Char (isSpace)
 import qualified Data.FingerTree as F (FingerTree, Measured(..), empty
-    , singleton, (><), (<|), (|>), search, SearchResult(..))
+    , singleton, (><), (<|), (|>), search, SearchResult(..), null)
 import Data.Foldable (foldr, foldr', foldMap, toList, any)
 import Data.Hashable (Hashable, hashWithSalt)
 import Data.String (IsString(..))
@@ -293,18 +293,76 @@ insert i (Rope new) text =
   in
     Rope (mconcat [before, new, after])
 
+
 pieces ::  Rope -> [Rope]
-pieces = snd . foldr finder (emptyRope,[]) . unRope
+pieces text =
+  let
+    (final,list) = foldr finder (S.empty,[]) (unRope text)
+    last = Rope (F.singleton final)
+  in
+    if S.null final
+        then list
+        else last:list
   where
-    finder :: S.ShortText -> (Rope,[Rope]) -> (Rope,[Rope])
-    finder piece ((Rope x1),ws) =
+
+    -- λ> S.breakEnd isSpace "a d"
+    -- ("a","d")
+    --
+    -- λ> S.breakEnd isSpace " and"
+    -- (" ","and")
+    --
+    -- λ> S.breakEnd isSpace "and "
+    -- ("and ","")
+    --
+    -- λ> S.breakEnd isSpace ""
+    -- ("","")
+    --
+    -- λ> S.breakEnd isSpace " "
+    -- (" ","")
+
+    finder :: S.ShortText -> (S.ShortText,[Rope]) -> (S.ShortText,[Rope])
+    finder piece (accum,list) =
       let
+        done = S.null piece
+
         (remainder,fragment) = S.breakEnd isSpace piece
-        w = Rope ((F.<|) fragment x1)
-        next = S.dropWhileEnd isSpace remainder
-      in case S.null next of
-        True  -> (emptyRope,w:ws)
-        False -> finder next (emptyRope,w:ws)
+
+        -- Are we in the middle of a word? We are if the carry forward is
+        -- non-zero length.
+        --
+        -- Did we find a word in the current piece? If so, then if we are
+        -- in the middle of accumulating a word, we add the new
+        -- piece to it.
+
+        found  = not (S.null fragment)
+        middle = not (S.null accum)
+
+        accum' = if found
+                    then if middle
+                        then S.append fragment accum
+                        else fragment
+                    else accum
+
+        -- Did we find a space? We did if remainder is non-zero length.
+        -- Finding a space means flushing out the accumulator (though
+        -- only if there's actually something there). We have to
+        -- drop that whitespace before iterating.
+
+        space = not (S.null remainder)
+        empty = S.null accum'
+        word = Rope (F.singleton accum')
+
+        list' = if empty
+                    then list
+                    else word:list
+
+        remainder' = S.dropWhileEnd isSpace remainder
+      in
+        if done
+            then (accum',list)
+            else if space
+                then finder remainder' (S.empty,list')
+                else finder remainder (accum',list)
 
 --
 -- Manual instance to get around the fact that FingerTree doesn't have a
@@ -336,8 +394,8 @@ reduce heap fragmentation by letting the Haskell runtime and garbage
 collector manage the memory, so instances are expected to /copy/ these
 substrings out of pinned memory.
 
-The @ByteString@ instance requires that its content be valid UTF-8. If not an
-empty @Rope@ will be returned.
+The @ByteString@ instance requires that its content be valid UTF-8. If not
+an empty @Rope@ will be returned.
 
 Several of the 'fromRope' implementations are expensive and involve a lot
 of intermiate allocation and copying. If you're ultimately writing to a
