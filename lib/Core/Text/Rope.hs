@@ -97,7 +97,7 @@ import qualified Data.ByteString.Lazy as L (ByteString, toStrict
     , foldrChunks)
 import Data.Char (isSpace)
 import qualified Data.FingerTree as F (FingerTree, Measured(..), empty
-    , singleton, (><), (<|), (|>), search, SearchResult(..), null)
+    , singleton, (><), (<|), (|>), search, SearchResult(..))
 import Data.Foldable (foldr, foldr', foldMap, toList, any)
 import Data.Hashable (Hashable, hashWithSalt)
 import Data.String (IsString(..))
@@ -293,16 +293,32 @@ insert i (Rope new) text =
   in
     Rope (mconcat [before, new, after])
 
+{-|
+Split a passage of text into a list of words. A line is broken wherever
+there is one or more whitespace characters, as defined by "Data.Char"'s
+'Data.Char.isSpace'.
 
+Examples:
+
+@
+λ> __pieces \"This is a test\"__
+[\"This\",\"is\",\"a\",\"test\"]
+λ> __pieces (\"St\" <> \"op and \" <> \"go left\")__
+[\"Stop\",\"and\",\"go\",\"left\"]
+λ> __pieces emptyRope__
+[]
+@
+
+-}
 pieces ::  Rope -> [Rope]
 pieces text =
   let
     (final,list) = foldr finder (S.empty,[]) (unRope text)
-    last = Rope (F.singleton final)
+    l = Rope (F.singleton final)
   in
     if S.null final
         then list
-        else last:list
+        else l:list
   where
 
     -- λ> S.breakEnd isSpace "a d"
