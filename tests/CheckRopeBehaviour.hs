@@ -115,31 +115,48 @@ World
           let
             text = "This is a test"
           in do
-            pieces text `shouldBe` ["This","is","a","test"]
+            breakWords text `shouldBe` ["This","is","a","test"]
 
         it "single piece, long run of whitespace splits correctly" $
           let
             text = "This is\na    test"
           in do
-            pieces text `shouldBe` ["This","is","a","test"]
+            breakWords text `shouldBe` ["This","is","a","test"]
 
         it "text spanning two pieces can be split into words" $
           let
             text = "This is " <> "a test"
           in do
-            pieces text `shouldBe` ["This","is","a","test"]
+            breakWords text `shouldBe` ["This","is","a","test"]
 
         it "text spanning many pieces can be split into words" $
           let
             text = "st" <> "" <> "op" <> "" <> " " <> " " <> "and go" <> "op"
           in do
-            pieces text `shouldBe` ["stop","and","goop"]
+            breakWords text `shouldBe` ["stop","and","goop"]
 
         it "empty and whitespace-only corner cases handled correctly " $
           let
             text = "  " <> "" <> "stop" <> "" <> "  "
           in do
-            pieces text `shouldBe` ["stop"]
+            breakWords text `shouldBe` ["stop"]
+
+    describe "Splitting into lines" $ do
+        it "single piece containing multiple lines splits correctly" $
+          let
+            para = [quote|
+This is a test
+of the Emergency
+Broadcast
+System, beeeeep
+|]
+          in do
+            breakLines para `shouldBe`
+                [ "This is a test"
+                , "of the Emergency"
+                , "Broadcast"
+                , "System, beeeeep"
+                ]
 
     describe "Formatting paragraphs" $ do
         it "multi-line paragraph rewraps correctly" $
@@ -153,5 +170,4 @@ a test
             wrap 20 para `shouldBe` [quote|
 Hello this is a test
 of the Emergency
-Broadcast System
-|]
+Broadcast System|]

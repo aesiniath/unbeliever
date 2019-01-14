@@ -16,17 +16,21 @@ module Core.Text.Utilities (
     , render
       {-* Helpers -}
     , indefinite
+    , breakWords
+    , breakLines
     , wrap
     , underline
       {-* Multi-line strings -}
     , quote
 ) where
 
-import qualified Data.FingerTree as F ((<|), ViewL(..), viewl)
+import Data.Char (isSpace)
+import qualified Data.FingerTree as F ((<|), ViewL(..), viewl, singleton)
 import qualified Data.List as List (foldl', dropWhileEnd)
 import Data.Monoid ((<>))
 import qualified Data.Text as T
-import qualified Data.Text.Short as S (ShortText, uncons, toText)
+import qualified Data.Text.Short as S (ShortText, uncons, toText, empty
+    , null, breakEnd, append, dropEnd)
 import Data.Text.Prettyprint.Doc (Doc, layoutPretty , reAnnotateS
     , pretty, emptyDoc
     , LayoutOptions(LayoutOptions)
@@ -133,17 +137,123 @@ indefinite text =
                 else intoRope ("a " F.<| x)
 
 {-|
+Split a passage of text into a list of words. A line is broken wherever
+there is one or more whitespace characters, as defined by "Data.Char"'s
+'Data.Char.isSpace'.
+
+Examples:
+
+@
+λ> __breakWords \"This is a test\"__
+[\"This\",\"is\",\"a\",\"test\"]
+λ> __breakWords (\"St\" <> \"op and \" <> \"go left\")__
+[\"Stop\",\"and\",\"go\",\"left\"]
+λ> __breakWords emptyRope__
+[]
+@
+-}
+breakWords :: Rope -> [Rope]
+breakWords text = pieces isSpace text
+
+{-|
+Split a paragraph of text into a list of its individual lines. The
+paragraph will be broken wherever there is a @'\n'@ character.
+-}
+breakLines :: Rope -> [Rope]
+breakLines text = pieces isNewline text
+
+isNewline :: Char -> Bool
+isNewline c = c == '\n'
+
+pieces :: (Char -> Bool) -> Rope -> [Rope]
+pieces predicate text =
+  let
+    (final,list) = foldr (finder predicate) (S.empty,[]) (unRope text)
+    l = intoRope (F.singleton final)
+  in
+    if S.null final
+        then list
+        else l:list
+
+finder
+    :: (Char -> Bool)
+    -> S.ShortText
+    -> (S.ShortText,[Rope])
+    -> (S.ShortText,[Rope])
+finder predicate piece (accum,list) =
+  let
+    done = S.null piece
+
+    -- λ> S.breakEnd isSpace "a d"
+    -- ("a","d")
+    --
+    -- λ> S.breakEnd isSpace " and"
+    -- (" ","and")
+    --
+    -- λ> S.breakEnd isSpace "and "
+    -- ("and ","")
+    --
+    -- λ> S.breakEnd isSpace ""
+    -- ("","")
+    --
+    -- λ> S.breakEnd isSpace " "
+    -- (" ","")
+
+    (remainder,fragment) = S.breakEnd predicate piece
+
+    -- Are we in the middle of a word? We are if the carry forward is
+    -- non-zero length.
+    --
+    -- Did we find a word in the current piece? If so, then if we are in
+    -- the middle of accumulating a word, we add the new piece to it.
+
+    found  = not (S.null fragment)
+    middle = not (S.null accum)
+
+    accum' = if found
+                then if middle
+                    then S.append fragment accum
+                    else fragment
+                else accum
+
+    -- Did we find a space? We did if remainder is non-zero length.
+    -- Finding a space means flushing out the accumulator (though only if
+    -- there's actually something there). We have to drop that whitespace
+    -- before iterating.
+
+    space = not (S.null remainder)
+    empty = S.null accum'
+    word = intoRope accum'
+
+    list' = if empty
+                then list
+                else word:list
+
+    remainder' = S.dropEnd 1 remainder
+  in
+    if done
+        then (accum',list)
+        else if space
+            then finder predicate remainder' (S.empty,list')
+            else finder predicate remainder (accum',list)
+
+{-|
 Often the input text represents a paragraph, but does not have any internal
 newlines (representing word wrapping). This function takes a line of text
-and inserts newlines to simulate such folding. It also appends a trailing
-newline to finish the paragraph.
+and inserts newlines to simulate such folding, keeping the line under
+the supplied maximum width.
+
+A single word that is excessively long will be included as-is on its own
+line (that line will exceed the desired maxium width).
+
+Any trailing newlines will be removed.
 -}
 wrap :: Int -> Rope -> Rope
 wrap margin text =
   let
-    built = wrapHelper margin (pieces text)
+    built = wrapHelper margin (breakWords text)
   in
-    built <> "\n"
+    built
 
 wrapHelper :: Int -> [Rope] -> Rope
 wrapHelper _ [] = ""

@@ -79,7 +79,6 @@ module Core.Text.Rope
     , split
     , insert
     , contains
-    , pieces
       {-* Interoperation and Output -}
     , Textual(fromRope, intoRope, append)
     , hWrite
@@ -95,7 +94,6 @@ import qualified Data.ByteString.Builder as B (toLazyByteString
     , hPutBuilder)
 import qualified Data.ByteString.Lazy as L (ByteString, toStrict
     , foldrChunks)
-import Data.Char (isSpace)
 import qualified Data.FingerTree as F (FingerTree, Measured(..), empty
     , singleton, (><), (<|), (|>), search, SearchResult(..))
 import Data.Foldable (foldr, foldr', foldMap, toList, any)
@@ -107,9 +105,9 @@ import qualified Data.Text.Lazy as U (Text, fromChunks, foldrChunks
 import qualified Data.Text.Lazy.Builder as U (Builder, toLazyText
     , fromText)
 import Data.Text.Prettyprint.Doc (Pretty(..), emptyDoc)
-import qualified Data.Text.Short as S (ShortText, length, any, null
-    , fromText, toText, fromByteString, pack, unpack, dropWhileEnd
-    , append, empty, toBuilder, splitAt, breakEnd)
+import qualified Data.Text.Short as S (ShortText, length, any
+    , fromText, toText, fromByteString, pack, unpack
+    , append, empty, toBuilder, splitAt)
 import qualified Data.Text.Short.Unsafe as S (fromByteStringUnsafe)
 import GHC.Generics (Generic)
 import System.IO (Handle)
@@ -292,92 +290,6 @@ insert i (Rope new) text =
     (Rope before,Rope after) = split i text
   in
     Rope (mconcat [before, new, after])
-
-{-|
-Split a passage of text into a list of words. A line is broken wherever
-there is one or more whitespace characters, as defined by "Data.Char"'s
-'Data.Char.isSpace'.
-
-Examples:
-
-@
-λ> __pieces \"This is a test\"__
-[\"This\",\"is\",\"a\",\"test\"]
-λ> __pieces (\"St\" <> \"op and \" <> \"go left\")__
-[\"Stop\",\"and\",\"go\",\"left\"]
-λ> __pieces emptyRope__
-[]
-@
--}
-pieces :: Rope -> [Rope]
-pieces text =
-  let
-    (final,list) = foldr finder (S.empty,[]) (unRope text)
-    l = Rope (F.singleton final)
-  in
-    if S.null final
-        then list
-        else l:list
-  where
-
-    -- λ> S.breakEnd isSpace "a d"
-    -- ("a","d")
-    --
-    -- λ> S.breakEnd isSpace " and"
-    -- (" ","and")
-    --
-    -- λ> S.breakEnd isSpace "and "
-    -- ("and ","")
-    --
-    -- λ> S.breakEnd isSpace ""
-    -- ("","")
-    --
-    -- λ> S.breakEnd isSpace " "
-    -- (" ","")
-
-    finder :: S.ShortText -> (S.ShortText,[Rope]) -> (S.ShortText,[Rope])
-    finder piece (accum,list) =
-      let
-        done = S.null piece
-
-        (remainder,fragment) = S.breakEnd isSpace piece
-
-        -- Are we in the middle of a word? We are if the carry forward is
-        -- non-zero length.
-        --
-        -- Did we find a word in the current piece? If so, then if we are
-        -- in the middle of accumulating a word, we add the new
-        -- piece to it.
-
-        found  = not (S.null fragment)
-        middle = not (S.null accum)
-
-        accum' = if found
-                    then if middle
-                        then S.append fragment accum
-                        else fragment
-                    else accum
-
-        -- Did we find a space? We did if remainder is non-zero length.
-        -- Finding a space means flushing out the accumulator (though
-        -- only if there's actually something there). We have to
-        -- drop that whitespace before iterating.
-
-        space = not (S.null remainder)
-        empty = S.null accum'
-        word = Rope (F.singleton accum')
-
-        list' = if empty
-                    then list
-                    else word:list
-
-        remainder' = S.dropWhileEnd isSpace remainder
-      in
-        if done
-            then (accum',list)
-            else if space
-                then finder remainder' (S.empty,list')
-                else finder remainder (accum',list)
 
 --
 -- Manual instance to get around the fact that FingerTree doesn't have a
