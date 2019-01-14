@@ -2,6 +2,7 @@
 
 import Test.Hspec
 
+import Core.System
 import CheckRopeBehaviour
 import CheckBytesBehaviour
 import CheckContainerBehaviour
@@ -11,8 +12,7 @@ import CheckProgramMonad
 
 main :: IO ()
 main = do
-    hspec suite
-    putStrLn "."
+    finally (hspec suite) (putStrLn ".")
 
 suite :: Spec
 suite = do

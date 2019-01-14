@@ -21,12 +21,15 @@ module Core.System.Base
       {-** from Control.Exception.Safe -}
       {-| Re-exported from "Control.Exception.Safe" in the __safe-exceptions__ package: -}
     , Exception(..)
+    , SomeException
     , throw
     , bracket
     , catch
+    , finally
     ) where
 
-import Control.Exception.Safe (Exception(..), throw, bracket, catch)
+import Control.Exception.Safe (Exception(..), SomeException, throw
+    , bracket, catch, finally)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.IO (Handle, stdin, stdout, stderr, hFlush)
 import System.IO.Unsafe (unsafePerformIO)
