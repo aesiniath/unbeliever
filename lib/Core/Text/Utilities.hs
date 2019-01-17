@@ -76,10 +76,15 @@ instance Render Rope where
         f :: S.ShortText -> Doc () -> Doc ()
         f piece built = (<>) (pretty (S.toText piece)) built
 
-instance Render [Char] where
-    type Token [Char] = ()
+instance Render Char where
+    type Token Char = ()
     colourize = const mempty
-    intoDocA cs = pretty cs
+    intoDocA c = pretty c
+
+instance (Render a) => Render [a] where
+    type Token [a] = Token a
+    colourize = const mempty
+    intoDocA = mconcat . fmap intoDocA
 
 instance Render T.Text where
     type Token T.Text = ()
