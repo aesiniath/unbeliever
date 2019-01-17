@@ -95,7 +95,7 @@ import qualified Data.ByteString.Builder as B (toLazyByteString
 import qualified Data.ByteString.Lazy as L (ByteString, toStrict
     , foldrChunks)
 import qualified Data.FingerTree as F (FingerTree, Measured(..), empty
-    , singleton, (><), (<|), (|>), search, SearchResult(..))
+    , singleton, (><), (<|), (|>), search, SearchResult(..), null)
 import Data.Foldable (foldr, foldr', foldMap, toList, any)
 import Data.Hashable (Hashable, hashWithSalt)
 import Data.String (IsString(..))
@@ -208,7 +208,12 @@ instance IsString Rope where
     fromString xs = Rope . F.singleton . S.pack $ xs
 
 instance Semigroup Rope where
-    (<>) (Rope x1) (Rope x2) = Rope ((F.><) x1 x2) -- god I hate these operators
+    (<>) text1@(Rope x1) text2@(Rope x2) =
+        if F.null x2
+            then text1
+            else if F.null x1
+                then text2
+                else Rope ((F.><) x1 x2) -- god I hate these operators
 
 instance Monoid Rope where
     mempty = emptyRope
