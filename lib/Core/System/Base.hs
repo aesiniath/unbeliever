@@ -23,13 +23,14 @@ module Core.System.Base
     , Exception(..)
     , SomeException
     , throw
+    , impureThrow
     , bracket
     , catch
     , finally
     ) where
 
 import Control.Exception.Safe (Exception(..), SomeException, throw
-    , bracket, catch, finally)
+    , bracket, catch, finally, impureThrow)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.IO (Handle, stdin, stdout, stderr, hFlush)
 import System.IO.Unsafe (unsafePerformIO)
