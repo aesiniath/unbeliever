@@ -74,6 +74,10 @@ class Binary α where
     fromBytes :: Bytes -> α
     intoBytes :: α -> Bytes
 
+instance Binary Bytes where
+    fromBytes = id
+    intoBytes = id
+
 {-| from "Data.ByteString" Strict -}
 instance Binary B.ByteString where
     fromBytes (StrictBytes b') = b'
