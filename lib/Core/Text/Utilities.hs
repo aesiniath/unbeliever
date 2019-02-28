@@ -264,12 +264,12 @@ wrapHelper :: Int -> [Rope] -> Rope
 wrapHelper _ [] = ""
 wrapHelper _ [x]  = x
 wrapHelper margin (x:xs) =
-    snd $ List.foldl' (wrapLine margin) (width x, x) xs
+    snd $ List.foldl' (wrapLine margin) (widthRope x, x) xs
 
 wrapLine :: Int -> (Int, Rope) -> Rope -> (Int, Rope)
 wrapLine margin (pos,builder) word =
   let
-    wide = width word
+    wide = widthRope word
     wide' = pos + wide + 1
   in
     if wide' > margin

@@ -30,9 +30,9 @@ checkRopeBehaviour = do
             unRope ("Hello" :: Rope) `shouldBe` F.singleton (S.pack "Hello")
 
         it "calculates length accurately" $ do
-            width hydrogen `shouldBe` 2
-            width sulfate `shouldBe` 3
-            width (hydrogen <> sulfate) `shouldBe` 5
+            widthRope hydrogen `shouldBe` 2
+            widthRope sulfate `shouldBe` 3
+            widthRope (hydrogen <> sulfate) `shouldBe` 5
 
         it "Eq instance behaves" $ do
              ("" :: Rope) == ("" :: Rope) `shouldBe` True
@@ -48,7 +48,7 @@ checkRopeBehaviour = do
              ("H₂" :: Rope) <> ("SO₄" :: Rope)  `shouldBe` ("H₂SO₄" :: Rope)
 
         it "concatonates two Ropes correctly (Textual)" $ do
-             append ("SO₄" :: Rope) ("H₂" :: Rope) `shouldBe` ("H₂SO₄" :: Rope)
+             appendRope ("SO₄" :: Rope) ("H₂" :: Rope) `shouldBe` ("H₂SO₄" :: Rope)
 
         it "exports to ByteString" $
           let
@@ -68,32 +68,32 @@ checkRopeBehaviour = do
             List.splitAt 3 ("123456789" :: String) `shouldBe` ("123", "456789")
 
             -- expect same behaviour of Rope
-            split 0 ("123456789" :: Rope) `shouldBe` ("", "123456789")
-            split 3 ("123456789" :: Rope) `shouldBe` ("123", "456789")
-            split 9 ("123456789" :: Rope) `shouldBe` ("123456789","")
-            split 10 ("123456789" :: Rope) `shouldBe` ("123456789","")
-            split (-1) ("123456789" :: Rope) `shouldBe` ("", "123456789")
+            splitRope 0 ("123456789" :: Rope) `shouldBe` ("", "123456789")
+            splitRope 3 ("123456789" :: Rope) `shouldBe` ("123", "456789")
+            splitRope 9 ("123456789" :: Rope) `shouldBe` ("123456789","")
+            splitRope 10 ("123456789" :: Rope) `shouldBe` ("123456789","")
+            splitRope (-1) ("123456789" :: Rope) `shouldBe` ("", "123456789")
 
-            -- exercise splitting at and between piece boundaries
-            split 0 compound `shouldBe` ("", "3-ethyl-4-methylhexane")
-            split 1 compound `shouldBe` ("3", "-ethyl-4-methylhexane")
-            split 2 compound `shouldBe` ("3-", "ethyl-4-methylhexane")
-            split 4 compound `shouldBe` ("3-et", "hyl-4-methylhexane")
+            -- exercise splitRopeting at and between piece boundaries
+            splitRope 0 compound `shouldBe` ("", "3-ethyl-4-methylhexane")
+            splitRope 1 compound `shouldBe` ("3", "-ethyl-4-methylhexane")
+            splitRope 2 compound `shouldBe` ("3-", "ethyl-4-methylhexane")
+            splitRope 4 compound `shouldBe` ("3-et", "hyl-4-methylhexane")
             --                             1234567890
-            split 10 compound `shouldBe` ("3-ethyl-4-", "methylhexane")
-            split 11 compound `shouldBe` ("3-ethyl-4-m", "ethylhexane")
-            split 16 compound `shouldBe` ("3-ethyl-4-methyl", "hexane")
-            split 21 compound `shouldBe` ("3-ethyl-4-methylhexan", "e")
-            width compound `shouldBe` 22
-            split 22 compound `shouldBe` ("3-ethyl-4-methylhexane", "")
-            split 23 compound `shouldBe` ("3-ethyl-4-methylhexane", "")
-            split (-1) compound `shouldBe` ("", "3-ethyl-4-methylhexane")
+            splitRope 10 compound `shouldBe` ("3-ethyl-4-", "methylhexane")
+            splitRope 11 compound `shouldBe` ("3-ethyl-4-m", "ethylhexane")
+            splitRope 16 compound `shouldBe` ("3-ethyl-4-methyl", "hexane")
+            splitRope 21 compound `shouldBe` ("3-ethyl-4-methylhexan", "e")
+            widthRope compound `shouldBe` 22
+            splitRope 22 compound `shouldBe` ("3-ethyl-4-methylhexane", "")
+            splitRope 23 compound `shouldBe` ("3-ethyl-4-methylhexane", "")
+            splitRope (-1) compound `shouldBe` ("", "3-ethyl-4-methylhexane")
 
         it "does insertion correctly" $ do
-            insert 3 "two" "onethree" `shouldBe` "onetwothree"
-            insert 3 "Con" "Def 1" `shouldBe` "DefCon 1"
-            insert 0 "one" "twothree" `shouldBe` "onetwothree"
-            insert 6 "three" "onetwo" `shouldBe` "onetwothree"
+            insertRope 3 "two" "onethree" `shouldBe` "onetwothree"
+            insertRope 3 "Con" "Def 1" `shouldBe` "DefCon 1"
+            insertRope 0 "one" "twothree" `shouldBe` "onetwothree"
+            insertRope 6 "three" "onetwo" `shouldBe` "onetwothree"
 
     describe "QuasiQuoted string literals" $
       do
