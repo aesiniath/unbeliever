@@ -78,7 +78,7 @@ module Core.Text.Rope
     , widthRope
     , splitRope
     , insertRope
-    , contains
+    , containsCharacter
       {-* Interoperation and Output -}
     , Textual(fromRope, intoRope, appendRope)
     , hWrite
@@ -142,8 +142,8 @@ You can get at the underlying finger tree with the 'unRope' function.
 
 This involves considerable appending of data, very very occaisionally
 inserting it. Often the pieces are tiny. To add text to a @Rope@ use the
-'appendRope' method as below or ('Data.Semigroup.<>') from "Data.Monoid"
-(like you would have with a @Builder@).
+'appendRope' method as below or the ('Data.Semigroup.<>') operator from
+"Data.Monoid" (like you would have with a @Builder@).
 
 Output to a @Handle@ can be done efficiently with 'hWrite'.
 -}
@@ -464,12 +464,12 @@ We've used it to ask whether there are newlines present in a @Rope@, for
 example:
 
 @
-    if 'contains' '\n' text
+    if 'containsCharacter' \'\n\' text
         then handleComplexCase
         else keepItSimple
 @
 -}
-contains :: Char -> Rope -> Bool
-contains q (Rope x) = any j x
+containsCharacter :: Char -> Rope -> Bool
+containsCharacter q (Rope x) = any j x
   where
     j piece = S.any (\c -> c == q) piece
