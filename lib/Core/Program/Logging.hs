@@ -160,7 +160,7 @@ putMessage context message@(Message now _ text potentialValue) = do
 
     let display = case potentialValue of
             Just value ->
-                if contains '\n' value
+                if containsCharacter '\n' value
                     then text <> " =\n" <> value
                     else text <> " = " <> value
             Nothing -> text

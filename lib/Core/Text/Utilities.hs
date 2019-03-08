@@ -18,6 +18,7 @@ module Core.Text.Utilities (
     , indefinite
     , breakWords
     , breakLines
+    , breakPieces
     , wrap
     , underline
       {-* Multi-line strings -}
@@ -158,20 +159,24 @@ Examples:
 @
 -}
 breakWords :: Rope -> [Rope]
-breakWords text = pieces isSpace text
+breakWords text = breakPieces isSpace text
 
 {-|
 Split a paragraph of text into a list of its individual lines. The
 paragraph will be broken wherever there is a @'\n'@ character.
 -}
 breakLines :: Rope -> [Rope]
-breakLines text = pieces isNewline text
+breakLines text = breakPieces isNewline text
 
 isNewline :: Char -> Bool
 isNewline c = c == '\n'
 
-pieces :: (Char -> Bool) -> Rope -> [Rope]
-pieces predicate text =
+{-|
+Break a Rope into pieces whereever the given predicate function returns
+@True@. If found, that character will not be included on either side.
+-}
+breakPieces :: (Char -> Bool) -> Rope -> [Rope]
+breakPieces predicate text =
   let
     (final,list) = foldr (finder predicate) (S.empty,[]) (unRope text)
     l = intoRope (F.singleton final)
@@ -264,12 +269,12 @@ wrapHelper :: Int -> [Rope] -> Rope
 wrapHelper _ [] = ""
 wrapHelper _ [x]  = x
 wrapHelper margin (x:xs) =
-    snd $ List.foldl' (wrapLine margin) (width x, x) xs
+    snd $ List.foldl' (wrapLine margin) (widthRope x, x) xs
 
 wrapLine :: Int -> (Int, Rope) -> Rope -> (Int, Rope)
 wrapLine margin (pos,builder) word =
   let
-    wide = width word
+    wide = widthRope word
     wide' = pos + wide + 1
   in
     if wide' > margin

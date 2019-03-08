@@ -75,12 +75,12 @@ module Core.Text.Rope
     ( {-* Rope type -}
       Rope
     , emptyRope
-    , width
-    , split
-    , insert
-    , contains
+    , widthRope
+    , splitRope
+    , insertRope
+    , containsCharacter
       {-* Interoperation and Output -}
-    , Textual(fromRope, intoRope, append)
+    , Textual(fromRope, intoRope, appendRope)
     , hWrite
       {-* Internals -}
     , unRope
@@ -142,8 +142,8 @@ You can get at the underlying finger tree with the 'unRope' function.
 
 This involves considerable appending of data, very very occaisionally
 inserting it. Often the pieces are tiny. To add text to a @Rope@ use the
-'append' method as below or ('Data.Semigroup.<>') from "Data.Monoid" (like you
-would have with a @Builder@).
+'appendRope' method as below or the ('Data.Semigroup.<>') operator from
+"Data.Monoid" (like you would have with a @Builder@).
 
 Output to a @Handle@ can be done efficiently with 'hWrite'.
 -}
@@ -231,8 +231,8 @@ emptyRope = Rope F.empty
 {-|
 Get the length of this text, in characters.
 -}
-width :: Rope -> Int
-width = foldr' f 0 . unRope
+widthRope :: Rope -> Int
+widthRope = foldr' f 0 . unRope
   where
     f piece count = S.length piece + count
 
@@ -242,25 +242,25 @@ Break the text into two pieces at the specified offset.
 Examples:
 
 @
-λ> __split 0 \"abcdef\"__
+λ> __splitRope 0 \"abcdef\"__
 (\"\", \"abcdef\")
-λ> __split 3 \"abcdef\"__
+λ> __splitRope 3 \"abcdef\"__
 (\"abc\", \"def\")
-λ> __split 6 \"abcdef\"__
+λ> __splitRope 6 \"abcdef\"__
 (\"abcdef\",\"\")
 @
 
 Going off either end behaves sensibly:
 
 @
-λ> __split 7 \"abcdef\"__
+λ> __splitRope 7 \"abcdef\"__
 (\"abcdef\",\"\")
-λ> __split (-1) \"abcdef\"__
+λ> __splitRope (-1) \"abcdef\"__
 (\"\", \"abcdef\")
 @
 -}
-split :: Int -> Rope -> (Rope,Rope)
-split i text@(Rope x) =
+splitRope :: Int -> Rope -> (Rope,Rope)
+splitRope i text@(Rope x) =
   let
     pos = Width i
     result = F.search (\w1 _ -> w1 >= pos) x
@@ -282,17 +282,17 @@ Insert a new piece of text into an existing @Rope@ at the specified offset.
 Examples:
 
 @
-λ> __insert 3 \"Con\" \"Def 1\"__
+λ> __insertRope 3 \"Con\" \"Def 1\"__
 "DefCon 1"
-λ> __insert 0 \"United \" \"Nations\"__
+λ> __insertRope 0 \"United \" \"Nations\"__
 "United Nations"
 @
 -}
-insert :: Int -> Rope -> Rope -> Rope
-insert 0 (Rope new) (Rope x) = Rope ((F.><) new x)
-insert i (Rope new) text =
+insertRope :: Int -> Rope -> Rope -> Rope
+insertRope 0 (Rope new) (Rope x) = Rope ((F.><) new x)
+insertRope i (Rope new) text =
   let
-    (Rope before,Rope after) = split i text
+    (Rope before,Rope after) = splitRope i text
   in
     Rope (mconcat [before, new, after])
 
@@ -330,7 +330,7 @@ The @ByteString@ instance requires that its content be valid UTF-8. If not
 an empty @Rope@ will be returned.
 
 Several of the 'fromRope' implementations are expensive and involve a lot
-of intermiate allocation and copying. If you're ultimately writing to a
+of intermediate allocation and copying. If you're ultimately writing to a
 handle prefer 'hWrite' which will write directly to the output buffer.
 -}
 class Textual α where
@@ -348,8 +348,8 @@ convenience wrapper around calling 'intoRope' and 'mappend'ing it to your
 text (which will work just fine, but for some types more efficient
 implementations are possible).
     -}
-    append :: α -> Rope -> Rope
-    append thing text = text <> intoRope thing
+    appendRope :: α -> Rope -> Rope
+    appendRope thing text = text <> intoRope thing
 
 instance Textual (F.FingerTree Width S.ShortText) where
     fromRope = unRope
@@ -358,13 +358,13 @@ instance Textual (F.FingerTree Width S.ShortText) where
 instance Textual Rope where
     fromRope = id
     intoRope = id
-    append (Rope x2) (Rope x1) = Rope ((F.><) x1 x2)
+    appendRope (Rope x2) (Rope x1) = Rope ((F.><) x1 x2)
 
 {-| from "Data.Text.Short" -}
 instance Textual S.ShortText where
     fromRope = foldr S.append S.empty . unRope
     intoRope = Rope . F.singleton
-    append piece (Rope x) = Rope ((F.|>) x piece)
+    appendRope piece (Rope x) = Rope ((F.|>) x piece)
 
 {-| from "Data.Text" Strict -}
 instance Textual T.Text where
@@ -374,7 +374,7 @@ instance Textual T.Text where
         f piece built = (<>) (U.fromText (S.toText piece)) built
 
     intoRope t = Rope (F.singleton (S.fromText t))
-    append chunk (Rope x) = Rope ((F.|>) x (S.fromText chunk))
+    appendRope chunk (Rope x) = Rope ((F.|>) x (S.fromText chunk))
 
 {-| from "Data.Text.Lazy" -}
 instance Textual U.Text where
@@ -394,7 +394,7 @@ instance Textual B.ByteString where
         Nothing -> Rope F.empty         -- bad
 
     -- ditto
-    append b' (Rope x) = case S.fromByteString b' of
+    appendRope b' (Rope x) = case S.fromByteString b' of
         Just piece -> Rope ((F.|>) x piece)
         Nothing -> (Rope x)             -- bad
 
@@ -464,12 +464,12 @@ We've used it to ask whether there are newlines present in a @Rope@, for
 example:
 
 @
-    if 'contains' '\n' text
+    if 'containsCharacter' \'\n\' text
         then handleComplexCase
         else keepItSimple
 @
 -}
-contains :: Char -> Rope -> Bool
-contains q (Rope x) = any j x
+containsCharacter :: Char -> Rope -> Bool
+containsCharacter q (Rope x) = any j x
   where
     j piece = S.any (\c -> c == q) piece
