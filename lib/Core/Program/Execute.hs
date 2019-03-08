@@ -269,7 +269,7 @@ debug queues will be flushed, and then the process will terminate.
 -- putting to the quit MVar initiates the cleanup and exit sequence,
 -- but throwing the exception also aborts execution and starts unwinding
 -- back up the stack.
-terminate :: Int -> Program τ ()
+terminate :: Int -> Program τ α
 terminate code =
   let
     exit = case code of
