@@ -46,8 +46,6 @@ different usage idioms making interoperability a challenge.
 
 The working title for the as-yet unpublished text on this topic is _Haskell
 for Unbelievers_ and so **unbeliever** became the name for this package.
-If you wish to dismiss this library as a giant bikeshedding exercise you
-would not be wrong. Hopefully you'll like the _colour_ of our bikeshed.
 
 Some goals:
 
@@ -99,3 +97,5 @@ Some goals:
     more restricted or better yet pure. This library includes an
     implementation of that pattern.
 
+If you wish to dismiss this library as a giant bikeshedding exercise you
+would not be wrong. Hopefully you'll like the _colour_ of our bikeshed.
