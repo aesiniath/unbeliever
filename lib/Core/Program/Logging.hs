@@ -12,9 +12,9 @@ Broadly speaking, there are two kinds of program: console tools invoked for
 a single purpose, and long-running daemons that effectively run forever.
 
 Tools tend to be run to either have an effect (in which case they tend not
-to say much of anything) or to report a result (which is usually printed to
-your terminal). This tends to be written to \"standard output\",
-traditionally abbreviated in code as @stdout@.
+to a say much of anything) or to report a result. This tends to be written
+to \"standard output\"—traditionally abbreviated in code as @stdout@—which
+is usually printed to your terminal.
 
 Daemons, on the other hand, don't write their output to file descriptor 1;
 rather they tend to respond to requests by writing to files, replying over
@@ -44,7 +44,7 @@ isn't; at worse it is lost as many environments in the wild discard
 in the invoking shell with @2>&1@, which inevitably results in @stderr@
 text appearing in the middle of normal @stdout@ lines corrupting them.
 
-The original idea of standard error was to provde a way to adverse
+The original idea of standard error was to provde a way to report adverse
 conditions without interrupting normal text output, but as we have just
 observed if it happens without context or out of order there isn't much
 point. Instead this library offers a mechanism which caters for the
