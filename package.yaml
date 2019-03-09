@@ -1,5 +1,5 @@
 name: unbeliever
-version: 0.9.2.0
+version: 0.9.2.1
 synopsis: Opinionated Haskell Interoperability
 description: |
   A library to help build command-line programs, both tools and
@@ -23,11 +23,6 @@ tested-with: GHC == 8.6.4
 category: System
 ghc-options: -Wall -Wwarn -fwarn-tabs
 github: oprdyn/unbeliever
-
-flags:
-  development:
-    manual: true
-    default: false
 
 dependencies:
  - aeson
@@ -82,7 +77,6 @@ library:
    - Core.Program.Context
    - Core.Program.Signal
 
-
 tests:
   check:
     dependencies:
@@ -100,36 +94,6 @@ tests:
      - CheckProgramMonad
      - CheckRopeBehaviour
 
-  experiment:
-    when:
-      - condition: flag(development)
-        then:
-          buildable: true
-          ghc-prof-options: -fprof-auto-top
-        else:
-          buildable: false
-    dependencies:
-     - unbeliever
-    ghc-options: -threaded
-    source-dirs: tests
-    main: SimpleExperiment.hs
-    other-modules: []
-
-  snippet:
-    when:
-      - condition: flag(development)
-        then:
-          buildable: true
-          ghc-prof-options: -fprof-auto-top
-        else:
-          buildable: false
-    dependencies:
-     - unbeliever
-    ghc-options: -threaded
-    source-dirs: tests
-    main: Snippet.hs
-    other-modules: []
-
 benchmarks:
   performance:
     dependencies:
@@ -140,4 +104,3 @@ benchmarks:
      - bench
     main: GeneralPerformance.hs
     other-modules: []
-
