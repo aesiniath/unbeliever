@@ -115,7 +115,7 @@ other output or logging facililities of this libarary as you will corrupt
 the ordering of output on the user's terminal. Instead do:
 
 @
-    Core.Program.Execute.write' ('intoRope' b)
+    'Core.Program.Execute.write' ('intoRope' b)
 @
 
 on the assumption that the bytes in question are UTF-8 (or plain ASCII)
