@@ -30,13 +30,14 @@ module Core.Text.Bytes
     ( Bytes
     , Binary(fromBytes, intoBytes)
     , hOutput
+    , hInput
     , chunk
     ) where
 
 import Data.Bits (Bits (..))
 import Data.Char (intToDigit)
 import qualified Data.ByteString as B (ByteString, foldl', splitAt
-    , pack, unpack, length, hPut)
+    , pack, unpack, length, hPut, hGetContents)
 import Data.ByteString.Internal (c2w, w2c)
 import qualified Data.ByteString.Lazy as L (ByteString, fromStrict, toStrict)
 import Data.Hashable (Hashable)
@@ -52,6 +53,7 @@ import Data.Text.Prettyprint.Doc.Render.Terminal (
     color, colorDull, bold, Color(..))
 import System.IO (Handle)
 
+import Core.Text.Rope
 import Core.Text.Utilities
 
 {-|
@@ -93,6 +95,10 @@ instance Binary [Word8] where
     fromBytes (StrictBytes b') = B.unpack b'
     intoBytes = StrictBytes . B.pack
 
+instance Binary Rope where
+    fromBytes (StrictBytes b') = intoRope b'
+    intoBytes = StrictBytes . fromRope
+
 {-|
 Output the content of the 'Bytes' to the specified 'Handle'.
 
@@ -109,7 +115,7 @@ other output or logging facililities of this libarary as you will corrupt
 the ordering of output on the user's terminal. Instead do:
 
 @
-    write (intoRope b)
+    'Core.Program.Execute.write' ('intoRope' b)
 @
 
 on the assumption that the bytes in question are UTF-8 (or plain ASCII)
@@ -117,6 +123,23 @@ encoded.
 -}
 hOutput :: Handle -> Bytes -> IO ()
 hOutput handle (StrictBytes b') = B.hPut handle b'
+
+{-|
+Read the (entire) contents of a handle into a Bytes object.
+
+If you want to read the entire contents of a file, you can do:
+
+@
+    contents <- 'Core.System.Base.withFile' name 'Core.System.Base.ReadMode' 'hInput'
+@
+
+At any kind of scale, Streaming I/O is almost always for better, but for
+small files you need to pick apart this is fine.
+-}
+hInput :: Handle -> IO Bytes
+hInput handle = do
+   contents <- B.hGetContents handle
+   return (StrictBytes contents)
 
 -- (), aka Unit, aka **1**, aka something with only one inhabitant
 
