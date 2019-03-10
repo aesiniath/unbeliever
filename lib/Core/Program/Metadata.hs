@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DeriveLift #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 {-|
 Dig metadata out of the description of your project.
@@ -20,15 +21,13 @@ module Core.Program.Metadata
 )
 where
 
-import qualified Data.List as List
+import Core.Data
+import Core.Text
+import Core.System (withFile, IOMode(..))
+import Data.List (intersperse)
+import qualified Data.List as List (isSuffixOf, find)
+import Data.Maybe (fromMaybe)
 import Data.String
-import Distribution.Types.GenericPackageDescription (GenericPackageDescription, packageDescription)
-import Distribution.Types.PackageDescription (synopsis, package)
-import Distribution.Types.PackageId (pkgName, pkgVersion)
-import Distribution.Types.PackageName (unPackageName)
-import Distribution.PackageDescription.Parsec (readGenericPackageDescription)
-import Distribution.Pretty (prettyShow)
-import Distribution.Verbosity (normal)
 import Language.Haskell.TH (Q, runIO)
 import Language.Haskell.TH.Syntax (Lift, Exp(..))
 import System.Directory (listDirectory)
@@ -95,20 +94,23 @@ main = do
     context <- 'Core.Program.Execute.configure' version 'Core.Program.Execute.None' ('Core.Program.Arguments.simple' ...
 @
 
-(this wraps the extensive machinery in the __Cabal__ library, notably
-'PackageDescription'. Using Template Haskell slows down compilation of this
-file, but the upside of this technique is that it avoids linking the
-Haskell build machinery into your executable, saving you about 10 MB in the
-size of the resultant binary)
+(Using Template Haskell slows down compilation of this file, but the upside
+of this technique is that it avoids linking the Haskell build machinery
+into your executable, saving you about 10 MB in the size of the resultant
+binary)
 -}
 fromPackage :: Q Exp
 fromPackage = do
-    generic <- readCabalFile
-    let desc = packageDescription generic
-        version = Version
-            { projectNameFrom = unPackageName . pkgName . package $ desc
-            , projectSynopsisFrom = synopsis desc
-            , versionNumberFrom = prettyShow . pkgVersion . package $ desc
+    pairs <- readCabalFile
+
+    let name = fromMaybe "" . lookupKeyValue "name" $ pairs
+    let synopsis = fromMaybe "" . lookupKeyValue "synopsis" $ pairs
+    let version = fromMaybe "" . lookupKeyValue "version" $ pairs
+
+    let result = Version
+            { projectNameFrom = fromRope name
+            , projectSynopsisFrom = fromRope synopsis
+            , versionNumberFrom = fromRope version
             }
 
 --  I would have preferred
@@ -118,7 +120,7 @@ fromPackage = do
 --
 --  but that's not happening. So more voodoo TH nonsense instead.
 
-    [e|version|]
+    [e|result|]
 
 
 {-
@@ -135,15 +137,34 @@ findCabalFile = do
         Just file -> return file
         Nothing -> error "No .cabal file found"
 
-readCabalFile :: Q GenericPackageDescription
+readCabalFile :: Q (Map Rope Rope)
 readCabalFile = runIO $ do
     -- Find .cabal file
     file <- findCabalFile
-    
+
     -- Parse .cabal file
-    desc <- readGenericPackageDescription normal file
-
+    contents <- withFile file ReadMode hInput
+    let pairs = parseCabalFile contents
     -- pass to calling program
-    return desc
+    return pairs
 
+parseCabalFile :: Bytes -> Map Rope Rope
+parseCabalFile contents =
+  let
+    breakup = intoMap . fmap (breakRope (== ':')) . breakLines . fromBytes
+  in
+    breakup contents
 
+breakRope :: (Char -> Bool) -> Rope -> (Rope,Rope)
+breakRope predicate text =
+  let
+    pieces = take 2 (breakPieces predicate text)
+  in
+    case pieces of
+        [] -> ("","")
+        [one] -> (one,"")
+        (one:two:_) -> (one, trimRope two)
+
+-- knock off the whitespace in "name:      hello"
+trimRope :: Rope -> Rope
+trimRope = mconcat . intersperse " " . breakWords
