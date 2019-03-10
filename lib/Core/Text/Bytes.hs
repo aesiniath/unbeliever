@@ -52,6 +52,7 @@ import Data.Text.Prettyprint.Doc.Render.Terminal (
     color, colorDull, bold, Color(..))
 import System.IO (Handle)
 
+import Core.Text.Rope
 import Core.Text.Utilities
 
 {-|
@@ -92,6 +93,10 @@ instance Binary L.ByteString where
 instance Binary [Word8] where
     fromBytes (StrictBytes b') = B.unpack b'
     intoBytes = StrictBytes . B.pack
+
+instance Binary Rope where
+    fromBytes (StrictBytes b') = intoRope b'
+    intoBytes = StrictBytes . fromRope
 
 {-|
 Output the content of the 'Bytes' to the specified 'Handle'.

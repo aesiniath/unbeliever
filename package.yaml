@@ -1,5 +1,5 @@
 name: unbeliever
-version: 0.9.2.1
+version: 0.9.3.0
 synopsis: Opinionated Haskell Interoperability
 description: |
   A library to help build command-line programs, both tools and
@@ -29,7 +29,6 @@ dependencies:
  - async
  - base >= 4.11 && < 5
  - bytestring
- - Cabal
  - chronologique
  - containers
  - deepseq
