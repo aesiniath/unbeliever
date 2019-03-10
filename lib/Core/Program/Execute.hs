@@ -68,6 +68,7 @@ module Core.Program.Execute
       , update
         {-* Useful actions -}
       , output
+      , input
         {-* Concurrency -}
       , Thread
       , fork
@@ -389,8 +390,13 @@ correctly. If you wish to write to the terminal use:
 blob you pass in is other than UTF-8 text).
 -}
 output :: Handle -> Bytes -> Program τ ()
-output h b = liftIO $ do
-        B.hPut h (fromBytes b)
+output handle contents = liftIO (hOutput handle contents)
+
+{-|
+Read the (entire) contents of the specified @Handle@.
+-}
+input :: Handle -> Program τ Bytes
+input handle = liftIO (hInput handle)
 
 {-|
 A thread for concurrent computation. Haskell uses green threads: small

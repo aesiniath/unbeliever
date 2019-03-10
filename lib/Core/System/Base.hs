@@ -14,6 +14,8 @@ module Core.System.Base
       {-** from System.IO -}
       {-| Re-exported from "System.IO" in __base__: -}
     , Handle
+    , IOMode(..)
+    , withFile
     , stdin, stdout, stderr
     , hFlush
     , unsafePerformIO
@@ -32,6 +34,6 @@ module Core.System.Base
 import Control.Exception.Safe (Exception(..), SomeException, throw
     , bracket, catch, finally, impureThrow)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import System.IO (Handle, stdin, stdout, stderr, hFlush)
+import System.IO (Handle, IOMode(..), withFile, stdin, stdout, stderr, hFlush)
 import System.IO.Unsafe (unsafePerformIO)
 
