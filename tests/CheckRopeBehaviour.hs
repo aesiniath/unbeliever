@@ -135,7 +135,7 @@ World
           in do
             breakWords text `shouldBe` ["stop","and","goop"]
 
-        it "empty and whitespace-only corner cases handled correctly " $
+        it "empty and whitespace-only corner cases handled correctly" $
           let
             text = "  " <> "" <> "stop" <> "" <> "  "
           in do
@@ -156,6 +156,20 @@ System, beeeeep
                 , "of the Emergency"
                 , "Broadcast"
                 , "System, beeeeep"
+                ]
+
+        it "preserves blank lines" $
+          let
+            para = [quote|
+First line.
+
+Third line.
+|]
+          in do
+            breakLines para `shouldBe`
+                [ "First line."
+                , ""
+                , "Third line."
                 ]
 
     describe "Formatting paragraphs" $ do

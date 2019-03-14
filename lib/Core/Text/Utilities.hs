@@ -195,7 +195,7 @@ finder predicate piece (accum,list) =
     done = S.null piece
 
     -- λ> S.breakEnd isSpace "a d"
-    -- ("a","d")
+    -- ("a ","d")
     --
     -- λ> S.breakEnd isSpace " and"
     -- (" ","and")
