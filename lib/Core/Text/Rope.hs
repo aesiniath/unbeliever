@@ -84,6 +84,7 @@ module Core.Text.Rope
     , hWrite
       {-* Internals -}
     , unRope
+    , nullRope
     , unsafeIntoRope
     , Width(..)
     ) where
@@ -95,7 +96,8 @@ import qualified Data.ByteString.Builder as B (toLazyByteString
 import qualified Data.ByteString.Lazy as L (ByteString, toStrict
     , foldrChunks)
 import qualified Data.FingerTree as F (FingerTree, Measured(..), empty
-    , singleton, (><), (<|), (|>), search, SearchResult(..), null)
+    , singleton, (><), (<|), (|>), search, SearchResult(..), null
+    , viewl, ViewL(..))
 import Data.Foldable (foldr, foldr', foldMap, toList, any)
 import Data.Hashable (Hashable, hashWithSalt)
 import Data.String (IsString(..))
@@ -105,7 +107,7 @@ import qualified Data.Text.Lazy as U (Text, fromChunks, foldrChunks
 import qualified Data.Text.Lazy.Builder as U (Builder, toLazyText
     , fromText)
 import Data.Text.Prettyprint.Doc (Pretty(..), emptyDoc)
-import qualified Data.Text.Short as S (ShortText, length, any
+import qualified Data.Text.Short as S (ShortText, length, any, null
     , fromText, toText, fromByteString, pack, unpack
     , append, empty, toBuilder, splitAt)
 import qualified Data.Text.Short.Unsafe as S (fromByteStringUnsafe)
@@ -235,6 +237,11 @@ widthRope :: Rope -> Int
 widthRope = foldr' f 0 . unRope
   where
     f piece count = S.length piece + count
+
+nullRope :: Rope -> Bool
+nullRope (Rope x) = case F.viewl x of
+    F.EmptyL        -> True
+    (F.:<) piece _  -> S.null piece
 
 {-|
 Break the text into two pieces at the specified offset.
