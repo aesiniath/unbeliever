@@ -155,6 +155,7 @@ parseCabalFile contents =
   in
     breakup contents
 
+-- this should probably be a function in Core.Text.Rope
 breakRope :: (Char -> Bool) -> Rope -> (Rope,Rope)
 breakRope predicate text =
   let
