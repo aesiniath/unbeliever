@@ -159,7 +159,7 @@ Examples:
 @
 -}
 breakWords :: Rope -> [Rope]
-breakWords text = breakPieces isSpace text
+breakWords = filter (not . nullRope) . breakPieces isSpace
 
 {-|
 Split a paragraph of text into a list of its individual lines. The
@@ -173,7 +173,8 @@ isNewline c = c == '\n'
 
 {-|
 Break a Rope into pieces whereever the given predicate function returns
-@True@. If found, that character will not be included on either side.
+@True@. If found, that character will not be included on either side. Empty
+runs, however, *will* be preserved.
 -}
 breakPieces :: (Char -> Bool) -> Rope -> [Rope]
 breakPieces predicate text =
