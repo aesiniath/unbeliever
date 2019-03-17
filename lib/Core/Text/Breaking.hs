@@ -4,28 +4,28 @@ module Core.Text.Breaking where
 
 import qualified Data.Text.Short as S
 import Data.Foldable (foldl')
+import Data.List (uncons)
 
 import Core.Text.Rope
 
--- for left fold
-intoPieces :: (Char -> Bool) -> [S.ShortText] -> S.ShortText -> [S.ShortText] -- maybe Rope at this point?
-intoPieces predicate [] piece =
+{-
+Was the previous piece a match, or are we in the middle of a run of
+characters? If we were, then join the previous run to the current piece
+before processing into chunks.
+-}
+-- now for right fold
+intoPieces :: (Char -> Bool) -> S.ShortText -> [S.ShortText] -> [S.ShortText]
+intoPieces predicate piece list =
   let
-    pieces = intoChunks predicate piece
-  in
-    pieces
-intoPieces predicate list piece =
-  let
-    previous = last list
-    remainder = init list
-
-    (list',piece') = if S.null previous
+    (list',piece') = case uncons list of
+        Nothing -> ([],piece)
+        Just (previous,remainder) -> if S.null previous
             then (list,piece)
-            else (remainder,previous <> piece)
+            else (remainder,piece <> previous)
 
     pieces = intoChunks predicate piece'
   in
-    list' ++ pieces
+    pieces ++ list'
 
 
 intoChunks :: (Char -> Bool) -> S.ShortText -> [S.ShortText]
