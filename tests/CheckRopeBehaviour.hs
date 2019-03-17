@@ -4,6 +4,7 @@
 
 module CheckRopeBehaviour where
 
+import Data.Char (isSpace)
 import qualified Data.FingerTree as F
 import qualified Data.List as List
 import qualified Data.Text as T
@@ -14,6 +15,7 @@ import Test.Hspec
 
 import Core.Text.Rope
 import Core.Text.Utilities
+import Core.Text.Breaking
 
 hydrogen = "H₂" :: Rope
 sulfate = "SO₄" :: Rope
@@ -111,6 +113,19 @@ World
             |] `shouldBe` ("Hello\nWorld\n" :: Rope)
 
     describe "Splitting into words" $ do
+        it "breaks short text into chunks" $ do
+            intoChunks isSpace "Hello" `shouldBe` ["Hello"]
+            intoChunks isSpace "Hello World" `shouldBe` ["Hello","","World"]
+            intoChunks isSpace "Hello " `shouldBe` ["Hello",""]
+            intoChunks isSpace " Hello" `shouldBe` ["","Hello"]
+            intoChunks isSpace " Hello " `shouldBe` ["","Hello",""]
+
+        it "breaks consecutive short texts into chunks" $ do
+            intoPieces isSpace ["This","","is",""] "a test" `shouldBe`
+                ["This","","is","","a","","test"]
+            intoPieces isSpace ["This","","i"] "s a test" `shouldBe`
+                ["This","","is","","a","","test"]
+
         it "single piece containing multiple words splits correctly" $
           let
             text = "This is a test"
