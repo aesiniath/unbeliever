@@ -1,10 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK hide #-}
 
-module Core.Text.Breaking where
+-- This is an Internal module, hidden from Haddock
+module Core.Text.Breaking
+    (
+      intoPieces
+    , intoChunks
+    )
+where
 
-import qualified Data.Text.Short as S
 import Data.Foldable (foldl')
 import Data.List (uncons)
+import qualified Data.Text.Short as S
 
 import Core.Text.Rope
 
@@ -14,21 +21,21 @@ characters? If we were, then join the previous run to the current piece
 before processing into chunks.
 -}
 -- now for right fold
-intoPieces :: (Char -> Bool) -> S.ShortText -> [S.ShortText] -> [S.ShortText]
+intoPieces :: (Char -> Bool) -> S.ShortText -> [Rope] -> [Rope]
 intoPieces predicate piece list =
   let
-    (list',piece') = case uncons list of
-        Nothing -> ([],piece)
-        Just (previous,remainder) -> if S.null previous
-            then (list,piece)
-            else (remainder,piece <> previous)
+    (piece',list') = case uncons list of
+        Nothing -> (piece,[])
+        Just (previous,remainder) -> if nullRope previous
+            then (piece,list)
+            else
+                (piece <> fromRope previous,remainder)
 
     pieces = intoChunks predicate piece'
   in
     pieces ++ list'
 
-
-intoChunks :: (Char -> Bool) -> S.ShortText -> [S.ShortText]
+intoChunks :: (Char -> Bool) -> S.ShortText -> [Rope]
 intoChunks _ piece | S.null piece = []
 intoChunks predicate piece =
   let
@@ -38,7 +45,7 @@ intoChunks predicate piece =
     if S.null chunk
         then if S.null remainder
             then []
-            else S.empty : intoChunks predicate remainder'
+            else emptyRope : intoChunks predicate remainder'
         else if S.null remainder
-            then chunk : []
-            else chunk : S.empty : intoChunks predicate remainder'
+            then intoRope chunk : []
+            else intoRope chunk : emptyRope : intoChunks predicate remainder'
