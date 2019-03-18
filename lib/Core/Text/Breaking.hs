@@ -12,7 +12,7 @@ where
 
 import Data.Foldable (foldr)
 import Data.List (uncons)
-import qualified Data.Text.Short as S (ShortText, null, drop, break)
+import qualified Data.Text.Short as S (ShortText, null, drop, break, uncons,empty)
 
 import Core.Text.Rope
 
@@ -65,17 +65,33 @@ intoPieces predicate piece list =
 -- λ> S.break isSpace " "
 -- (""," ")
 --
+
+{-
+This was more easily expressed as 
+
+  let
+    remainder' = S.drop 1 remainder
+  in
+    if remainder == " "
+
+for the case when we were breaking on spaces. But generalized to a predicate
+we have to strip off the leading character and test that its the only character;
+this is cheaper than S.length etc.
+-}
 intoChunks :: (Char -> Bool) -> S.ShortText -> [Rope]
 intoChunks _ piece | S.null piece = []
 intoChunks predicate piece =
   let
     (chunk,remainder) = S.break predicate piece
-    remainder' = S.drop 1 remainder
+
+    -- Handle the special case that a trailing " " (generalized to predicate)
+    -- is the only character left.
+    (trailing,remainder') = case S.uncons remainder of
+        Nothing -> (False,S.empty)
+        Just (c,remaining) -> if S.null remaining
+            then (predicate c,S.empty)
+            else (False,remaining)
   in
-    if S.null chunk
-        then if S.null remainder
-            then []
-            else emptyRope : intoChunks predicate remainder'
-        else if S.null remainder
-            then intoRope chunk : []
-            else intoRope chunk : emptyRope : intoChunks predicate remainder'
+    if trailing
+        then intoRope chunk : emptyRope : []
+        else intoRope chunk : intoChunks predicate remainder'
