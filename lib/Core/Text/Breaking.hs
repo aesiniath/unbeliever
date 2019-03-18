@@ -4,16 +4,30 @@
 -- This is an Internal module, hidden from Haddock
 module Core.Text.Breaking
     (
-      intoPieces
+      breakPieces
+    , intoPieces
     , intoChunks
     )
 where
 
-import Data.Foldable (foldl')
+import Data.Foldable (foldr)
 import Data.List (uncons)
-import qualified Data.Text.Short as S
+import qualified Data.Text.Short as S (ShortText, null, drop, break)
 
 import Core.Text.Rope
+
+{-|
+Break a Rope into pieces whereever the given predicate function returns
+@True@. If found, that character will not be included on either side. Empty
+runs, however, *will* be preserved.
+-}
+breakPieces :: (Char -> Bool) -> Rope -> [Rope]
+breakPieces predicate text =
+  let
+    x = unRope text
+    result = foldr (intoPieces predicate) [] x
+  in
+    result
 
 {-
 Was the previous piece a match, or are we in the middle of a run of
@@ -35,6 +49,22 @@ intoPieces predicate piece list =
   in
     pieces ++ list'
 
+--
+-- λ> S.break isSpace "a d"
+-- ("a"," d")
+--
+-- λ> S.break isSpace " and"
+-- (""," and")
+--
+-- λ> S.break isSpace "and "
+-- ("and"," ")
+--
+-- λ> S.break isSpace ""
+-- ("","")
+--
+-- λ> S.break isSpace " "
+-- (""," ")
+--
 intoChunks :: (Char -> Bool) -> S.ShortText -> [Rope]
 intoChunks _ piece | S.null piece = []
 intoChunks predicate piece =
