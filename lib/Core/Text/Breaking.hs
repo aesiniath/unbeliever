@@ -40,6 +40,17 @@ breakWords = filter (not . nullRope) . breakPieces isSpace
 {-|
 Split a paragraph of text into a list of its individual lines. The
 paragraph will be broken wherever there is a @'\n'@ character.
+
+Blank lines will be preserved.
+
+Note that you'll get a blank entry at the end of the a list of newline
+/terminated/ strings, representing the (empty) text between the last
+newline and the end of the string.
+
+@
+λ> __breakLines \"Hello\\n\\nWorld\\n\"__
+[\"Hello\",\"\",\"World\",\"\"]
+@
 -}
 breakLines :: Rope -> [Rope]
 breakLines text = breakPieces isNewline text
