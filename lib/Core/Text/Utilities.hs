@@ -5,6 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_HADDOCK prune #-}
 
 {-|
 Useful tools for working with 'Rope's. Support for pretty printing,
@@ -23,6 +24,10 @@ module Core.Text.Utilities (
     , underline
       {-* Multi-line strings -}
     , quote
+
+    -- for testing
+    , intoPieces
+    , intoChunks
 ) where
 
 import qualified Data.FingerTree as F ((<|), ViewL(..), viewl)

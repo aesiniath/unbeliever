@@ -15,7 +15,6 @@ import Test.Hspec
 
 import Core.Text.Rope
 import Core.Text.Utilities
-import Core.Text.Breaking
 
 hydrogen = "H₂" :: Rope
 sulfate = "SO₄" :: Rope
