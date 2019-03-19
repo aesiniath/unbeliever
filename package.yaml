@@ -73,7 +73,7 @@ library:
    - Core.System.Base
    - Core.System.External
   other-modules:
-   - Core.Program.Breaking
+   - Core.Text.Breaking
    - Core.Program.Context
    - Core.Program.Signal
 
