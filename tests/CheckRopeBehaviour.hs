@@ -116,19 +116,22 @@ World
         it "breaks short text into chunks" $ do
             intoChunks isSpace "" `shouldBe` []
             intoChunks isSpace "Hello" `shouldBe` ["Hello"]
-            intoChunks isSpace "Hello World" `shouldBe` ["Hello","","World"]
+            intoChunks isSpace "Hello World" `shouldBe` ["Hello","World"]
             intoChunks isSpace "Hello " `shouldBe` ["Hello",""]
             intoChunks isSpace " Hello" `shouldBe` ["","Hello"]
             intoChunks isSpace " Hello " `shouldBe` ["","Hello",""]
 
         it "breaks consecutive short texts into chunks" $ do
-            intoPieces isSpace "Hello" [] `shouldBe` ["Hello"]
-            intoPieces isSpace "" [] `shouldBe` []
-            intoPieces isSpace "" ["World"] `shouldBe` ["World"]
-            intoPieces isSpace "This is" ["","a","","test."] `shouldBe`
-                ["This","","is","","a","","test."]
-            intoPieces isSpace "This i" ["s","","a","","test."] `shouldBe`
-                ["This","","is","","a","","test."]
+            intoPieces isSpace "Hello" (Nothing,[]) `shouldBe`
+                (Just "Hello",[])
+            intoPieces isSpace "" (Nothing,[]) `shouldBe`
+                (Nothing,[])
+            intoPieces isSpace "" (Nothing,["World"]) `shouldBe`
+                (Nothing,["World"])
+            intoPieces isSpace "This is" (Nothing,["","a","","test."]) `shouldBe`
+                (Just "This",["is","","a","","test."])
+            intoPieces isSpace "This i" (Just "s",["","a","","test."]) `shouldBe`
+                (Just "This",["is","","a","","test."])
 
         it "single piece containing multiple words splits correctly" $
           let
