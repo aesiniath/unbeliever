@@ -99,6 +99,7 @@ import Control.Monad.Reader.Class (MonadReader(ask))
 import qualified Data.ByteString as B (hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
 import GHC.Conc (numCapabilities, getNumProcessors, setNumCapabilities)
+import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import System.Exit (ExitCode(..))
 import qualified System.Posix.Process as Posix (exitImmediately)
 
@@ -189,6 +190,9 @@ executeWith :: Context τ -> Program τ α -> IO ()
 executeWith context program = do
     -- command line +RTS -Nn -RTS value
     when (numCapabilities == 1) (getNumProcessors >>= setNumCapabilities)
+
+    -- force UTF-8 working around bad VMs
+    setLocaleEncoding utf8
 
     let quit = exitSemaphoreFrom context
         level = verbosityLevelFrom context
