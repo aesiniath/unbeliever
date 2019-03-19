@@ -3,18 +3,49 @@
 
 -- This is an Internal module, hidden from Haddock
 module Core.Text.Breaking
-    (
-      breakPieces
+    ( breakWords
+    , breakLines
+    , breakPieces
     , intoPieces
     , intoChunks
     )
 where
 
+import Data.Char (isSpace)
 import Data.Foldable (foldr)
 import Data.List (uncons)
 import qualified Data.Text.Short as S (ShortText, null, break, uncons,empty)
 
 import Core.Text.Rope
+
+{-|
+Split a passage of text into a list of words. A line is broken wherever
+there is one or more whitespace characters, as defined by "Data.Char"'s
+'Data.Char.isSpace'.
+
+Examples:
+
+@
+λ> __breakWords \"This is a test\"__
+[\"This\",\"is\",\"a\",\"test\"]
+λ> __breakWords (\"St\" <> \"op and \" <> \"go left\")__
+[\"Stop\",\"and\",\"go\",\"left\"]
+λ> __breakWords emptyRope__
+[]
+@
+-}
+breakWords :: Rope -> [Rope]
+breakWords = filter (not . nullRope) . breakPieces isSpace
+
+{-|
+Split a paragraph of text into a list of its individual lines. The
+paragraph will be broken wherever there is a @'\n'@ character.
+-}
+breakLines :: Rope -> [Rope]
+breakLines text = breakPieces isNewline text
+
+isNewline :: Char -> Bool
+isNewline c = c == '\n'
 
 {-|
 Break a Rope into pieces whereever the given predicate function returns
