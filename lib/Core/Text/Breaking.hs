@@ -12,7 +12,7 @@ where
 
 import Data.Foldable (foldr)
 import Data.List (uncons)
-import qualified Data.Text.Short as S (ShortText, null, drop, break, uncons,empty)
+import qualified Data.Text.Short as S (ShortText, null, break, uncons,empty)
 
 import Core.Text.Rope
 
@@ -25,9 +25,11 @@ breakPieces :: (Char -> Bool) -> Rope -> [Rope]
 breakPieces predicate text =
   let
     x = unRope text
-    result = foldr (intoPieces predicate) [] x
+    (final,result) = foldr (intoPieces predicate) (Nothing,[]) x
   in
-    result
+    case final of
+       Nothing -> result
+       Just piece -> intoRope piece : result
 
 {-
 Was the previous piece a match, or are we in the middle of a run of
@@ -35,19 +37,18 @@ characters? If we were, then join the previous run to the current piece
 before processing into chunks.
 -}
 -- now for right fold
-intoPieces :: (Char -> Bool) -> S.ShortText -> [Rope] -> [Rope]
-intoPieces predicate piece list =
+intoPieces :: (Char -> Bool) -> S.ShortText -> (Maybe S.ShortText,[Rope]) -> (Maybe S.ShortText,[Rope])
+intoPieces predicate piece (stream,list) =
   let
-    (piece',list') = case uncons list of
-        Nothing -> (piece,[])
-        Just (previous,remainder) -> if nullRope previous
-            then (piece,list)
-            else
-                (piece <> fromRope previous,remainder)
+    piece' = case stream of
+        Nothing -> piece
+        Just previous -> piece <> previous       -- more rope, less text?
 
     pieces = intoChunks predicate piece'
   in
-    pieces ++ list'
+    case uncons pieces of
+        Nothing -> (Nothing,list)
+        Just (text,remainder) -> (Just (fromRope text),remainder ++ list)
 
 --
 -- λ> S.break isSpace "a d"
