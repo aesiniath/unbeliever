@@ -167,11 +167,12 @@ World
             breakLines "" `shouldBe` []
             breakLines "Hello" `shouldBe` ["Hello"]
             breakLines "Hello\nWorld" `shouldBe` ["Hello","World"]
-            breakLines "Hello\n" `shouldBe` ["Hello",""]
+            breakLines "Hello\n" `shouldBe` ["Hello"]
             breakLines "\nHello" `shouldBe` ["","Hello"]
-            breakLines "\nHello\n" `shouldBe` ["","Hello",""]
-            breakLines "Hello\nWorld\n" `shouldBe` ["Hello","World",""]
-            breakLines "Hello\n\nWorld\n" `shouldBe` ["Hello","","World",""]
+            breakLines "\nHello\n" `shouldBe` ["","Hello"]
+            breakLines "Hello\nWorld\n" `shouldBe` ["Hello","World"]
+            breakLines "Hello\n\nWorld\n" `shouldBe` ["Hello","","World"]
+            breakLines "Hello\n\nWorld\n\n" `shouldBe` ["Hello","","World",""]
 
         it "single piece containing multiple lines splits correctly" $
           let
@@ -187,7 +188,6 @@ System, beeeeep
                 , "of the Emergency"
                 , "Broadcast"
                 , "System, beeeeep"
-                , ""
                 ]
 
         it "preserves blank lines" $
@@ -202,7 +202,6 @@ Third line.
                 [ "First line."
                 , ""
                 , "Third line."
-                , ""
                 ]
 
     describe "Formatting paragraphs" $ do

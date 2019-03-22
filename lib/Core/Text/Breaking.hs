@@ -41,19 +41,26 @@ breakWords = filter (not . nullRope) . breakPieces isSpace
 Split a paragraph of text into a list of its individual lines. The
 paragraph will be broken wherever there is a @'\n'@ character.
 
-Blank lines will be preserved.
-
-Note that you'll get a blank entry at the end of the a list of newline
-/terminated/ strings, representing the (empty) text between the last
-newline and the end of the string.
+Blank lines will be preserved. Note that as a special case you do /not/ get
+a blank entry at the end of the a list of newline terminated strings.
 
 @
 λ> __breakLines \"Hello\\n\\nWorld\\n\"__
-[\"Hello\",\"\",\"World\",\"\"]
+[\"Hello\",\"\",\"World\"]
 @
 -}
 breakLines :: Rope -> [Rope]
-breakLines text = breakPieces isNewline text
+breakLines text =
+  let
+    result = breakPieces isNewline text
+    n = length result - 1
+    (fore,aft) = splitAt n result
+  in case result of
+    [] -> []
+    [p] -> [p]
+    _ -> if aft == [""]
+        then fore
+        else result
 
 isNewline :: Char -> Bool
 isNewline c = c == '\n'
