@@ -5,6 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_HADDOCK prune #-}
 
 {-|
 Useful tools for working with 'Rope's. Support for pretty printing,
@@ -23,15 +24,17 @@ module Core.Text.Utilities (
     , underline
       {-* Multi-line strings -}
     , quote
+
+    -- for testing
+    , intoPieces
+    , intoChunks
 ) where
 
-import Data.Char (isSpace)
-import qualified Data.FingerTree as F ((<|), ViewL(..), viewl, singleton)
+import qualified Data.FingerTree as F ((<|), ViewL(..), viewl)
 import qualified Data.List as List (foldl', dropWhileEnd)
 import Data.Monoid ((<>))
 import qualified Data.Text as T
-import qualified Data.Text.Short as S (ShortText, uncons, toText, empty
-    , null, breakEnd, append, dropEnd)
+import qualified Data.Text.Short as S (ShortText, uncons, toText)
 import Data.Text.Prettyprint.Doc (Doc, layoutPretty , reAnnotateS
     , pretty, emptyDoc
     , LayoutOptions(LayoutOptions)
@@ -41,6 +44,7 @@ import Language.Haskell.TH (litE, stringL)
 import Language.Haskell.TH.Quote (QuasiQuoter(QuasiQuoter))
 
 import Core.Text.Rope
+import Core.Text.Breaking
 
 -- change AnsiStyle to a custom token type, perhaps Ansi, which
 -- has the escape codes already converted to Rope.
@@ -141,111 +145,6 @@ indefinite text =
             Just (c,_)  -> if c `elem` ['A','E','I','O','U','a','e','i','o','u']
                 then intoRope ("an " F.<| x)
                 else intoRope ("a " F.<| x)
-
-{-|
-Split a passage of text into a list of words. A line is broken wherever
-there is one or more whitespace characters, as defined by "Data.Char"'s
-'Data.Char.isSpace'.
-
-Examples:
-
-@
-λ> __breakWords \"This is a test\"__
-[\"This\",\"is\",\"a\",\"test\"]
-λ> __breakWords (\"St\" <> \"op and \" <> \"go left\")__
-[\"Stop\",\"and\",\"go\",\"left\"]
-λ> __breakWords emptyRope__
-[]
-@
--}
-breakWords :: Rope -> [Rope]
-breakWords text = breakPieces isSpace text
-
-{-|
-Split a paragraph of text into a list of its individual lines. The
-paragraph will be broken wherever there is a @'\n'@ character.
--}
-breakLines :: Rope -> [Rope]
-breakLines text = breakPieces isNewline text
-
-isNewline :: Char -> Bool
-isNewline c = c == '\n'
-
-{-|
-Break a Rope into pieces whereever the given predicate function returns
-@True@. If found, that character will not be included on either side.
--}
-breakPieces :: (Char -> Bool) -> Rope -> [Rope]
-breakPieces predicate text =
-  let
-    (final,list) = foldr (finder predicate) (S.empty,[]) (unRope text)
-    l = intoRope (F.singleton final)
-  in
-    if S.null final
-        then list
-        else l:list
-
-finder
-    :: (Char -> Bool)
-    -> S.ShortText
-    -> (S.ShortText,[Rope])
-    -> (S.ShortText,[Rope])
-finder predicate piece (accum,list) =
-  let
-    done = S.null piece
-
-    -- λ> S.breakEnd isSpace "a d"
-    -- ("a","d")
-    --
-    -- λ> S.breakEnd isSpace " and"
-    -- (" ","and")
-    --
-    -- λ> S.breakEnd isSpace "and "
-    -- ("and ","")
-    --
-    -- λ> S.breakEnd isSpace ""
-    -- ("","")
-    --
-    -- λ> S.breakEnd isSpace " "
-    -- (" ","")
-
-    (remainder,fragment) = S.breakEnd predicate piece
-
-    -- Are we in the middle of a word? We are if the carry forward is
-    -- non-zero length.
-    --
-    -- Did we find a word in the current piece? If so, then if we are in
-    -- the middle of accumulating a word, we add the new piece to it.
-
-    found  = not (S.null fragment)
-    middle = not (S.null accum)
-
-    accum' = if found
-                then if middle
-                    then S.append fragment accum
-                    else fragment
-                else accum
-
-    -- Did we find a space? We did if remainder is non-zero length.
-    -- Finding a space means flushing out the accumulator (though only if
-    -- there's actually something there). We have to drop that whitespace
-    -- before iterating.
-
-    space = not (S.null remainder)
-    empty = S.null accum'
-    word = intoRope accum'
-
-    list' = if empty
-                then list
-                else word:list
-
-    remainder' = S.dropEnd 1 remainder
-  in
-    if done
-        then (accum',list)
-        else if space
-            then finder predicate remainder' (S.empty,list')
-            else finder predicate remainder (accum',list)
 
 {-|
 Often the input text represents a paragraph, but does not have any internal

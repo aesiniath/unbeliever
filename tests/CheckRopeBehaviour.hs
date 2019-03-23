@@ -4,6 +4,7 @@
 
 module CheckRopeBehaviour where
 
+import Data.Char (isSpace)
 import qualified Data.FingerTree as F
 import qualified Data.List as List
 import qualified Data.Text as T
@@ -111,6 +112,26 @@ World
             |] `shouldBe` ("Hello\nWorld\n" :: Rope)
 
     describe "Splitting into words" $ do
+        it "breaks short text into chunks" $ do
+            intoChunks isSpace "" `shouldBe` []
+            intoChunks isSpace "Hello" `shouldBe` ["Hello"]
+            intoChunks isSpace "Hello World" `shouldBe` ["Hello","World"]
+            intoChunks isSpace "Hello " `shouldBe` ["Hello",""]
+            intoChunks isSpace " Hello" `shouldBe` ["","Hello"]
+            intoChunks isSpace " Hello " `shouldBe` ["","Hello",""]
+
+        it "breaks consecutive short texts into chunks" $ do
+            intoPieces isSpace "Hello" (Nothing,[]) `shouldBe`
+                (Just "Hello",[])
+            intoPieces isSpace "" (Nothing,[]) `shouldBe`
+                (Nothing,[])
+            intoPieces isSpace "" (Nothing,["World"]) `shouldBe`
+                (Nothing,["World"])
+            intoPieces isSpace "This is" (Nothing,["","a","","test."]) `shouldBe`
+                (Just "This",["is","","a","","test."])
+            intoPieces isSpace "This i" (Just "s",["","a","","test."]) `shouldBe`
+                (Just "This",["is","","a","","test."])
+
         it "single piece containing multiple words splits correctly" $
           let
             text = "This is a test"
@@ -135,13 +156,24 @@ World
           in do
             breakWords text `shouldBe` ["stop","and","goop"]
 
-        it "empty and whitespace-only corner cases handled correctly " $
+        it "empty and whitespace-only corner cases handled correctly" $
           let
             text = "  " <> "" <> "stop" <> "" <> "  "
           in do
             breakWords text `shouldBe` ["stop"]
 
     describe "Splitting into lines" $ do
+        it "preconditions are met" $ do
+            breakLines "" `shouldBe` []
+            breakLines "Hello" `shouldBe` ["Hello"]
+            breakLines "Hello\nWorld" `shouldBe` ["Hello","World"]
+            breakLines "Hello\n" `shouldBe` ["Hello"]
+            breakLines "\nHello" `shouldBe` ["","Hello"]
+            breakLines "\nHello\n" `shouldBe` ["","Hello"]
+            breakLines "Hello\nWorld\n" `shouldBe` ["Hello","World"]
+            breakLines "Hello\n\nWorld\n" `shouldBe` ["Hello","","World"]
+            breakLines "Hello\n\nWorld\n\n" `shouldBe` ["Hello","","World",""]
+
         it "single piece containing multiple lines splits correctly" $
           let
             para = [quote|
@@ -156,6 +188,20 @@ System, beeeeep
                 , "of the Emergency"
                 , "Broadcast"
                 , "System, beeeeep"
+                ]
+
+        it "preserves blank lines" $
+          let
+            para = [quote|
+First line.
+
+Third line.
+|]
+          in do
+            breakLines para `shouldBe`
+                [ "First line."
+                , ""
+                , "Third line."
                 ]
 
     describe "Formatting paragraphs" $ do
