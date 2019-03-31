@@ -8,13 +8,15 @@ module Core.Text.Breaking
     , breakPieces
     , intoPieces
     , intoChunks
+    , divideRope
     )
 where
 
 import Data.Char (isSpace)
 import Data.Foldable (foldr)
 import Data.List (uncons)
-import qualified Data.Text.Short as S (ShortText, null, break, uncons,empty)
+import qualified Data.Text.Short as S (ShortText, null, break, uncons, empty
+    , splitAt, length)
 
 import Core.Text.Rope
 
@@ -145,3 +147,34 @@ intoChunks predicate piece =
     if trailing
         then intoRope chunk : emptyRope : []
         else intoRope chunk : intoChunks predicate remainder'
+
+---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+
+divideRope :: Rope -> Rope -> (Rope,Rope)
+divideRope needle haystack =
+    find needle' haystack' emptyRope
+  where
+    needle' = fromRope needle
+    haystack' = fromRope haystack   -- this is officially terrible
+
+find :: S.ShortText -> S.ShortText -> Rope -> (Rope,Rope)
+find needle haystack previous =
+  let
+    len = S.length needle
+    (before,after) = S.splitAt len haystack
+  in
+    if beginsWith needle haystack
+        then (previous,intoRope haystack)
+        else if S.null after
+            then (appendRope before previous,emptyRope)
+            else find needle after (appendRope before previous)
+
+beginsWith :: S.ShortText -> S.ShortText -> Bool
+beginsWith needle haystack =
+    case S.uncons needle of
+        Nothing -> True
+        Just (n,ns) -> case S.uncons haystack of
+            Nothing -> False
+            Just (h,hs) -> if n == h
+                then beginsWith ns hs
+                else False
