@@ -204,6 +204,22 @@ Third line.
                 , "Third line."
                 ]
 
+    describe "Dividing into subropes" $ do
+        it "finds single characters" $ do
+            divideRope "" "" `shouldBe` ("","")
+            divideRope "H" "Hello World" `shouldBe` ("","Hello World")
+            divideRope "W" "Hello World" `shouldBe` ("Hello ","World")
+            divideRope " " "Hello World" `shouldBe` ("Hello"," World")
+
+        it "finds contiguous strings" $ do
+            divideRope "Hell" "Hello World" `shouldBe` ("","Hello World")
+            divideRope "Wor" "Hello World" `shouldBe` ("Hello ","World")
+            divideRope "Wor" "Hello World World²" `shouldBe` ("Hello ","World World²")
+
+        it "handles not-found cases" $ do
+            divideRope "x" "Hello World" `shouldBe` ("Hello World","")
+            divideRope "xyz" "Hello World" `shouldBe` ("Hello World","")
+
     describe "Formatting paragraphs" $ do
         it "multi-line paragraph rewraps correctly" $
           let

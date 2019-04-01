@@ -20,6 +20,7 @@ module Core.Text.Utilities (
     , breakWords
     , breakLines
     , breakPieces
+    , divideRope
     , wrap
     , underline
       {-* Multi-line strings -}
