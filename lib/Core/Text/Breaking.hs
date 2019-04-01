@@ -82,11 +82,12 @@ breakPieces predicate text =
        Nothing -> result
        Just piece -> intoRope piece : result
 
-{-
-Was the previous piece a match, or are we in the middle of a run of
-characters? If we were, then join the previous run to the current piece
-before processing into chunks.
--}
+--
+-- Was the previous piece a match, or are we in the middle of a run of
+-- characters? If we were, then join the previous run to the current piece
+-- before processing into chunks.
+--
+
 -- now for right fold
 intoPieces :: (Char -> Bool) -> S.ShortText -> (Maybe S.ShortText,[Rope]) -> (Maybe S.ShortText,[Rope])
 intoPieces predicate piece (stream,list) =
@@ -118,18 +119,18 @@ intoPieces predicate piece (stream,list) =
 -- (""," ")
 --
 
-{-
-This was more easily expressed as 
-
-  let
-    remainder' = S.drop 1 remainder
-  in
-    if remainder == " "
-
-for the case when we were breaking on spaces. But generalized to a predicate
-we have to strip off the leading character and test that its the only character;
-this is cheaper than S.length etc.
--}
+--
+-- This was more easily expressed as
+--
+--   let
+--     remainder' = S.drop 1 remainder
+--   in
+--     if remainder == " "
+--
+-- for the case when we were breaking on spaces. But generalized to a
+-- predicate we have to strip off the leading character and test that its
+-- the only character; this is cheaper than S.length etc.
+--
 intoChunks :: (Char -> Bool) -> S.ShortText -> [Rope]
 intoChunks _ piece | S.null piece = []
 intoChunks predicate piece =
@@ -150,13 +151,30 @@ intoChunks predicate piece =
 
 ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
 
+{-|
+Search for a Rope in a larger Rope and split it into two sub-Ropes if
+found: the part preceeding that location, and the remainder from
+that point onward (including the text you searched for).
+
+Examples:
+
+@
+λ> __divideRope \"Wor\" \"Hello World\"__
+[\"Hello \",\"World\")
+@
+-}
+-- this is officially terrible. Converting a Rope into a single ShortText is bad.
+-- We should be folding over its pieces in a manner similar to breakPieces.
 divideRope :: Rope -> Rope -> (Rope,Rope)
 divideRope needle haystack =
     find needle' haystack' emptyRope
   where
     needle' = fromRope needle
-    haystack' = fromRope haystack   -- this is officially terrible
+    haystack' = fromRope haystack
 
+-- this is officially even worse. We're taking the huge single ShortText
+-- and breaking it into pieces that are only needle length long, then
+-- recombining them into a Rope.
 find :: S.ShortText -> S.ShortText -> Rope -> (Rope,Rope)
 find needle haystack previous =
   let

@@ -215,10 +215,12 @@ Third line.
             divideRope "Hell" "Hello World" `shouldBe` ("","Hello World")
             divideRope "Wor" "Hello World" `shouldBe` ("Hello ","World")
             divideRope "Wor" "Hello World World²" `shouldBe` ("Hello ","World World²")
+            divideRope "Hello World" "Hello World" `shouldBe` ("","Hello World")
 
         it "handles not-found cases" $ do
             divideRope "x" "Hello World" `shouldBe` ("Hello World","")
             divideRope "xyz" "Hello World" `shouldBe` ("Hello World","")
+            divideRope "Hello Worldx" "Hello World" `shouldBe` ("Hello World","")
 
     describe "Formatting paragraphs" $ do
         it "multi-line paragraph rewraps correctly" $
