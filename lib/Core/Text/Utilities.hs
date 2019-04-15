@@ -22,6 +22,8 @@ module Core.Text.Utilities (
     , breakPieces
     , wrap
     , underline
+    , leftPadWith
+    , rightPadWith
       {-* Multi-line strings -}
     , quote
 
@@ -34,7 +36,8 @@ import qualified Data.FingerTree as F ((<|), ViewL(..), viewl)
 import qualified Data.List as List (foldl', dropWhileEnd)
 import Data.Monoid ((<>))
 import qualified Data.Text as T
-import qualified Data.Text.Short as S (ShortText, uncons, toText)
+import qualified Data.Text.Short as S (ShortText, uncons, toText, replicate
+    , singleton)
 import Data.Text.Prettyprint.Doc (Doc, layoutPretty , reAnnotateS
     , pretty, emptyDoc
     , LayoutOptions(LayoutOptions)
@@ -188,6 +191,31 @@ underline level text =
     line = T.map (\_ -> level) title
   in
     intoRope line
+
+{-|
+Pad a pieve of text on the left with a specified character to the desired
+width. This function is named in homage to the famous result from Computer
+Science known as @leftPad@ which has a glorious place in the history of the
+world-wide web.
+-}
+leftPadWith :: Char -> Int -> Rope -> Rope
+leftPadWith c digits text =
+    intoRope pad <> text
+  where
+    pad = S.replicate len (S.singleton c)
+    len = digits - widthRope text
+
+
+{-|
+Right pad a text with the specified character.
+-}
+rightPadWith :: Char -> Int -> Rope -> Rope
+rightPadWith c digits text =
+    text <> intoRope pad
+  where
+    pad = S.replicate len (S.singleton c)
+    len = digits - widthRope text
+
 
 {-|
 Multi-line string literals.
