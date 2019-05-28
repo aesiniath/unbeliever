@@ -114,6 +114,8 @@ import qualified Data.Text.Short.Unsafe as S (fromByteStringUnsafe)
 import GHC.Generics (Generic)
 import System.IO (Handle)
 
+import Core.Text.Bytes
+
 {-|
 A type for textual data. A rope is text backed by a tree data structure,
 rather than a single large continguous array, as is the case for strings.
@@ -416,6 +418,15 @@ instance Textual L.ByteString where
         check chunk = case S.fromByteString chunk of
             Just piece -> piece
             Nothing -> S.empty          -- very bad
+
+instance Textual Bytes where
+    fromRope = intoBytes . (fromRope :: Rope -> B.ByteString)
+    intoRope = intoRope . unBytes
+
+instance Binary Rope where
+    fromBytes = intoRope . unBytes
+    intoBytes = intoBytes . (fromRope :: Rope -> B.ByteString)
+
 
 {-|
 If you /know/ the input bytes are valid UTF-8 encoded characters, then

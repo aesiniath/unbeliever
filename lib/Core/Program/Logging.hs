@@ -118,7 +118,7 @@ corruption of your program's normal output.
 module Core.Program.Logging
     (
         putMessage
-      , Verbosity(..)
+      , Verbosity
         {-* Normal output -}
       , write
       , writeS
