@@ -4,7 +4,6 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE BangPatterns #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}        -- FIXME
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}   -- FIXME
 {-# OPTIONS_HADDOCK prune #-}
@@ -31,17 +30,16 @@ module Core.Text.Bytes
     , Binary(fromBytes, intoBytes)
     , hOutput
     , hInput
-    , chunk
+      {-* Internals -}
+    , unBytes
     ) where
 
-import Data.Bits (Bits (..))
-import Data.Char (intToDigit)
 import qualified Data.ByteString as B (ByteString, foldl', splitAt
     , pack, unpack, length, hPut, hGetContents)
-import Data.ByteString.Internal (c2w, w2c)
+import qualified Data.ByteString.Char8 as C (pack, unpack)
+import qualified Data.ByteString.Builder as B (Builder, toLazyByteString, byteString)
 import qualified Data.ByteString.Lazy as L (ByteString, fromStrict, toStrict)
 import Data.Hashable (Hashable)
-import qualified Data.List as List
 import Data.Word (Word8)
 import GHC.Generics (Generic)
 import Data.Text.Prettyprint.Doc
@@ -53,15 +51,19 @@ import Data.Text.Prettyprint.Doc.Render.Terminal (
     color, colorDull, bold, Color(..))
 import System.IO (Handle)
 
-import Core.Text.Rope
-import Core.Text.Utilities
-
 {-|
 A block of data in binary form.
 -}
 data Bytes
     = StrictBytes B.ByteString
     deriving (Show, Eq, Ord, Generic)
+
+{-|
+Access the strict 'ByteString' underlying the @Bytes@ type.
+-}
+unBytes :: Bytes -> B.ByteString
+unBytes (StrictBytes b') = b'
+{-# INLINE unBytes #-}
 
 instance Hashable Bytes
 
@@ -90,14 +92,14 @@ instance Binary L.ByteString where
     fromBytes (StrictBytes b') = L.fromStrict b'
     intoBytes b' = StrictBytes (L.toStrict b')      -- expensive
 
+instance Binary B.Builder where
+    fromBytes (StrictBytes b') = B.byteString b'
+    intoBytes b' = StrictBytes (L.toStrict (B.toLazyByteString b'))
+
 {-| from "Data.Word" -}
 instance Binary [Word8] where
     fromBytes (StrictBytes b') = B.unpack b'
     intoBytes = StrictBytes . B.pack
-
-instance Binary Rope where
-    fromBytes (StrictBytes b') = intoRope b'
-    intoBytes = StrictBytes . fromRope
 
 {-|
 Output the content of the 'Bytes' to the specified 'Handle'.
@@ -140,60 +142,6 @@ hInput :: Handle -> IO Bytes
 hInput handle = do
    contents <- B.hGetContents handle
    return (StrictBytes contents)
-
--- (), aka Unit, aka **1**, aka something with only one inhabitant
-
-instance Render Bytes where
-    type Token Bytes = ()
-    colourize = const (color Green)
-    intoDocA = prettyBytes
-    
-prettyBytes :: Bytes -> Doc ()
-prettyBytes (StrictBytes b') = annotate () . vcat . twoWords
-    . fmap wordToHex . chunk $ b'
-
-twoWords :: [Doc ann] -> [Doc ann]
-twoWords ds = go ds
-  where
-    go [] = []
-    go [x] = [softline' <> x]
-    go xs =
-      let
-        (one:two:[], remainder) = List.splitAt 2 xs
-      in
-        group (one <> spacer <> two) : go remainder
-
-    spacer = flatAlt softline' "  "
-
-
-chunk :: B.ByteString -> [B.ByteString]
-chunk = reverse . go []
-  where
-    go acc blob =
-      let
-        (eight, remainder) = B.splitAt 8 blob
-      in
-        if B.length remainder == 0
-            then eight : acc
-            else go (eight : acc) remainder
-
--- Take an [up to] 8 byte (64 bit) word
-wordToHex :: B.ByteString -> Doc ann
-wordToHex eight =
-  let
-    ws = B.unpack eight
-    ds = fmap byteToHex ws
-  in
-    hsep ds
-
-byteToHex :: Word8 -> Doc ann
-byteToHex c = pretty hi <> pretty low
-  where
-    !low      = byteToDigit $ c .&. 0xf
-    !hi       = byteToDigit $ (c .&. 0xf0) `shiftR` 4
-
-    byteToDigit :: Word8 -> Char
-    byteToDigit = intToDigit . fromIntegral
 
 {-
 instance Show Bytes where

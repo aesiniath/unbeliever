@@ -4,6 +4,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE BangPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_HADDOCK prune #-}
 
@@ -30,24 +31,37 @@ module Core.Text.Utilities (
     -- for testing
     , intoPieces
     , intoChunks
+
+    , byteChunk
 ) where
 
+import Data.Bits (Bits (..))
+import Data.Char (intToDigit)
+import qualified Data.ByteString as B (ByteString, splitAt, length, unpack)
 import qualified Data.FingerTree as F ((<|), ViewL(..), viewl)
-import qualified Data.List as List (foldl', dropWhileEnd)
+import qualified Data.List as List (foldl', dropWhileEnd, splitAt)
 import Data.Monoid ((<>))
 import qualified Data.Text as T
 import qualified Data.Text.Short as S (ShortText, uncons, toText, replicate
     , singleton)
-import Data.Text.Prettyprint.Doc (Doc, layoutPretty , reAnnotateS
-    , pretty, emptyDoc
+import Data.Text.Prettyprint.Doc (Doc, layoutPretty , annotate, reAnnotateS
+    , Pretty(..), pretty, emptyDoc
     , LayoutOptions(LayoutOptions)
-    , PageWidth(AvailablePerLine))
-import Data.Text.Prettyprint.Doc.Render.Terminal (renderLazy, AnsiStyle)
+    , PageWidth(AvailablePerLine)
+    , hsep, vcat, group, flatAlt
+    , softline'
+    )
+
+import Data.Text.Prettyprint.Doc.Render.Terminal (renderLazy, AnsiStyle
+    , color, Color(..))
+
+import Data.Word (Word8)
 import Language.Haskell.TH (litE, stringL)
 import Language.Haskell.TH.Quote (QuasiQuoter(QuasiQuoter))
 
-import Core.Text.Rope
+import Core.Text.Bytes
 import Core.Text.Breaking
+import Core.Text.Rope
 
 -- change AnsiStyle to a custom token type, perhaps Ansi, which
 -- has the escape codes already converted to Rope.
@@ -98,6 +112,60 @@ instance Render T.Text where
     type Token T.Text = ()
     colourize = const mempty
     intoDocA t = pretty t
+
+
+-- (), aka Unit, aka **1**, aka something with only one inhabitant
+
+instance Render Bytes where
+    type Token Bytes = ()
+    colourize = const (color Green)
+    intoDocA = prettyBytes
+
+prettyBytes :: Bytes -> Doc ()
+prettyBytes = annotate () . vcat . twoWords
+    . fmap wordToHex . byteChunk . unBytes
+
+twoWords :: [Doc ann] -> [Doc ann]
+twoWords ds = go ds
+  where
+    go [] = []
+    go [x] = [softline' <> x]
+    go xs =
+      let
+        (one:two:[], remainder) = List.splitAt 2 xs
+      in
+        group (one <> spacer <> two) : go remainder
+
+    spacer = flatAlt softline' "  "
+
+byteChunk :: B.ByteString -> [B.ByteString]
+byteChunk = reverse . go []
+  where
+    go acc blob =
+      let
+        (eight, remainder) = B.splitAt 8 blob
+      in
+        if B.length remainder == 0
+            then eight : acc
+            else go (eight : acc) remainder
+
+-- Take an [up to] 8 byte (64 bit) word
+wordToHex :: B.ByteString -> Doc ann
+wordToHex eight =
+  let
+    ws = B.unpack eight
+    ds = fmap byteToHex ws
+  in
+    hsep ds
+
+byteToHex :: Word8 -> Doc ann
+byteToHex c = pretty hi <> pretty low
+  where
+    !low      = byteToDigit $ c .&. 0xf
+    !hi       = byteToDigit $ (c .&. 0xf0) `shiftR` 4
+
+    byteToDigit :: Word8 -> Char
+    byteToDigit = intToDigit . fromIntegral
 
 {-|
 Given an object of a type with a 'Render' instance, transform it into a
