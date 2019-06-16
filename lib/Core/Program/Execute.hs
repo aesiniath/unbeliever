@@ -150,7 +150,9 @@ escapeHandlers context = [
       let
         text = intoRope (displayException e)
       in do
-        subProgram context (event text)
+        subProgram context $ do
+            setVerbosityLevel Debug
+            event text
         putMVar quit (ExitFailure 127)
 
 --
