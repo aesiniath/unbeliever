@@ -1,5 +1,5 @@
-name: unbeliever
-version: 0.9.4.2
+name: core-program
+version: 0.2.0.0
 synopsis: Opinionated Haskell Interoperability
 description: |
   A library to help build command-line programs, both tools and
@@ -15,7 +15,7 @@ description: |
 
 stability: experimental
 license: BSD3
-license-file: LICENCE
+license-file: ../LICENCE
 author: Andrew Cowie <andrew@operationaldynamics.com>
 maintainer: Andrew Cowie <andrew@operationaldynamics.com>
 copyright: © 2018-2019 Operational Dynamics Consulting Pty Ltd, and Others
@@ -25,41 +25,42 @@ ghc-options: -Wall -Wwarn -fwarn-tabs
 github: oprdyn/unbeliever
 
 dependencies:
+ - async
  - base >= 4.11 && < 5
+ - bytestring
+ - chronologique
+ - containers
+ - deepseq
+ - directory
+ - exceptions
+ - hashable
+ - hourglass
+ - mtl
+ - prettyprinter
+ - prettyprinter-ansi-terminal
+ - safe-exceptions
+ - scientific
+ - stm
+ - template-haskell
+ - terminal-size
+ - text
+ - text-short
+ - transformers
+ - unordered-containers
+ - unix
+ - vector
  - core-system
  - core-text
- - core-program
 
 library:
   source-dirs: lib
   exposed-modules:
-   - Core
-  other-modules: []
-
-tests:
-  check:
-    dependencies:
-     - hspec
-     - unbeliever
-    ghc-options: -threaded
-    source-dirs:
-     - tests
-    main: TestSuite.hs
-    other-modules:
-     - CheckArgumentsParsing
-     - CheckBytesBehaviour
-     - CheckContainerBehaviour
-     - CheckJsonWrapper
-     - CheckProgramMonad
-     - CheckRopeBehaviour
-
-benchmarks:
-  performance:
-    dependencies:
-     - gauge
-     - unbeliever
-    ghc-options: -threaded
-    source-dirs:
-     - bench
-    main: GeneralPerformance.hs
-    other-modules: []
+   - Core.Program
+   - Core.Program.Arguments
+   - Core.Program.Execute
+   - Core.Program.Logging
+   - Core.Program.Metadata
+   - Core.Program.Unlift
+  other-modules:
+   - Core.Program.Context
+   - Core.Program.Signal

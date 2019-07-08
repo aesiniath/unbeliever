@@ -1,2 +1,8 @@
 resolver: lts-13.25
+packages:
+ - core-system
+ - core-text
+ - core-program
+ - .
+
 allow-newer: true
