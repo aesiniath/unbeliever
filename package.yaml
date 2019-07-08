@@ -39,7 +39,12 @@ library:
 tests:
   check:
     dependencies:
+     - bytestring
+     - fingertree
      - hspec
+     - safe-exceptions
+     - text
+     - text-short
      - unbeliever
     ghc-options: -threaded
     source-dirs:
