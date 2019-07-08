@@ -61,7 +61,9 @@ tests:
 benchmarks:
   performance:
     dependencies:
+     - bytestring
      - gauge
+     - text
      - unbeliever
     ghc-options: -threaded
     source-dirs:
