@@ -1,4 +1,4 @@
-name: core-program
+name: core-data
 version: 0.2.0.0
 synopsis: Opinionated Haskell Interoperability
 description: |
@@ -19,45 +19,31 @@ license-file: ../LICENCE
 author: Andrew Cowie <andrew@operationaldynamics.com>
 maintainer: Andrew Cowie <andrew@operationaldynamics.com>
 copyright: © 2018-2019 Operational Dynamics Consulting Pty Ltd, and Others
-tested-with: GHC == 8.6.4
+tested-with: GHC == 8.6.5
 category: System
 ghc-options: -Wall -Wwarn -fwarn-tabs
 github: oprdyn/unbeliever
 
 dependencies:
- - async
+ - aeson
  - base >= 4.11 && < 5
  - bytestring
- - chronologique
- - directory
- - exceptions
+ - containers
  - hashable
- - hourglass
- - mtl
  - prettyprinter
  - prettyprinter-ansi-terminal
- - safe-exceptions
- - stm
- - template-haskell
- - terminal-size
+ - scientific
  - text
- - text-short
- - transformers
- - unix
+ - unordered-containers
+ - vector
+ - core-text
 
 library:
-  dependencies:
-   - core-system
-   - core-text
-   - core-data
   source-dirs: lib
   exposed-modules:
-   - Core.Program
-   - Core.Program.Arguments
-   - Core.Program.Execute
-   - Core.Program.Logging
-   - Core.Program.Metadata
-   - Core.Program.Unlift
-  other-modules:
-   - Core.Program.Context
-   - Core.Program.Signal
+   - Core.Data
+   - Core.Data.Structures
+   - Core.Encoding
+   - Core.Encoding.Json
+  other-modules: []
+

@@ -28,6 +28,7 @@ dependencies:
  - base >= 4.11 && < 5
  - core-system
  - core-text
+ - core-data
  - core-program
 
 library:

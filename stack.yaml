@@ -1,5 +1,6 @@
 resolver: lts-13.27
 packages:
+ - core-data
  - core-system
  - core-text
  - core-program

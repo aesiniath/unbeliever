@@ -25,39 +25,20 @@ ghc-options: -Wall -Wwarn -fwarn-tabs
 github: oprdyn/unbeliever
 
 dependencies:
- - aeson
- - async
  - base >= 4.11 && < 5
  - bytestring
- - chronologique
- - containers
  - deepseq
- - directory
- - exceptions
  - fingertree
  - hashable
- - hourglass
- - mtl
  - prettyprinter
  - prettyprinter-ansi-terminal
- - safe-exceptions
- - scientific
- - stm
  - template-haskell
  - text
  - text-short
- - transformers
- - unordered-containers
- - unix
- - vector
 
 library:
   source-dirs: lib
   exposed-modules:
-   - Core.Data
-   - Core.Data.Structures
-   - Core.Encoding
-   - Core.Encoding.Json
    - Core.Text
    - Core.Text.Bytes
    - Core.Text.Rope
