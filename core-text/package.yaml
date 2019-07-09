@@ -1,17 +1,18 @@
 name: core-text
 version: 0.2.0.0
-synopsis: Opinionated Haskell Interoperability
+synopsis: A text type based on a finger tree over UTF-8 fragments
 description: |
-  A library to help build command-line programs, both tools and
-  longer-running daemons.
+  A data type for text, built as a finger tree over UTF-8 text fragments.
 
-  A description of this package, a list of features, and some background
-  to its design is contained in the
+  The main type and its usage are described at "Core.Text.Rope" in this
+  package.
+
+  This is part of a library intended to ease interoperability and assist in
+  building command-line programs, both tools and longer-running daemons.
+  A list of features and some background to the library's design is contained
+  in the
   <https://github.com/oprdyn/unbeliever/blob/master/README.markdown README>
   on GitHub.
-  
-  Useful starting points in the documentation are "Core.Program.Execute"
-  and "Core.Text.Rope".
 
 stability: experimental
 license: BSD3

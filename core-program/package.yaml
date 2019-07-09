@@ -10,8 +10,7 @@ description: |
   <https://github.com/oprdyn/unbeliever/blob/master/README.markdown README>
   on GitHub.
   
-  Useful starting points in the documentation are "Core.Program.Execute"
-  and "Core.Text.Rope".
+  See "Core.Program.Execute" to get started.
 
 stability: experimental
 license: BSD3
@@ -19,7 +18,7 @@ license-file: ../LICENCE
 author: Andrew Cowie <andrew@operationaldynamics.com>
 maintainer: Andrew Cowie <andrew@operationaldynamics.com>
 copyright: © 2018-2019 Operational Dynamics Consulting Pty Ltd, and Others
-tested-with: GHC == 8.6.4
+tested-with: GHC == 8.6.5
 category: System
 ghc-options: -Wall -Wwarn -fwarn-tabs
 github: oprdyn/unbeliever

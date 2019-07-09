@@ -2,16 +2,7 @@ name: core-data
 version: 0.2.0.0
 synopsis: Opinionated Haskell Interoperability
 description: |
-  A library to help build command-line programs, both tools and
-  longer-running daemons.
-
-  A description of this package, a list of features, and some background
-  to its design is contained in the
-  <https://github.com/oprdyn/unbeliever/blob/master/README.markdown README>
-  on GitHub.
-  
-  Useful starting points in the documentation are "Core.Program.Execute"
-  and "Core.Text.Rope".
+  Wrappers around common data structures and encodings.
 
 stability: experimental
 license: BSD3
