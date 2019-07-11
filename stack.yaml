@@ -5,5 +5,4 @@ packages:
  - core-text
  - core-program
  - .
-
 allow-newer: true
