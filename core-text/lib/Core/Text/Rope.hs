@@ -482,7 +482,7 @@ We've used it to ask whether there are newlines present in a @Rope@, for
 example:
 
 @
-    if 'containsCharacter' \'\n\' text
+    if 'containsCharacter' \'\\n\' text
         then handleComplexCase
         else keepItSimple
 @
