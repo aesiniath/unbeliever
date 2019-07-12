@@ -35,7 +35,6 @@ github: oprdyn/unbeliever
 
 dependencies:
  - base >= 4.11 && < 5
- - core-system >= 0.2
  - core-text >= 0.2
  - core-data >= 0.2
  - core-program >= 0.2
@@ -49,9 +48,6 @@ tests:
      - safe-exceptions
      - text
      - text-short
-     - core-text
-     - core-data
-     - core-program
     ghc-options: -threaded
     source-dirs:
      - tests
@@ -70,7 +66,6 @@ benchmarks:
      - bytestring
      - gauge
      - text
-     - core-text
     ghc-options: -threaded
     source-dirs:
      - bench

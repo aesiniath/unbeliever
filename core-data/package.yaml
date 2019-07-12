@@ -1,8 +1,15 @@
 name: core-data
 version: 0.2.0.0
-synopsis: Opinionated Haskell Interoperability
+synopsis: Convenience wrappers around common data structures and encodings
 description: |
   Wrappers around common data structures and encodings.
+
+  This is part of a library intended to ease interoperability and assist in
+  building command-line programs, both tools and longer-running daemons.
+  A list of features and some background to the library's design is contained
+  in the
+  <https://github.com/oprdyn/unbeliever/blob/master/README.markdown README>
+  on GitHub.
 
 stability: experimental
 license: BSD3

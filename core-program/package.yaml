@@ -46,7 +46,6 @@ dependencies:
 
 library:
   dependencies:
-   - core-system
    - core-text
    - core-data
   source-dirs: lib
@@ -57,6 +56,9 @@ library:
    - Core.Program.Logging
    - Core.Program.Metadata
    - Core.Program.Unlift
+   - Core.System
+   - Core.System.Base
+   - Core.System.External
   other-modules:
    - Core.Program.Context
    - Core.Program.Signal
