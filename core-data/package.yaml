@@ -1,0 +1,47 @@
+name: core-data
+version: 0.2.0.0
+synopsis: Convenience wrappers around common data structures and encodings
+description: |
+  Wrappers around common data structures and encodings.
+
+  This is part of a library intended to ease interoperability and assist in
+  building command-line programs, both tools and longer-running daemons.
+  A list of features and some background to the library's design is contained
+  in the
+  <https://github.com/oprdyn/unbeliever/blob/master/README.markdown README>
+  on GitHub.
+
+stability: experimental
+license: BSD3
+license-file: LICENCE
+author: Andrew Cowie <andrew@operationaldynamics.com>
+maintainer: Andrew Cowie <andrew@operationaldynamics.com>
+copyright: © 2018-2019 Operational Dynamics Consulting Pty Ltd, and Others
+tested-with: GHC == 8.6.5
+category: System
+ghc-options: -Wall -Wwarn -fwarn-tabs
+github: oprdyn/unbeliever
+
+dependencies:
+ - aeson
+ - base >= 4.11 && < 5
+ - bytestring
+ - containers
+ - hashable
+ - prettyprinter
+ - prettyprinter-ansi-terminal
+ - scientific
+ - text
+ - unordered-containers
+ - vector
+ - core-text
+
+library:
+  source-dirs: lib
+  exposed-modules:
+   - Core.Data
+   - Core.Data.Structures
+   - Core.Encoding
+   - Core.Encoding.Json
+  other-modules: []
+

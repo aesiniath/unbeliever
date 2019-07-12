@@ -1,0 +1,64 @@
+name: core-program
+version: 0.2.0.0
+synopsis: Opinionated Haskell Interoperability
+description: |
+  A library to help build command-line programs, both tools and
+  longer-running daemons.
+  
+  A description of this package, a list of features, and some background
+  to its design is contained in the
+  <https://github.com/oprdyn/unbeliever/blob/master/README.markdown README>
+  on GitHub.
+  
+  See "Core.Program.Execute" to get started.
+
+stability: experimental
+license: BSD3
+license-file: LICENCE
+author: Andrew Cowie <andrew@operationaldynamics.com>
+maintainer: Andrew Cowie <andrew@operationaldynamics.com>
+copyright: © 2018-2019 Operational Dynamics Consulting Pty Ltd, and Others
+tested-with: GHC == 8.6.5
+category: System
+ghc-options: -Wall -Wwarn -fwarn-tabs
+github: oprdyn/unbeliever
+
+dependencies:
+ - async
+ - base >= 4.11 && < 5
+ - bytestring
+ - chronologique
+ - directory
+ - exceptions
+ - hashable
+ - hourglass
+ - mtl
+ - prettyprinter
+ - prettyprinter-ansi-terminal
+ - safe-exceptions
+ - stm
+ - template-haskell
+ - terminal-size
+ - text
+ - text-short
+ - transformers
+ - unix
+
+library:
+  dependencies:
+   - core-text
+   - core-data
+  source-dirs: lib
+  exposed-modules:
+   - Core.Program
+   - Core.Program.Arguments
+   - Core.Program.Execute
+   - Core.Program.Logging
+   - Core.Program.Metadata
+   - Core.Program.Unlift
+   - Core.System
+   - Core.System.Base
+   - Core.System.External
+  other-modules:
+   - Core.Program.Context
+   - Core.Program.Signal

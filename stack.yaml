@@ -1,2 +1,7 @@
 resolver: lts-13.27
+packages:
+ - core-data
+ - core-text
+ - core-program
+ - .
 allow-newer: true

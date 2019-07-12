@@ -1,5 +1,5 @@
 name: unbeliever
-version: 0.9.4.1
+version: 0.10.0.0
 synopsis: Opinionated Haskell Interoperability
 description: |
   A library to help build command-line programs, both tools and
@@ -9,6 +9,15 @@ description: |
   to its design is contained in the
   <https://github.com/oprdyn/unbeliever/blob/master/README.markdown README>
   on GitHub.
+
+  An ancillary aim of this library is to facilitate interoperability. A
+  single batteries-included package would make this easier, but the resulting
+  dependency footprint would be considerable. The code is thus spread across
+  several packages:
+
+  * __core-text__
+  * __core-data__
+  * __core-program__
   
   Useful starting points in the documentation are "Core.Program.Execute"
   and "Core.Text.Rope".
@@ -19,69 +28,26 @@ license-file: LICENCE
 author: Andrew Cowie <andrew@operationaldynamics.com>
 maintainer: Andrew Cowie <andrew@operationaldynamics.com>
 copyright: © 2018-2019 Operational Dynamics Consulting Pty Ltd, and Others
-tested-with: GHC == 8.6.4
+tested-with: GHC == 8.6.5
 category: System
 ghc-options: -Wall -Wwarn -fwarn-tabs
 github: oprdyn/unbeliever
 
 dependencies:
- - aeson
- - async
  - base >= 4.11 && < 5
- - bytestring
- - chronologique
- - containers
- - deepseq
- - directory
- - exceptions
- - fingertree
- - hashable
- - hourglass
- - mtl
- - prettyprinter
- - prettyprinter-ansi-terminal
- - safe-exceptions
- - scientific
- - stm
- - template-haskell
- - terminal-size
- - text
- - text-short
- - transformers
- - unordered-containers
- - unix
- - vector
-
-library:
-  source-dirs: lib
-  exposed-modules:
-   - Core.Data
-   - Core.Data.Structures
-   - Core.Encoding
-   - Core.Encoding.Json
-   - Core.Program
-   - Core.Program.Arguments
-   - Core.Program.Execute
-   - Core.Program.Logging
-   - Core.Program.Metadata
-   - Core.Program.Unlift
-   - Core.Text
-   - Core.Text.Bytes
-   - Core.Text.Rope
-   - Core.Text.Utilities
-   - Core.System
-   - Core.System.Base
-   - Core.System.External
-  other-modules:
-   - Core.Text.Breaking
-   - Core.Program.Context
-   - Core.Program.Signal
+ - core-text >= 0.2
+ - core-data >= 0.2
+ - core-program >= 0.2
 
 tests:
   check:
     dependencies:
+     - bytestring
+     - fingertree
      - hspec
-     - unbeliever
+     - safe-exceptions
+     - text
+     - text-short
     ghc-options: -threaded
     source-dirs:
      - tests
@@ -97,8 +63,9 @@ tests:
 benchmarks:
   performance:
     dependencies:
+     - bytestring
      - gauge
-     - unbeliever
+     - text
     ghc-options: -threaded
     source-dirs:
      - bench

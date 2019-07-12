@@ -1,4 +1,4 @@
-:set -ilib:tests:bench
+:set -icore-system/lib:core-text/lib:core-program/lib:tests:bench
 :set -XOverloadedStrings
 
 import qualified Data.Text as T
