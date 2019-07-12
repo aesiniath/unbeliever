@@ -14,7 +14,7 @@ description: |
 
 stability: experimental
 license: BSD3
-license-file: ../LICENCE
+license-file: LICENCE
 author: Andrew Cowie <andrew@operationaldynamics.com>
 maintainer: Andrew Cowie <andrew@operationaldynamics.com>
 copyright: © 2018-2019 Operational Dynamics Consulting Pty Ltd, and Others
