@@ -466,9 +466,10 @@ of intermediate allocation and copying because we can go from the
 'Data.ByteString.Builder.Builder' to the 'System.IO.Handle''s output buffer
 in one go.
 
-If you're working in the 'Core.Program.Execute.Program' monad, then
-'Core.Program.Execute.write' provides an efficient way to write a @Rope@ to
-@stdout@.
+If you're working in the
+<../core-program/docs/Core-Program-Execute.html#t:Program Program> monad,
+then <../core-program/docs/Core-Program-Logging.html#v:write write>
+provides an efficient way to write a @Rope@ to @stdout@.
 -}
 hWrite :: Handle -> Rope -> IO ()
 hWrite handle (Rope x) = B.hPutBuilder handle (foldr j mempty x)
