@@ -20,6 +20,9 @@ silly on a multicore system).
 Install signal handlers to properly terminate the program performing
 cleanup as necessary.
 
+Encoding is set to UTF-8, working around confusing bugs that sometimes
+occur when applications are running in Docker containers.
+
 /Logging and output/
 
 The 'Program' monad provides functions for both normal output and debug
