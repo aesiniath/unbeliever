@@ -3,26 +3,34 @@ version: 0.10.0.1
 synopsis: Opinionated Haskell Interoperability
 description: |
   A library to help build command-line programs, both tools and
-  longer-running daemons.
-
+  longer-running daemons. Its @Program@ type provides unified ouptut &
+  logging, command-line option parsing, exception handling, and a place to
+  put top-level application state. There's also an underlying @Rope@ text
+  type built on a finger tree of UTF-8 fragments along with conveniences
+  for pretty printing and colourizing terminal output.
+  
   A description of this package, a list of features, and some background
   to its design is contained in the
   <https://github.com/oprdyn/unbeliever/blob/master/README.markdown README>
   on GitHub.
-
-  An ancillary purpose of this library is to facilitate interoperability
-  between different package families and ecosystems. Having this library as
-  a single batteries-included package as was originally the case made using
-  it easier, but the resulting dependency footprint was considerable and
-  growing. The code is thus spread across several packages:
-
-  * __core-text__
-  * __core-data__
-  * __core-program__
   
   Useful starting points in the documentation are
   <../core-program/docs/Core-Program-Execute.html Core.Program.Execute> and
   <../core-text/docs/Core-Text-Rope.html Core.Text.Rope>.
+  
+  An ancillary purpose of this library is to facilitate interoperability
+  between different package families and ecosystems. Having a single
+  batteries-included package (as was originally the case) made using it
+  easier, but the resulting dependency footprint was considerable and
+  growing. The code is thus now spread across several packages:
+  
+  * __core-text__
+  * __core-data__
+  * __core-program__
+  
+  with more forthcoming as we continue to add convenince and
+  interoperability wrappers around streaming, webservers, and database
+  access patterns.
 
 stability: experimental
 license: BSD3
@@ -37,9 +45,15 @@ github: oprdyn/unbeliever
 
 dependencies:
  - base >= 4.11 && < 5
- - core-text >= 0.2
- - core-data >= 0.2
- - core-program >= 0.2
+ - core-text >= 0.2.0.0
+ - core-data >= 0.2.0.0
+ - core-program >= 0.2.0.0
+
+library:
+  source-dirs: core-program/lib
+  exposed-modules: []
+  other-modules:
+    - Core.Everything
 
 tests:
   check:
