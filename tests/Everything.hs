@@ -10,7 +10,7 @@ __core-text__, __core-data__, and __core-program__.
 -- idea, but caused more problems than anything; you try to actually use
 -- e.g. Rope and you get a "hidden package core-text" errors.
 --
-module Core.Everything
+module Everything
     (
         module Core.Text
       , module Core.Program
