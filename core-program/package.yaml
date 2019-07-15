@@ -24,30 +24,30 @@ ghc-options: -Wall -Wwarn -fwarn-tabs
 github: oprdyn/unbeliever
 
 dependencies:
- - async
  - base >= 4.11 && < 5
  - bytestring
- - chronologique
- - directory
- - exceptions
  - hashable
- - hourglass
- - mtl
  - prettyprinter
  - prettyprinter-ansi-terminal
- - safe-exceptions
- - stm
  - template-haskell
- - terminal-size
  - text
  - text-short
- - transformers
- - unix
 
 library:
   dependencies:
+   - async
    - core-text
    - core-data
+   - chronologique
+   - directory
+   - exceptions
+   - hourglass
+   - mtl
+   - safe-exceptions
+   - stm
+   - terminal-size
+   - transformers
+   - unix
   source-dirs: lib
   exposed-modules:
    - Core.Program
