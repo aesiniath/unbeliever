@@ -1,11 +1,14 @@
 name: core-text
-version: 0.2.0.0
-synopsis: A text type based on a finger tree over UTF-8 fragments
+version: 0.2.0.1
+synopsis: A text type based on a finger tree over UTF-8
 description: |
-  A data type for text, built as a finger tree over UTF-8 text fragments.
+  A rope data type for text, built as a finger tree over UTF-8 text
+  fragments. The package also includes utiltiy functions for breaking and
+  re-wrapping lines, conveniences for pretty printing and colourizing
+  terminal output, and a simple mechanism for multi-line Rope literals.
   
-  The main type and its usage are described at "Core.Text.Rope" in this
-  package.
+  The main @Rope@ type and its usage are described at "Core.Text.Rope" in
+  this package.
   
   This is part of a library intended to ease interoperability and assist in
   building command-line programs, both tools and longer-running daemons.

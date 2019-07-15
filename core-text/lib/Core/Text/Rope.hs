@@ -467,8 +467,9 @@ of intermediate allocation and copying because we can go from the
 in one go.
 
 If you're working in the
-<../core-program/docs/Core-Program-Execute.html#t:Program Program> monad,
-then <../core-program/docs/Core-Program-Logging.html#v:write write>
+<https://hackage.haskell.org/package/core-program/docs/Core-Program-Execute.html#t:Program Program>
+monad, then
+<https://hackage.haskell.org/package/core-program/docs/Core-Program-Logging.html#v:write write>
 provides an efficient way to write a @Rope@ to @stdout@.
 -}
 hWrite :: Handle -> Rope -> IO ()

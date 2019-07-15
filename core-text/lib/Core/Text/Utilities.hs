@@ -71,8 +71,10 @@ Types which can be rendered "prettily", that is, formatted by a pretty
 printer and embossed with beautiful ANSI colours when printed to the
 terminal.
 
-Use 'render' to build text object for later use or "Core.Program.Execute"'s
-'Core.Program.Execute.writeR' if you're writing directly to console now.
+Use 'render' to build text object for later use or
+<https://hackage.haskell.org/package/core-program/docs/Core-Program-Logging.html Control.Program.Logging>'s
+<https://hackage.haskell.org/package/core-program/docs/Core-Program-Logging.html#v:writeR writeR>
+if you're writing directly to console now.
 -}
 
 class Render α where
