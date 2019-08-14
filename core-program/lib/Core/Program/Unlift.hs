@@ -53,9 +53,9 @@ main = 'execute' $ do
     'write' \"Finished\"
 @
 
-We have a problem, because we'd like to do is use, say, 'debug' to log the
-compiler error, but we have no way to unlift back out of 'IO' to get to the
-'Program' monad.
+We have a problem, because what we'd like to do is use, say, 'debug' to log
+the compiler error, but we have no way to unlift back out of 'IO' to get to
+the 'Program' monad.
 
 To workaround this, we offer 'withContext'. It gives you a function that
 you can then use within your lifted 'IO' to run a (sub)'Program' action:
