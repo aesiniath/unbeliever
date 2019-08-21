@@ -44,8 +44,11 @@ together can sometimes be difficult. Packages date from different
 eras of Haskell's growth as an industrial language and so they often follow
 different usage idioms making interoperability a challenge.
 
-The working title for the as-yet unpublished text on this topic is _Haskell
-for Unbelievers_ and so **unbeliever** became the name for this package.
+The working title for the as-yet unpublished text on this topic is _Haskell for
+Unbelievers_ and so **unbeliever** became the name for this library.  We've
+since split the library into a number of packages with smaller dependency
+footprints. This repo contains the sources for the **core-text**,
+**core-data**, and **core-program** packages on Hackage.
 
 Some goals:
 
