@@ -109,6 +109,11 @@ isNone _ = True
 
 data Message = Message TimeStamp Verbosity Rope (Maybe Rope)
 
+{-|
+The verbosity level of the logging subsystem. You can override the level
+specified on the command-line using
+'Core.Program.Execute.setVerbosityLevel' from within the 'Program' monad.
+-}
 data Verbosity = Output | Event | Debug
     deriving Show
 
