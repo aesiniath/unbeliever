@@ -1,5 +1,5 @@
 name: core-text
-version: 0.2.0.1
+version: 0.2.1.0
 synopsis: A rope type based on a finger tree over UTF-8 fragments
 description: |
   A rope data type for text, built as a finger tree over UTF-8 text

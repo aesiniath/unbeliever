@@ -25,8 +25,10 @@ compound = "3" <> "-" <> "ethyl" <> "-" <> "4" <> "-" <> "methyl" <> "hexane" ::
 
 checkRopeBehaviour :: Spec
 checkRopeBehaviour = do
-    describe "Rope data type" $
-      do
+    describe "Rope data type" $ do
+        it "knows what a singleton is" $ do
+            singletonRope 'i' `shouldBe` "i"
+
         it "IsString instance behaves" $ do
             unRope ("Hello" :: Rope) `shouldBe` F.singleton (S.pack "Hello")
 
@@ -96,8 +98,7 @@ checkRopeBehaviour = do
             insertRope 0 "one" "twothree" `shouldBe` "onetwothree"
             insertRope 6 "three" "onetwo" `shouldBe` "onetwothree"
 
-    describe "QuasiQuoted string literals" $
-      do
+    describe "QuasiQuoted string literals" $ do
         it "string literal is IsString" $ do
             [quote|Hello|] `shouldBe` ("Hello" :: String)
             [quote|Hello|] `shouldBe` ("Hello" :: Rope)

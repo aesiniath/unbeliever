@@ -75,6 +75,7 @@ module Core.Text.Rope
     ( {-* Rope type -}
       Rope
     , emptyRope
+    , singletonRope
     , widthRope
     , splitRope
     , insertRope
@@ -108,7 +109,7 @@ import qualified Data.Text.Lazy.Builder as U (Builder, toLazyText
     , fromText)
 import Data.Text.Prettyprint.Doc (Pretty(..), emptyDoc)
 import qualified Data.Text.Short as S (ShortText, length, any, null
-    , fromText, toText, fromByteString, pack, unpack
+    , fromText, toText, fromByteString, pack, unpack, singleton
     , append, empty, toBuilder, splitAt)
 import qualified Data.Text.Short.Unsafe as S (fromByteStringUnsafe)
 import GHC.Generics (Generic)
@@ -231,6 +232,12 @@ file.
 emptyRope :: Rope
 emptyRope = Rope F.empty
 {-# INLINABLE emptyRope #-}
+
+{-|
+A 'Rope' with but a single character.
+-}
+singletonRope :: Char -> Rope
+singletonRope = Rope . F.singleton . S.singleton
 
 {-|
 Get the length of this text, in characters.
