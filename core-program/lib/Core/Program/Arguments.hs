@@ -87,6 +87,10 @@ instance Key LongName
 instance Pretty LongName where
     pretty (LongName name) = pretty name
 
+instance Textual LongName where
+    intoRope (LongName str) = intoRope str
+    fromRope = LongName . fromRope
+
 {-|
 The setup for parsing the command-line arguments of your program. You build
 a @Config@ with 'simple' or 'complex', and pass it to
