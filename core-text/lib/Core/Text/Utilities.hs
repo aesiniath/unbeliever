@@ -16,6 +16,7 @@ module Core.Text.Utilities (
       {-* Pretty printing -}
       Render(..)
     , render
+    , renderNoAnsi
       {-* Helpers -}
     , indefinite
     , breakWords
@@ -45,7 +46,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Short as S (ShortText, uncons, toText, replicate
     , singleton)
 import Data.Text.Prettyprint.Doc (Doc, layoutPretty , annotate, reAnnotateS
-    , Pretty(..), pretty, emptyDoc
+    , unAnnotateS, Pretty(..), pretty, emptyDoc
     , LayoutOptions(LayoutOptions)
     , PageWidth(AvailablePerLine)
     , hsep, vcat, group, flatAlt
@@ -114,7 +115,6 @@ instance Render T.Text where
     type Token T.Text = ()
     colourize = const mempty
     intoDocA t = pretty t
-
 
 -- (), aka Unit, aka **1**, aka something with only one inhabitant
 
@@ -200,6 +200,20 @@ render columns (thing :: α) =
     options = LayoutOptions (AvailablePerLine (columns - 1) 1.0)
   in
     intoRope . renderLazy . reAnnotateS (colourize @α)
+                . layoutPretty options . intoDocA $ thing
+
+{-|
+Having gone to all the trouble to colourize your rendered types...
+sometimes you don't want that. This function is like 'render', but removes
+all the ANSI escape codes so it comes outformatted but as plain black &
+white text.
+-}
+renderNoAnsi :: Render α => Int -> α -> Rope
+renderNoAnsi columns (thing :: α) =
+  let
+    options = LayoutOptions (AvailablePerLine (columns - 1) 1.0)
+  in
+    intoRope . renderLazy . unAnnotateS
                 . layoutPretty options . intoDocA $ thing
 
 --
