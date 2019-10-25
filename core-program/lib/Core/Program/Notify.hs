@@ -13,12 +13,11 @@ module Core.Program.Notify
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar)
 import qualified Data.ByteString.Char8 as C (ByteString, pack)
 import Data.Foldable (foldr, foldrM)
-import Data.HashSet (HashSet)
-import qualified Data.HashSet as HashSet (empty, insert, member)
 import System.FilePath.Posix (dropFileName)
 import System.INotify (EventVariety(..), Event(..), withINotify
     , addWatch, removeWatch)
 
+import Core.Data.Structures
 import Core.Program.Execute
 import Core.Program.Logging
 import Core.Program.Unlift
@@ -37,16 +36,16 @@ was to finish its write and switcheroo sequence.
 waitForChange :: [FilePath] -> Program τ ()
 waitForChange files =
   let
-    f :: FilePath -> HashSet C.ByteString -> HashSet C.ByteString
-    f path acc = HashSet.insert (C.pack path) acc
+    f :: FilePath -> Set C.ByteString -> Set C.ByteString
+    f path acc = insertElement (C.pack path) acc
 
-    g :: FilePath -> HashSet C.ByteString -> HashSet C.ByteString
-    g path acc = HashSet.insert (C.pack (dropFileName path)) acc
+    g :: FilePath -> Set C.ByteString -> Set C.ByteString
+    g path acc = insertElement (C.pack (dropFileName path)) acc
   in do
     event "Watching for changes"
 
-    let paths = foldr f HashSet.empty files
-    let dirs  = foldr g HashSet.empty files
+    let paths = foldr f emptySet files
+    let dirs  = foldr g emptySet files
 
     withContext $ \runProgram -> do
         block <- newEmptyMVar
@@ -61,7 +60,7 @@ waitForChange files =
                                         then file
                                         else dir <> file
                             runProgram (debugS "changed" path)
-                            if HashSet.member path paths
+                            if containsElement path paths
                                 then do
                                     runProgram (debugS "trigger" path)
                                     putMVar block False
