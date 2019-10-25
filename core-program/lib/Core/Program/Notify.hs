@@ -22,16 +22,18 @@ import Core.Program.Execute
 import Core.Program.Logging
 import Core.Program.Unlift
 
-{-
-Ideally we'd just set up inotifies on individual files we have manifested
-from the .book file, but that doesn't work when programs like vim move the
-original file, save a new one, then delete the renamed original. From
-previous work we know that CLOSE_WRITE is emitted reliably through these
-sequences, so we can just check to see if a that happens on a filename we
-care about (rather then the original inodes those files were stored in).
+{-|
+Watch for changes to a given list of files.
 
-Insert a 100ms pause before rebuilding to allow whatever the editor
-was to finish its write and switcheroo sequence.
+Ideally we'd just set up inotifies on these individual files, but that
+doesn't work when programs like vim move the original file, save a new one,
+then delete the renamed original. From previous work we know that
+CLOSE_WRITE is emitted reliably through these sequences, so we can just
+check to see if a that happens on a filename we care about (rather then the
+original inodes those files were stored in).
+
+Insert a 100ms pause before rebuilding to allow whatever the editor was to
+finish its write and switcheroo sequence.
 -}
 waitForChange :: [FilePath] -> Program τ ()
 waitForChange files =
