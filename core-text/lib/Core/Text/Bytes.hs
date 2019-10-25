@@ -54,7 +54,7 @@ import System.IO (Handle)
 {-|
 A block of data in binary form.
 -}
-data Bytes
+newtype Bytes
     = StrictBytes B.ByteString
     deriving (Show, Eq, Ord, Generic)
 
