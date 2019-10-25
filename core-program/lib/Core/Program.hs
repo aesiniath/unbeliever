@@ -36,11 +36,19 @@ variable handling.
 Facilities for noting events through your program and doing debugging.
 -}
       , module Core.Program.Logging
+
+{-|
+There are a few common use cases which require a bit of wrapping to use
+effectively. Watching files for changes and taking action in the event of a
+change is one.
+-}
+      , module Core.Program.Notify
     ) where
 
 import Core.Program.Arguments
 import Core.Program.Execute
 import Core.Program.Logging
 import Core.Program.Metadata
+import Core.Program.Notify
 import Core.Program.Unlift
 
