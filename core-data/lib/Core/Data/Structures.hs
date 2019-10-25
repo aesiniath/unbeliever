@@ -38,6 +38,7 @@ module Core.Data.Structures
 )
 where
 
+import qualified Data.ByteString as B (ByteString)
 import Data.Foldable (Foldable(..))
 import Data.Hashable (Hashable)
 import qualified Data.HashMap.Strict as HashMap
@@ -100,6 +101,7 @@ instance Key T.Text
 instance Key U.Text
 instance Key Char
 instance Key Int
+instance Key B.ByteString
 
 instance Foldable (Map κ) where
     foldr f start (Map u) = HashMap.foldr f start u
