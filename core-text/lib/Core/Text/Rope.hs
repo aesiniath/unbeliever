@@ -152,7 +152,7 @@ inserting it. Often the pieces are tiny. To add text to a @Rope@ use the
 
 Output to a @Handle@ can be done efficiently with 'hWrite'.
 -}
-data Rope
+newtype Rope
     = Rope (F.FingerTree Width S.ShortText)
     deriving Generic
 
