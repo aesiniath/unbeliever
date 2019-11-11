@@ -1,5 +1,5 @@
 name: core-data
-version: 0.2.1.0
+version: 0.2.1.2
 synopsis: Convenience wrappers around common data structures and encodings
 description: |
   Wrappers around common data structures and encodings.
@@ -28,7 +28,7 @@ dependencies:
  - bytestring
  - containers
  - hashable
- - prettyprinter
+ - prettyprinter >= 1.2.1.1 && < 1.6
  - prettyprinter-ansi-terminal
  - scientific
  - text

@@ -1,5 +1,5 @@
 name: core-text
-version: 0.2.2.1
+version: 0.2.2.2
 synopsis: A rope type based on a finger tree over UTF-8 fragments
 description: |
   A rope data type for text, built as a finger tree over UTF-8 text
@@ -34,7 +34,7 @@ dependencies:
  - deepseq
  - fingertree
  - hashable
- - prettyprinter
+ - prettyprinter >= 1.2.1.1 && < 1.6
  - prettyprinter-ansi-terminal
  - template-haskell
  - text
