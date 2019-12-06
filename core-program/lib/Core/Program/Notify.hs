@@ -69,7 +69,6 @@ waitForChange files =
                         _ -> False
                     )
                     (\trigger -> do
-                        runProgram (debugS "event" trigger)
                         runProgram (debugS "trigger" (eventPath trigger))
                         putMVar block False
                     )
