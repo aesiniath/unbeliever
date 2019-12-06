@@ -42,7 +42,7 @@ library:
    - directory
    - exceptions
    - filepath
-   - hinotify
+   - fsnotify
    - hourglass
    - mtl
    - safe-exceptions
