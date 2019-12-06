@@ -33,8 +33,19 @@ which are maintained either by ourselves or people we are in regular
 contact with.
 -}
       , module Core.System.External
+
+        {-* Pretty Printing -}
+{-|
+When using the Render typeclass from "Core.Text.Utilities" you are
+presented with the @Doc a@ type for accumulating a \"document\" to be
+pretty printed. There are a large family of combinators used when doing
+this. For convenience they are exposed here.
+-}
+      , module Core.System.Pretty
+
     ) where
 
 import Core.System.Base
 import Core.System.External
+import Core.System.Pretty
 
