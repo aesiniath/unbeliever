@@ -17,7 +17,6 @@ module Core.System.Pretty
     , lbracket
     , rbracket
     , (<+>)
-    , indent
     , lbrace
     , rbrace
     , lparen
@@ -38,6 +37,8 @@ module Core.System.Pretty
     , softline'
     , hardline
     , group
+    , hang
+    , indent
     , nest
     , concatWith
     , color
