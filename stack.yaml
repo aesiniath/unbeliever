@@ -1,6 +1,6 @@
 resolver: lts-14.16
 packages:
- - core-data
- - core-text
- - core-program
+ - ./core-data
+ - ./core-text
+ - ./core-program
  - .

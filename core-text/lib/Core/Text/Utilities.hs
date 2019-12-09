@@ -108,7 +108,7 @@ instance Render Char where
 
 instance (Render a) => Render [a] where
     type Token [a] = Token a
-    colourize = const mempty
+    colourize = colourize @a
     intoDocA = mconcat . fmap intoDocA
 
 instance Render T.Text where
