@@ -6,6 +6,7 @@ module CheckRopeBehaviour where
 
 import Data.Char (isSpace)
 import qualified Data.FingerTree as F
+import Data.Hashable (hash)
 import qualified Data.List as List
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
@@ -44,6 +45,9 @@ checkRopeBehaviour = do
              ("O" :: Rope) == ("O" :: Rope) `shouldBe` True
              ("H₂" :: Rope) == ("H₂" :: Rope) `shouldBe` True
              ("H₂" :: Rope) /= ("SO₄" :: Rope)  `shouldBe` True
+
+        it "Hashable instance behaves" $ do
+             hash ("Hello" :: Rope) `shouldBe` hash (singletonRope 'H' <> intoRope ("ello" :: String))
 
         -- depended on Textual instance for String being fixed and
         -- the Eq instance being customized to ignore tree structure

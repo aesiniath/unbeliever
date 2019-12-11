@@ -60,6 +60,7 @@ tests:
     dependencies:
      - bytestring
      - fingertree
+     - hashable
      - hspec
      - safe-exceptions
      - text
