@@ -99,7 +99,7 @@ import qualified Data.ByteString.Lazy as L (ByteString, toStrict
 import qualified Data.FingerTree as F (FingerTree, Measured(..), empty
     , singleton, (><), (<|), (|>), search, SearchResult(..), null
     , viewl, ViewL(..))
-import Data.Foldable (foldr, foldr', foldMap, toList, any)
+import Data.Foldable (foldr, foldr', foldl', foldMap, toList, any)
 import Data.Hashable (Hashable, hashWithSalt)
 import Data.String (IsString(..))
 import qualified Data.Text as T (Text)
@@ -322,10 +322,10 @@ insertRope i (Rope new) text =
 -- at the cost of endless unwrapping.
 --
 instance Hashable Rope where
-    hashWithSalt salt (Rope x) = foldr f salt x
+    hashWithSalt salt (Rope x) = foldl' f salt x
       where
-        f :: S.ShortText -> Int -> Int
-        f piece num = hashWithSalt num piece
+        f :: Int -> S.ShortText  -> Int
+        f num piece = hashWithSalt num piece
 
 {-|
 Machinery to interpret a type as containing valid Unicode that can be
