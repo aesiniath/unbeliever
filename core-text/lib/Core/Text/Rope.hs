@@ -319,7 +319,10 @@ insertRope i (Rope new) text =
 --
 -- FingerTree Width (Hashed S.ShortText)
 --
--- at the cost of endless unwrapping.
+-- at the cost of endless unwrapping. Another alternative would be to cache
+-- hash values in the monoid, changing Width from being a wrapper of Int to
+-- a record type with width, hash, and perhaps newlines within the
+-- corresponding tree.
 --
 instance Hashable Rope where
     hashWithSalt salt (Rope x) = foldl' f salt x
