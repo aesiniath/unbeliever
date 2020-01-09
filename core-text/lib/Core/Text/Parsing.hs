@@ -8,8 +8,8 @@ module Core.Text.Parsing
     )
 where
 
-import Data.Foldable (foldl)
-import qualified Data.Text.Short as S (ShortText, foldl)
+import Data.Foldable (foldl')
+import qualified Data.Text.Short as S (ShortText, foldl')
 
 import Core.Text.Rope
 
@@ -26,13 +26,13 @@ calculatePositionEnd :: Rope -> (Int,Int)
 calculatePositionEnd text =
   let
     x = unRope text
-    (l,c) = foldl calculateChunk (1,1) x
+    (l,c) = foldl' calculateChunk (1,1) x
   in
     (l,c)
 
 calculateChunk :: (Int,Int) -> S.ShortText -> (Int,Int)
 calculateChunk loc piece =
-    S.foldl f loc piece
+    S.foldl' f loc piece
   where
     f :: (Int,Int) -> Char -> (Int,Int)
     f !(!l,!c) ch = if ch == '\n'
