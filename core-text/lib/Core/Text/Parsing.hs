@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE BangPatterns #-}
 {-# OPTIONS_HADDOCK hide #-}
 
 -- This is an Internal module, hidden from Haddock
@@ -34,6 +35,6 @@ calculateChunk loc piece =
     S.foldl f loc piece
   where
     f :: (Int,Int) -> Char -> (Int,Int)
-    f (l,c) ch = if ch == '\n'
+    f !(!l,!c) ch = if ch == '\n'
         then (l+1,1)
         else (l,c+1)
