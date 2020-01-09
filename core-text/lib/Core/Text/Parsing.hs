@@ -21,7 +21,6 @@ is position @(1,1)@.
 -}
 -- Of course, if Rope itself cached position information in the FingerTree
 -- monoid this would be trivial.
-
 calculatePositionEnd :: Rope -> (Int,Int)
 calculatePositionEnd text =
   let
