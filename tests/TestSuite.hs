@@ -3,7 +3,7 @@
 import Test.Hspec
 
 import Core.System
-import CheckRopeBehaviour
+import CheckRopeBehaviour (checkRopeBehaviour)
 import CheckBytesBehaviour
 import CheckContainerBehaviour
 import CheckJsonWrapper

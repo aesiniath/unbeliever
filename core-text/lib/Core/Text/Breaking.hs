@@ -64,6 +64,7 @@ breakLines text =
 
 isNewline :: Char -> Bool
 isNewline c = c == '\n'
+{-# INLINEABLE isNewline #-}
 
 {-|
 Break a Rope into pieces whereever the given predicate function returns

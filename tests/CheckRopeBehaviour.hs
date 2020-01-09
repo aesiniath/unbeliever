@@ -2,7 +2,11 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
-module CheckRopeBehaviour where
+module CheckRopeBehaviour
+    ( checkRopeBehaviour
+    , main
+    )
+where
 
 import Data.Char (isSpace)
 import qualified Data.FingerTree as F
@@ -16,6 +20,11 @@ import Test.Hspec
 
 import Core.Text.Rope
 import Core.Text.Utilities
+import Core.System (finally)
+
+main :: IO ()
+main = do
+    finally (hspec checkRopeBehaviour) (putStrLn ".")
 
 hydrogen = "H₂" :: Rope
 sulfate = "SO₄" :: Rope
@@ -222,3 +231,11 @@ a test
 Hello this is a test
 of the Emergency
 Broadcast System|]
+
+    describe "Lines and columns" $ do
+        it "calculate position of a given block" $ do
+            calculatePositionEnd "" `shouldBe` (1,1)
+            calculatePositionEnd "Hello" `shouldBe` (1,6)
+            calculatePositionEnd "Hello\nWorld" `shouldBe` (2,6)
+            calculatePositionEnd "\nWorld" `shouldBe` (2,6)
+            calculatePositionEnd "\n" `shouldBe` (2,1)

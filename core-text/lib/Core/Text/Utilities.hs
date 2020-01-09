@@ -23,6 +23,7 @@ module Core.Text.Utilities (
     , breakLines
     , breakPieces
     , wrap
+    , calculatePositionEnd
     , underline
     , leftPadWith
     , rightPadWith
@@ -62,6 +63,7 @@ import Language.Haskell.TH.Quote (QuasiQuoter(QuasiQuoter))
 
 import Core.Text.Bytes
 import Core.Text.Breaking
+import Core.Text.Parsing
 import Core.Text.Rope
 
 -- change AnsiStyle to a custom token type, perhaps Ansi, which
