@@ -12,8 +12,10 @@ module Core.System.Pretty
       Doc
     , Pretty(pretty)
     , dquote
+    , squote
     , comma
     , punctuate
+    , enclose
     , lbracket
     , rbracket
     , (<+>)
