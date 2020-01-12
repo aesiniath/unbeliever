@@ -111,6 +111,12 @@ checkRopeBehaviour = do
             insertRope 0 "one" "twothree" `shouldBe` "onetwothree"
             insertRope 6 "three" "onetwo" `shouldBe` "onetwothree"
 
+        it "finds characters correctly" $ do
+            findIndexRope (== '3') compound `shouldBe` (Just 0)
+            findIndexRope (== '4') compound `shouldBe` (Just 8)
+            findIndexRope (== '!') compound `shouldBe` Nothing
+            findIndexRope (== 'e') compound `shouldBe` (Just 2)
+
     describe "QuasiQuoted string literals" $ do
         it "string literal is IsString" $ do
             [quote|Hello|] `shouldBe` ("Hello" :: String)

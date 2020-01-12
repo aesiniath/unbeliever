@@ -5,6 +5,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE BangPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 {-|
@@ -80,6 +81,7 @@ module Core.Text.Rope
     , splitRope
     , insertRope
     , containsCharacter
+    , findIndexRope
       {-* Interoperation and Output -}
     , Textual(fromRope, intoRope, appendRope)
     , hWrite
@@ -110,7 +112,7 @@ import qualified Data.Text.Lazy.Builder as U (Builder, toLazyText
 import Data.Text.Prettyprint.Doc (Pretty(..), emptyDoc)
 import qualified Data.Text.Short as S (ShortText, length, any, null
     , fromText, toText, fromByteString, pack, unpack, singleton
-    , append, empty, toBuilder, splitAt)
+    , append, empty, toBuilder, splitAt, findIndex)
 import qualified Data.Text.Short.Unsafe as S (fromByteStringUnsafe)
 import GHC.Generics (Generic)
 import System.IO (Handle)
@@ -311,6 +313,17 @@ insertRope i (Rope new) text =
     (Rope before,Rope after) = splitRope i text
   in
     Rope (mconcat [before, new, after])
+
+findIndexRope :: (Char -> Bool) -> Rope -> Maybe Int
+findIndexRope predicate = fst . foldl f (Nothing,0) . unRope
+  where
+    -- convert this to Maybe monad, maybe
+    f :: (Maybe Int,Int) -> S.ShortText -> (Maybe Int,Int)
+    f acc piece = case acc of
+        (Just j,_) -> (Just j,0)
+        (Nothing,!i) -> case S.findIndex predicate piece of
+            Nothing -> (Nothing,i + S.length piece)
+            Just !j -> (Just (i + j),0)
 
 --
 -- Manual instance to get around the fact that FingerTree doesn't have a
