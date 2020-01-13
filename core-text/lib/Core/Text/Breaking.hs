@@ -8,6 +8,7 @@ module Core.Text.Breaking
     , breakPieces
     , intoPieces
     , intoChunks
+    , isNewline
     )
 where
 
@@ -62,6 +63,10 @@ breakLines text =
         then fore
         else result
 
+{-|
+Predicate testing whether a character is a newline. After
+'Data.Char.isSpace' et al in "Data.Char".
+-}
 isNewline :: Char -> Bool
 isNewline c = c == '\n'
 {-# INLINEABLE isNewline #-}

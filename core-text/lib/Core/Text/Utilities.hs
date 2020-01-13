@@ -22,6 +22,7 @@ module Core.Text.Utilities (
     , breakWords
     , breakLines
     , breakPieces
+    , isNewline
     , wrap
     , calculatePositionEnd
     , underline
