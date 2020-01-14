@@ -78,7 +78,7 @@ module Core.Text.Rope
     , emptyRope
     , singletonRope
     , replicateRope
-    , replicateRope'
+    , replicateChar
     , widthRope
     , splitRope
     , insertRope
@@ -271,8 +271,8 @@ Rather than making a huge FingerTree full of single characters, this
 function will allocate a single ShortText comprised of the repeated input
 character.
 -}
-replicateRope' :: Int -> Char -> Rope
-replicateRope' count = Rope . F.singleton . S.replicate count . S.singleton
+replicateChar :: Int -> Char -> Rope
+replicateChar count = Rope . F.singleton . S.replicate count . S.singleton
 
 {-|
 Get the length of this text, in characters.

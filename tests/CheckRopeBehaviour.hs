@@ -71,8 +71,8 @@ checkRopeBehaviour = do
             length (unRope (replicateRope 3 "hello")) `shouldBe` 3
             replicateRope 3 "" `shouldBe` emptyRope
             replicateRope 0 "hello" `shouldBe` emptyRope
-            replicateRope' 3 'x' `shouldBe` ("xxx" :: Rope)
-            replicateRope' 0 'x' `shouldBe` ("" :: Rope)
+            replicateChar 3 'x' `shouldBe` ("xxx" :: Rope)
+            replicateChar 0 'x' `shouldBe` ("" :: Rope)
 
         it "exports to ByteString" $
           let
