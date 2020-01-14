@@ -66,6 +66,14 @@ checkRopeBehaviour = do
         it "concatonates two Ropes correctly (Textual)" $ do
              appendRope ("SO₄" :: Rope) ("H₂" :: Rope) `shouldBe` ("H₂SO₄" :: Rope)
 
+        it "replicates itself" $ do
+            replicateRope 3 "hello" `shouldBe` ("hellohellohello" :: Rope)
+            length (unRope (replicateRope 3 "hello")) `shouldBe` 3
+            replicateRope 3 "" `shouldBe` emptyRope
+            replicateRope 0 "hello" `shouldBe` emptyRope
+            replicateRope' 3 'x' `shouldBe` ("xxx" :: Rope)
+            replicateRope' 0 'x' `shouldBe` ("" :: Rope)
+
         it "exports to ByteString" $
           let
             expected = T.encodeUtf8 (T.pack "H₂SO₄")

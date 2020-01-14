@@ -77,6 +77,8 @@ module Core.Text.Rope
       Rope
     , emptyRope
     , singletonRope
+    , replicateRope
+    , replicateRope'
     , widthRope
     , splitRope
     , insertRope
@@ -112,7 +114,7 @@ import qualified Data.Text.Lazy.Builder as U (Builder, toLazyText
 import Data.Text.Prettyprint.Doc (Pretty(..), emptyDoc)
 import qualified Data.Text.Short as S (ShortText, length, any, null
     , fromText, toText, fromByteString, pack, unpack, singleton
-    , append, empty, toBuilder, splitAt, findIndex)
+    , append, empty, toBuilder, splitAt, findIndex, replicate)
 import qualified Data.Text.Short.Unsafe as S (fromByteStringUnsafe)
 import GHC.Generics (Generic)
 import System.IO (Handle)
@@ -240,6 +242,37 @@ A 'Rope' with but a single character.
 -}
 singletonRope :: Char -> Rope
 singletonRope = Rope . F.singleton . S.singleton
+
+
+{-|
+Repeat the input 'Rope' @n@ times. The follows the same semantics as other
+@replicate@ functions; if you ask for zero copies you'll get an empty text
+and if you ask for lots of @""@ you'll get ... an empty text.
+
+/Implementation note/
+
+Rather than copying the input /n/ times, this will simply add structure to hold /n/
+references to the provided input text.
+-}
+replicateRope :: Int -> Rope -> Rope
+replicateRope count (Rope x) =
+  let
+    x' = foldr (\ _ acc -> (F.><) x acc) F.empty [1..count]
+  in
+    Rope x'
+
+{-|
+Repeat the input 'Char' @n@ times. This is a special case of
+'replicateRope' above.
+
+/Implementation note/
+
+Rather than making a huge FingerTree full of single characters, this
+function will allocate a single ShortText comprised of the repeated input
+character.
+-}
+replicateRope' :: Int -> Char -> Rope
+replicateRope' count = Rope . F.singleton . S.replicate count . S.singleton
 
 {-|
 Get the length of this text, in characters.
