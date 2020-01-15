@@ -5,6 +5,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE BangPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 {-|
@@ -76,10 +77,13 @@ module Core.Text.Rope
       Rope
     , emptyRope
     , singletonRope
+    , replicateRope
+    , replicateChar
     , widthRope
     , splitRope
     , insertRope
     , containsCharacter
+    , findIndexRope
       {-* Interoperation and Output -}
     , Textual(fromRope, intoRope, appendRope)
     , hWrite
@@ -110,7 +114,7 @@ import qualified Data.Text.Lazy.Builder as U (Builder, toLazyText
 import Data.Text.Prettyprint.Doc (Pretty(..), emptyDoc)
 import qualified Data.Text.Short as S (ShortText, length, any, null
     , fromText, toText, fromByteString, pack, unpack, singleton
-    , append, empty, toBuilder, splitAt)
+    , append, empty, toBuilder, splitAt, findIndex, replicate)
 import qualified Data.Text.Short.Unsafe as S (fromByteStringUnsafe)
 import GHC.Generics (Generic)
 import System.IO (Handle)
@@ -239,6 +243,37 @@ A 'Rope' with but a single character.
 singletonRope :: Char -> Rope
 singletonRope = Rope . F.singleton . S.singleton
 
+
+{-|
+Repeat the input 'Rope' @n@ times. The follows the same semantics as other
+@replicate@ functions; if you ask for zero copies you'll get an empty text
+and if you ask for lots of @""@ you'll get ... an empty text.
+
+/Implementation note/
+
+Rather than copying the input /n/ times, this will simply add structure to hold /n/
+references to the provided input text.
+-}
+replicateRope :: Int -> Rope -> Rope
+replicateRope count (Rope x) =
+  let
+    x' = foldr (\ _ acc -> (F.><) x acc) F.empty [1..count]
+  in
+    Rope x'
+
+{-|
+Repeat the input 'Char' @n@ times. This is a special case of
+'replicateRope' above.
+
+/Implementation note/
+
+Rather than making a huge FingerTree full of single characters, this
+function will allocate a single ShortText comprised of the repeated input
+character.
+-}
+replicateChar :: Int -> Char -> Rope
+replicateChar count = Rope . F.singleton . S.replicate count . S.singleton
+
 {-|
 Get the length of this text, in characters.
 -}
@@ -311,6 +346,17 @@ insertRope i (Rope new) text =
     (Rope before,Rope after) = splitRope i text
   in
     Rope (mconcat [before, new, after])
+
+findIndexRope :: (Char -> Bool) -> Rope -> Maybe Int
+findIndexRope predicate = fst . foldl f (Nothing,0) . unRope
+  where
+    -- convert this to Maybe monad, maybe
+    f :: (Maybe Int,Int) -> S.ShortText -> (Maybe Int,Int)
+    f acc piece = case acc of
+        (Just j,_) -> (Just j,0)
+        (Nothing,!i) -> case S.findIndex predicate piece of
+            Nothing -> (Nothing,i + S.length piece)
+            Just !j -> (Just (i + j),0)
 
 --
 -- Manual instance to get around the fact that FingerTree doesn't have a

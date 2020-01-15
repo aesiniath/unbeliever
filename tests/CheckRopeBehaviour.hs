@@ -2,7 +2,11 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
-module CheckRopeBehaviour where
+module CheckRopeBehaviour
+    ( checkRopeBehaviour
+    , main
+    )
+where
 
 import Data.Char (isSpace)
 import qualified Data.FingerTree as F
@@ -16,6 +20,11 @@ import Test.Hspec
 
 import Core.Text.Rope
 import Core.Text.Utilities
+import Core.System (finally)
+
+main :: IO ()
+main = do
+    finally (hspec checkRopeBehaviour) (putStrLn ".")
 
 hydrogen = "H₂" :: Rope
 sulfate = "SO₄" :: Rope
@@ -56,6 +65,14 @@ checkRopeBehaviour = do
 
         it "concatonates two Ropes correctly (Textual)" $ do
              appendRope ("SO₄" :: Rope) ("H₂" :: Rope) `shouldBe` ("H₂SO₄" :: Rope)
+
+        it "replicates itself" $ do
+            replicateRope 3 "hello" `shouldBe` ("hellohellohello" :: Rope)
+            length (unRope (replicateRope 3 "hello")) `shouldBe` 3
+            replicateRope 3 "" `shouldBe` emptyRope
+            replicateRope 0 "hello" `shouldBe` emptyRope
+            replicateChar 3 'x' `shouldBe` ("xxx" :: Rope)
+            replicateChar 0 'x' `shouldBe` ("" :: Rope)
 
         it "exports to ByteString" $
           let
@@ -101,6 +118,12 @@ checkRopeBehaviour = do
             insertRope 3 "Con" "Def 1" `shouldBe` "DefCon 1"
             insertRope 0 "one" "twothree" `shouldBe` "onetwothree"
             insertRope 6 "three" "onetwo" `shouldBe` "onetwothree"
+
+        it "finds characters correctly" $ do
+            findIndexRope (== '3') compound `shouldBe` (Just 0)
+            findIndexRope (== '4') compound `shouldBe` (Just 8)
+            findIndexRope (== '!') compound `shouldBe` Nothing
+            findIndexRope (== 'e') compound `shouldBe` (Just 2)
 
     describe "QuasiQuoted string literals" $ do
         it "string literal is IsString" $ do
@@ -222,3 +245,11 @@ a test
 Hello this is a test
 of the Emergency
 Broadcast System|]
+
+    describe "Lines and columns" $ do
+        it "calculate position of a given block" $ do
+            calculatePositionEnd "" `shouldBe` (1,1)
+            calculatePositionEnd "Hello" `shouldBe` (1,6)
+            calculatePositionEnd "Hello\nWorld" `shouldBe` (2,6)
+            calculatePositionEnd "\nWorld" `shouldBe` (2,6)
+            calculatePositionEnd "\n" `shouldBe` (2,1)
