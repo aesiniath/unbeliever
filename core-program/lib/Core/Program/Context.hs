@@ -22,7 +22,6 @@ module Core.Program.Context
       , unProgram
       , getContext
       , subProgram
-      , getConsoleWidth
     ) where
 
 import Prelude hiding (log)
