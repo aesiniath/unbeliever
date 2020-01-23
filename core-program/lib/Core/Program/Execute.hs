@@ -65,6 +65,7 @@ module Core.Program.Execute
       , setProgramName
       , getVerbosityLevel
       , setVerbosityLevel
+      , getConsoleWidth
       , getApplicationState
       , setApplicationState
       , retrieve
@@ -335,6 +336,20 @@ getProgramName = do
     liftIO $ do
         let v = programNameFrom context
         readMVar v
+
+{-|
+Retreive the current terminal's width, in characters.
+
+If you are outputting an object with a 'Core.Text.Untilities.Render'
+instance then you may not need this; you can instead use 'wrteR' which is
+aware of the width of your terminal and will reflow (in as much as the
+underlying type's @Render@ instance lets it).
+-}
+getConsoleWidth :: Program τ Int
+getConsoleWidth = do
+    context <- ask
+    let width = terminalWidthFrom context
+    return width
 
 {-|
 Get the user supplied application state as originally supplied to
