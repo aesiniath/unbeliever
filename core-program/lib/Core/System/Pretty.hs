@@ -27,6 +27,7 @@ module Core.System.Pretty
     , sep
     , hsep
     , vsep
+    , fillCat
     , fillSep
     , flatAlt
     , hcat
