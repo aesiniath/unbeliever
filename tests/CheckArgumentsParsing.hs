@@ -2,28 +2,41 @@
 {-# LANGUAGE OverloadedLists #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
-module CheckArgumentsParsing where
+module CheckArgumentsParsing
+    ( checkArgumentsParsing
+    , main
+    )
+    where
 
 import Test.Hspec
 
 import Core.Program.Arguments
+import Core.System.Base
 
+main :: IO ()
+main = do
+    finally (hspec checkArgumentsParsing) (putStrLn ".")
+
+options1 :: [Options]
 options1 =
     [ Option "verbose" (Just 'v') Empty "Make the program verbose"
     , Option "quiet" (Just 'q') Empty "Be very very quiet, we're hunting wabbits"
     , Option "dry-run" Nothing (Value "WHEN") "Before trapping Road Runner, best to do a dry-run"
     ]
 
+options2 :: [Options]
 options2 =
     [ Option "recursive" Nothing Empty "Descend into darkness"
     , Argument "filename" "The file that you want"
     ]
 
+options3 :: [Options]
 options3 =
     [ Option "all" (Just 'a') Empty "Good will to everyone"
     ]
 
 
+commands1 :: [Commands]
 commands1 =
     [ Global
         options1
@@ -31,6 +44,7 @@ commands1 =
         options2
     ]
 
+commands2 :: [Commands]
 commands2 =
     [ Global
         options1
@@ -104,6 +118,14 @@ checkArgumentsParsing = do
           in
             actual `shouldBe` Left (MissingArgument "filename")
 
+        it "accepts request for version" $
+          let
+            config = simple options1
+            actual = parseCommandLine config ["--version"]
+          in
+            actual `shouldBe` Left VersionRequest
+
+
     describe "Parsing of complex command-lines" $ do
 
         it "recognizes only single command" $
@@ -140,11 +162,19 @@ checkArgumentsParsing = do
           in
             actual `shouldBe` Right expect
 
-
         it "rejects further trailing arguments" $
           let
             config = complex commands2
             actual = parseCommandLine config ["commit", "some"]
           in
             actual `shouldBe` Left (UnexpectedArguments ["some"])
+
+-- in complex mode wasn't accpting --version as a global option.
+
+        it "accepts request for version" $
+          let
+            config = complex commands2
+            actual = parseCommandLine config ["--version"]
+          in
+            actual `shouldBe` Left VersionRequest
 

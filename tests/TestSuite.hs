@@ -7,7 +7,7 @@ import CheckRopeBehaviour (checkRopeBehaviour)
 import CheckBytesBehaviour
 import CheckContainerBehaviour
 import CheckJsonWrapper
-import CheckArgumentsParsing
+import CheckArgumentsParsing (checkArgumentsParsing)
 import CheckProgramMonad
 
 main :: IO ()
