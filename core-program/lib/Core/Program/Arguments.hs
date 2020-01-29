@@ -494,8 +494,9 @@ parseCommandLine config argv = case config of
         globalOptions = extractGlobalOptions commands
         modes = extractValidModes commands
       in do
-        (possibles,first,remainingArgs) <- splitCommandLine argv
+        (possibles,argv') <- splitCommandLine1 argv
         params1 <- extractor Nothing globalOptions possibles
+        (first,remainingArgs) <- splitCommandLine2 argv'
         (mode,localOptions) <- parseIndicatedCommand modes first
         params2 <- extractor (Just mode) localOptions remainingArgs
         return (Parameters (Just mode) ((<>) params1 params2) emptyMap)
@@ -632,17 +633,32 @@ extractValidModes commands =
     k (Command longname _ options) modes = insertKeyValue longname options modes
     k _ modes = modes
 
-splitCommandLine :: [String] -> Either InvalidCommandLine ([String], String, [String])
-splitCommandLine args =
+{-|
+Break the command-line apart in two steps. The first peels off the global
+options, the second below looks to see if there is a command (of fails) and
+if so, whether it has any parameters.
+
+We do it this way so that `parseCommandLine` can pas the global options to
+`extractor` and thence `parsePossibleOptions` to catch --version and
+--help.
+-}
+splitCommandLine1 :: [String] -> Either InvalidCommandLine ([String], [String])
+splitCommandLine1 args =
   let
     (possibles,remainder) = List.span isOption args
-    x = List.uncons remainder
+  in
+    if null possibles && null remainder
+        then Left NoCommandFound
+        else Right (possibles,remainder)
+
+splitCommandLine2 :: [String] -> Either InvalidCommandLine (String, [String])
+splitCommandLine2 argv' =
+  let
+    x = List.uncons argv'
   in
     case x of
-        Just (mode,remainingArgs) -> Right (possibles,mode,remainingArgs)
-        Nothing -> if (List.elem "--help" possibles)
-            then Left (HelpRequest Nothing)
-            else Left NoCommandFound
+        Just (mode,remainingArgs) -> Right (mode,remainingArgs)
+        Nothing -> Left NoCommandFound
 
 --
 -- Environment variable handling
