@@ -38,7 +38,7 @@ license-file: LICENSE
 author: Andrew Cowie <andrew@operationaldynamics.com>
 maintainer: Andrew Cowie <andrew@operationaldynamics.com>
 copyright: © 2018-2020 Operational Dynamics Consulting Pty Ltd, and Others
-tested-with: GHC == 8.6.5
+tested-with: GHC == 8.6.5, GHC == 8.8.2
 category: System
 ghc-options: -Wall -Wwarn -fwarn-tabs
 github: oprdyn/unbeliever

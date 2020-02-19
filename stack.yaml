@@ -1,4 +1,4 @@
-resolver: lts-14.21
+resolver: lts-15.0
 packages:
  - ./core-data
  - ./core-text
