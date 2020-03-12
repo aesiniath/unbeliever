@@ -58,13 +58,33 @@ library:
 tests:
   check:
     dependencies:
+     - async
      - bytestring
+     - chronologique
+     - containers
+     - deepseq
+     - directory
+     - exceptions
+     - filepath
      - fingertree
+     - fsnotify
      - hashable
+     - hourglass
      - hspec
+     - megaparsec
+     - mtl
+     - prettyprinter
+     - prettyprinter-ansi-terminal
      - safe-exceptions
+     - scientific
+     - stm
+     - template-haskell
+     - terminal-size
      - text
      - text-short
+     - transformers
+     - unix
+     - unordered-containers
     ghc-options: -threaded
     source-dirs:
      - tests
