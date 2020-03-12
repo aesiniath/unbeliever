@@ -1,0 +1,30 @@
+name: core-verify
+version: 0.1.0.0
+synopsis: Testing support for programs
+description: |
+  Testing support for programs written using __core-program__.
+  
+  See "Core.Testing.??" to get started.
+
+stability: experimental
+license: BSD3
+license-file: LICENSE
+author: Andrew Cowie <andrew@operationaldynamics.com>
+maintainer: Andrew Cowie <andrew@operationaldynamics.com>
+copyright: © 2020 Operational Dynamics Consulting Pty Ltd, and Others
+tested-with: GHC == 8.8.2
+category: System
+ghc-options: -Wall -Wwarn -fwarn-tabs
+github: oprdyn/unbeliever
+
+dependencies:
+ - base >= 4.11 && < 5
+
+library:
+  dependencies:
+   - core-text
+   - core-program
+  source-dirs: lib
+  exposed-modules:
+   - Core.Testing
+   - Core.Testing.Support

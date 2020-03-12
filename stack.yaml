@@ -3,4 +3,5 @@ packages:
  - ./core-data
  - ./core-text
  - ./core-program
+ - ./core-verify
  - .
