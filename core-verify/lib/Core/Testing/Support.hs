@@ -15,7 +15,7 @@ import Core.Program.Execute (Program, configure)
 import Core.Program.Arguments (blank)
 import Core.Program.Unlift (subProgram)
 
-testProgram :: forall a t. t -> Program t a -> IO a
+testProgram :: forall α τ. τ -> Program τ α -> IO α
 testProgram user program = do
     context <- configure "0" user blank
     subProgram context program
