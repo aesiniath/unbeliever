@@ -12,6 +12,7 @@ import Core.Program.Arguments
 import Core.Program.Execute
 import Core.Program.Unlift
 import Core.System.Base
+import Core.Testing.Support
 
 options :: [Options]
 options =
@@ -43,14 +44,14 @@ checkProgramMonad = do
     describe "Program monad" $ do
         it "execute with blank Context as expected" $ do
             context <- configure "0.1" None blank
-            executeWith context $ do
+            subProgram context $ do
                 user <- getApplicationState
                 liftIO $ do
                     user `shouldBe` None
 
         it "execute with simple Context as expected" $ do
             context <- configure "0.1" None (simple options)
-            executeWith context $ do
+            subProgram context $ do
                 params <- getCommandLine
                 liftIO $ do
                     -- this assumes that hspec isn't passing any
@@ -61,6 +62,10 @@ checkProgramMonad = do
         it "sub-programs can be run" $ do
             context <- configure "0.1" None blank
             user <- subProgram context (getApplicationState)
+            user `shouldBe` None
+
+        it "sub-programs can be tested" $ do
+            user <- testProgram None (getApplicationState)
             user `shouldBe` None
 
         it "unlifting from lifted IO works" $ do
