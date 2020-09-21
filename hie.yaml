@@ -1,0 +1,10 @@
+cradle:
+  stack:
+    - path: "core-text"
+      component: "core-text:lib"
+    - path: "core-data"
+      component: "core-data:lib"
+    - path: "core-program"
+      component: "core-program:lib"
+    - path: "tests/"
+      component: "unbeliever:test:check"
