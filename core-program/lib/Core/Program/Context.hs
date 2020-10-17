@@ -20,17 +20,16 @@ module Core.Program.Context
     Program (..),
     unProgram,
     getContext,
+    fmapContext,
     subProgram,
   )
 where
 
 import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
-import Control.Concurrent.MVar (MVar, newEmptyMVar, newMVar)
+import Control.Concurrent.MVar (MVar, newEmptyMVar, newMVar, readMVar)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
-import Control.Exception.Safe (displayException)
 import qualified Control.Exception.Safe as Safe (catch, throw)
 import Control.Monad.Catch (MonadCatch (catch), MonadThrow (throwM))
-import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader.Class (MonadReader (..))
 import Control.Monad.Trans.Reader (ReaderT (..))
 import Core.Data.Structures
@@ -83,6 +82,23 @@ data Context τ = Context
     loggerChannelFrom :: TQueue Message,
     applicationDataFrom :: MVar τ
   }
+
+-- I would happily accept critique as to whether this is safe or not. I think
+-- so? The only way to get to the underlying top-level application data is
+-- through 'getApplicationState' which is in Program monad so the fact that it
+-- is implemented within an MVar should be irrelevant.
+instance Functor Context where
+  fmap f = unsafePerformIO . fmapContext f
+
+-- |
+-- Map a function over the underlying user-data inside the 'Context', changing
+-- it from type@τ1@ to @τ2@.
+fmapContext :: (τ1 -> τ2) -> Context τ1 -> IO (Context τ2)
+fmapContext f context = do
+  state <- readMVar (applicationDataFrom context)
+  let state' = f state
+  u <- newMVar state'
+  return (context {applicationDataFrom = u})
 
 -- |
 -- A 'Program' with no user-supplied state to be threaded throughout the

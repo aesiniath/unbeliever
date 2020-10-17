@@ -1,5 +1,5 @@
 name: unbeliever
-version: 0.10.0.6
+version: 0.10.0.7
 synopsis: Opinionated Haskell Interoperability
 description: |
   A library to help build command-line programs, both tools and
@@ -38,7 +38,7 @@ license-file: LICENSE
 author: Andrew Cowie <istathar@gmail.com>
 maintainer: Andrew Cowie <istathar@gmail.com>
 copyright: © 2018-2020 Athae Eredh Siniath and Others
-tested-with: GHC == 8.8.3
+tested-with: GHC == 8.8.4
 category: System
 ghc-options: -Wall -Wwarn -fwarn-tabs
 github: aesiniath/unbeliever
@@ -46,8 +46,8 @@ github: aesiniath/unbeliever
 dependencies:
  - base >= 4.11 && < 5
  - core-text >= 0.2.3.5
- - core-data >= 0.2.1.7
- - core-program >= 0.2.4.4
+ - core-data >= 0.2.1.8
+ - core-program >= 0.2.5.0
 
 library:
   source-dirs: tests
@@ -65,6 +65,8 @@ tests:
      - safe-exceptions
      - text
      - text-short
+     - unordered-containers
+     - prettyprinter
     ghc-options: -threaded
     source-dirs:
      - tests

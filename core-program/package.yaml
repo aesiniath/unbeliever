@@ -1,5 +1,5 @@
 name: core-program
-version: 0.2.4.5
+version: 0.2.5.0
 synopsis: Opinionated Haskell Interoperability
 description: |
   A library to help build command-line programs, both tools and
@@ -15,10 +15,10 @@ description: |
 stability: experimental
 license: BSD3
 license-file: LICENSE
-author: Andrew Cowie <andrew@operationaldynamics.com>
-maintainer: Andrew Cowie <andrew@operationaldynamics.com>
+author: Andrew Cowie <istathar@gmail.com>
+maintainer: Andrew Cowie <istathar@gmail.com>
 copyright: © 2018-2020 Athae Eredh Siniath and Others
-tested-with: GHC == 8.8.3
+tested-with: GHC == 8.8.4
 category: System
 ghc-options: -Wall -Wwarn -fwarn-tabs
 github: aesiniath/unbeliever
@@ -26,8 +26,8 @@ github: aesiniath/unbeliever
 dependencies:
  - base >= 4.11 && < 5
  - bytestring
- - hashable >= 1.2 && < 1.4
- - prettyprinter >= 1.2.1.1 && < 1.8
+ - hashable >= 1.2
+ - prettyprinter >= 1.2.1.1
  - prettyprinter-ansi-terminal
  - template-haskell >= 2.14 && < 3
  - text
