@@ -83,9 +83,16 @@ data Context τ = Context
     applicationDataFrom :: MVar τ
   }
 
+-- I would happily accept critique as to whether this is safe or not. I think
+-- so? The only way to get to the underying top-level application data is
+-- through 'getApplicationState' which is in Program monad so the fact that it
+-- is implemented within an MVar should be irrelevant.
 instance Functor Context where
   fmap f = unsafePerformIO . fmapContext f
 
+-- |
+-- Map a function over the underlying user-data inside the 'Context', changing
+-- it from type@τ1@ to @τ2@.
 fmapContext :: (τ1 -> τ2) -> Context τ1 -> IO (Context τ2)
 fmapContext f context = do
   state <- readMVar (applicationDataFrom context)
