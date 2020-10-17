@@ -65,6 +65,8 @@ tests:
      - safe-exceptions
      - text
      - text-short
+     - unordered-containers
+     - prettyprinter
     ghc-options: -threaded
     source-dirs:
      - tests

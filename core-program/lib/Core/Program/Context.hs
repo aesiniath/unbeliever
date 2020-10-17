@@ -84,7 +84,7 @@ data Context τ = Context
   }
 
 -- I would happily accept critique as to whether this is safe or not. I think
--- so? The only way to get to the underying top-level application data is
+-- so? The only way to get to the underlying top-level application data is
 -- through 'getApplicationState' which is in Program monad so the fact that it
 -- is implemented within an MVar should be irrelevant.
 instance Functor Context where
