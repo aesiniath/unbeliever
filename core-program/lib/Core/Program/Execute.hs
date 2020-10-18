@@ -70,12 +70,10 @@ module Core.Program.Execute
     getConsoleWidth,
     getApplicationState,
     setApplicationState,
-    retrieve,
-    update,
 
     -- * Useful actions
-    output,
-    input,
+    outputEntire,
+    inputEntire,
 
     -- * Concurrency
     Thread,
@@ -89,6 +87,11 @@ module Core.Program.Execute
     unProgram,
     unThread,
     invalid,
+
+    retrieve,
+    update,
+    output,
+    input,
   )
 where
 
@@ -388,12 +391,12 @@ setApplicationState user = do
     modifyMVar_ v (\_ -> pure user)
 
 -- |
--- Alias for 'getApplicationState'.
+{-# DEPRECATED retrieve "Use getApplicationState instead" #-}
 retrieve :: Program τ τ
 retrieve = getApplicationState
 
 -- |
--- Alias for 'setApplicationState'.
+{-# DEPRECATED update "Use setApplicationState instead" #-}
 update :: τ -> Program τ ()
 update = setApplicationState
 
@@ -415,13 +418,23 @@ update = setApplicationState
 --
 -- (which is not /unsafe/, but will lead to unexpected results if the binary
 -- blob you pass in is other than UTF-8 text).
+outputEntire :: Handle -> Bytes -> Program τ ()
+outputEntire handle contents = liftIO (hOutput handle contents)
+
+-- |
+{-# DEPRECATED output "Use outputEntire instead" #-}
 output :: Handle -> Bytes -> Program τ ()
-output handle contents = liftIO (hOutput handle contents)
+output = outputEntire
 
 -- |
 -- Read the (entire) contents of the specified @Handle@.
+inputEntire :: Handle -> Program τ Bytes
+inputEntire handle = liftIO (hInput handle)
+
+-- |
+{-# DEPRECATED input "Use inputEntire instead" #-}
 input :: Handle -> Program τ Bytes
-input handle = liftIO (hInput handle)
+input = inputEntire
 
 -- |
 -- A thread for concurrent computation. Haskell uses green threads: small
