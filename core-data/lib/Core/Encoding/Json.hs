@@ -118,7 +118,6 @@ import Data.Text.Prettyprint.Doc
     vsep,
     (<+>),
   )
-import Data.Text.Prettyprint.Doc.Render.Terminal (AnsiStyle, Color (..), color, colorDull)
 import qualified Data.Vector as V
 import GHC.Generics
 
@@ -238,17 +237,17 @@ data JsonToken
 instance Render JsonValue where
   type Token JsonValue = JsonToken
   colourize = colourizeJson
-  intoDocA = prettyValue
+  intoDoc = prettyValue
 
 instance Render JsonKey where
   type Token JsonKey = JsonToken
   colourize = colourizeJson
-  intoDocA = prettyKey
+  intoDoc = prettyKey
 
 instance Render Aeson.Value where
   type Token Aeson.Value = JsonToken
   colourize = colourizeJson
-  intoDocA = prettyValue . fromAeson
+  intoDoc = prettyValue . fromAeson
 
 --
 --  Ugh. If you want to experiment with narrower output, then:

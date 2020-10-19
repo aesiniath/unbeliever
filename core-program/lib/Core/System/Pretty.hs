@@ -44,13 +44,7 @@ module Core.System.Pretty
     indent,
     nest,
     concatWith,
-    color,
-    colorDull,
-    Color (..),
-    AnsiStyle,
-    bold,
   )
 where
 
 import Data.Text.Prettyprint.Doc
-import Data.Text.Prettyprint.Doc.Render.Terminal

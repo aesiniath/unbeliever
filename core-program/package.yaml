@@ -1,5 +1,5 @@
 name: core-program
-version: 0.2.5.1
+version: 0.2.6.0
 synopsis: Opinionated Haskell Interoperability
 description: |
   A library to help build command-line programs, both tools and
@@ -27,8 +27,7 @@ dependencies:
  - base >= 4.11 && < 5
  - bytestring
  - hashable >= 1.2
- - prettyprinter >= 1.2.1.1
- - prettyprinter-ansi-terminal
+ - prettyprinter >= 1.6.2
  - template-haskell >= 2.14 && < 3
  - text
  - text-short

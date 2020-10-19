@@ -35,6 +35,7 @@ module Core.Text.Utilities
     intoPieces,
     intoChunks,
     byteChunk,
+    intoDocA,
   )
 where
 
@@ -47,7 +48,6 @@ import qualified Data.ByteString as B (ByteString, length, splitAt, unpack)
 import Data.Char (intToDigit)
 import qualified Data.FingerTree as F (ViewL (..), viewl, (<|))
 import qualified Data.List as List (dropWhileEnd, foldl', splitAt)
-import Data.Monoid ((<>))
 import qualified Data.Text as T
 import Data.Text.Prettyprint.Doc
   ( Doc,
@@ -66,12 +66,7 @@ import Data.Text.Prettyprint.Doc
     unAnnotateS,
     vcat,
   )
-import Data.Text.Prettyprint.Doc.Render.Terminal
-  ( AnsiStyle,
-    Color (..),
-    color,
-    renderLazy,
-  )
+import Data.Text.Prettyprint.Doc.Render.Text (renderLazy)
 import qualified Data.Text.Short as S
   ( ShortText,
     replicate,
@@ -102,17 +97,22 @@ class Render α where
 
   -- |
   -- Convert semantic tokens to specific ANSI escape tokens
-  colourize :: Token α -> AnsiStyle
+  colourize :: Token α -> AnsiColour
 
   -- |
   -- Arrange your type as a 'Doc' @ann@, annotated with your semantic
   -- tokens.
-  intoDocA :: α -> Doc (Token α)
+  highlight :: α -> Doc (Token α)
+
+-- |
+intoDocA :: Render α => α -> Doc (Token α)
+intoDocA = highlight
+{-# DEPRECATED intoDocA "method'intoDocA' has been replaced with 'highlight'" #-}
 
 instance Render Rope where
   type Token Rope = ()
   colourize = const mempty
-  intoDocA = foldr f emptyDoc . unRope
+  highlight = foldr f emptyDoc . unRope
     where
       f :: S.ShortText -> Doc () -> Doc ()
       f piece built = (<>) (pretty (S.toText piece)) built
@@ -120,24 +120,24 @@ instance Render Rope where
 instance Render Char where
   type Token Char = ()
   colourize = const mempty
-  intoDocA c = pretty c
+  highlight c = pretty c
 
 instance (Render a) => Render [a] where
   type Token [a] = Token a
   colourize = colourize @a
-  intoDocA = mconcat . fmap intoDocA
+  highlight = mconcat . fmap intoDoc
 
 instance Render T.Text where
   type Token T.Text = ()
   colourize = const mempty
-  intoDocA t = pretty t
+  highlight t = pretty t
 
 -- (), aka Unit, aka **1**, aka something with only one inhabitant
 
 instance Render Bytes where
   type Token Bytes = ()
   colourize = const (color Green)
-  intoDocA = prettyBytes
+  highlight = prettyBytes
 
 prettyBytes :: Bytes -> Doc ()
 prettyBytes =
