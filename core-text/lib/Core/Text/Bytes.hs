@@ -4,10 +4,6 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeSynonymInstances #-}
--- FIXME
-{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
--- FIXME
-{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# OPTIONS_HADDOCK prune #-}
 
 -- |
@@ -39,45 +35,14 @@ where
 
 import qualified Data.ByteString as B
   ( ByteString,
-    foldl',
     hGetContents,
     hPut,
-    length,
     pack,
-    splitAt,
     unpack,
   )
 import qualified Data.ByteString.Builder as B (Builder, byteString, toLazyByteString)
-import qualified Data.ByteString.Char8 as C (pack, unpack)
 import qualified Data.ByteString.Lazy as L (ByteString, fromStrict, toStrict)
 import Data.Hashable (Hashable)
-import Data.Text.Prettyprint.Doc
-  ( Doc,
-    annotate,
-    emptyDoc,
-    fillSep,
-    flatAlt,
-    group,
-    hardline,
-    hcat,
-    hsep,
-    line,
-    line',
-    pretty,
-    punctuate,
-    sep,
-    softline,
-    softline',
-    space,
-    vcat,
-    (<+>),
-  )
-import Data.Text.Prettyprint.Doc.Render.Terminal
-  ( Color (..),
-    bold,
-    color,
-    colorDull,
-  )
 import Data.Word (Word8)
 import GHC.Generics (Generic)
 import System.IO (Handle)
