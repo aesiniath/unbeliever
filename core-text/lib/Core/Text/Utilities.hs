@@ -14,8 +14,34 @@
 module Core.Text.Utilities
   ( -- * Pretty printing
     Render (..),
+    AnsiColour,
+    bold,
     render,
     renderNoAnsi,
+    dullRed,
+    brightRed,
+    pureRed,
+    dullGreen,
+    brightGreen,
+    pureGreen,
+    dullBlue,
+    brightBlue,
+    pureBlue,
+    dullCyan,
+    brightCyan,
+    pureCyan,
+    dullMagenta,
+    brightMagenta,
+    pureMagenta,
+    dullYellow,
+    brightYellow,
+    pureYellow,
+    pureBlack,
+    dullGrey,
+    brightGrey,
+    pureWhite,
+    dullWhite,
+    brightWhite,
 
     -- * Helpers
     indefinite,
@@ -46,6 +72,7 @@ import Core.Text.Rope
 import Data.Bits (Bits (..))
 import qualified Data.ByteString as B (ByteString, length, splitAt, unpack)
 import Data.Char (intToDigit)
+import Data.Colour.SRGB (sRGB, sRGB24read)
 import qualified Data.FingerTree as F (ViewL (..), viewl, (<|))
 import qualified Data.List as List (dropWhileEnd, foldl', splitAt)
 import qualified Data.Text as T
@@ -77,6 +104,13 @@ import qualified Data.Text.Short as S
 import Data.Word (Word8)
 import Language.Haskell.TH (litE, stringL)
 import Language.Haskell.TH.Quote (QuasiQuoter (QuasiQuoter))
+import System.Console.ANSI.Codes (setSGRCode)
+import System.Console.ANSI.Types (ConsoleIntensity (..), ConsoleLayer (..), SGR (..))
+
+-- |
+-- An accumulation of ANSI escape codes used to add colour when pretty
+-- printing to console.
+newtype AnsiColour = Escapes [SGR]
 
 -- change AnsiStyle to a custom token type, perhaps Ansi, which
 -- has the escape codes already converted to Rope.
@@ -103,11 +137,151 @@ class Render α where
   -- Arrange your type as a 'Doc' @ann@, annotated with your semantic
   -- tokens.
   highlight :: α -> Doc (Token α)
+  highlight = intoDocA
+
+  -- "Nothing should be invoking intoDocA without having implemented it (and such implementations should be upgraded)
+  intoDocA :: α -> Doc (Token α)
+  intoDocA = error "Should not be used"
+
+{-# DEPRECATED intoDocA "method'intoDocA' has been renamed 'highlight'; implement that instead." #-}
 
 -- |
-intoDocA :: Render α => α -> Doc (Token α)
-intoDocA = highlight
-{-# DEPRECATED intoDocA "method'intoDocA' has been replaced with 'highlight'" #-}
+dullRed :: AnsiColour
+dullRed =
+  Escapes [SetRGBColor Foreground (sRGB24read "#CC0000")]
+
+-- |
+brightRed :: AnsiColour
+brightRed =
+  Escapes [SetRGBColor Foreground (sRGB24read "#EF2929")]
+
+-- |
+pureRed :: AnsiColour
+pureRed =
+  Escapes [SetRGBColor Foreground (sRGB 1 0 0)]
+
+-- |
+dullGreen :: AnsiColour
+dullGreen =
+  Escapes [SetRGBColor Foreground (sRGB24read "#4E9A06")]
+
+-- |
+brightGreen :: AnsiColour
+brightGreen =
+  Escapes [SetRGBColor Foreground (sRGB24read "#8AE234")]
+
+-- |
+pureGreen :: AnsiColour
+pureGreen =
+  Escapes [SetRGBColor Foreground (sRGB 0 1 0)]
+
+-- |
+dullBlue :: AnsiColour
+dullBlue =
+  Escapes [SetRGBColor Foreground (sRGB24read "#3465A4")]
+
+-- |
+brightBlue :: AnsiColour
+brightBlue =
+  Escapes [SetRGBColor Foreground (sRGB24read "#729FCF")]
+
+-- |
+pureBlue :: AnsiColour
+pureBlue =
+  Escapes [SetRGBColor Foreground (sRGB 0 0 1)]
+
+-- |
+dullCyan :: AnsiColour
+dullCyan =
+  Escapes [SetRGBColor Foreground (sRGB24read "#06989A")]
+
+-- |
+brightCyan :: AnsiColour
+brightCyan =
+  Escapes [SetRGBColor Foreground (sRGB24read "#34E2E2")]
+
+-- |
+pureCyan :: AnsiColour
+pureCyan =
+  Escapes [SetRGBColor Foreground (sRGB 0 1 1)]
+
+-- |
+dullMagenta :: AnsiColour
+dullMagenta =
+  Escapes [SetRGBColor Foreground (sRGB24read "#75507B")]
+
+-- |
+brightMagenta :: AnsiColour
+brightMagenta =
+  Escapes [SetRGBColor Foreground (sRGB24read "#AD7FA8")]
+
+-- |
+pureMagenta :: AnsiColour
+pureMagenta =
+  Escapes [SetRGBColor Foreground (sRGB 1 0 1)]
+
+-- |
+dullYellow :: AnsiColour
+dullYellow =
+  Escapes [SetRGBColor Foreground (sRGB24read "#C4A000")]
+
+-- |
+brightYellow :: AnsiColour
+brightYellow =
+  Escapes [SetRGBColor Foreground (sRGB24read "#FCE94F")]
+
+-- |
+pureYellow :: AnsiColour
+pureYellow =
+  Escapes [SetRGBColor Foreground (sRGB 1 1 0)]
+
+-- |
+pureBlack :: AnsiColour
+pureBlack =
+  Escapes [SetRGBColor Foreground (sRGB 0 0 0)]
+
+-- |
+dullGrey :: AnsiColour
+dullGrey =
+  Escapes [SetRGBColor Foreground (sRGB24read "#2E3436")]
+
+-- |
+brightGrey :: AnsiColour
+brightGrey =
+  Escapes [SetRGBColor Foreground (sRGB24read "#555753")]
+
+-- |
+pureWhite :: AnsiColour
+pureWhite =
+  Escapes [SetRGBColor Foreground (sRGB 1 1 1)]
+
+-- |
+dullWhite :: AnsiColour
+dullWhite =
+  Escapes [SetRGBColor Foreground (sRGB24read "#D3D7CF")]
+
+-- |
+brightWhite :: AnsiColour
+brightWhite =
+  Escapes [SetRGBColor Foreground (sRGB24read "#EEEEEC")]
+
+-- |
+-- Given an 'AnsiColour', lift it to bold intensity.
+--
+-- Note that many console fonts do /not/ have a bold face variant, and
+-- terminal emulators that "support bold" do so by doubling the thickness of
+-- the lines in the glyphs. This may or may not be desirable from a
+-- readibility standpoint but really there's only so much you can do to keep
+-- users who make poor font choices from making poor font choices.
+bold :: AnsiColour -> AnsiColour
+bold (Escapes list) =
+  Escapes (SetConsoleIntensity BoldIntensity : list)
+
+instance Semigroup AnsiColour where
+  (<>) (Escapes list1) (Escapes list2) = Escapes (list1 <> list2)
+
+instance Monoid AnsiColour where
+  mempty = Escapes []
 
 instance Render Rope where
   type Token Rope = ()
@@ -136,7 +310,7 @@ instance Render T.Text where
 
 instance Render Bytes where
   type Token Bytes = ()
-  colourize = const (color Green)
+  colourize = const (dullGreen)
   highlight = prettyBytes
 
 prettyBytes :: Bytes -> Doc ()
