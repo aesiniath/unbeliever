@@ -14,6 +14,32 @@ import Core.Encoding
 import Core.Program
 import Core.System
 import Core.Text
+    ( brightBlue,
+      brightCyan,
+      brightGreen,
+      brightGrey,
+      brightMagenta,
+      brightRed,
+      brightWhite,
+      brightYellow,
+      dullBlue,
+      dullCyan,
+      dullGreen,
+      dullGrey,
+      dullMagenta,
+      dullRed,
+      dullWhite,
+      dullYellow,
+      pureBlack,
+      pureBlue,
+      pureCyan,
+      pureGreen,
+      pureGrey,
+      pureMagenta,
+      pureRed,
+      pureWhite,
+      pureYellow,
+      Render(Token, highlight, colourize) )
 import Data.Char (toLower)
 
 data Colours
@@ -38,6 +64,7 @@ data Colours
   | PureBlack
   | DullGrey
   | BrightGrey
+  | PureGrey
   | DullWhite
   | BrightWhite
   | PureWhite
@@ -67,6 +94,7 @@ instance Render Colours where
     PureBlack -> pureBlack
     DullGrey -> dullGrey
     BrightGrey -> brightGrey
+    PureGrey -> pureGrey
     PureWhite -> pureWhite
     DullWhite -> dullWhite
     BrightWhite -> brightWhite
@@ -104,12 +132,13 @@ colours =
     DullBlue,
     BrightBlue,
     PureBlue,
+    DullMagenta,
+    BrightMagenta,
+    PureMagenta,
     PureBlack,
     DullGrey,
     BrightGrey,
-    DullMagenta,
-    BrightMagenta,
-    PureMagenta
+    PureGrey
   ]
 
 main :: IO ()

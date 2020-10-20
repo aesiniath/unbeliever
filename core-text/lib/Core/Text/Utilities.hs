@@ -39,6 +39,7 @@ module Core.Text.Utilities
     pureBlack,
     dullGrey,
     brightGrey,
+    pureGrey,
     pureWhite,
     dullWhite,
     brightWhite,
@@ -249,6 +250,11 @@ dullGrey =
 brightGrey :: AnsiColour
 brightGrey =
   Escapes [SetRGBColor Foreground (sRGB24read "#555753")]
+
+-- |
+pureGrey :: AnsiColour
+pureGrey =
+  Escapes [SetRGBColor Foreground (sRGB24read "#999999")]
 
 -- |
 pureWhite :: AnsiColour
