@@ -86,7 +86,7 @@ where
 import Core.Data.Structures (Key, Map, fromMap, intoMap)
 import Core.Text.Bytes (Bytes, fromBytes, intoBytes)
 import Core.Text.Rope (Rope, Textual, fromRope, intoRope)
-import Core.Text.Utilities (Render (..))
+import Core.Text.Utilities ( dullGrey, dullCyan, dullMagenta, dullBlue, dullGreen, dullYellow, AnsiColour, Render(..) )
 import qualified Data.Aeson as Aeson
 import Data.Coerce
 import Data.HashMap.Strict (HashMap)
@@ -237,17 +237,17 @@ data JsonToken
 instance Render JsonValue where
   type Token JsonValue = JsonToken
   colourize = colourizeJson
-  intoDoc = prettyValue
+  highlight = prettyValue
 
 instance Render JsonKey where
   type Token JsonKey = JsonToken
   colourize = colourizeJson
-  intoDoc = prettyKey
+  highlight = prettyKey
 
 instance Render Aeson.Value where
   type Token Aeson.Value = JsonToken
   colourize = colourizeJson
-  intoDoc = prettyValue . fromAeson
+  highlight = prettyValue . fromAeson
 
 --
 --  Ugh. If you want to experiment with narrower output, then:
@@ -263,16 +263,16 @@ instance Render Aeson.Value where
 --     render = 'intoText' . 'renderStrict' . 'reAnnotateS' 'colourize'
 --                 . 'layoutPretty' 'defaultLayoutOptions' . 'prettyValue'
 -- @
-colourizeJson :: JsonToken -> AnsiStyle
+colourizeJson :: JsonToken -> AnsiColour
 colourizeJson token = case token of
-  SymbolToken -> color Black
-  QuoteToken -> color Black
-  KeyToken -> color Blue
-  StringToken -> colorDull Cyan
-  EscapeToken -> colorDull Yellow
-  NumberToken -> colorDull Green
-  BooleanToken -> color Magenta
-  LiteralToken -> colorDull Blue
+  SymbolToken -> brightGrey
+  QuoteToken -> brightGrey
+  KeyToken -> brightBlue
+  StringToken -> dullCyan
+  EscapeToken -> dullYellow
+  NumberToken -> dullGreen
+  BooleanToken -> brightMagenta
+  LiteralToken -> dullBlue
 
 instance Pretty JsonKey where
   pretty = unAnnotate . prettyKey

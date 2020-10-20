@@ -61,7 +61,6 @@ module Core.Text.Utilities
     intoPieces,
     intoChunks,
     byteChunk,
-    intoDocA,
   )
 where
 
@@ -299,7 +298,7 @@ instance Render Char where
 instance (Render a) => Render [a] where
   type Token [a] = Token a
   colourize = colourize @a
-  highlight = mconcat . fmap intoDoc
+  highlight = mconcat . fmap highlight
 
 instance Render T.Text where
   type Token T.Text = ()
@@ -399,7 +398,7 @@ renderNoAnsi columns (thing :: α) =
   let options = LayoutOptions (AvailablePerLine (columns - 1) 1.0)
    in intoRope . renderLazy . unAnnotateS
         . layoutPretty options
-        . intoDocA
+        . highlight
         $ thing
 
 --
