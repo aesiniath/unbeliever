@@ -51,3 +51,6 @@ library:
   other-modules:
    - Core.Text.Breaking
    - Core.Text.Parsing
+
+extra-doc-files:
+  - AnsiColours.png

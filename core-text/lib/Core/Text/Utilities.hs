@@ -11,6 +11,8 @@
 -- |
 -- Useful tools for working with 'Rope's. Support for pretty printing,
 -- multi-line strings, and...
+--
+-- ![ANSI colours](AnsiColours.png)
 module Core.Text.Utilities
   ( -- * Pretty printing
     Render (..),
