@@ -64,6 +64,7 @@ module Core.Text.Utilities
     intoPieces,
     intoChunks,
     byteChunk,
+    intoDocA,
   )
 where
 
@@ -140,11 +141,10 @@ class Render α where
   -- Arrange your type as a 'Doc' @ann@, annotated with your semantic
   -- tokens.
   highlight :: α -> Doc (Token α)
-  highlight = intoDocA
 
-  -- "Nothing should be invoking intoDocA without having implemented it (and such implementations should be upgraded)
-  intoDocA :: α -> Doc (Token α)
-  intoDocA = error "Should not be used"
+-- | Nothing should be invoking 'intoDocA'.
+intoDocA :: α -> Doc (Token α)
+intoDocA = error "Nothing should be invoking this method directly."
 
 {-# DEPRECATED intoDocA "method'intoDocA' has been renamed 'highlight'; implement that instead." #-}
 
