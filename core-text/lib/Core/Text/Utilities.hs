@@ -80,6 +80,7 @@ import Data.Text.Prettyprint.Doc
     LayoutOptions (LayoutOptions),
     PageWidth (AvailablePerLine),
     Pretty (..),
+    SimpleDocStream (..),
     annotate,
     emptyDoc,
     flatAlt,
@@ -383,10 +384,41 @@ byteToHex c = pretty hi <> pretty low
 render :: Render α => Int -> α -> Rope
 render columns (thing :: α) =
   let options = LayoutOptions (AvailablePerLine (columns - 1) 1.0)
-   in intoRope . renderLazy . reAnnotateS (colourize @α)
+   in intoRope . go [] . reAnnotateS (colourize @α)
         . layoutPretty options
-        . intoDocA
+        . highlight
         $ thing
+  where
+    go :: [AnsiColour] -> SimpleDocStream AnsiColour -> Rope
+    go as x = case x of
+      SFail -> error "Unhandled SFail"
+      SEmpty -> emptyRope
+      SChar c xs ->
+        singletonRope c <> go as xs
+      SText _ t xs ->
+        intoRope t <> go as xs
+      SLine len xs ->
+        singletonRope '\n'
+          <> intoRope (S.replicate len (S.singleton ' '))
+          <> go as xs
+      SAnnPush a xs ->
+        intoRope (convert a) <> go (a : as) xs
+      SAnnPop xs ->
+        case as of
+          [] -> error "Popped an empty stack"
+          -- First discard the current one that's just been popped. Then look
+          -- at the next one: if it's the last one, we reset the console back
+          -- to normal mode. But if they're piled up, then return to the
+          -- previous formatting.
+          (_ : as') -> case as' of
+            [] -> reset <> go [] xs
+            (a : _) -> convert a <> go as' xs
+
+    convert :: AnsiColour -> Rope
+    convert (Escapes codes) = intoRope (setSGRCode codes)
+
+    reset :: Rope
+    reset = intoRope (setSGRCode [Reset])
 
 -- |
 -- Having gone to all the trouble to colourize your rendered types...
