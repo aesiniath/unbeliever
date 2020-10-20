@@ -86,7 +86,16 @@ where
 import Core.Data.Structures (Key, Map, fromMap, intoMap)
 import Core.Text.Bytes (Bytes, fromBytes, intoBytes)
 import Core.Text.Rope (Rope, Textual, fromRope, intoRope)
-import Core.Text.Utilities ( dullGrey, dullCyan, dullMagenta, dullBlue, dullGreen, dullYellow, AnsiColour, Render(..) )
+import Core.Text.Utilities
+    ( brightBlue,
+      brightGrey,
+      brightMagenta,
+      dullBlue,
+      dullCyan,
+      dullGreen,
+      dullYellow,
+      AnsiColour,
+      Render(Token, highlight, colourize) )
 import qualified Data.Aeson as Aeson
 import Data.Coerce
 import Data.HashMap.Strict (HashMap)

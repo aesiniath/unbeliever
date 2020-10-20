@@ -318,7 +318,7 @@ instance Render T.Text where
 
 instance Render Bytes where
   type Token Bytes = ()
-  colourize = const (dullGreen)
+  colourize = const brightGreen
   highlight = prettyBytes
 
 prettyBytes :: Bytes -> Doc ()
