@@ -28,13 +28,12 @@ dependencies:
  - bytestring
  - containers
  - hashable >= 1.2 && < 1.4
- - prettyprinter >= 1.2.1.1 && < 1.8
- - prettyprinter-ansi-terminal
+ - prettyprinter >= 1.6.2
  - scientific
  - text
  - unordered-containers
  - vector
- - core-text >= 0.2.2
+ - core-text >= 0.3.0
 
 library:
   source-dirs: lib
