@@ -45,7 +45,6 @@ module Core.Program.Arguments
   )
 where
 
-import Control.Exception.Safe (Exception (displayException))
 import Core.Data.Structures
 import Core.Program.Metadata
 import Core.System.Base

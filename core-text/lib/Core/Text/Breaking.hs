@@ -14,7 +14,6 @@ where
 
 import Core.Text.Rope
 import Data.Char (isSpace)
-import Data.Foldable (foldr)
 import Data.List (uncons)
 import qualified Data.Text.Short as S (ShortText, break, empty, null, uncons)
 

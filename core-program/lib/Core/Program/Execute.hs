@@ -109,11 +109,9 @@ import Control.Concurrent.MVar (modifyMVar_, putMVar, readMVar)
 import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue, readTQueue)
 import qualified Control.Exception as Base (throwIO)
-import Control.Exception.Safe (Exception (displayException), SomeException)
 import qualified Control.Exception.Safe as Safe (catchesAsync, throw)
 import Control.Monad (forever, when)
 import Control.Monad.Catch (Handler (..))
-import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Reader.Class (MonadReader (ask))
 import Core.Data.Structures
 import Core.Program.Arguments

@@ -16,7 +16,7 @@ import Core.Data.Structures
 import Core.Program.Execute
 import Core.Program.Logging
 import Core.Program.Unlift
-import Data.Foldable (foldr, foldrM)
+import Data.Foldable (foldrM)
 import System.Directory (canonicalizePath)
 import System.FSNotify (Event (..), eventPath, watchDir, withManager)
 import System.FilePath (dropFileName)

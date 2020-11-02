@@ -121,7 +121,7 @@ import qualified Data.FingerTree as F
     (><),
     (|>),
   )
-import Data.Foldable (any, foldMap, foldl', foldr, foldr', toList)
+import Data.Foldable (foldl', foldr', toList)
 import Data.Hashable (Hashable, hashWithSalt)
 import Data.String (IsString (..))
 import qualified Data.Text as T (Text)

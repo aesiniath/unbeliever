@@ -39,7 +39,6 @@ where
 import Core.Text.Bytes (Bytes)
 import Core.Text.Rope (Rope)
 import qualified Data.ByteString as B (ByteString)
-import Data.Foldable (Foldable (..))
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.HashSet as HashSet
 import Data.Hashable (Hashable)
