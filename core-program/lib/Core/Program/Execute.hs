@@ -29,7 +29,7 @@
 -- logging. A common annoyance when building command line tools and daemons is
 -- getting program output to @stdout@ and debug messages interleaved, made
 -- even worse when error messages written to @stderr@ land in the same
--- console. To avoid this, when all output is sent through a single channel.
+-- console. To avoid this, all output is sent through a single channel.
 -- This includes both normal output and log messages.
 --
 -- /Exceptions/
