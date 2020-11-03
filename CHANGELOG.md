@@ -1,3 +1,13 @@
+* **core-text** _v0.3.0_  
+       Change Render typeclass so that `colourize` uses new built-in ANSI
+       colour styles. `intoDocA` renamed `highlight`.
+
+----
+
+* _v0.10.0_  
+       Split this into various subpackages, initially **core-text**,
+       **core-data**, and **core-program**.
+
 * _v0.9.0_  
        Various function renames. Add -`Rope` suffix to `width`, `insert`,
        etc and the `append` method of Textual. Makes it more uniform both
