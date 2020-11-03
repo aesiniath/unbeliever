@@ -36,7 +36,7 @@ library:
   dependencies:
    - async
    - core-text >= 0.3.0
-   - core-data
+   - core-data >= 0.2.1.9
    - chronologique
    - directory
    - exceptions

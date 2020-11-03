@@ -46,8 +46,8 @@ github: aesiniath/unbeliever
 dependencies:
  - base >= 4.11 && < 5
  - core-text >= 0.3.0.0
- - core-data >= 0.2.1.8
- - core-program >= 0.2.5.0
+ - core-data >= 0.2.1.9
+ - core-program >= 0.2.6.0
 
 library:
   source-dirs: tests
