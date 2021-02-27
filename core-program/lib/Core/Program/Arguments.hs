@@ -48,7 +48,7 @@ module Core.Program.Arguments (
 import Data.Hashable (Hashable)
 import qualified Data.List as List
 import Data.Maybe (fromMaybe)
-import Data.String
+import Data.String (IsString (..))
 import Data.Text.Prettyprint.Doc (
     Doc,
     Pretty (..),
