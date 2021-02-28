@@ -12,12 +12,12 @@ import Core.Text.Rope
 import Data.Foldable (foldl')
 import qualified Data.Text.Short as S (ShortText, foldl')
 
--- |
--- Calculate the line number and column number of a Rope (interpreting it as
--- if is a block of text in a file). By the convention observed by all leading
--- brands of text editor, lines and columns are @1@ origin, so an empty Rope
--- is position @(1,1)@.
-
+{- |
+Calculate the line number and column number of a Rope (interpreting it as if
+is a block of text in a file). By the convention observed by all leading
+brands of text editor, lines and columns are @1@ origin, so an empty Rope is
+position @(1,1)@.
+-}
 -- Of course, if Rope itself cached position information in the FingerTree
 -- monoid this would be trivial.
 calculatePositionEnd :: Rope -> (Int, Int)

@@ -1,14 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK prune #-}
 
--- |
--- Helpers for watching files for changes and taking action in the event of a
--- change.
-module Core.Program.Notify
-  ( -- * Notify
-    waitForChange,
-  )
-where
+{- |
+Helpers for watching files for changes and taking action in the event of a
+change.
+-}
+module Core.Program.Notify (
+  -- * Notify
+  waitForChange,
+) where
 
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar)
 import Control.Monad.IO.Class (liftIO)
@@ -21,11 +21,12 @@ import System.Directory (canonicalizePath)
 import System.FSNotify (Event (..), eventPath, watchDir, withManager)
 import System.FilePath (dropFileName)
 
--- |
--- Watch for changes to a given list of files.
---
--- Before continuing we insert a 100ms pause to allow whatever the editor was to
--- finish its write and switcheroo sequence.
+{- |
+Watch for changes to a given list of files.
+
+Before continuing we insert a 100ms pause to allow whatever the editor was to
+finish its write and switcheroo sequence.
+-}
 
 --
 -- Ideally we'd just set up inotifies on these individual files, but that

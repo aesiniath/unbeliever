@@ -1,14 +1,12 @@
 {-# OPTIONS_HADDOCK not-home #-}
 
 -- | Re-exports of combinators for use when building 'Render' instances.
-module Core.System.Pretty
-  ( -- * Pretty Printing
+module Core.System.Pretty (
+    -- * Pretty Printing
 
     -- ** from Data.Text.Prettyprint.Doc
 
-    -- | Re-exported from "Data.Text.Prettyprint.Doc" in __prettyprinter__
-    -- and "Data.Text.Prettyprint.Doc.Render.Terminal" in
-    -- __prettyprinter-ansi-terminal__:
+    -- | Re-exported from "Data.Text.Prettyprint.Doc" in __prettyprinter__ and "Data.Text.Prettyprint.Doc.Render.Terminal" in __prettyprinter-ansi-terminal__:
     Doc,
     Pretty (pretty),
     dquote,
@@ -44,7 +42,6 @@ module Core.System.Pretty
     indent,
     nest,
     concatWith,
-  )
-where
+) where
 
 import Data.Text.Prettyprint.Doc

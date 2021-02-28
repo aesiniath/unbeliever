@@ -2,9 +2,11 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# OPTIONS_HADDOCK not-home #-}
 
--- | Re-exports of Haskell base and GHC system libraries.
-module Core.System.Base
-  ( -- * Input/Output
+{- |
+Re-exports of Haskell base and GHC system libraries.
+-}
+module Core.System.Base (
+    -- * Input/Output
 
     -- ** from Control.Monad.IO.Class
 
@@ -36,18 +38,17 @@ module Core.System.Base
     bracket,
     catch,
     finally,
-  )
-where
+) where
 
-import Control.Exception.Safe
-  ( Exception (..),
+import Control.Exception.Safe (
+    Exception (..),
     SomeException,
     bracket,
     catch,
     finally,
     impureThrow,
     throw,
-  )
+ )
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.IO (Handle, IOMode (..), hFlush, stderr, stdin, stdout, withFile)
 import System.IO.Unsafe (unsafePerformIO)
