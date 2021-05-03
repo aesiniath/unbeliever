@@ -502,9 +502,35 @@ sleep seconds =
     let us = floor (toRational (seconds * 1e6))
      in liftIO $ threadDelay us
 
+{- |
+Wait for the completion of a thread, returning the result. This is a blocking
+operation.
+
+(this wraps __async__'s 'wait')
+-}
 wait :: Thread α ->  Program τ α
 wait (Thread a) = liftIO $ Async.wait a
 
+{- |
+Wait for the completion of a thread, discarding its result. This is
+particularly useful at the end of a do-block as otherwise you have to
+explicily deal with the unused return value:
+
+@
+    _ <- 'wait' t1
+    return ()
+@
+
+which is a bit tedious. Instead, you can just use this:
+
+@
+    'wait_' t1
+@
+
+The trailing underscore follows the same convetion as found in "Control.Monad"
+which has 'Control.Monad.mapM_' to compliment 'Control.Monad.mapM' but
+likewise discarding the return value.
+-}
 wait_ :: Thread α ->  Program τ ()
 wait_ = void . wait
 
