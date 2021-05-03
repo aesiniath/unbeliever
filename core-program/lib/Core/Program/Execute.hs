@@ -80,6 +80,8 @@ module Core.Program.Execute (
     Thread,
     fork,
     sleep,
+    wait,
+    wait_,
 
     -- * Internals
     Context,
@@ -94,22 +96,25 @@ module Core.Program.Execute (
     input,
 ) where
 
+import Chrono.TimeStamp (getCurrentTimeNanoseconds)
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (
     Async,
     AsyncCancelled,
-    ExceptionInLinkedThread (..),
+    ExceptionInLinkedThread (..))
+import qualified Control.Concurrent.Async as Async (
     async,
     cancel,
     link,
     race_,
- )
+    wait
+    )
 import Control.Concurrent.MVar (modifyMVar_, putMVar, readMVar)
 import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue, readTQueue)
 import qualified Control.Exception as Base (throwIO)
 import qualified Control.Exception.Safe as Safe (catchesAsync, throw)
-import Control.Monad (forever, when)
+import Control.Monad (forever, when, void)
 import Control.Monad.Catch (Handler (..))
 import Control.Monad.Reader.Class (MonadReader (ask))
 import Core.Data.Structures
@@ -220,33 +225,33 @@ executeWith context program = do
         log = loggerChannelFrom context
 
     -- set up standard output
-    o <- async $ do
+    o <- Async.async $ do
         Safe.catchesAsync
             (processStandardOutput out)
             (collapseHandlers)
 
     -- set up debug logger
-    l <- async $ do
+    l <- Async.async $ do
         Safe.catchesAsync
             (processDebugMessages log)
             (collapseHandlers)
 
     -- set up signal handlers
-    _ <- async $ do
+    _ <- Async.async $ do
         setupSignalHandlers quit level
 
     -- run actual program, ensuring to trap uncaught exceptions
-    m <- async $ do
+    m <- Async.async $ do
         Safe.catchesAsync
             (executeAction context program)
             (escapeHandlers context)
 
     code <- readMVar quit
-    cancel m
+    Async.cancel m
 
     -- drain message queues. Allow 0.1 seconds, then timeout, in case
     -- something has gone wrong and queues don't empty.
-    race_
+    Async.race_
         ( do
             atomically $ do
                 done2 <- isEmptyTQueue log
@@ -263,8 +268,8 @@ executeWith context program = do
     threadDelay 100 -- instead of yield
     hFlush stdout
 
-    cancel l
-    cancel o
+    Async.cancel l
+    Async.cancel o
 
     -- exiting this way avoids "Exception: ExitSuccess" noise in GHCi
     if code == ExitSuccess
@@ -468,10 +473,14 @@ Fork a thread. The child thread will run in the same @Context@ as the calling
 fork :: Program τ α -> Program τ (Thread α)
 fork program = do
     context <- ask
+
+    start <- liftIO getCurrentTimeNanoseconds
+    let context' = context { startTimeFrom = start }
+
     liftIO $ do
-        a <- async $ do
-            subProgram context program
-        link a
+        a <- Async.async $ do
+            subProgram context' program
+        Async.link a
         return (Thread a)
 
 {- |
@@ -492,6 +501,12 @@ sleep :: Rational -> Program τ ()
 sleep seconds =
     let us = floor (toRational (seconds * 1e6))
      in liftIO $ threadDelay us
+
+wait :: Thread α ->  Program τ α
+wait (Thread a) = liftIO $ Async.wait a
+
+wait_ :: Thread α ->  Program τ ()
+wait_ = void . wait
 
 {- |
 Retrieve the values of parameters parsed from options and arguments supplied
