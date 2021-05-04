@@ -190,11 +190,11 @@ formatLogMessage start now message =
                 now
 
         -- I hate doing math in Haskell
-        elapsed = fromRational (toRational (now' - start') / 1e9) :: Fixed E1
+        elapsed = fromRational (toRational (now' - start') / 1e9) :: Fixed E3
      in mconcat
             [ intoRope stampZ
             , " ("
-            , padWithZeros 4 (show elapsed)
+            , padWithZeros 6 (show elapsed)
             , ") "
             , message
             ]
@@ -269,7 +269,7 @@ message. This:
 
 will result in
 
-> 13:05:55Z (00.1) Starting...
+> 13:05:55Z (00.112) Starting...
 
 appearing on stdout /and/ the message being sent down the logging
 channel. The output string is current time in UTC, and time elapsed
@@ -313,7 +313,7 @@ record the value of a variable when debugging code.  This:
 
 will result in
 
-> 13:05:58Z (03.4) programName = hello
+> 13:05:58Z (03.141) programName = hello
 
 appearing on stdout /and/ the message being sent down the logging channel,
 assuming these actions executed about three seconds after program start.
