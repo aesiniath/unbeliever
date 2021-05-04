@@ -499,12 +499,12 @@ of the total elapsed program time, then fork a new thread for your worker and
 reset the timer there.
 
 @
-    fork $ do
-        resetTimer
+    'fork' $ do
+        'resetTimer'
         ...
 @
 
-and times output in the log messages will be relative to that call to
+then times output in the log messages will be relative to that call to
 'resetTimer', not the program start.
 -}
 resetTimer :: Program τ ()
@@ -541,7 +541,7 @@ operation.
 
 (this wraps __async__'s 'wait')
 -}
-wait :: Thread α ->  Program τ α
+wait :: Thread α -> Program τ α
 wait (Thread a) = liftIO $ Async.wait a
 
 {- |
@@ -551,7 +551,7 @@ explicily deal with the unused return value:
 
 @
     _ <- 'wait' t1
-    return ()
+    'return' ()
 @
 
 which is a bit tedious. Instead, you can just use this:
@@ -560,11 +560,12 @@ which is a bit tedious. Instead, you can just use this:
     'wait_' t1
 @
 
-The trailing underscore follows the same convetion as found in "Control.Monad"
-which has 'Control.Monad.mapM_' to compliment 'Control.Monad.mapM' but
-likewise discarding the return value.
+The trailing underscore in the name of this function follows the same
+convetion as found in "Control.Monad" which has 'Control.Monad.mapM_' which
+does the same as 'Control.Monad.mapM' but which likewise discards the return
+value.
 -}
-wait_ :: Thread α ->  Program τ ()
+wait_ :: Thread α -> Program τ ()
 wait_ = void . wait
 
 {- |

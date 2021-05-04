@@ -201,16 +201,15 @@ subProgram :: Context τ -> Program τ α -> IO α
 subProgram context (Program r) = do
     runReaderT r context
 
---
--- This is complicated. The **safe-exceptions** library exports a
--- `throwM` which is not the `throwM` class method from MonadThrow.
--- See https://github.com/fpco/safe-exceptions/issues/31 for
--- discussion. In any event, the re-exports flow back to
--- Control.Monad.Catch from **exceptions** and Control.Exceptions in
--- ** base**. In the execute actions, we need to catch everything (including
--- asynchronous exceptions); elsewhere we will use and wrap/export
--- ** safe-exceptions**'s variants of the functions.
---
+{-
+This is complicated. The **safe-exceptions** library exports a `throwM` which
+is not the `throwM` class method from MonadThrow. See
+https://github.com/fpco/safe-exceptions/issues/31 for discussion. In any
+event, the re-exports flow back to Control.Monad.Catch from **exceptions** and
+Control.Exceptions in **base**. In the execute actions, we need to catch
+everything (including asynchronous exceptions); elsewhere we will use and
+wrap/export **safe-exceptions**'s variants of the functions.
+-}
 instance MonadThrow (Program τ) where
     throwM = liftIO . Safe.throw
 
