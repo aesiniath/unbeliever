@@ -78,11 +78,12 @@ module Core.Program.Execute (
 
     -- * Concurrency
     Thread,
+    forkThread,
     fork,
     sleep,
     resetTimer,
-    wait,
-    wait_,
+    waitThread,
+    waitThread_,
 
     -- * Internals
     Context,
@@ -472,8 +473,8 @@ Fork a thread. The child thread will run in the same @Context@ as the calling
 (this wraps __async__'s 'async' which in turn wraps __base__'s
 'Control.Concurrent.forkIO')
 -}
-fork :: Program τ α -> Program τ (Thread α)
-fork program = do
+forkThread :: Program τ α -> Program τ (Thread α)
+forkThread program = do
     context <- ask
     let i = startTimeFrom context
 
@@ -488,6 +489,10 @@ fork program = do
         Async.link a
         return (Thread a)
 
+fork :: Program τ α -> Program τ (Thread α)
+fork = forkThread
+{-# DEPRECATED fork "Use forkThread instead" #-}
+
 {- |
 Reset the start time (used to calculate durations shown in event- and
 debug-level logging) held in the @Context@ to zero. This is useful if you want
@@ -499,7 +504,7 @@ of the total elapsed program time, then fork a new thread for your worker and
 reset the timer there.
 
 @
-    'fork' $ do
+    'forkThread' $ do
         'resetTimer'
         ...
 @
@@ -541,32 +546,33 @@ operation.
 
 (this wraps __async__'s 'wait')
 -}
-wait :: Thread α -> Program τ α
-wait (Thread a) = liftIO $ Async.wait a
+waitThread :: Thread α -> Program τ α
+waitThread (Thread a) = liftIO $ Async.wait a
 
 {- |
 Wait for the completion of a thread, discarding its result. This is
-particularly useful at the end of a do-block as otherwise you have to
-explicily deal with the unused return value:
+particularly useful at the end of a do-block if you're waiting on a worker
+thread to finish but don't need its return value, if any; otherwise you have
+to explicily deal with the unused return value:
 
 @
-    _ <- 'wait' t1
+    _ <- 'waitThread' t1
     'return' ()
 @
 
-which is a bit tedious. Instead, you can just use this:
+which is a bit tedious. Instead, you can just use this convenience function:
 
 @
-    'wait_' t1
+    'waitThread_' t1
 @
 
 The trailing underscore in the name of this function follows the same
-convetion as found in "Control.Monad" which has 'Control.Monad.mapM_' which
+convetion as found in "Control.Monad", which has 'Control.Monad.mapM_' which
 does the same as 'Control.Monad.mapM' but which likewise discards the return
 value.
 -}
-wait_ :: Thread α -> Program τ ()
-wait_ = void . wait
+waitThread_ :: Thread α -> Program τ ()
+waitThread_ = void . waitThread
 
 {- |
 Retrieve the values of parameters parsed from options and arguments supplied
