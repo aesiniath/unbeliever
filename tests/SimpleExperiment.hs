@@ -84,7 +84,7 @@ program = do
 
     event "Clock..."
 
-    fork $ do
+    forkThread $ do
         sleep 1.5
         event "Wakey wakey"
         throw Boom
@@ -111,7 +111,7 @@ main = do
                     (Just 'q')
                     Empty
                     [quote|
-            Supress normal output.ZZZZKz
+            Supress normal output.
           |]
                 , Argument
                     "filename"
