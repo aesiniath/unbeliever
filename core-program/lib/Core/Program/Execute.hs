@@ -78,8 +78,12 @@ module Core.Program.Execute (
 
     -- * Concurrency
     Thread,
+    forkThread,
     fork,
     sleep,
+    resetTimer,
+    waitThread,
+    waitThread_,
 
     -- * Internals
     Context,
@@ -94,22 +98,26 @@ module Core.Program.Execute (
     input,
 ) where
 
+import Chrono.TimeStamp (getCurrentTimeNanoseconds)
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (
     Async,
     AsyncCancelled,
     ExceptionInLinkedThread (..),
+ )
+import qualified Control.Concurrent.Async as Async (
     async,
     cancel,
     link,
     race_,
+    wait,
  )
-import Control.Concurrent.MVar (modifyMVar_, putMVar, readMVar)
+import Control.Concurrent.MVar (modifyMVar_, newMVar, putMVar, readMVar)
 import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue, readTQueue)
 import qualified Control.Exception as Base (throwIO)
 import qualified Control.Exception.Safe as Safe (catchesAsync, throw)
-import Control.Monad (forever, when)
+import Control.Monad (forever, void, when)
 import Control.Monad.Catch (Handler (..))
 import Control.Monad.Reader.Class (MonadReader (ask))
 import Core.Data.Structures
@@ -220,33 +228,33 @@ executeWith context program = do
         log = loggerChannelFrom context
 
     -- set up standard output
-    o <- async $ do
+    o <- Async.async $ do
         Safe.catchesAsync
             (processStandardOutput out)
             (collapseHandlers)
 
     -- set up debug logger
-    l <- async $ do
+    l <- Async.async $ do
         Safe.catchesAsync
             (processDebugMessages log)
             (collapseHandlers)
 
     -- set up signal handlers
-    _ <- async $ do
+    _ <- Async.async $ do
         setupSignalHandlers quit level
 
     -- run actual program, ensuring to trap uncaught exceptions
-    m <- async $ do
+    m <- Async.async $ do
         Safe.catchesAsync
             (executeAction context program)
             (escapeHandlers context)
 
     code <- readMVar quit
-    cancel m
+    Async.cancel m
 
     -- drain message queues. Allow 0.1 seconds, then timeout, in case
     -- something has gone wrong and queues don't empty.
-    race_
+    Async.race_
         ( do
             atomically $ do
                 done2 <- isEmptyTQueue log
@@ -263,8 +271,8 @@ executeWith context program = do
     threadDelay 100 -- instead of yield
     hFlush stdout
 
-    cancel l
-    cancel o
+    Async.cancel l
+    Async.cancel o
 
     -- exiting this way avoids "Exception: ExitSuccess" noise in GHCi
     if code == ExitSuccess
@@ -465,14 +473,53 @@ Fork a thread. The child thread will run in the same @Context@ as the calling
 (this wraps __async__'s 'async' which in turn wraps __base__'s
 'Control.Concurrent.forkIO')
 -}
-fork :: Program τ α -> Program τ (Thread α)
-fork program = do
+forkThread :: Program τ α -> Program τ (Thread α)
+forkThread program = do
     context <- ask
+    let i = startTimeFrom context
+
     liftIO $ do
-        a <- async $ do
-            subProgram context program
-        link a
+        start <- readMVar i
+        i' <- newMVar start
+
+        let context' = context{startTimeFrom = i'}
+
+        a <- Async.async $ do
+            subProgram context' program
+        Async.link a
         return (Thread a)
+
+fork :: Program τ α -> Program τ (Thread α)
+fork = forkThread
+{-# DEPRECATED fork "Use forkThread instead" #-}
+
+{- |
+Reset the start time (used to calculate durations shown in event- and
+debug-level logging) held in the @Context@ to zero. This is useful if you want
+to see the elapsed time taken by a specific worker rather than seeing log
+entries relative to the program start time which is the default.
+
+If you want to start time held on your main program thread to maintain a count
+of the total elapsed program time, then fork a new thread for your worker and
+reset the timer there.
+
+@
+    'forkThread' $ do
+        'resetTimer'
+        ...
+@
+
+then times output in the log messages will be relative to that call to
+'resetTimer', not the program start.
+-}
+resetTimer :: Program τ ()
+resetTimer = do
+    context <- ask
+
+    liftIO $ do
+        start <- getCurrentTimeNanoseconds
+        let v = startTimeFrom context
+        modifyMVar_ v (\_ -> pure start)
 
 {- |
 Pause the current thread for the given number of seconds. For
@@ -492,6 +539,40 @@ sleep :: Rational -> Program τ ()
 sleep seconds =
     let us = floor (toRational (seconds * 1e6))
      in liftIO $ threadDelay us
+
+{- |
+Wait for the completion of a thread, returning the result. This is a blocking
+operation.
+
+(this wraps __async__'s 'wait')
+-}
+waitThread :: Thread α -> Program τ α
+waitThread (Thread a) = liftIO $ Async.wait a
+
+{- |
+Wait for the completion of a thread, discarding its result. This is
+particularly useful at the end of a do-block if you're waiting on a worker
+thread to finish but don't need its return value, if any; otherwise you have
+to explicily deal with the unused return value:
+
+@
+    _ <- 'waitThread' t1
+    'return' ()
+@
+
+which is a bit tedious. Instead, you can just use this convenience function:
+
+@
+    'waitThread_' t1
+@
+
+The trailing underscore in the name of this function follows the same
+convetion as found in "Control.Monad", which has 'Control.Monad.mapM_' which
+does the same as 'Control.Monad.mapM' but which likewise discards the return
+value.
+-}
+waitThread_ :: Thread α -> Program τ ()
+waitThread_ = void . waitThread
 
 {- |
 Retrieve the values of parameters parsed from options and arguments supplied

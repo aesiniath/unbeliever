@@ -26,99 +26,100 @@ k = JsonKey "intro"
 v = JsonString "Hello"
 
 j =
-  JsonObject
-    [ (k, v),
-      (JsonKey "song", JsonString "Thriller"),
-      ("other", "A very long name for the \"shadow of the moon\"."),
-      ( JsonKey "four",
-        JsonObject
-          [ (JsonKey "n1", r)
-          ]
-      )
-    ]
+    JsonObject
+        [ (k, v)
+        , (JsonKey "song", JsonString "Thriller")
+        , ("other", "A very long name for the \"shadow of the moon\".")
+        ,
+            ( JsonKey "four"
+            , JsonObject
+                [ (JsonKey "n1", r)
+                ]
+            )
+        ]
 
 b = intoBytes (S.pack "{\"cost\": 4500}")
 
 r = JsonArray [JsonBool False, JsonNull, 42]
 
 data Boom = Boom
-  deriving (Show)
+    deriving (Show)
 
 instance Exception Boom
 
 program :: Program None ()
 program = do
-  event "Starting..."
+    event "Starting..."
 
-  params <- getCommandLine
-  debugS "params" params
+    params <- getCommandLine
+    debugS "params" params
 
-  level <- getVerbosityLevel
-  debugS "level" level
+    level <- getVerbosityLevel
+    debugS "level" level
 
-  name <- getProgramName
-  debug "programName" name
+    name <- getProgramName
+    debug "programName" name
 
-  setProgramName "hello"
+    setProgramName "hello"
 
-  name <- getProgramName
-  debug "programName" name
+    name <- getProgramName
+    debug "programName" name
 
-  debugR "key" k
-  event "Verify internal values"
+    debugR "key" k
+    event "Verify internal values"
 
-  state <- getApplicationState
-  debugS "state" state
+    state <- getApplicationState
+    debugS "state" state
 
-  let x = encodeToUTF8 j
-  writeS x
+    let x = encodeToUTF8 j
+    writeS x
 
-  let (Just y) = decodeFromUTF8 b
-  writeS y
-  writeS (encodeToUTF8 y)
-  writeR (encodeToUTF8 y)
-  writeS (encodeToUTF8 r)
+    let (Just y) = decodeFromUTF8 b
+    writeS y
+    writeS (encodeToUTF8 y)
+    writeR (encodeToUTF8 y)
+    writeS (encodeToUTF8 r)
 
-  debugR "packet" j
+    debugR "packet" j
 
-  event "Clock..."
+    event "Clock..."
 
-  fork $ do
-    sleep 1.5
-    event "Wakey wakey"
-    throw Boom
+    forkThread $ do
+        sleep 1.5
+        event "Wakey wakey"
+        throw Boom
 
-  replicateM_ 5 $ do
-    sleep 0.5
-    event "tick"
+    replicateM_ 5 $ do
+        sleep 0.5
+        event "tick"
 
-  event "Brr! It's cold"
-  terminate 0
+    event "Brr! It's cold"
+    terminate 0
 
 version :: Version
 version = $(fromPackage)
 
 main :: IO ()
 main = do
-  context <-
-    configure
-      version
-      None
-      ( simple
-          [ Option
-              "quiet"
-              (Just 'q')
-              Empty
-              [quote|
+    context <-
+        configure
+            version
+            None
+            ( simple
+                [ Option
+                    "quiet"
+                    (Just 'q')
+                    Empty
+                    [quote|
             Supress normal output.
-          |],
-            Argument
-              "filename"
-              [quote|
+          |]
+                , Argument
+                    "filename"
+                    [quote|
             The file you want to frobnicate.
-          |],
-            Variable "HOME" "Home directory"
-          ]
-      )
+          |]
+                , Variable "HOME" "Home directory"
+                ]
+            )
 
-  executeWith context program
+    executeWith context program

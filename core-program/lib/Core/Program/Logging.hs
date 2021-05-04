@@ -156,7 +156,8 @@ class Monad m => MonadLog a m where
 
 putMessage :: Context τ -> Message -> IO ()
 putMessage context message@(Message now _ text potentialValue) = do
-    let start = startTimeFrom context
+    let i = startTimeFrom context
+    start <- readMVar i
     let output = outputChannelFrom context
     let logger = loggerChannelFrom context
 
@@ -193,7 +194,7 @@ formatLogMessage start now message =
      in mconcat
             [ intoRope stampZ
             , " ("
-            , padWithZeros 9 (show elapsed)
+            , padWithZeros 6 (show elapsed)
             , ") "
             , message
             ]
@@ -268,7 +269,7 @@ message. This:
 
 will result in
 
-> 13:05:55Z (0000.001) Starting...
+> 13:05:55Z (00.112) Starting...
 
 appearing on stdout /and/ the message being sent down the logging
 channel. The output string is current time in UTC, and time elapsed
@@ -312,7 +313,7 @@ record the value of a variable when debugging code.  This:
 
 will result in
 
-> 13:05:58Z (0003.141) programName = hello
+> 13:05:58Z (03.141) programName = hello
 
 appearing on stdout /and/ the message being sent down the logging channel,
 assuming these actions executed about three seconds after program start.
