@@ -75,7 +75,7 @@ data Context τ = Context
     , versionFrom :: Version
     , commandLineFrom :: Parameters
     , exitSemaphoreFrom :: MVar ExitCode
-    , startTimeFrom :: TimeStamp
+    , startTimeFrom :: MVar TimeStamp
     , terminalWidthFrom :: Int
     , verbosityLevelFrom :: MVar Verbosity
     , outputChannelFrom :: TQueue Rope
@@ -248,6 +248,7 @@ configure version t config = do
     n <- newMVar (intoRope arg0)
     p <- handleCommandLine version config
     q <- newEmptyMVar
+    i <- newMVar start
     columns <- getConsoleWidth
     out <- newTQueueIO
     log <- newTQueueIO
@@ -261,7 +262,7 @@ configure version t config = do
             , versionFrom = version
             , commandLineFrom = p
             , exitSemaphoreFrom = q
-            , startTimeFrom = start
+            , startTimeFrom = i
             , terminalWidthFrom = columns
             , verbosityLevelFrom = l
             , outputChannelFrom = out

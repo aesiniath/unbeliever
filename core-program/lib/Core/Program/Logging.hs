@@ -156,7 +156,8 @@ class Monad m => MonadLog a m where
 
 putMessage :: Context τ -> Message -> IO ()
 putMessage context message@(Message now _ text potentialValue) = do
-    let start = startTimeFrom context
+    let i = startTimeFrom context
+    start <- readMVar i
     let output = outputChannelFrom context
     let logger = loggerChannelFrom context
 

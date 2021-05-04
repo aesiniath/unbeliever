@@ -80,6 +80,7 @@ module Core.Program.Execute (
     Thread,
     fork,
     sleep,
+    resetTimer,
     wait,
     wait_,
 
@@ -101,20 +102,21 @@ import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (
     Async,
     AsyncCancelled,
-    ExceptionInLinkedThread (..))
+    ExceptionInLinkedThread (..),
+ )
 import qualified Control.Concurrent.Async as Async (
     async,
     cancel,
     link,
     race_,
-    wait
-    )
-import Control.Concurrent.MVar (modifyMVar_, putMVar, readMVar)
+    wait,
+ )
+import Control.Concurrent.MVar (modifyMVar_, newMVar, putMVar, readMVar)
 import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue, readTQueue)
 import qualified Control.Exception as Base (throwIO)
 import qualified Control.Exception.Safe as Safe (catchesAsync, throw)
-import Control.Monad (forever, when, void)
+import Control.Monad (forever, void, when)
 import Control.Monad.Catch (Handler (..))
 import Control.Monad.Reader.Class (MonadReader (ask))
 import Core.Data.Structures
@@ -473,15 +475,46 @@ Fork a thread. The child thread will run in the same @Context@ as the calling
 fork :: Program τ α -> Program τ (Thread α)
 fork program = do
     context <- ask
-
-    start <- liftIO getCurrentTimeNanoseconds
-    let context' = context { startTimeFrom = start }
+    let i = startTimeFrom context
 
     liftIO $ do
+        start <- readMVar i
+        i' <- newMVar start
+
+        let context' = context{startTimeFrom = i'}
+
         a <- Async.async $ do
             subProgram context' program
         Async.link a
         return (Thread a)
+
+{- |
+Reset the start time (used to calculate durations shown in event- and
+debug-level logging) held in the @Context@ to zero. This is useful if you want
+to see the elapsed time taken by a specific worker rather than seeing log
+entries relative to the program start time which is the default.
+
+If you want to start time held on your main program thread to maintain a count
+of the total elapsed program time, then fork a new thread for your worker and
+reset the timer there.
+
+@
+    fork $ do
+        resetTimer
+        ...
+@
+
+and times output in the log messages will be relative to that call to
+'resetTimer', not the program start.
+-}
+resetTimer :: Program τ ()
+resetTimer = do
+    context <- ask
+
+    liftIO $ do
+        start <- getCurrentTimeNanoseconds
+        let v = startTimeFrom context
+        modifyMVar_ v (\_ -> pure start)
 
 {- |
 Pause the current thread for the given number of seconds. For
