@@ -391,7 +391,7 @@ of the terminal.
 render :: Render α => Int -> α -> Rope
 render columns (thing :: α) =
     let options = LayoutOptions (AvailablePerLine (columns - 1) 1.0)
-     in intoRope . go [] . reAnnotateS (colourize @α)
+     in go [] . reAnnotateS (colourize @α)
             . layoutPretty options
             . highlight
             $ thing
@@ -406,7 +406,7 @@ render columns (thing :: α) =
             intoRope t <> go as xs
         SLine len xs ->
             singletonRope '\n'
-                <> intoRope (S.replicate len (S.singleton ' '))
+                <> replicateChar len ' '
                 <> go as xs
         SAnnPush a xs ->
             intoRope (convert a) <> go (a : as) xs
