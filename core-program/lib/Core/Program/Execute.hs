@@ -64,6 +64,7 @@ module Core.Program.Execute (
     lookupOptionFlag,
     lookupOptionValue,
     lookupArgument,
+    lookupEnvironmentValue,
     getProgramName,
     setProgramName,
     getVerbosityLevel,
@@ -649,6 +650,18 @@ lookupOptionFlag name params =
         Nothing -> Nothing
         Just argument -> case argument of
             _ -> Just True -- nom, nom
+
+{- |
+Look to see if the user supplied the named environment variable and if so,
+return what its value was.
+-}
+lookupEnvironmentValue :: LongName -> Parameters -> Maybe String
+lookupEnvironmentValue name params =
+    case lookupKeyValue name (environmentValuesFrom params) of
+        Nothing -> Nothing
+        Just param -> case param of
+            Empty -> Nothing
+            Value str -> Just str
 
 {- |
 Illegal internal state resulting from what should be unreachable code or
