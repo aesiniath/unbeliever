@@ -25,6 +25,7 @@ bytes.
 -}
 module Core.Text.Bytes (
     Bytes,
+    emptyBytes,
     packBytes,
     Binary (fromBytes, intoBytes),
     hOutput,
@@ -109,8 +110,14 @@ instance Binary [Word8] where
     intoBytes = StrictBytes . B.pack
 
 {- |
-For the annoyingly common case of needing to take a literal ASCII string in
-your code and use it as a bunch of bytes.
+A zero-length 'Bytes'.
+-}
+emptyBytes :: Bytes
+emptyBytes = StrictBytes B.empty
+
+{- |
+For the annoyingly common case of needing to take an ASCII string literal in
+your code and use it as a bunch of 'Bytes'.
 
 Done via "Data.ByteString.Char8" so all @Char@s will be truncated to 8 bits
 (/i.e./ Latin-1 characters less than 255). You should probably consider this

@@ -266,7 +266,7 @@ instance Monoid Rope where
     mappend = (<>)
 
 {- |
-An zero-length 'Rope'. You can also use @\"\"@ presuming the
+A zero-length 'Rope'. You can also use @\"\"@ presuming the
 __@OverloadedStrings@__ language extension is turned on in your source file.
 -}
 emptyRope :: Rope
