@@ -85,12 +85,12 @@ program = do
     event "Clock..."
 
     forkThread $ do
-        sleep 1.5
+        sleepThread 1.5
         event "Wakey wakey"
         throw Boom
 
     replicateM_ 5 $ do
-        sleep 0.5
+        sleepThread 0.5
         event "tick"
 
     event "Brr! It's cold"
