@@ -1,6 +1,5 @@
 .stack-work/
 /tags
-*.cabal
 /.vscode
 
 # symlinks to executables
