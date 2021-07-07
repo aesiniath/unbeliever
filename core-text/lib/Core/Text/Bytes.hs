@@ -25,6 +25,7 @@ bytes.
 -}
 module Core.Text.Bytes (
     Bytes,
+    packBytes,
     Binary (fromBytes, intoBytes),
     hOutput,
     hInput,
@@ -35,12 +36,16 @@ module Core.Text.Bytes (
 
 import qualified Data.ByteString as B (
     ByteString,
+    empty,
     hGetContents,
     hPut,
     pack,
     unpack,
  )
 import qualified Data.ByteString.Builder as B (Builder, byteString, toLazyByteString)
+import qualified Data.ByteString.Char8 as C (
+    pack
+ )
 import qualified Data.ByteString.Lazy as L (ByteString, fromStrict, toStrict)
 import Data.Hashable (Hashable)
 import Data.Word (Word8)
@@ -104,6 +109,19 @@ instance Binary [Word8] where
     intoBytes = StrictBytes . B.pack
 
 {- |
+For the annoyingly common case of needing to take a literal ASCII string in
+your code and use it as a bunch of bytes.
+
+Done via "Data.ByteString.Char8" so all @Char@s will be truncated to 8 bits
+(/i.e./ Latin-1 characters less than 255). You should probably consider this
+to be unsafe. Also note that we deliberately do not have a @[Char]@ instance
+of 'Binary'; if you need to come back to a textual representation use
+'intoRope'.
+-}
+packBytes :: String -> Bytes
+packBytes = StrictBytes . C.pack
+
+{- |
 Output the content of the 'Bytes' to the specified 'Handle'.
 
 @
@@ -143,9 +161,3 @@ hInput :: Handle -> IO Bytes
 hInput handle = do
     contents <- B.hGetContents handle
     return (StrictBytes contents)
-
-{-
-instance Show Bytes where
-    show x = case x of
-        StrictBytes b' ->
--}
