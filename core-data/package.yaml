@@ -12,7 +12,7 @@ description: |
   on GitHub.
 
 stability: experimental
-license: BSD3
+license: MIT
 license-file: LICENSE
 author: Andrew Cowie <istathar@gmail.com>
 maintainer: Andrew Cowie <istathar@gmail.com>
