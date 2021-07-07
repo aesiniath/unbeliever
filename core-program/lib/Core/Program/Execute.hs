@@ -81,6 +81,7 @@ module Core.Program.Execute (
     Thread,
     forkThread,
     fork,
+    sleepThread,
     sleep,
     resetTimer,
     waitThread,
@@ -527,7 +528,7 @@ Pause the current thread for the given number of seconds. For
 example, to delay a second and a half, do:
 
 @
-    'sleep' 1.5
+    'sleepThread' 1.5
 @
 
 (this wraps __base__'s 'threadDelay')
@@ -536,10 +537,14 @@ example, to delay a second and a half, do:
 --
 -- FIXME is this the right type, given we want to avoid type default warnings?
 --
-sleep :: Rational -> Program τ ()
-sleep seconds =
+sleepThread :: Rational -> Program τ ()
+sleepThread seconds =
     let us = floor (toRational (seconds * 1e6))
      in liftIO $ threadDelay us
+
+sleep :: Rational -> Program τ ()
+sleep = sleepThread
+{-# DEPRECATED sleep "Use sleepThread instead" #-}
 
 {- |
 Wait for the completion of a thread, returning the result. This is a blocking
