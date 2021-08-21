@@ -307,6 +307,11 @@ instance (Render a) => Render [a] where
     colourize = colourize @a
     highlight = mconcat . fmap highlight
 
+instance Render String where
+    type Token String = Token Char
+    colourize = colourize @Char
+    highlight = mconcat . fmap highlight
+
 instance Render T.Text where
     type Token T.Text = ()
     colourize = const mempty
