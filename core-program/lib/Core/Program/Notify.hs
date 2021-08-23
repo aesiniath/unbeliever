@@ -86,4 +86,4 @@ waitForChange files =
             sequence_ stoppers
             return ()
 
-        sleep 0.1
+        sleepThread 0.1
