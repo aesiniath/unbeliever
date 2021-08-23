@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 70b1237e627b238ab384f21af4f9b78bb7b54a74714f97aae5a6c10ac387d5f5
+-- hash: 1e1d3faa97081e4c5d66f5c454f2e5c1b28f76d10a9f056035d054e10f44cf2c
 
 name:           core-program
 version:        0.2.8.1
@@ -28,7 +28,7 @@ copyright:      © 2018-2021 Athae Eredh Siniath and Others
 license:        MIT
 license-file:   LICENSE
 tested-with:
-    GHC == 8.10.4
+    GHC == 8.10.6
 build-type:     Simple
 
 source-repository head

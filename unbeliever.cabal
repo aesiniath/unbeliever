@@ -1,0 +1,114 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.34.4.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 4bf9a388708d9be48baed57027e3feeb77ce37d49341396c122a09deb43d560e
+
+name:           unbeliever
+version:        0.10.0.8
+synopsis:       Opinionated Haskell Interoperability
+description:    A library to help build command-line programs, both tools and
+                longer-running daemons. Its @Program@ type provides unified ouptut &
+                logging, command-line option parsing, exception handling, and a place to
+                put top-level application state. There's also an underlying @Rope@ text
+                type built on a finger tree of UTF-8 fragments along with conveniences
+                for pretty printing and colourizing terminal output.
+                .
+                A description of this package, a list of features, and some background
+                to its design is contained in the
+                <https://github.com/aesiniath/unbeliever/blob/master/README.markdown README>
+                on GitHub.
+                .
+                Useful starting points in the documentation are
+                <../core-program/docs/Core-Program-Execute.html Core.Program.Execute> and
+                <../core-text/docs/Core-Text-Rope.html Core.Text.Rope>.
+                .
+                An ancillary purpose of this library is to facilitate interoperability
+                between different package families and ecosystems. Having a single
+                batteries-included package (as was originally the case) made using it
+                easier, but the resulting dependency footprint was considerable and
+                growing. The code is thus now spread across several packages:
+                .
+                * __core-text__
+                * __core-data__
+                * __core-program__
+                .
+                with more forthcoming as we continue to add convenince and
+                interoperability wrappers around streaming, webservers, and database
+                access patterns.
+category:       System
+stability:      experimental
+homepage:       https://github.com/aesiniath/unbeliever#readme
+bug-reports:    https://github.com/aesiniath/unbeliever/issues
+author:         Andrew Cowie <istathar@gmail.com>
+maintainer:     Andrew Cowie <istathar@gmail.com>
+copyright:      © 2018-2021 Athae Eredh Siniath and Others
+license:        MIT
+license-file:   LICENSE
+tested-with:
+    GHC == 8.10.6
+build-type:     Simple
+
+source-repository head
+  type: git
+  location: https://github.com/aesiniath/unbeliever
+
+library
+  other-modules:
+      Everything
+  hs-source-dirs:
+      tests
+  ghc-options: -Wall -Wwarn -fwarn-tabs
+  build-depends:
+      base >=4.11 && <5
+    , core-data >=0.2.1.9
+    , core-program >=0.2.6.0
+    , core-text >=0.3.0.0
+  default-language: Haskell2010
+
+test-suite check
+  type: exitcode-stdio-1.0
+  main-is: TestSuite.hs
+  other-modules:
+      CheckArgumentsParsing
+      CheckBytesBehaviour
+      CheckContainerBehaviour
+      CheckJsonWrapper
+      CheckProgramMonad
+      CheckRopeBehaviour
+  hs-source-dirs:
+      tests
+  ghc-options: -Wall -Wwarn -fwarn-tabs -threaded
+  build-depends:
+      base >=4.11 && <5
+    , bytestring
+    , core-data >=0.2.1.9
+    , core-program >=0.2.6.0
+    , core-text >=0.3.0.0
+    , fingertree
+    , hashable
+    , hspec
+    , prettyprinter
+    , safe-exceptions
+    , text
+    , text-short
+    , unordered-containers
+  default-language: Haskell2010
+
+benchmark performance
+  type: exitcode-stdio-1.0
+  main-is: GeneralPerformance.hs
+  hs-source-dirs:
+      bench
+  ghc-options: -Wall -Wwarn -fwarn-tabs -threaded
+  build-depends:
+      base >=4.11 && <5
+    , bytestring
+    , core-data >=0.2.1.9
+    , core-program >=0.2.6.0
+    , core-text >=0.3.0.0
+    , gauge
+    , text
+  default-language: Haskell2010
