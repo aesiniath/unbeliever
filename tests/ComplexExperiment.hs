@@ -26,7 +26,7 @@ main = do
     configure
       "42.0"
       None
-      ( complex
+      ( complexConfig
           [ Global
               [ Option
                   "logging-and-cutting"

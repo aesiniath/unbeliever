@@ -105,7 +105,7 @@ main = do
         configure
             version
             None
-            ( simple
+            ( simpleConfig
                 [ Option
                     "quiet"
                     (Just 'q')
