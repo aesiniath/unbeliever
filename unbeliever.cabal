@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4bf9a388708d9be48baed57027e3feeb77ce37d49341396c122a09deb43d560e
+-- hash: a207a893eb0d02147c2e2cf6e87ffed1ac9de1ad35d140e2de5e8ebd1a003098
 
 name:           unbeliever
 version:        0.10.0.8
@@ -48,7 +48,7 @@ copyright:      © 2018-2021 Athae Eredh Siniath and Others
 license:        MIT
 license-file:   LICENSE
 tested-with:
-    GHC == 8.10.6
+    GHC == 8.10.5
 build-type:     Simple
 
 source-repository head
