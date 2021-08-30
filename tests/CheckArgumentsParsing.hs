@@ -62,12 +62,12 @@ checkArgumentsParsing :: Spec
 checkArgumentsParsing = do
   describe "Parsing of simple command-lines" $ do
     it "recognizes a single specified options" $
-      let config = simple options1
+      let config = simpleConfig options1
           actual = parseCommandLine config ["--verbose"]
           expect = Parameters Nothing [("verbose", Empty)] []
        in actual `shouldBe` Right expect
     it "recognizes all specified options" $
-      let config = simple options1
+      let config = simpleConfig options1
           actual = parseCommandLine config ["--verbose", "--quiet", "--dry-run=Tomorrow"]
           expect =
             Parameters
@@ -80,7 +80,7 @@ checkArgumentsParsing = do
        in actual `shouldBe` Right expect
 
     it "recognizes required arguments" $
-      let config = simple options2
+      let config = simpleConfig options2
           actual = parseCommandLine config ["hello.txt"]
           expect =
             Parameters
@@ -91,7 +91,7 @@ checkArgumentsParsing = do
        in actual `shouldBe` Right expect
 
     it "handles valued parameter" $
-      let config = simple options2
+      let config = simpleConfig options2
           actual = parseCommandLine config ["hello.txt"]
           expect =
             Parameters
@@ -102,28 +102,28 @@ checkArgumentsParsing = do
        in actual `shouldBe` Right expect
 
     it "rejects unknown options" $
-      let config = simple options2
+      let config = simpleConfig options2
           actual = parseCommandLine config ["-a"]
        in actual `shouldBe` Left (UnknownOption "-a")
 
     it "rejects a malformed option" $
-      let config = simple options2
+      let config = simpleConfig options2
           actual = parseCommandLine config ["-help"]
        in actual `shouldBe` Left (InvalidOption "-help")
 
     it "fails on missing argument" $
-      let config = simple options2
+      let config = simpleConfig options2
           actual = parseCommandLine config []
        in actual `shouldBe` Left (MissingArgument "filename")
 
     it "accepts request for version" $
-      let config = simple options1
+      let config = simpleConfig options1
           actual = parseCommandLine config ["--version"]
        in actual `shouldBe` Left VersionRequest
 
   describe "Parsing of complex command-lines" $ do
     it "recognizes only single command" $
-      let config = complex commands1
+      let config = complexConfig commands1
           actual = parseCommandLine config ["-q", "add", "--recursive", "Hello.hs"]
           expect =
             Parameters
@@ -136,29 +136,29 @@ checkArgumentsParsing = do
        in actual `shouldBe` Right expect
 
     it "fails on missing command" $
-      let config = complex commands1
+      let config = complexConfig commands1
           actual = parseCommandLine config []
        in actual `shouldBe` Left (NoCommandFound)
 
     it "rejects an unknown command" $
-      let config = complex commands1
+      let config = complexConfig commands1
           actual = parseCommandLine config ["launch"]
        in actual `shouldBe` Left (UnknownCommand "launch")
 
     it "recognizes different command" $ -- ie, now from among multiple choices
-      let config = complex commands2
+      let config = complexConfig commands2
           actual = parseCommandLine config ["commit"]
           expect = Parameters (Just "commit") [] []
        in actual `shouldBe` Right expect
 
     it "rejects further trailing arguments" $
-      let config = complex commands2
+      let config = complexConfig commands2
           actual = parseCommandLine config ["commit", "some"]
        in actual `shouldBe` Left (UnexpectedArguments ["some"])
 
     -- in complex mode wasn't accpting --version as a global option.
 
     it "accepts request for version" $
-      let config = complex commands2
+      let config = complexConfig commands2
           actual = parseCommandLine config ["--version"]
        in actual `shouldBe` Left VersionRequest

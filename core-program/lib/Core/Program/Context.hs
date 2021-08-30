@@ -174,9 +174,16 @@ don't return anything; I/O having already happened as side effects.
 
 One of the quirks of Haskell is that it is difficult to refer to code in the
 Main module when you've got a number of programs kicking around in a project
-each with a @main@ function. So you're best off putting your top-level
-'Program' actions in a separate modules so you can refer to them from test
-suites and example snippets.
+each with a @main@ function. One way of dealing with this is to put your
+top-level 'Program' actions in a separate modules so you can refer to them
+from test suites and example snippets.
+
+/Interoperating with the rest of the Haskell ecosystem/
+
+The 'Program' monad is a wrapper over 'IO'; at any point when you need to move
+to another package's entry point, just use 'liftIO'. It's re-exported by
+"Core.System.Base" for your convenience. Later, you might be interested in
+unlifting back to Program; see "Core.Program.Unlift".
 -}
 newtype Program τ α = Program (ReaderT (Context τ) IO α)
     deriving (Functor, Applicative, Monad, MonadIO, MonadReader (Context τ))

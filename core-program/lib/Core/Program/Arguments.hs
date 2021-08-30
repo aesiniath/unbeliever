@@ -21,9 +21,9 @@ if present, will be incorporated into the stored configuration.
 module Core.Program.Arguments (
     -- * Setup
     Config,
-    blank,
-    simple,
-    complex,
+    blankConfig,
+    simpleConfig,
+    complexConfig,
     baselineOptions,
     Parameters (..),
     ParameterValue (..),
@@ -43,6 +43,9 @@ module Core.Program.Arguments (
     InvalidCommandLine (..),
     buildUsage,
     buildVersion,
+    blank,
+    simple,
+    complex,
 ) where
 
 import Data.Hashable (Hashable)
@@ -127,8 +130,12 @@ A completely empty configuration, without the default debugging and logging
 options. Your program won't process any command-line options or arguments,
 which would be weird in most cases. Prefer 'simple'.
 -}
+blankConfig :: Config
+blankConfig = Blank
+
 blank :: Config
-blank = Blank
+blank = blankConfig
+{-# DEPRECATED blank "use blankConfig instead" #-}
 
 {- |
 Declare a simple (as in normal) configuration for a program with any number
@@ -137,7 +144,7 @@ of optional parameters and mandatory arguments. For example:
 @
 main :: 'IO' ()
 main = do
-    context <- 'Core.Program.Execute.configure' \"1.0\" 'Core.Program.Execute.None' ('simple'
+    context <- 'Core.Program.Execute.configure' \"1.0\" 'Core.Program.Execute.None' ('simpleConfig'
         [ 'Option' "host" ('Just' \'h\') 'Empty' ['quote'|
             Specify an alternate host to connect to when performing the
             frobnication. The default is \"localhost\".
@@ -191,8 +198,12 @@ Required arguments:
 For information on how to use the multi-line string literals shown here,
 see 'quote' in "Core.Text.Utilities".
 -}
+simpleConfig :: [Options] -> Config
+simpleConfig options = Simple (options ++ baselineOptions)
+
 simple :: [Options] -> Config
-simple options = Simple (options ++ baselineOptions)
+simple = simpleConfig
+{-# DEPRECATED simple "Use simpleConfig instead" #-}
 
 {- |
 Declare a complex configuration (implying a larger tool with various
@@ -275,8 +286,12 @@ The resultant program could be invoked as in these examples:
 For information on how to use the multi-line string literals shown here,
 see 'quote' in "Core.Text.Utilities".
 -}
+complexConfig :: [Commands] -> Config
+complexConfig commands = Complex (commands ++ [Global baselineOptions])
+
 complex :: [Commands] -> Config
-complex commands = Complex (commands ++ [Global baselineOptions])
+complex = complexConfig
+{-# DEPRECATED complex "Use complexConfig instead" #-}
 
 {- |
 Description of the command-line structure of a program which has
