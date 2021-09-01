@@ -111,6 +111,16 @@ checkRopeBehaviour = do
             splitRope 23 compound `shouldBe` ("3-ethyl-4-methylhexane", "")
             splitRope (-1) compound `shouldBe` ("", "3-ethyl-4-methylhexane")
 
+        it "takes from beginning" $ do
+            List.take 0 ("123456789" :: String) `shouldBe` ""
+            List.take 3 ("123456789" :: String) `shouldBe` "123"
+            List.take 10 ("123456789" :: String) `shouldBe` "123456789"
+
+            -- expect same behaviour of Rope
+            takeRope 0 ("123456789" :: Rope) `shouldBe` ""
+            takeRope 3 ("123456789" :: Rope) `shouldBe` "123"
+            takeRope 10 ("123456789" :: Rope) `shouldBe` "123456789"
+
         it "does insertion correctly" $ do
             insertRope 3 "two" "onethree" `shouldBe` "onetwothree"
             insertRope 3 "Con" "Def 1" `shouldBe` "DefCon 1"
