@@ -16,19 +16,20 @@ v = JsonString "Hello"
 j = JsonObject (intoMap [(k, v)])
 
 j2 =
-  JsonObject
-    ( intoMap
-        [ (JsonKey "song", JsonString "Thriller"),
-          (JsonKey "other", JsonString "A very long name for the \"shadow of the moon\"."),
-          ( JsonKey "four",
-            JsonObject
-              ( intoMap
-                  [ (JsonKey "n1", r)
-                  ]
-              )
-          )
-        ]
-    )
+    JsonObject
+        ( intoMap
+            [ (JsonKey "song", JsonString "Thriller")
+            , (JsonKey "other", JsonString "A very long name for the \"shadow of the moon\".")
+            ,
+                ( JsonKey "four"
+                , JsonObject
+                    ( intoMap
+                        [ (JsonKey "n1", r)
+                        ]
+                    )
+                )
+            ]
+        )
 
 b = intoBytes (C.pack "{\"cost\": 4500}")
 
@@ -36,19 +37,19 @@ r = JsonArray [JsonBool False, JsonNull, JsonNumber 42]
 
 checkJsonWrapper :: Spec
 checkJsonWrapper = do
-  describe "JsonValue encoding" $
-    do
-      it "JSON String should be wrapped in quotes" $ do
-        encodeToUTF8 v `shouldBe` intoBytes (C.pack "\"Hello\"")
+    describe "JsonValue encoding" $
+        do
+            it "JSON String should be wrapped in quotes" $ do
+                encodeToUTF8 v `shouldBe` intoBytes (C.pack "\"Hello\"")
 
-      it "JSON Array renders correctly" $ do
-        encodeToUTF8 r `shouldBe` intoBytes (C.pack "[false,null,42]")
+            it "JSON Array renders correctly" $ do
+                encodeToUTF8 r `shouldBe` intoBytes (C.pack "[false,null,42]")
 
-      it "JSON Object renders correctly" $ do
-        encodeToUTF8 j `shouldBe` intoBytes (C.pack "{\"intro\":\"Hello\"}")
+            it "JSON Object renders correctly" $ do
+                encodeToUTF8 j `shouldBe` intoBytes (C.pack "{\"intro\":\"Hello\"}")
 
-      it "decoding an Object parses" $ do
-        decodeFromUTF8 b `shouldBe` Just (JsonObject (intoMap [(JsonKey "cost", JsonNumber 4500)]))
+            it "decoding an Object parses" $ do
+                decodeFromUTF8 b `shouldBe` Just (JsonObject (intoMap [(JsonKey "cost", JsonNumber 4500)]))
 
-      it "complex JSON Object round trips" $ do
-        decodeFromUTF8 (encodeToUTF8 j2) `shouldBe` Just j2
+            it "complex JSON Object round trips" $ do
+                decodeFromUTF8 (encodeToUTF8 j2) `shouldBe` Just j2
