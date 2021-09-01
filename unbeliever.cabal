@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a207a893eb0d02147c2e2cf6e87ffed1ac9de1ad35d140e2de5e8ebd1a003098
+-- hash: 3b2c1bfc88c7c5424bf2b085acf796ef26a8cc0cad375dbbfdf862dd559b25f6
 
 name:           unbeliever
 version:        0.10.0.8
@@ -65,7 +65,7 @@ library
       base >=4.11 && <5
     , core-data >=0.2.1.9
     , core-program >=0.2.6.0
-    , core-text >=0.3.0.0
+    , core-text >=0.3.2.0
   default-language: Haskell2010
 
 test-suite check
@@ -86,7 +86,7 @@ test-suite check
     , bytestring
     , core-data >=0.2.1.9
     , core-program >=0.2.6.0
-    , core-text >=0.3.0.0
+    , core-text >=0.3.2.0
     , fingertree
     , hashable
     , hspec
@@ -108,7 +108,7 @@ benchmark performance
     , bytestring
     , core-data >=0.2.1.9
     , core-program >=0.2.6.0
-    , core-text >=0.3.0.0
+    , core-text >=0.3.2.0
     , gauge
     , text
   default-language: Haskell2010
