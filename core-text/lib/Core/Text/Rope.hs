@@ -356,6 +356,14 @@ splitRope i text@(Rope x) =
             F.OnRight -> (text, Rope F.empty)
             F.Nowhere -> error "Position not found in split. Probable cause: predicate function given not monotonic. This is supposed to be unreachable"
 
+{- |
+Take the first _n_ characters from the beginning of the Rope.
+
+@
+λ> __takeRope 3 \"123456789\"__
+\"123\"
+@
+-}
 takeRope :: Int -> Rope -> Rope
 takeRope i text =
     let (before, _) = splitRope i text
