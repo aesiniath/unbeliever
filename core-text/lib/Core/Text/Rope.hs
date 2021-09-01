@@ -79,6 +79,7 @@ module Core.Text.Rope (
     replicateChar,
     widthRope,
     splitRope,
+    takeRope,
     insertRope,
     containsCharacter,
     findIndexRope,
@@ -354,6 +355,11 @@ splitRope i text@(Rope x) =
             F.OnLeft -> (Rope F.empty, text)
             F.OnRight -> (text, Rope F.empty)
             F.Nowhere -> error "Position not found in split. Probable cause: predicate function given not monotonic. This is supposed to be unreachable"
+
+takeRope :: Int -> Rope -> Rope
+takeRope i text =
+    let (before, _) = splitRope i text
+     in before
 
 {- |
 Insert a new piece of text into an existing @Rope@ at the specified offset.
