@@ -102,3 +102,11 @@ Some goals:
 
 If you wish to dismiss this library as a giant bikeshedding exercise you
 would not be wrong. Hopefully you'll like the _colour_ of our bikeshed.
+
+Getting Started
+---------------
+
+To learn about the text type, see the documentation for
+[Core.Text.Rope](https://hackage.haskell.org/package/core-text/docs/Core-Text-Rope.html).
+To use the Program monad, you can get started by looking at
+[Core.Program.Execute](https://hackage.haskell.org/package/core-program/docs/Core-Program-Execute.html).
