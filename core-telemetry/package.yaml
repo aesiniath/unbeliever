@@ -32,19 +32,14 @@ library:
    - async
    - core-text >= 0.3.2
    - core-data
+   - core-program
    - chronologique
-   - directory
    - exceptions
-   - filepath
-   - fsnotify
-   - hourglass
    - mtl
    - safe-exceptions
    - stm
-   - terminal-size
-   - transformers
-   - unix
-  source-dirs: lib
+  source-dirs:
+  - lib
   exposed-modules:
    - Core.Program.Telemetry
   other-modules: []
