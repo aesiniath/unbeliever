@@ -9,14 +9,14 @@ import Core.Program.Execute
 import Core.Text.Bytes
 import Core.Text.Rope
 
-eventT :: Telemetry a => a -> Program z ()
+eventT :: Telemetry σ => σ -> Program τ ()
 eventT = undefined
 
-debugT :: Telemetry a => Rope -> a -> Program z ()
+debugT :: Telemetry σ => Rope -> σ -> Program τ ()
 debugT = undefined
 
-class Telemetry a where
-    serialize :: a -> Bytes
+class Telemetry σ where
+    serialize :: σ -> Bytes
 
-withSpan :: Rope -> Program t a -> Program t a
+withSpan :: Rope -> Program τ α  -> Program τ α
 withSpan = undefined
