@@ -37,6 +37,7 @@ library:
    - exceptions
    - mtl
    - safe-exceptions
+   - scientific
    - stm
   source-dirs:
   - lib
