@@ -70,6 +70,7 @@ library
     , mtl
     , prettyprinter >=1.6.2
     , safe-exceptions
+    , scientific
     , stm
     , template-haskell >=2.14 && <3
     , terminal-size
