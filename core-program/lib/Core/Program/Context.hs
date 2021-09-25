@@ -27,8 +27,8 @@ module Core.Program.Context (
 import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
 import Control.Concurrent.MVar (MVar, newEmptyMVar, newMVar, readMVar)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
-import qualified Control.Exception.Safe as Safe (catch, throw)
-import Control.Monad.Catch (MonadCatch (catch), MonadThrow (throwM))
+import qualified Control.Exception.Safe as Safe (throw)
+import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow (throwM))
 import Control.Monad.Reader.Class (MonadReader (..))
 import Control.Monad.Trans.Reader (ReaderT (..))
 import Core.Data.Structures
