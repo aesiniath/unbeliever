@@ -3,11 +3,9 @@ cabal-version: 1.12
 -- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
---
--- hash: 7ef8b1887a1354fbfa0d647d220186bf240e0cacd7b36d144b0682efac37a8cd
 
 name:           core-program
-version:        0.2.9.1
+version:        0.2.10.0
 synopsis:       Opinionated Haskell Interoperability
 description:    A library to help build command-line programs, both tools and
                 longer-running daemons.
@@ -27,9 +25,9 @@ maintainer:     Andrew Cowie <istathar@gmail.com>
 copyright:      © 2018-2021 Athae Eredh Siniath and Others
 license:        MIT
 license-file:   LICENSE
+build-type:     Simple
 tested-with:
     GHC == 8.10.6
-build-type:     Simple
 
 source-repository head
   type: git
