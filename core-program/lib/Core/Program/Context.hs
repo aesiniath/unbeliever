@@ -27,8 +27,8 @@ module Core.Program.Context (
 import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
 import Control.Concurrent.MVar (MVar, newEmptyMVar, newMVar, readMVar)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
-import qualified Control.Exception.Safe as Safe (catch, throw)
-import Control.Monad.Catch (MonadCatch (catch), MonadThrow (throwM))
+import qualified Control.Exception.Safe as Safe (throw)
+import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow (throwM))
 import Control.Monad.Reader.Class (MonadReader (..))
 import Control.Monad.Trans.Reader (ReaderT (..))
 import Core.Data.Structures
@@ -220,20 +220,9 @@ wrap/export **safe-exceptions**'s variants of the functions.
 instance MonadThrow (Program τ) where
     throwM = liftIO . Safe.throw
 
-unHandler :: (ε -> Program τ α) -> (ε -> ReaderT (Context τ) IO α)
-unHandler = fmap unProgram
+deriving instance MonadCatch (Program τ)
 
-instance MonadCatch (Program τ) where
-    catch :: Exception ε => (Program τ) α -> (ε -> (Program τ) α) -> (Program τ) α
-    catch program handler =
-        let r = unProgram program
-            h = unHandler handler
-         in do
-                context <- ask
-                liftIO $ do
-                    Safe.catch
-                        (runReaderT r context)
-                        (\e -> runReaderT (h e) context)
+deriving instance MonadMask (Program t)
 
 {- |
 Initialize the programs's execution context. This takes care of various
