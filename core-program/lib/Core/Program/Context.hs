@@ -50,17 +50,17 @@ import System.Environment (getArgs, getProgName, lookupEnv)
 import System.Exit (ExitCode (..), exitWith)
 import Prelude hiding (log)
 
-data Span = Span
-    { spanIdentifierFrom :: Rope
-    , spanNameFrom :: Rope
-    , eventTimeFrom :: TimeStamp
+data Datum = Datum
+    { datumIdentifierFrom :: Rope
+    , datumNameFrom :: Rope
+    , datumTimeFrom :: TimeStamp
     , parentTraceFrom :: Maybe Trace
-    , parentSpanFrom :: Maybe Span
-    , eventDuration :: Maybe Int -- ?
+    , parentSpanFrom :: Maybe Datum
+    , datumDuration :: Maybe Int -- ?
     , attachedMetadata :: Map JsonKey JsonValue
     }
 
-createSpan :: Rope -> Span
+createSpan :: Rope -> Datum
 createSpan label = undefined
 
 {- Span { spanIdentifierFrom = label
@@ -115,10 +115,10 @@ data Context τ = Context
     , terminalWidthFrom :: Int
     , verbosityLevelFrom :: MVar Verbosity
     , outputChannelFrom :: TQueue Rope
-    , loggerChannelFrom :: TQueue Span -- something else, not Message. Span maybe?!? Datum?
+    , loggerChannelFrom :: TQueue Datum
     , loggerExporterFrom :: Exporter
     , currentTraceFrom :: Maybe Trace
-    , currentSpanFrom :: MVar Span
+    , currentSpanFrom :: MVar Datum
     , applicationDataFrom :: MVar τ
     }
 
