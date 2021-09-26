@@ -40,6 +40,16 @@ Json values of type string, number, or boolean.
 -- there?
 data MetricValue = MetricValue JsonKey JsonValue
 
+{- |
+Record the name of the service that this span and its children are a part of.
+This will end up as the @service_name@ parameter when exported.
+-}
+-- This field name appears to be very Honeycomb specific, but looking around
+-- Open Telemmtry it was just a property floating around and regardless of
+-- what it gets called it needs to get sent.
+service :: Rope -> MetricValue
+service v = MetricValue "service_name" v
+
 class Telemetry σ where
     metric :: Rope -> σ -> MetricValue
 
@@ -96,9 +106,12 @@ instance Telemetry Bool where
     metric k v = MetricValue (JsonKey k) (JsonBool v)
 
 initializeTelemetry :: Exporter -> Context τ -> IO (Context τ)
-initializeTelemetry = undefined
-
-data Exporter = Exporter
+initializeTelemetry exporter context =
+    pure
+        ( context
+            { loggingExporterFrom = Just exporter
+            }
+        )
 
 honeycomb :: Exporter
 honeycomb = undefined

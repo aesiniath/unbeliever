@@ -13,7 +13,7 @@
 
 -- This is an Internal module, hidden from Haddock
 module Core.Program.Context (
-    Span (..),
+    Datum (..),
     Trace (..),
     Context (..),
     Exporter (..),
@@ -301,8 +301,7 @@ configure version t config = do
             , outputChannelFrom = out
             , loggerChannelFrom = log
             , loggerExporterFrom = emptyExporter
-            , currentTraceFrom = Nothing
-            , currentSpanFrom = s
+            , currentDatumFrom = s
             , applicationDataFrom = u
             }
 
