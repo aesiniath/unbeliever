@@ -16,7 +16,7 @@ module Core.Program.Telemetry (
 ) where
 
 import Core.Encoding.Json
-import Core.Program.Execute
+import Core.Program.Context
 import Core.Text.Rope
 import qualified Data.ByteString as B (ByteString)
 import qualified Data.ByteString.Lazy as L (ByteString)
