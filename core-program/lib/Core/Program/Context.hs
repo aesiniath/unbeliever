@@ -1,9 +1,11 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE StrictData #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -11,11 +13,14 @@
 
 -- This is an Internal module, hidden from Haddock
 module Core.Program.Context (
+    Span (..),
+    Trace (..),
     Context (..),
+    Exporter (..),
+    emptyExporter,
     None (..),
     isNone,
     configure,
-    Message (..),
     Verbosity (..),
     Program (..),
     unProgram,
@@ -32,6 +37,7 @@ import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow (throwM))
 import Control.Monad.Reader.Class (MonadReader (..))
 import Control.Monad.Trans.Reader (ReaderT (..))
 import Core.Data.Structures
+import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Metadata
 import Core.System.Base hiding (catch, throw)
@@ -43,6 +49,36 @@ import qualified System.Console.Terminal.Size as Terminal (Window (..), size)
 import System.Environment (getArgs, getProgName, lookupEnv)
 import System.Exit (ExitCode (..), exitWith)
 import Prelude hiding (log)
+
+data Span = Span
+    { spanIdentifierFrom :: Rope
+    , spanNameFrom :: Rope
+    , eventTimeFrom :: TimeStamp
+    , parentTraceFrom :: Maybe Trace
+    , parentSpanFrom :: Maybe Span
+    , eventDuration :: Maybe Int -- ?
+    , attachedMetadata :: Map JsonKey JsonValue
+    }
+
+createSpan :: Rope -> Span
+createSpan label = undefined
+
+{- Span { spanIdentifierFrom = label
+     ,parentTraceFrom =
+}
+-}
+data Trace = Trace
+    { traceIdentifierFrom :: Rope
+    }
+
+
+{-|
+Implementation of a forwarder for structured logging of the telemetry channel.
+-}
+data Exporter = Exporter
+
+emptyExporter :: Exporter
+emptyExporter = Exporter
 
 {- |
 Internal context for a running program. You access this via actions in the
@@ -79,7 +115,10 @@ data Context τ = Context
     , terminalWidthFrom :: Int
     , verbosityLevelFrom :: MVar Verbosity
     , outputChannelFrom :: TQueue Rope
-    , loggerChannelFrom :: TQueue Message
+    , loggerChannelFrom :: TQueue Span -- something else, not Message. Span maybe?!? Datum?
+    , loggerExporterFrom :: Exporter
+    , currentTraceFrom :: Maybe Trace
+    , currentSpanFrom :: MVar Span
     , applicationDataFrom :: MVar τ
     }
 
@@ -120,8 +159,6 @@ data None = None
 
 isNone :: None -> Bool
 isNone _ = True
-
-data Message = Message TimeStamp Verbosity Rope (Maybe Rope)
 
 {- |
 The verbosity level of the logging subsystem. You can override the level
@@ -247,6 +284,8 @@ configure version t config = do
     columns <- getConsoleWidth
     out <- newTQueueIO
     log <- newTQueueIO
+    s <- newEmptyMVar
+
     u <- newMVar t
 
     l <- handleVerbosityLevel p
@@ -262,6 +301,9 @@ configure version t config = do
             , verbosityLevelFrom = l
             , outputChannelFrom = out
             , loggerChannelFrom = log
+            , loggerExporterFrom = emptyExporter
+            , currentTraceFrom = Nothing
+            , currentSpanFrom = s
             , applicationDataFrom = u
             }
 

@@ -228,6 +228,7 @@ executeWith context program = do
         level = verbosityLevelFrom context
         out = outputChannelFrom context
         log = loggerChannelFrom context
+        exporter = loggerExporterFrom context
 
     -- set up standard output
     o <- Async.async $ do
@@ -235,10 +236,10 @@ executeWith context program = do
             (processStandardOutput out)
             (collapseHandlers)
 
-    -- set up debug logger
+    -- set up telemtry exporter
     l <- Async.async $ do
         Safe.catchesAsync
-            (processDebugMessages log)
+            (processTelemetryMessages exporter log)
             (collapseHandlers)
 
     -- set up signal handlers
@@ -289,8 +290,8 @@ processStandardOutput out = do
         hWrite stdout text
         B.hPut stdout (C.singleton '\n')
 
-processDebugMessages :: TQueue Message -> IO ()
-processDebugMessages log = do
+processTelemetryMessages :: Exporter -> TQueue Span -> IO ()
+processTelemetryMessages exporter log = do
     forever $ do
         -- TODO do sactually do something with log messages
         -- Message now severity text potentialValue <- ...
