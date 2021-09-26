@@ -149,36 +149,32 @@ import Core.System.Base
 import Core.Text.Rope
 import Core.Text.Utilities
 
-{-
-class Monad m => MonadLog a m where
-    logMessage :: Monoid a => Severity -> a -> m ()
--}
+
+data Message = Message TimeStamp Verbosity Rope (Maybe Rope)
 
 putMessage :: Context τ -> Message -> IO ()
-putMessage context message@(Message now _ text potentialValue) = do
+putMessage context (Message now _ text potentialValue) = do
     let i = startTimeFrom context
     start <- readMVar i
     let output = outputChannelFrom context
-    let logger = loggerChannelFrom context
 
-    let display = case potentialValue of
+    let !display = case potentialValue of
             Just value ->
                 if containsCharacter '\n' value
                     then text <> " =\n" <> value
                     else text <> " = " <> value
             Nothing -> text
 
-    let result = formatLogMessage start now display
+    let !result = formatLogMessage start now display
 
     atomically $ do
         writeTQueue output result
-        writeTQueue logger message
 
 formatLogMessage :: TimeStamp -> TimeStamp -> Rope -> Rope
 formatLogMessage start now message =
-    let start' = unTimeStamp start
-        now' = unTimeStamp now
-        stampZ =
+    let !start' = unTimeStamp start
+        !now' = unTimeStamp now
+        !stampZ =
             timePrint
                 [ Format_Hour
                 , Format_Text ':'
@@ -190,7 +186,7 @@ formatLogMessage start now message =
                 now
 
         -- I hate doing math in Haskell
-        elapsed = fromRational (toRational (now' - start') / 1e9) :: Fixed E3
+        !elapsed = fromRational (toRational (now' - start') / 1e9) :: Fixed E3
      in mconcat
             [ intoRope stampZ
             , " ("
@@ -213,8 +209,8 @@ padWithZeros :: Int -> String -> Rope
 padWithZeros digits str =
     intoRope pad <> intoRope str
   where
-    pad = S.replicate len "0"
-    len = digits - length str
+    !pad = S.replicate len "0"
+    !len = digits - length str
 
 {- |
 Write the supplied text to @stdout@.

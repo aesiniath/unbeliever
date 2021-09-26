@@ -56,7 +56,7 @@ data Datum = Datum
     , datumTimeFrom :: TimeStamp
     , parentTraceFrom :: Maybe Trace
     , parentSpanFrom :: Maybe Datum
-    , datumDuration :: Maybe Int -- ?
+    , datumDuration :: Maybe Int -- milliseconds?
     , attachedMetadata :: Map JsonKey JsonValue
     }
 
@@ -117,8 +117,7 @@ data Context τ = Context
     , outputChannelFrom :: TQueue Rope
     , loggerChannelFrom :: TQueue Datum
     , loggerExporterFrom :: Exporter
-    , currentTraceFrom :: Maybe Trace
-    , currentSpanFrom :: MVar Datum
+    , currentDatumFrom :: MVar Datum
     , applicationDataFrom :: MVar τ
     }
 
