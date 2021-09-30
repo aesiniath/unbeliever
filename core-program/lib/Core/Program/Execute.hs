@@ -86,6 +86,7 @@ module Core.Program.Execute (
     resetTimer,
     waitThread,
     waitThread_,
+    trap_,
 
     -- * Internals
     Context,
@@ -177,6 +178,39 @@ collapseHandler problem e = do
     putStrLn problem
     print e
     Posix.exitImmediately (ExitFailure 99)
+
+{- |
+Trap any exceptions coming out of the given Program action, and discard them.
+The one and only time you want this is inside an endless loop:
+
+@
+    forever $ do
+        trap_
+            ( bracket
+                obtainResource
+                releaseResource
+                useResournce
+            )
+@
+
+This function really will swollow expcetions, which means that you'd better
+have handled any synchronous checked errors already with a 'catch' and/or have
+released resources with 'bracket' or 'finally' as shown above.
+
+An info level message will be sent to the log channel indicating that an
+uncaught exception was trapped along with a debug level message showing the
+exception text, if any.
+-}
+trap_ :: Program τ α -> Program τ ()
+trap_ action =
+    Safe.catch
+        (void action)
+        ( \(e :: SomeException) ->
+            let text = intoRope (displayException e)
+             in do
+                    event "Trapped uncaught exception"
+                    debug "e" text
+        )
 
 {- |
 Embelish a program with useful behaviours. See module header
