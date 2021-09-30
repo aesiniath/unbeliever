@@ -111,6 +111,7 @@ import qualified Control.Concurrent.Async as Async (
     async,
     cancel,
     link,
+    race,
     race_,
     wait,
  )
@@ -138,14 +139,6 @@ import System.Exit (ExitCode (..))
 import qualified System.Posix.Process as Posix (exitImmediately)
 import Prelude hiding (log)
 
--- execute actual "main"
-executeAction :: Context τ -> Program τ α -> IO ()
-executeAction context program =
-    let quit = exitSemaphoreFrom context
-     in do
-            _ <- subProgram context program
-            putMVar quit ExitSuccess
-
 --
 -- If an exception escapes, we'll catch it here. The displayException
 -- value for some exceptions is really quit unhelpful, so we pattern
@@ -153,7 +146,7 @@ executeAction context program =
 -- final entry is the catch-all; the first is what we get from the
 -- terminate action.
 --
-escapeHandlers :: Context c -> [Handler IO ()]
+escapeHandlers :: Context c -> [Handler IO ExitCode]
 escapeHandlers context =
     [ Handler (\(exit :: ExitCode) -> done exit)
     , Handler (\(_ :: AsyncCancelled) -> pass)
@@ -161,16 +154,7 @@ escapeHandlers context =
     , Handler (\(e :: SomeException) -> bail e)
     ]
   where
-    quit = exitSemaphoreFrom context
-
-    pass :: IO ()
-    pass = return ()
-
-    done :: ExitCode -> IO ()
-    done exit = do
-        putMVar quit exit
-
-    bail :: Exception e => e -> IO ()
+    bail :: Exception e => e -> IO ExitCode
     bail e =
         let text = intoRope (displayException e)
          in do
@@ -246,13 +230,26 @@ executeWith context program = do
         setupSignalHandlers quit level
 
     -- run actual program, ensuring to trap uncaught exceptions
-    m <- Async.async $ do
-        Safe.catchesAsync
-            (executeAction context program)
-            (escapeHandlers context)
+    code <-
+        Safe.catches
+            ( do
+                result <-
+                    Async.race
+                        ( do
+                            code <- readMVar quit
+                            pure code
+                        )
+                        ( do
+                            -- execute actual "main"
+                            _ <- subProgram context program
+                            pure ()
+                        )
 
-    code <- readMVar quit
-    Async.cancel m
+                case result of
+                    Left code' -> pure code'
+                    Right () -> pure ExitSuccess
+            )
+            (escapeHandlers context)
 
     -- drain message queues. Allow 0.1 seconds, then timeout, in case
     -- something has gone wrong and queues don't empty.
