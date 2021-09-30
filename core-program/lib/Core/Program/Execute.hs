@@ -290,13 +290,14 @@ processStandardOutput out = do
         hWrite stdout text
         B.hPut stdout (C.singleton '\n')
 
-processTelemetryMessages :: Exporter -> TQueue Span -> IO ()
+processTelemetryMessages :: Exporter -> TQueue Datum -> IO ()
 processTelemetryMessages exporter log = do
     forever $ do
-        -- TODO do sactually do something with log messages
+        -- TODO actually do something with log messages
         -- Message now severity text potentialValue <- ...
         _ <- atomically (readTQueue log)
 
+        -- HERE -- put a function here (perhaps that's what is in Exporter) that handles messages coming off of the queue.
         return ()
 
 {- |

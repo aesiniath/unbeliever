@@ -1,11 +1,13 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Core.Program.Telemetry (
     eventT,
     debugT,
     MetricValue,
     Telemetry (metric),
+    service,
     Exporter,
     initializeTelemetry,
     honeycomb,
@@ -48,7 +50,7 @@ This will end up as the @service_name@ parameter when exported.
 -- Open Telemmtry it was just a property floating around and regardless of
 -- what it gets called it needs to get sent.
 service :: Rope -> MetricValue
-service v = MetricValue "service_name" v
+service v = MetricValue "service_name" (JsonString v)
 
 class Telemetry σ where
     metric :: Rope -> σ -> MetricValue
@@ -109,7 +111,7 @@ initializeTelemetry :: Exporter -> Context τ -> IO (Context τ)
 initializeTelemetry exporter context =
     pure
         ( context
-            { loggingExporterFrom = Just exporter
+            { loggerExporterFrom = exporter
             }
         )
 
