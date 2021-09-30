@@ -119,7 +119,7 @@ import Control.Concurrent.MVar (modifyMVar_, newMVar, putMVar, readMVar)
 import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue, readTQueue)
 import qualified Control.Exception as Base (throwIO)
-import qualified Control.Exception.Safe as Safe (catchesAsync, throw)
+import qualified Control.Exception.Safe as Safe (catch, catches, throw)
 import Control.Monad (forever, void, when)
 import Control.Monad.Catch (Handler (..))
 import Control.Monad.Reader.Class (MonadReader (ask))
@@ -148,9 +148,7 @@ import Prelude hiding (log)
 --
 escapeHandlers :: Context c -> [Handler IO ExitCode]
 escapeHandlers context =
-    [ Handler (\(exit :: ExitCode) -> done exit)
-    , Handler (\(_ :: AsyncCancelled) -> pass)
-    , Handler (\(ExceptionInLinkedThread _ e) -> bail e)
+    [ Handler (\(ExceptionInLinkedThread _ e) -> bail e)
     , Handler (\(e :: SomeException) -> bail e)
     ]
   where
@@ -161,7 +159,7 @@ escapeHandlers context =
                 subProgram context $ do
                     setVerbosityLevel Debug
                     event text
-                putMVar quit (ExitFailure 127)
+                pure (ExitFailure 127)
 
 --
 -- If an exception occurs in one of the output handlers, its failure causes
@@ -171,19 +169,13 @@ escapeHandlers context =
 -- really need the process to go down and we're in an inconsistent state
 -- where debug or console output is no longer possible.
 --
-collapseHandlers :: [Handler IO ()]
-collapseHandlers =
-    [ Handler
-        ( \(e :: AsyncCancelled) -> do
-            Base.throwIO e
-        )
-    , Handler
-        ( \(e :: SomeException) -> do
-            putStrLn "error: Output handler collapsed"
-            print e
-            Posix.exitImmediately (ExitFailure 99)
-        )
-    ]
+collapseHandler :: String -> SomeException -> IO ()
+collapseHandler problem e = do
+    putStr "error: "
+    putStr problem
+    putStrLn " collapsed"
+    print e
+    Posix.exitImmediately (ExitFailure 99)
 
 {- |
 Embelish a program with useful behaviours. See module header
@@ -213,21 +205,32 @@ executeWith context program = do
         out = outputChannelFrom context
         log = loggerChannelFrom context
 
+    -- set up signal handlers
+    _ <-
+        Async.async $ do
+            Safe.catch
+                ( do
+                    setupSignalHandlers quit level
+                )
+                (collapseHandler "signal handling")
+
     -- set up standard output
-    o <- Async.async $ do
-        Safe.catchesAsync
-            (processStandardOutput out)
-            (collapseHandlers)
+    o <-
+        Async.async $ do
+            Safe.catch
+                ( do
+                    processStandardOutput out
+                )
+                (collapseHandler "output processing")
 
     -- set up debug logger
-    l <- Async.async $ do
-        Safe.catchesAsync
-            (processDebugMessages log)
-            (collapseHandlers)
-
-    -- set up signal handlers
-    _ <- Async.async $ do
-        setupSignalHandlers quit level
+    l <-
+        Async.async $ do
+            Safe.catch
+                ( do
+                    processDebugMessages log
+                )
+                (collapseHandler "telemetry forwarder")
 
     -- run actual program, ensuring to trap uncaught exceptions
     code <-
