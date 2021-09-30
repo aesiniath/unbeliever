@@ -104,7 +104,6 @@ import Chrono.TimeStamp (getCurrentTimeNanoseconds)
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (
     Async,
-    AsyncCancelled,
     ExceptionInLinkedThread (..),
  )
 import qualified Control.Concurrent.Async as Async (
@@ -119,7 +118,7 @@ import Control.Concurrent.MVar (modifyMVar_, newMVar, putMVar, readMVar)
 import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue, readTQueue)
 import qualified Control.Exception as Base (throwIO)
-import qualified Control.Exception.Safe as Safe (catch, catches, throw)
+import qualified Control.Exception.Safe as Safe (catch, catchesAsync, throw)
 import Control.Monad (forever, void, when)
 import Control.Monad.Catch (Handler (..))
 import Control.Monad.Reader.Class (MonadReader (ask))
@@ -140,11 +139,14 @@ import qualified System.Posix.Process as Posix (exitImmediately)
 import Prelude hiding (log)
 
 --
--- If an exception escapes, we'll catch it here. The displayException
--- value for some exceptions is really quit unhelpful, so we pattern
--- match the wrapping gumpf away for cases as we encounter them. The
--- final entry is the catch-all; the first is what we get from the
--- terminate action.
+-- If an exception escapes, we'll catch it here. The displayException value
+-- for some exceptions is really quit unhelpful, so we pattern match the
+-- wrapping gumpf away for cases as we encounter them. The final entry is the
+-- catch-all.
+--
+-- Note this is called via Safe.catchesAsync because we want to be able to
+-- strip out ExceptionInLinkedThread (which is asynchronous and otherwise
+-- reasonably special) from the final output message.
 --
 escapeHandlers :: Context c -> [Handler IO ExitCode]
 escapeHandlers context =
@@ -172,8 +174,7 @@ escapeHandlers context =
 collapseHandler :: String -> SomeException -> IO ()
 collapseHandler problem e = do
     putStr "error: "
-    putStr problem
-    putStrLn " collapsed"
+    putStrLn problem
     print e
     Posix.exitImmediately (ExitFailure 99)
 
@@ -208,33 +209,21 @@ executeWith context program = do
     -- set up signal handlers
     _ <-
         Async.async $ do
-            Safe.catch
-                ( do
-                    setupSignalHandlers quit level
-                )
-                (collapseHandler "signal handling")
+            setupSignalHandlers quit level
 
     -- set up standard output
     o <-
         Async.async $ do
-            Safe.catch
-                ( do
-                    processStandardOutput out
-                )
-                (collapseHandler "output processing")
+            processStandardOutput out
 
     -- set up debug logger
     l <-
         Async.async $ do
-            Safe.catch
-                ( do
-                    processDebugMessages log
-                )
-                (collapseHandler "telemetry forwarder")
+            processDebugMessages log
 
-    -- run actual program, ensuring to trap uncaught exceptions
+    -- run actual program, ensuring to grab any otherwise uncaught exceptions.
     code <-
-        Safe.catches
+        Safe.catchesAsync
             ( do
                 result <-
                     Async.race
@@ -282,21 +271,29 @@ executeWith context program = do
         else (Base.throwIO code)
 
 processStandardOutput :: TQueue Rope -> IO ()
-processStandardOutput out = do
-    forever $ do
-        text <- atomically (readTQueue out)
+processStandardOutput out =
+    Safe.catch
+        ( do
+            forever $ do
+                text <- atomically (readTQueue out)
 
-        hWrite stdout text
-        B.hPut stdout (C.singleton '\n')
+                hWrite stdout text
+                B.hPut stdout (C.singleton '\n')
+        )
+        (collapseHandler "output processing collapsed")
 
 processDebugMessages :: TQueue Message -> IO ()
-processDebugMessages log = do
-    forever $ do
-        -- TODO do sactually do something with log messages
-        -- Message now severity text potentialValue <- ...
-        _ <- atomically (readTQueue log)
+processDebugMessages log =
+    Safe.catch
+        ( do
+            forever $ do
+                -- TODO do sactually do something with log messages
+                -- Message now severity text potentialValue <- ...
+                _ <- atomically (readTQueue log)
 
-        return ()
+                return ()
+        )
+        (collapseHandler "debug processing collapsed")
 
 {- |
 Safely exit the program with the supplied exit code. Current output and
