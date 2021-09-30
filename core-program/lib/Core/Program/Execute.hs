@@ -104,13 +104,13 @@ import Chrono.TimeStamp (getCurrentTimeNanoseconds)
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (
     Async,
-    AsyncCancelled,
     ExceptionInLinkedThread (..),
  )
 import qualified Control.Concurrent.Async as Async (
     async,
     cancel,
     link,
+    race,
     race_,
     wait,
  )
@@ -118,7 +118,7 @@ import Control.Concurrent.MVar (modifyMVar_, newMVar, putMVar, readMVar)
 import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue, readTQueue)
 import qualified Control.Exception as Base (throwIO)
-import qualified Control.Exception.Safe as Safe (catchesAsync, throw)
+import qualified Control.Exception.Safe as Safe (catch, catchesAsync, throw)
 import Control.Monad (forever, void, when)
 import Control.Monad.Catch (Handler (..))
 import Control.Monad.Reader.Class (MonadReader (ask))
@@ -138,46 +138,30 @@ import System.Exit (ExitCode (..))
 import qualified System.Posix.Process as Posix (exitImmediately)
 import Prelude hiding (log)
 
--- execute actual "main"
-executeAction :: Context τ -> Program τ α -> IO ()
-executeAction context program =
-    let quit = exitSemaphoreFrom context
-     in do
-            _ <- subProgram context program
-            putMVar quit ExitSuccess
-
 --
--- If an exception escapes, we'll catch it here. The displayException
--- value for some exceptions is really quit unhelpful, so we pattern
--- match the wrapping gumpf away for cases as we encounter them. The
--- final entry is the catch-all; the first is what we get from the
--- terminate action.
+-- If an exception escapes, we'll catch it here. The displayException value
+-- for some exceptions is really quit unhelpful, so we pattern match the
+-- wrapping gumpf away for cases as we encounter them. The final entry is the
+-- catch-all.
 --
-escapeHandlers :: Context c -> [Handler IO ()]
+-- Note this is called via Safe.catchesAsync because we want to be able to
+-- strip out ExceptionInLinkedThread (which is asynchronous and otherwise
+-- reasonably special) from the final output message.
+--
+escapeHandlers :: Context c -> [Handler IO ExitCode]
 escapeHandlers context =
-    [ Handler (\(exit :: ExitCode) -> done exit)
-    , Handler (\(_ :: AsyncCancelled) -> pass)
-    , Handler (\(ExceptionInLinkedThread _ e) -> bail e)
+    [ Handler (\(ExceptionInLinkedThread _ e) -> bail e)
     , Handler (\(e :: SomeException) -> bail e)
     ]
   where
-    quit = exitSemaphoreFrom context
-
-    pass :: IO ()
-    pass = return ()
-
-    done :: ExitCode -> IO ()
-    done exit = do
-        putMVar quit exit
-
-    bail :: Exception e => e -> IO ()
+    bail :: Exception e => e -> IO ExitCode
     bail e =
         let text = intoRope (displayException e)
          in do
                 subProgram context $ do
                     setVerbosityLevel Debug
                     event text
-                putMVar quit (ExitFailure 127)
+                pure (ExitFailure 127)
 
 --
 -- If an exception occurs in one of the output handlers, its failure causes
@@ -187,19 +171,12 @@ escapeHandlers context =
 -- really need the process to go down and we're in an inconsistent state
 -- where debug or console output is no longer possible.
 --
-collapseHandlers :: [Handler IO ()]
-collapseHandlers =
-    [ Handler
-        ( \(e :: AsyncCancelled) -> do
-            Base.throwIO e
-        )
-    , Handler
-        ( \(e :: SomeException) -> do
-            putStrLn "error: Output handler collapsed"
-            print e
-            Posix.exitImmediately (ExitFailure 99)
-        )
-    ]
+collapseHandler :: String -> SomeException -> IO ()
+collapseHandler problem e = do
+    putStr "error: "
+    putStrLn problem
+    print e
+    Posix.exitImmediately (ExitFailure 99)
 
 {- |
 Embelish a program with useful behaviours. See module header
@@ -229,30 +206,42 @@ executeWith context program = do
         out = outputChannelFrom context
         log = loggerChannelFrom context
 
+    -- set up signal handlers
+    _ <-
+        Async.async $ do
+            setupSignalHandlers quit level
+
     -- set up standard output
-    o <- Async.async $ do
-        Safe.catchesAsync
-            (processStandardOutput out)
-            (collapseHandlers)
+    o <-
+        Async.async $ do
+            processStandardOutput out
 
     -- set up debug logger
-    l <- Async.async $ do
-        Safe.catchesAsync
-            (processDebugMessages log)
-            (collapseHandlers)
+    l <-
+        Async.async $ do
+            processDebugMessages log
 
-    -- set up signal handlers
-    _ <- Async.async $ do
-        setupSignalHandlers quit level
-
-    -- run actual program, ensuring to trap uncaught exceptions
-    m <- Async.async $ do
+    -- run actual program, ensuring to grab any otherwise uncaught exceptions.
+    code <-
         Safe.catchesAsync
-            (executeAction context program)
+            ( do
+                result <-
+                    Async.race
+                        ( do
+                            code <- readMVar quit
+                            pure code
+                        )
+                        ( do
+                            -- execute actual "main"
+                            _ <- subProgram context program
+                            pure ()
+                        )
+
+                case result of
+                    Left code' -> pure code'
+                    Right () -> pure ExitSuccess
+            )
             (escapeHandlers context)
-
-    code <- readMVar quit
-    Async.cancel m
 
     -- drain message queues. Allow 0.1 seconds, then timeout, in case
     -- something has gone wrong and queues don't empty.
@@ -282,21 +271,29 @@ executeWith context program = do
         else (Base.throwIO code)
 
 processStandardOutput :: TQueue Rope -> IO ()
-processStandardOutput out = do
-    forever $ do
-        text <- atomically (readTQueue out)
+processStandardOutput out =
+    Safe.catch
+        ( do
+            forever $ do
+                text <- atomically (readTQueue out)
 
-        hWrite stdout text
-        B.hPut stdout (C.singleton '\n')
+                hWrite stdout text
+                B.hPut stdout (C.singleton '\n')
+        )
+        (collapseHandler "output processing collapsed")
 
 processDebugMessages :: TQueue Message -> IO ()
-processDebugMessages log = do
-    forever $ do
-        -- TODO do sactually do something with log messages
-        -- Message now severity text potentialValue <- ...
-        _ <- atomically (readTQueue log)
+processDebugMessages log =
+    Safe.catch
+        ( do
+            forever $ do
+                -- TODO do sactually do something with log messages
+                -- Message now severity text potentialValue <- ...
+                _ <- atomically (readTQueue log)
 
-        return ()
+                return ()
+        )
+        (collapseHandler "debug processing collapsed")
 
 {- |
 Safely exit the program with the supplied exit code. Current output and
