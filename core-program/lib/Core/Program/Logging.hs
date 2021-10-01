@@ -275,6 +275,8 @@ nanosecond precision, but you don't need that kind of resolution in in
 ordinary debugging).
 
 Messages sent to syslog will be logged at @Info@ level severity.
+
+@since 0.2.12
 -}
 info :: Rope -> Program τ ()
 info text = do
