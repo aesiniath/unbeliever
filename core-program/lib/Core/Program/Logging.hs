@@ -57,10 +57,10 @@ different /kinds/ of output in a unified, safe manner.
 Your program's normal output to the terminal. This library provides the
 'write' (and 'writeS' and 'writeR') functions to send output to @stdout@.
 
-/Events/
+/Informational messages/
 
 When running a tool, you sometimes need to know /what it is doing/ as it is
-carrying out its steps. The 'event' function allows you to emit descriptive
+carrying out its steps. The 'info' function allows you to emit descriptive
 messages to the log channel tracing the activities of your program.
 
 Ideally you would never need to turn this on in a command-line tool, but
@@ -68,7 +68,7 @@ sometimes a user or operations engineer needs to see what an application is
 up to. These should be human readable status messages to convey a sense of
 progress.
 
-In the case of long-running daemons, 'event' can be used to describe
+In the case of long-running daemons, 'info' can be used to describe
 high-level lifecycle events, to document individual requests, or even
 describing individual transitions in a request handler's state machine, all
 depending on the nature of your program.
@@ -124,13 +124,16 @@ module Core.Program.Logging (
     writeS,
     writeR,
 
-    -- * Event tracing
-    event,
+    -- * Informational
+    info,
 
     -- * Debugging
     debug,
     debugS,
     debugR,
+
+    -- * Internals
+    event,
 ) where
 
 import Chrono.TimeStamp (TimeStamp (..), getCurrentTimeNanoseconds)
@@ -148,11 +151,6 @@ import Core.Program.Context
 import Core.System.Base
 import Core.Text.Rope
 import Core.Text.Utilities
-
-{-
-class Monad m => MonadLog a m where
-    logMessage :: Monoid a => Severity -> a -> m ()
--}
 
 putMessage :: Context τ -> Message -> IO ()
 putMessage context message@(Message now _ text potentialValue) = do
@@ -260,33 +258,36 @@ writeR thing = do
         atomically (writeTQueue out text')
 
 {- |
-Note a significant event, state transition, status, or debugging
-message. This:
+Note a significant event, state transition, status; also used as a heading for
+subsequent debugging messages. This:
 
 @
-    'event' "Starting..."
+    'info' "Starting..."
 @
 
 will result in
 
 > 13:05:55Z (00.112) Starting...
 
-appearing on stdout /and/ the message being sent down the logging
-channel. The output string is current time in UTC, and time elapsed
-since startup shown to the nearest millisecond (our timestamps are to
-nanosecond precision, but you don't need that kind of resolution in
-in ordinary debugging).
+appearing on stdout. The output string is current time in UTC, and time
+elapsed since startup shown to the nearest millisecond (our timestamps are to
+nanosecond precision, but you don't need that kind of resolution in in
+ordinary debugging).
 
 Messages sent to syslog will be logged at @Info@ level severity.
 -}
-event :: Rope -> Program τ ()
-event text = do
+info :: Rope -> Program τ ()
+info text = do
     context <- ask
     liftIO $ do
         level <- readMVar (verbosityLevelFrom context)
         when (isEvent level) $ do
             now <- getCurrentTimeNanoseconds
             putMessage context (Message now Event text Nothing)
+
+event :: Rope -> Program τ ()
+event = info
+{-# DEPRECATED event "Use info instead" #-}
 
 isEvent :: Verbosity -> Bool
 isEvent level = case level of
