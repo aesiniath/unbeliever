@@ -25,10 +25,12 @@ module Core.Text
 
     -- |
     -- Useful functions for common use cases.
+    module Core.Text.Colour,
     module Core.Text.Utilities,
   )
 where
 
 import Core.Text.Bytes
+import Core.Text.Colour
 import Core.Text.Rope
 import Core.Text.Utilities
