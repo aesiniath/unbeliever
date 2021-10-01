@@ -10,7 +10,7 @@ Support for colour in the terminal.
 module Core.Text.Colour (
     AnsiColour,
     intoEscapes,
-    bold,
+    boldColour,
     dullRed,
     brightRed,
     pureRed,
@@ -191,8 +191,8 @@ the glyphs. This may or may not be desirable from a readibility standpoint but
 really there's only so much you can do to keep users who make poor font
 choices from making poor font choices.
 -}
-bold :: AnsiColour -> AnsiColour
-bold (Escapes list) =
+boldColour :: AnsiColour -> AnsiColour
+boldColour (Escapes list) =
     Escapes (SetConsoleIntensity BoldIntensity : list)
 
 instance Semigroup AnsiColour where

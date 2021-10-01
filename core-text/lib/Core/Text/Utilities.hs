@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# OPTIONS_HADDOCK prune #-}
+{-# OPTIONS_HADDOCK prune, not-home #-}
 
 {- |
 Useful tools for working with 'Rope's. Support for pretty printing, multi-line
@@ -15,35 +15,8 @@ strings, and...
 module Core.Text.Utilities (
     -- * Pretty printing
     Render (..),
-    AnsiColour,
-    bold,
     render,
     renderNoAnsi,
-    dullRed,
-    brightRed,
-    pureRed,
-    dullGreen,
-    brightGreen,
-    pureGreen,
-    dullBlue,
-    brightBlue,
-    pureBlue,
-    dullCyan,
-    brightCyan,
-    pureCyan,
-    dullMagenta,
-    brightMagenta,
-    pureMagenta,
-    dullYellow,
-    brightYellow,
-    pureYellow,
-    pureBlack,
-    dullGrey,
-    brightGrey,
-    pureGrey,
-    pureWhite,
-    dullWhite,
-    brightWhite,
 
     -- * Helpers
     indefinite,
@@ -63,14 +36,19 @@ module Core.Text.Utilities (
     intoPieces,
     intoChunks,
     byteChunk,
+
+    -- * Deprecated
     intoDocA,
+    module Core.Text.Colour,
+    bold,
+    -- | AnsiColour and colour constants moved to this module.
 ) where
 
 import Core.Text.Breaking
 import Core.Text.Bytes
+import Core.Text.Colour
 import Core.Text.Parsing
 import Core.Text.Rope
-import Core.Text.Colour
 import Data.Bits (Bits (..))
 import qualified Data.ByteString as B (ByteString, length, splitAt, unpack)
 import Data.Char (intToDigit)
@@ -131,6 +109,10 @@ class Render α where
 intoDocA :: α -> Doc (Token α)
 intoDocA = error "Nothing should be invoking this method directly."
 {-# DEPRECATED intoDocA "method'intoDocA' has been renamed 'highlight'; implement that instead." #-}
+
+bold :: AnsiColour -> AnsiColour
+bold = boldColour
+{-# DEPRECATED bold "Import Core.Text.Colour and use 'boldColour' instead" #-}
 
 instance Render Rope where
     type Token Rope = ()
