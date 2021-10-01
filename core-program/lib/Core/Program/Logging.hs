@@ -149,11 +149,12 @@ import qualified Data.Text.Short as S (replicate)
 
 import Core.Program.Context
 import Core.System.Base
+import Core.Text.Colour
 import Core.Text.Rope
 import Core.Text.Utilities
 
 putMessage :: Context τ -> Message -> IO ()
-putMessage context message@(Message now _ text potentialValue) = do
+putMessage context message@(Message now level text potentialValue) = do
     let i = startTimeFrom context
     start <- readMVar i
     let output = outputChannelFrom context
@@ -166,14 +167,14 @@ putMessage context message@(Message now _ text potentialValue) = do
                     else text <> " = " <> value
             Nothing -> text
 
-    let result = formatLogMessage start now display
+    let result = formatLogMessage start now level display
 
     atomically $ do
         writeTQueue output result
         writeTQueue logger message
 
-formatLogMessage :: TimeStamp -> TimeStamp -> Rope -> Rope
-formatLogMessage start now message =
+formatLogMessage :: TimeStamp -> TimeStamp -> Verbosity -> Rope -> Rope
+formatLogMessage start now level message =
     let start' = unTimeStamp start
         now' = unTimeStamp now
         stampZ =
@@ -189,15 +190,22 @@ formatLogMessage start now message =
 
         -- I hate doing math in Haskell
         elapsed = fromRational (toRational (now' - start') / 1e9) :: Fixed E3
+
+        color = case level of
+            Output -> emptyRope
+            Event -> intoEscapes dullWhite
+            Debug -> intoEscapes pureGrey
+
+        reset = intoEscapes resetColour
      in mconcat
-            [ intoRope stampZ
+            [ color
+            , intoRope stampZ
             , " ("
             , padWithZeros 6 (show elapsed)
             , ") "
             , message
+            , reset
             ]
-
---
 
 {- |
 Utility function to prepend \'0\' characters to a string representing a

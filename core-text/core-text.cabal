@@ -4,10 +4,10 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d719fa79fab6ad850ba4da43e6ed770fea1f87608ac3e2b7013ead11677acc55
+-- hash: 1170f4aae9d7c4827c667036d000df599dbeda1372c18e6fb0447b91caa36837
 
 name:           core-text
-version:        0.3.2.1
+version:        0.3.3.0
 synopsis:       A rope type based on a finger tree over UTF-8 fragments
 description:    A rope data type for text, built as a finger tree over UTF-8 text
                 fragments. The package also includes utiltiy functions for breaking and
@@ -46,11 +46,11 @@ library
   exposed-modules:
       Core.Text
       Core.Text.Bytes
+      Core.Text.Colour
       Core.Text.Rope
       Core.Text.Utilities
   other-modules:
       Core.Text.Breaking
-      Core.Text.Colour
       Core.Text.Parsing
   hs-source-dirs:
       lib

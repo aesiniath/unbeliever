@@ -1,10 +1,14 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_HADDOCK not-home #-}
 
+{- |
+Support for colour in the terminal.
+
+![ANSI colours](AnsiColours.png)
+-}
 module Core.Text.Colour (
-    AnsiColour (..),
+    AnsiColour,
     intoEscapes,
     bold,
     dullRed,
@@ -46,6 +50,10 @@ to console.
 -}
 newtype AnsiColour = Escapes [SGR]
 
+{-|
+Convert an AnsiColour into the ANSI escape sequences which will make that
+colour appear in the user's terminal.
+-}
 intoEscapes :: AnsiColour -> Rope
 intoEscapes (Escapes codes) = intoRope (setSGRCode codes)
 
