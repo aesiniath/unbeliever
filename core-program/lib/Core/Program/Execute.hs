@@ -209,7 +209,7 @@ trap_ action =
         ( \(e :: SomeException) ->
             let text = intoRope (displayException e)
              in do
-                    info "Trapped uncaught exception"
+                    warn "Trapped uncaught exception"
                     debug "e" text
         )
 
