@@ -161,7 +161,7 @@ escapeHandlers context =
          in do
                 subProgram context $ do
                     setVerbosityLevel Debug
-                    event text
+                    info text
                 pure (ExitFailure 127)
 
 --
@@ -208,7 +208,7 @@ trap_ action =
         ( \(e :: SomeException) ->
             let text = intoRope (displayException e)
              in do
-                    event "Trapped uncaught exception"
+                    info "Trapped uncaught exception"
                     debug "e" text
         )
 

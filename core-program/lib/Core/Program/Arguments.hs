@@ -129,6 +129,8 @@ data Config
 A completely empty configuration, without the default debugging and logging
 options. Your program won't process any command-line options or arguments,
 which would be weird in most cases. Prefer 'simple'.
+
+@since 0.2.9
 -}
 blankConfig :: Config
 blankConfig = Blank
@@ -197,6 +199,8 @@ Required arguments:
 
 For information on how to use the multi-line string literals shown here,
 see 'quote' in "Core.Text.Utilities".
+
+@since 0.2.9
 -}
 simpleConfig :: [Options] -> Config
 simpleConfig options = Simple (options ++ baselineOptions)
@@ -285,6 +289,8 @@ The resultant program could be invoked as in these examples:
 
 For information on how to use the multi-line string literals shown here,
 see 'quote' in "Core.Text.Utilities".
+
+@since 0.2.9
 -}
 complexConfig :: [Commands] -> Config
 complexConfig commands = Complex (commands ++ [Global baselineOptions])

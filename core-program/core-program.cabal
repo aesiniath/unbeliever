@@ -27,7 +27,7 @@ license:        MIT
 license-file:   LICENSE
 build-type:     Simple
 tested-with:
-    GHC == 8.10.6
+    GHC == 8.10.7
 
 source-repository head
   type: git
@@ -58,7 +58,7 @@ library
     , bytestring
     , chronologique
     , core-data >=0.2.1.9
-    , core-text >=0.3.0
+    , core-text >=0.3.3.0
     , directory
     , exceptions
     , filepath
