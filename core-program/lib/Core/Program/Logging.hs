@@ -126,6 +126,8 @@ module Core.Program.Logging (
 
     -- * Informational
     info,
+    warn,
+    critical,
 
     -- * Debugging
     debug,
@@ -153,8 +155,17 @@ import Core.Text.Colour
 import Core.Text.Rope
 import Core.Text.Utilities
 
+data Message = Message TimeStamp Severity Rope (Maybe Rope)
+
+data Severity
+    = SeverityNone
+    | SeverityCritical
+    | SeverityWarn
+    | SeverityInfo
+    | SeverityDebug
+
 putMessage :: Context τ -> Message -> IO ()
-putMessage context message@(Message now level text potentialValue) = do
+putMessage context (Message now level text potentialValue) = do
     let i = startTimeFrom context
     start <- readMVar i
     let output = outputChannelFrom context
@@ -173,11 +184,11 @@ putMessage context message@(Message now level text potentialValue) = do
         writeTQueue output result
         writeTQueue logger message
 
-formatLogMessage :: TimeStamp -> TimeStamp -> Verbosity -> Rope -> Rope
-formatLogMessage start now level message =
-    let start' = unTimeStamp start
-        now' = unTimeStamp now
-        stampZ =
+formatLogMessage :: TimeStamp -> TimeStamp -> Severity -> Rope -> Rope
+formatLogMessage start now severity message =
+    let !start' = unTimeStamp start
+        !now' = unTimeStamp now
+        !stampZ =
             timePrint
                 [ Format_Hour
                 , Format_Text ':'
@@ -191,10 +202,12 @@ formatLogMessage start now level message =
         -- I hate doing math in Haskell
         elapsed = fromRational (toRational (now' - start') / 1e9) :: Fixed E3
 
-        color = case level of
-            Output -> emptyRope
-            Event -> intoEscapes dullWhite
-            Debug -> intoEscapes pureGrey
+        !color = case severity of
+            SeverityNone -> emptyRope
+            SeverityCritical -> intoEscapes pureRed
+            SeverityWarn -> intoEscapes pureYellow
+            SeverityInfo -> intoEscapes dullWhite
+            SeverityDebug -> intoEscapes pureGrey
 
         reset = intoEscapes resetColour
      in mconcat
@@ -293,11 +306,29 @@ info text = do
         level <- readMVar (verbosityLevelFrom context)
         when (isEvent level) $ do
             now <- getCurrentTimeNanoseconds
-            putMessage context (Message now Event text Nothing)
+            putMessage context (Message now SeverityInfo text Nothing)
 
 event :: Rope -> Program τ ()
 event = info
 {-# DEPRECATED event "Use info instead" #-}
+
+warn :: Rope -> Program τ ()
+warn text = do
+    context <- ask
+    liftIO $ do
+        level <- readMVar (verbosityLevelFrom context)
+        when (isEvent level) $ do
+            now <- getCurrentTimeNanoseconds
+            putMessage context (Message now SeverityWarn text Nothing)
+
+critical :: Rope -> Program τ ()
+critical text = do
+    context <- ask
+    liftIO $ do
+        level <- readMVar (verbosityLevelFrom context)
+        when (isEvent level) $ do
+            now <- getCurrentTimeNanoseconds
+            putMessage context (Message now SeverityCritical text Nothing)
 
 isEvent :: Verbosity -> Bool
 isEvent level = case level of
@@ -339,7 +370,7 @@ debug label value = do
         when (isDebug level) $ do
             now <- getCurrentTimeNanoseconds
             !value' <- evaluate value
-            putMessage context (Message now Debug label (Just value'))
+            putMessage context (Message now SeverityDebug label (Just value'))
 
 {- |
 Convenience for the common case of needing to inspect the value
@@ -370,4 +401,4 @@ debugR label thing = do
             -- TODO move render to putMessage? putMessageR?
             let value = render columns thing
             !value' <- evaluate value
-            putMessage context (Message now Debug label (Just value'))
+            putMessage context (Message now SeverityDebug label (Just value'))

@@ -86,7 +86,7 @@ program = do
 
     forkThread $ do
         sleepThread 1.5
-        event "Wakey wakey"
+        warn "Wakey wakey"
         throw Boom
 
     replicateM_ 5 $ do

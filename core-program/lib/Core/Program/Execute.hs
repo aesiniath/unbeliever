@@ -162,7 +162,7 @@ escapeHandlers context =
          in do
                 subProgram context $ do
                     setVerbosityLevel Debug
-                    info text
+                    critical text
                 pure (ExitFailure 127)
 
 --
@@ -317,7 +317,7 @@ processStandardOutput out =
         )
         (collapseHandler "output processing collapsed")
 
-processDebugMessages :: TQueue Message -> IO ()
+processDebugMessages :: TQueue () -> IO ()
 processDebugMessages log =
     Safe.catch
         ( do

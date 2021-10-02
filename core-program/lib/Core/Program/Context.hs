@@ -15,7 +15,6 @@ module Core.Program.Context (
     None (..),
     isNone,
     configure,
-    Message (..),
     Verbosity (..),
     Program (..),
     unProgram,
@@ -79,7 +78,7 @@ data Context τ = Context
     , terminalWidthFrom :: Int
     , verbosityLevelFrom :: MVar Verbosity
     , outputChannelFrom :: TQueue Rope
-    , loggerChannelFrom :: TQueue Message
+    , loggerChannelFrom :: TQueue () -- FIXME
     , applicationDataFrom :: MVar τ
     }
 
@@ -120,8 +119,6 @@ data None = None
 
 isNone :: None -> Bool
 isNone _ = True
-
-data Message = Message TimeStamp Verbosity Rope (Maybe Rope)
 
 {- |
 The verbosity level of the logging subsystem. You can override the level
