@@ -151,7 +151,8 @@ import Prelude hiding (log)
 --
 escapeHandlers :: Context c -> [Handler IO ExitCode]
 escapeHandlers context =
-    [ Handler (\(ExceptionInLinkedThread _ e) -> bail e)
+    [ Handler (\(code :: ExitCode) -> pure code)
+    , Handler (\(ExceptionInLinkedThread _ e) -> bail e)
     , Handler (\(e :: SomeException) -> bail e)
     ]
   where
