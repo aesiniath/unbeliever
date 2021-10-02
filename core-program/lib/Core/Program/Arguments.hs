@@ -52,7 +52,7 @@ import Data.Hashable (Hashable)
 import qualified Data.List as List
 import Data.Maybe (fromMaybe)
 import Data.String (IsString (..))
-import Data.Text.Prettyprint.Doc (
+import Prettyprinter (
     Doc,
     Pretty (..),
     align,
@@ -66,7 +66,7 @@ import Data.Text.Prettyprint.Doc (
     softline,
     (<+>),
  )
-import Data.Text.Prettyprint.Doc.Util (reflow)
+import Prettyprinter.Util (reflow)
 import System.Environment (getProgName)
 
 import Core.Data.Structures

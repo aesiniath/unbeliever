@@ -151,7 +151,8 @@ import Prelude hiding (log)
 --
 escapeHandlers :: Context c -> [Handler IO ExitCode]
 escapeHandlers context =
-    [ Handler (\(ExceptionInLinkedThread _ e) -> bail e)
+    [ Handler (\(code :: ExitCode) -> pure code)
+    , Handler (\(ExceptionInLinkedThread _ e) -> bail e)
     , Handler (\(e :: SomeException) -> bail e)
     ]
   where
@@ -161,7 +162,7 @@ escapeHandlers context =
          in do
                 subProgram context $ do
                     setVerbosityLevel Debug
-                    info text
+                    critical text
                 pure (ExitFailure 127)
 
 --
@@ -208,7 +209,7 @@ trap_ action =
         ( \(e :: SomeException) ->
             let text = intoRope (displayException e)
              in do
-                    info "Trapped uncaught exception"
+                    warn "Trapped uncaught exception"
                     debug "e" text
         )
 
@@ -328,7 +329,7 @@ processTelemetryMessages exporter log = do
 
                 return ()
         )
-        (collapseHandler "debug processing collapsed")
+        (collapseHandler "telemetry processing collapsed")
 
 {- |
 Safely exit the program with the supplied exit code. Current output and

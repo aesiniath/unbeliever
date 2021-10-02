@@ -44,4 +44,4 @@ module Core.System.Pretty (
     concatWith,
 ) where
 
-import Data.Text.Prettyprint.Doc
+import Prettyprinter

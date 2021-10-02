@@ -136,7 +136,7 @@ import qualified Data.Text.Lazy.Builder as U (
     fromText,
     toLazyText,
  )
-import Data.Text.Prettyprint.Doc (Pretty (..), emptyDoc)
+import Prettyprinter (Pretty (..), emptyDoc)
 import qualified Data.Text.Short as S (
     ShortText,
     any,

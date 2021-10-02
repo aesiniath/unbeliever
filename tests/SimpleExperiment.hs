@@ -18,8 +18,8 @@ import Core.System
 import Core.Text
 import qualified Data.ByteString.Char8 as S
 import qualified Data.HashMap.Strict as HashMap
-import Data.Text.Prettyprint.Doc (Pretty (..), defaultLayoutOptions, layoutPretty)
-import Data.Text.Prettyprint.Doc.Render.Text (renderStrict)
+import Prettyprinter (Pretty (..), defaultLayoutOptions, layoutPretty)
+import Prettyprinter.Render.Text (renderStrict)
 
 k = JsonKey "intro"
 
@@ -49,7 +49,7 @@ instance Exception Boom
 
 program :: Program None ()
 program = do
-    event "Starting..."
+    info "Starting..."
 
     params <- getCommandLine
     debugS "params" params
@@ -66,7 +66,7 @@ program = do
     debug "programName" name
 
     debugR "key" k
-    event "Verify internal values"
+    info "Verify internal values"
 
     state <- getApplicationState
     debugS "state" state
@@ -82,18 +82,18 @@ program = do
 
     debugR "packet" j
 
-    event "Clock..."
+    info "Clock..."
 
     forkThread $ do
         sleepThread 1.5
-        event "Wakey wakey"
+        warn "Wakey wakey"
         throw Boom
 
     replicateM_ 5 $ do
         sleepThread 0.5
-        event "tick"
+        info "tick"
 
-    event "Brr! It's cold"
+    info "Brr! It's cold"
     terminate 0
 
 version :: Version

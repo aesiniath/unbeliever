@@ -46,7 +46,7 @@ waitForChange files =
       g :: FilePath -> Set FilePath -> Set FilePath
       g path acc = insertElement (dropFileName path) acc
    in do
-        event "Watching for changes"
+        info "Watching for changes"
 
         canonical <- mapM (liftIO . canonicalizePath) files
         let paths = foldr f emptySet canonical

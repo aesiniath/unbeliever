@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
+{-# OPTIONS_GHC -Wno-deprecations #-}
 
 module Core.Program.Signal (
     setupSignalHandlers,
@@ -53,6 +54,7 @@ logLevelHandler v = Catch $ do
         ( \level -> case level of
             Output -> pure Debug
             Event -> pure Debug
+            Verbose -> pure Debug
             Debug -> pure Output
         )
 
