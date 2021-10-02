@@ -9,13 +9,13 @@
 {- |
 Output and Logging from your program.
 
-Broadly speaking, there are two kinds of program: console tools invoked for
-a single purpose, and long-running daemons that effectively run forever.
+Broadly speaking, there are two kinds of program: console tools invoked for a
+single purpose, and long-running daemons that effectively run forever.
 
-Tools tend to be run to either have an effect (in which case they tend not
-to a say much of anything) or to report a result. This tends to be written
-to \"standard output\"—traditionally abbreviated in code as @stdout@—which
-is usually printed to your terminal.
+Tools tend to be run to either have an effect (in which case they tend not to
+a say much of anything) or to report a result. This tends to be written to
+\"standard output\"—traditionally abbreviated in code as @stdout@—which is
+usually printed to your terminal.
 
 Daemons, on the other hand, don't write their output to file descriptor 1;
 rather they tend to respond to requests by writing to files, replying over
@@ -25,31 +25,31 @@ curious). What daemons /do/ output, however, is log messages.
 While there are many sophisticated logging services around that you can
 interact with directly, from the point of view of an individual /program/
 these tend to have faded away and have become more an aspect of the
-Infrastructure- or Platform-as-a-Service you're running on. Over the past
-few years containerization mechanisms like __docker__, then more recently
+Infrastructure- or Platform-as-a-Service you're running on. Over the past few
+years containerization mechanisms like __docker__, then more recently
 container orchestration layers like __kubernetes__, have generally simply
 captured programs' standard output /as if it were the program's log output/
 and then sent that down external logging channels to whatever log analysis
 system is available. Even programs running locally under __systemd__ or
-similar tend to follow the same pattern; services write to @stdout@ and
-that output, as "logs", ends up being fed to the system journal.
+similar tend to follow the same pattern; services write to @stdout@ and that
+output, as "logs", ends up being fed to the system journal.
 
-So with that in mind, in your program you will either be outputting results
-to @stdout@ or not writing there at all, and you will either be describing
+So with that in mind, in your program you will either be outputting results to
+@stdout@ or not writing there at all, and you will either be describing
 extensively what your application is up to, or not at all.
 
-There is also a \"standard error\" file descriptor available. We recommend
-not using it. At best it is unclear what is written to @stderr@ and what
-isn't; at worse it is lost as many environments in the wild discard
-@stderr@ entirely. To avoid this most of the time people just combine them
-in the invoking shell with @2>&1@, which inevitably results in @stderr@
-text appearing in the middle of normal @stdout@ lines corrupting them.
+There is also a \"standard error\" file descriptor available. We recommend not
+using it. At best it is unclear what is written to @stderr@ and what isn't; at
+worse it is lost as many environments in the wild discard @stderr@ entirely.
+To avoid this most of the time people just combine them in the invoking shell
+with @2>&1@, which inevitably results in @stderr@ text appearing in the middle
+of normal @stdout@ lines corrupting them.
 
 The original idea of standard error was to provde a way to report adverse
 conditions without interrupting normal text output, but as we have just
-observed if it happens without context or out of order there isn't much
-point. Instead this library offers a mechanism which caters for the
-different /kinds/ of output in a unified, safe manner.
+observed if it happens without context or out of order there isn't much point.
+Instead this library offers a mechanism which caters for the different /kinds/
+of output in a unified, safe manner.
 
 == Three kinds of output/logging messages
 
@@ -65,49 +65,61 @@ carrying out its steps. The 'info' function allows you to emit descriptive
 messages to the log channel tracing the activities of your program.
 
 Ideally you would never need to turn this on in a command-line tool, but
-sometimes a user or operations engineer needs to see what an application is
-up to. These should be human readable status messages to convey a sense of
+sometimes a user or operations engineer needs to see what an application is up
+to. These should be human readable status messages to convey a sense of
 progress.
 
-In the case of long-running daemons, 'info' can be used to describe
-high-level lifecycle events, to document individual requests, or even
-describing individual transitions in a request handler's state machine, all
-depending on the nature of your program.
+In the case of long-running daemons, 'info' can be used to describe high-level
+lifecycle events, to document individual requests, or even describe individual
+transitions in a request handler's state machine, all depending on the nature
+of your program.
 
 /Debugging/
 
-Programmers, on the other hand, often need to see the internal state of
-the program when /debugging/.
+Programmers, on the other hand, often need to see the internal state of the
+program when /debugging/.
 
-You almost always you want to know the value of some variable or parameter,
-so the 'debug' (and 'debugS' and 'debugR') utility functions here send
-messages to the log channel prefixed with a label that is, by convention,
-the name of the value you are examining.
+You almost always you want to know the value of some variable or parameter, so
+the 'debug' (and 'debugS' and 'debugR') utility functions here send log
+messages to the console prefixed with a label that is, by convention, the name
+of the value you are examining.
 
-The important distinction here is that such internal values are almost
-never useful for someone other than the person or team who wrote the code
-emitting it. Operations engineers might be asked by developers to turn on
-@--debug@ing and report back the results; but a user of your program is not
-going to do that in and of themselves to solve a problem.
+The important distinction here is that such internal values are almost never
+useful for someone other than the person or team who wrote the code emitting
+it. Operations engineers might be asked by developers to turn on @--debug@ing
+and report back the results; but a user of your program is not going to do
+that in and of themselves to solve a problem.
 
 == Single output channel
 
-It is the easy to make the mistake of having multiple subsystems attempting
-to write to @stdout@ and these outputs corrupting each other, especially in
-a multithreaded language like Haskell. The output actions described here
-send all output to terminal down a single thread-safe channel. Output will
-be written in the order it was executed, and (so long as you don't use the
+It is the easy to make the mistake of having multiple subsystems attempting to
+write to @stdout@ and these outputs corrupting each other, especially in a
+multithreaded language like Haskell. The output actions described here send
+all output to terminal down a single thread-safe channel. Output will be
+written in the order it was executed, and (so long as you don't use the
 @stdout@ Handle directly yourself) your terminal output will be sound.
 
-Passing @--verbose@ on the command-line of your program will cause 'event'
-to write its tracing messages to the terminal. This shares the same output
+Passing @--verbose@ on the command-line of your program will cause 'event' to
+write its tracing messages to the terminal. This shares the same output
 channel as the 'write'@*@ functions and will /not/ cause corruption of your
 program's normal output.
 
 Passing @--debug@ on the command-line of your program will cause the
-'debug'@*@ actions to write their debug-level messages to the terminal.
-This shares the same output channel as above and again will not cause
-corruption of your program's normal output.
+'debug'@*@ actions to write their debug-level messages to the terminal. This
+shares the same output channel as above and again will not cause corruption of
+your program's normal output.
+
+== Runtime
+
+You can change the current logging level from within your program by calling
+'Core.Program.Execute.setVerbosityLevel'. You can also toggle between normal
+'Output', 'Verbose' output and 'Debug' logging by sending the @SIGUSR1@ signal
+to the program using /kill/:
+
+@
+$ kill -USR1 42069
+$
+@
 -}
 module Core.Program.Logging (
     putMessage,
@@ -302,7 +314,7 @@ event :: Rope -> Program τ ()
 event = info
 {-# DEPRECATED event "Use info instead" #-}
 
-{-|
+{- |
 Emit a diagnostic message warning of an off-nominal condition. They are best
 used for unexpected conditions or places where defaults are being applied
 (potentially detrimentally).
@@ -337,7 +349,7 @@ warn text = do
             now <- getCurrentTimeNanoseconds
             putMessage context (Message now SeverityWarn text Nothing)
 
-{-|
+{- |
 Report an anomoly or condition critical to the ongoing health of the program.
 
 @
