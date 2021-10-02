@@ -183,7 +183,7 @@ putMessage context (Message now level text potentialValue) = do
 
     atomically $ do
         writeTQueue output result
-        writeTQueue logger message
+        writeTQueue logger ()
 
 formatLogMessage :: TimeStamp -> TimeStamp -> Severity -> Rope -> Rope
 formatLogMessage start now severity message =
@@ -291,7 +291,7 @@ will result in
 
 > 13:05:55Z (00.112) Starting...
 
-appearing on stdout. The output string is current time in UTC, and time
+appearing on @stdout@. The output string is current time in UTC, and time
 elapsed since startup shown to the nearest millisecond (our timestamps are to
 nanosecond precision, but you don't need that kind of resolution in in
 ordinary debugging).
@@ -313,6 +313,32 @@ event :: Rope -> Program τ ()
 event = info
 {-# DEPRECATED event "Use info instead" #-}
 
+{-|
+Emit a diagnostic message warning of an off-nominal condition. They are best
+used for unexpected conditions or places where defaults are being applied
+(potentially detrimentally).
+
+@
+     warn "You left the lights on again"
+@
+
+Warnings are worthy of note if you are looking into the behaviour of the
+system, and usually—but not always—indicate a problem. That problem may not
+need to be rectified, certainly not immediately. 
+
+__DO NOT PAGE OPERATIONS STAFF ON WARNINGS__. 
+
+For example, see "Core.Program.Execute"'s 'Core.Program.Execute.trap_'
+function, a wrapper action which allows you to restart a loop when combined
+with 'Control.Monad.forever'. @trap_@ swollows exceptions /but does not do/
+/so silently/, instead using 'warn' to log a warning as an information
+message. You don't need to do anything about the warning right away; after all
+the point is to allow your program to continue. If it is happening unexpectly
+or frequently, however, the issue bears investigation and the warning severity
+message will give you a starting point for diagnosis.
+
+@since 0.2.12
+-}
 warn :: Rope -> Program τ ()
 warn text = do
     context <- ask
@@ -322,6 +348,30 @@ warn text = do
             now <- getCurrentTimeNanoseconds
             putMessage context (Message now SeverityWarn text Nothing)
 
+{-|
+Report an anomoly or condition critical to the ongoing health of the program.
+
+@
+     critical "Unable to do hostname lookups"      -- Yup, it was DNS. It's always DNS.
+@
+
+The term \"critical\" generally means the program is now in an unexpected or
+invalid state, that further processing is incorrect, and that the program is
+likely about to crash. The key is to get the message out to the informational
+channel as quickly as possible before it does.
+
+For example, an uncaught exception bubbling to the top the
+'Core.Program.Execute.Program' monad will be logged as a 'critical' severity
+message and forceibly output to the console before the program exits. Your
+program is crashing, but at least you have a chance to find about why before
+it does.
+
+You're not going to page your operations staff on these either, but if they're
+happening in a production service and it's getting restarted a lot as a result
+you're probably going to be hearing about it.
+
+@since 0.2.12
+-}
 critical :: Rope -> Program τ ()
 critical text = do
     context <- ask
@@ -347,8 +397,8 @@ isDebug level = case level of
 
 {- |
 Output a debugging message formed from a label and a value. This is like
-'event' above but for the (rather common) case of needing to inspect or
-record the value of a variable when debugging code.  This:
+'event' above but for the (rather common) case of needing to inspect or record
+the value of a variable when debugging code. This:
 
 @
     'setProgramName' \"hello\"
