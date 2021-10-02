@@ -3,6 +3,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wno-deprecations #-}
 {-# OPTIONS_HADDOCK prune #-}
 
 {- |
@@ -334,12 +335,14 @@ isEvent :: Verbosity -> Bool
 isEvent level = case level of
     Output -> False
     Event -> True
+    Verbose -> True
     Debug -> True
 
 isDebug :: Verbosity -> Bool
 isDebug level = case level of
     Output -> False
     Event -> False
+    Verbose -> False
     Debug -> True
 
 {- |

@@ -121,12 +121,18 @@ isNone :: None -> Bool
 isNone _ = True
 
 {- |
-The verbosity level of the logging subsystem. You can override the level
-specified on the command-line using 'Core.Program.Execute.setVerbosityLevel'
-from within the 'Program' monad.
+The verbosity level of the output logging subsystem. You can override the
+level specified on the command-line by calling
+'Core.Program.Execute.setVerbosityLevel' from within the 'Program' monad.
 -}
-data Verbosity = Output | Event | Debug
+data Verbosity
+    = Output
+    | Event
+    | Verbose  -- ^ @since 0.2.12
+    | Debug
     deriving (Show)
+
+{-# DEPRECATED Event "Use Verbose instead" #-}
 
 {- |
 The type of a top-level program.
