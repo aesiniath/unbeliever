@@ -86,7 +86,7 @@ import Data.Hashable (Hashable)
 import Data.Scientific (Scientific)
 import Data.String (IsString (..))
 import qualified Data.Text as T
-import Data.Text.Prettyprint.Doc (
+import Prettyprinter (
     Doc,
     Pretty (..),
     annotate,

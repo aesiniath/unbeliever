@@ -55,7 +55,7 @@ import Data.Char (intToDigit)
 import qualified Data.FingerTree as F (ViewL (..), viewl, (<|))
 import qualified Data.List as List (dropWhileEnd, foldl', splitAt)
 import qualified Data.Text as T
-import Data.Text.Prettyprint.Doc (
+import Prettyprinter (
     Doc,
     LayoutOptions (LayoutOptions),
     PageWidth (AvailablePerLine),
@@ -73,7 +73,7 @@ import Data.Text.Prettyprint.Doc (
     unAnnotateS,
     vcat,
  )
-import Data.Text.Prettyprint.Doc.Render.Text (renderLazy)
+import Prettyprinter.Render.Text (renderLazy)
 import qualified Data.Text.Short as S (
     ShortText,
     replicate,

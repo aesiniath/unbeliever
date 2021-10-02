@@ -36,8 +36,8 @@ import Core.Program.Metadata
 import Core.System.Base hiding (catch, throw)
 import Core.Text.Rope
 import Data.Foldable (foldrM)
-import Data.Text.Prettyprint.Doc (LayoutOptions (..), PageWidth (..), layoutPretty)
-import Data.Text.Prettyprint.Doc.Render.Text (renderIO)
+import Prettyprinter (LayoutOptions (..), PageWidth (..), layoutPretty)
+import Prettyprinter.Render.Text (renderIO)
 import qualified System.Console.Terminal.Size as Terminal (Window (..), size)
 import System.Environment (getArgs, getProgName, lookupEnv)
 import System.Exit (ExitCode (..), exitWith)
