@@ -108,13 +108,6 @@ Passing @--debug@ on the command-line of your program will cause the
 'debug'@*@ actions to write their debug-level messages to the terminal.
 This shares the same output channel as above and again will not cause
 corruption of your program's normal output.
-
-== Logging channel
-
-/Event and debug messages are internally also sent to a "logging channel",/
-/as distinct from the "output" one. This would allow us to send them/
-/directly to a file, syslog, or network logging service, but this is/
-/as-yet unimplemented./
 -}
 module Core.Program.Logging (
     putMessage,
@@ -166,13 +159,12 @@ data Severity
     | SeverityDebug
 
 putMessage :: Context τ -> Message -> IO ()
-putMessage context (Message now level text potentialValue) = do
+putMessage context (Message now level text possiblelValue) = do
     let i = startTimeFrom context
     start <- readMVar i
     let output = outputChannelFrom context
-    let logger = loggerChannelFrom context
 
-    let display = case potentialValue of
+    let display = case possiblelValue of
             Just value ->
                 if containsCharacter '\n' value
                     then text <> " =\n" <> value
@@ -183,7 +175,6 @@ putMessage context (Message now level text potentialValue) = do
 
     atomically $ do
         writeTQueue output result
-        writeTQueue logger ()
 
 formatLogMessage :: TimeStamp -> TimeStamp -> Severity -> Rope -> Rope
 formatLogMessage start now severity message =
@@ -296,8 +287,6 @@ elapsed since startup shown to the nearest millisecond (our timestamps are to
 nanosecond precision, but you don't need that kind of resolution in in
 ordinary debugging).
 
-Messages sent to syslog will be logged at @Info@ level severity.
-
 @since 0.2.12
 -}
 info :: Rope -> Program τ ()
@@ -324,9 +313,9 @@ used for unexpected conditions or places where defaults are being applied
 
 Warnings are worthy of note if you are looking into the behaviour of the
 system, and usually—but not always—indicate a problem. That problem may not
-need to be rectified, certainly not immediately. 
+need to be rectified, certainly not immediately.
 
-__DO NOT PAGE OPERATIONS STAFF ON WARNINGS__. 
+__DO NOT PAGE OPERATIONS STAFF ON WARNINGS__.
 
 For example, see "Core.Program.Execute"'s 'Core.Program.Execute.trap_'
 function, a wrapper action which allows you to restart a loop when combined
@@ -410,10 +399,8 @@ will result in
 
 > 13:05:58Z (03.141) programName = hello
 
-appearing on stdout /and/ the message being sent down the logging channel,
-assuming these actions executed about three seconds after program start.
-
-Messages sent to syslog will be logged at @Debug@ level severity.
+appearing on @stdout@, assuming these actions executed about three seconds
+after program start.
 -}
 debug :: Rope -> Rope -> Program τ ()
 debug label value = do
