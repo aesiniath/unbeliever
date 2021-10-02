@@ -162,7 +162,7 @@ escapeHandlers context =
          in do
                 subProgram context $ do
                     setVerbosityLevel Debug
-                    info text
+                    critical text
                 pure (ExitFailure 127)
 
 --
@@ -209,7 +209,7 @@ trap_ action =
         ( \(e :: SomeException) ->
             let text = intoRope (displayException e)
              in do
-                    info "Trapped uncaught exception"
+                    warn "Trapped uncaught exception"
                     debug "e" text
         )
 
@@ -317,7 +317,7 @@ processStandardOutput out =
         )
         (collapseHandler "output processing collapsed")
 
-processDebugMessages :: TQueue Message -> IO ()
+processDebugMessages :: TQueue () -> IO ()
 processDebugMessages log =
     Safe.catch
         ( do
