@@ -77,6 +77,7 @@ import Core.Text.Utilities (
     dullCyan,
     dullGreen,
     dullYellow,
+    pureGrey,
  )
 import qualified Data.Aeson as Aeson
 import Data.Coerce
@@ -86,6 +87,8 @@ import Data.Hashable (Hashable)
 import Data.Scientific (Scientific)
 import Data.String (IsString (..))
 import qualified Data.Text as T
+import qualified Data.Vector as V
+import GHC.Generics
 import Prettyprinter (
     Doc,
     Pretty (..),
@@ -109,8 +112,6 @@ import Prettyprinter (
     vsep,
     (<+>),
  )
-import qualified Data.Vector as V
-import GHC.Generics
 
 {- |
 Given a JSON value, encode it to UTF-8 bytes
@@ -279,7 +280,7 @@ If you're curious, the render pipeline looks like:
 -}
 colourizeJson :: JsonToken -> AnsiColour
 colourizeJson token = case token of
-    SymbolToken -> brightGrey
+    SymbolToken -> pureGrey
     QuoteToken -> brightGrey
     KeyToken -> brightBlue
     StringToken -> dullCyan
