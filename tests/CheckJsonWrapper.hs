@@ -6,7 +6,6 @@ module CheckJsonWrapper where
 import Core.Data
 import Core.Encoding.Json
 import Core.Text
-import qualified Data.ByteString.Char8 as C
 import Test.Hspec
 
 k = JsonKey "intro"

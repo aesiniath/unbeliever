@@ -90,7 +90,6 @@ import Core.Text.Utilities (
  )
 import qualified Data.Aeson as Aeson
 import Data.Coerce
-import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable (Hashable)
 import qualified Data.List as List
@@ -99,7 +98,6 @@ import Data.Scientific (
     Scientific,
     formatScientific,
     isFloating,
-    isInteger,
  )
 import Data.String (IsString (..))
 import qualified Data.Text as T
@@ -217,22 +215,6 @@ instance Fractional JsonValue where
     fromRational = JsonNumber . fromRational
     (/) = error "Sorry, you can't do division on JsonValues"
 
-intoAeson :: JsonValue -> Aeson.Value
-intoAeson value = case value of
-    JsonObject xm ->
-        let kvs = fromMap xm
-            tvs = fmap (\(k, v) -> (fromRope (coerce k), intoAeson v)) kvs
-            tvm :: HashMap T.Text Aeson.Value
-            tvm = HashMap.fromList tvs
-         in Aeson.Object tvm
-    JsonArray xs ->
-        let vs = fmap intoAeson xs
-         in Aeson.Array (V.fromList vs)
-    JsonString x -> Aeson.String (fromRope x)
-    JsonNumber x -> Aeson.Number x
-    JsonBool x -> Aeson.Bool x
-    JsonNull -> Aeson.Null
-
 {- |
 Keys in a JSON object.
 -}
@@ -243,10 +225,6 @@ newtype JsonKey
 instance Hashable JsonKey
 
 instance Key JsonKey
-
--- FIXME what is this instance?
-instance Aeson.ToJSON Rope where
-    toJSON text = Aeson.toJSON (fromRope text :: T.Text) -- BAD
 
 instance Textual JsonKey where
     fromRope t = coerce t
