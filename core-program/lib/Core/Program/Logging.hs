@@ -117,8 +117,8 @@ You can change the current logging level from within your program by calling
 to the program using /kill/:
 
 @
-$ kill -USR1 42069
-$
+\$ kill -USR1 42069
+\$
 @
 -}
 module Core.Program.Logging (
@@ -215,11 +215,12 @@ formatLogMessage start now severity message =
 
         reset = intoEscapes resetColour
      in mconcat
-            [ color
+            [ intoEscapes dullWhite
             , intoRope stampZ
             , " ("
             , padWithZeros 6 (show elapsed)
             , ") "
+            , color
             , message
             , reset
             ]
