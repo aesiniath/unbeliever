@@ -20,6 +20,8 @@ j2 =
         ( intoMap
             [ (JsonKey "song", JsonString "Thriller")
             , (JsonKey "other", JsonString "A very long name for the \"shadow of the moon\".")
+            , (JsonKey "answer", JsonNumber 42)
+            , (JsonKey "pie", JsonNumber 6.62607015e-34)
             ,
                 ( JsonKey "four"
                 , JsonObject
@@ -31,7 +33,7 @@ j2 =
             ]
         )
 
-b = intoBytes (C.pack "{\"cost\": 4500}")
+b = packBytes "{\"cost\": 4500}"
 
 r = JsonArray [JsonBool False, JsonNull, JsonNumber 42]
 
@@ -40,13 +42,19 @@ checkJsonWrapper = do
     describe "JsonValue encoding" $
         do
             it "JSON String should be wrapped in quotes" $ do
-                encodeToUTF8 v `shouldBe` intoBytes (C.pack "\"Hello\"")
+                encodeToUTF8 v `shouldBe` packBytes "\"Hello\""
+
+            it "JSON Numbers differentiate between integers and floats" $ do
+                encodeToUTF8 (JsonNumber 42) `shouldBe` packBytes "42"
+                encodeToUTF8 (JsonNumber 3.141592) `shouldBe` packBytes "3.141592"
+                encodeToUTF8 (JsonNumber 2.99792458e8) `shouldBe` packBytes "299792458"
+                encodeToUTF8 (JsonNumber 6.62607015e-34) `shouldBe` packBytes "6.62607015e-34"
 
             it "JSON Array renders correctly" $ do
-                encodeToUTF8 r `shouldBe` intoBytes (C.pack "[false,null,42]")
+                encodeToUTF8 r `shouldBe` packBytes "[false,null,42]"
 
             it "JSON Object renders correctly" $ do
-                encodeToUTF8 j `shouldBe` intoBytes (C.pack "{\"intro\":\"Hello\"}")
+                encodeToUTF8 j `shouldBe` packBytes "{\"intro\":\"Hello\"}"
 
             it "decoding an Object parses" $ do
                 decodeFromUTF8 b `shouldBe` Just (JsonObject (intoMap [(JsonKey "cost", JsonNumber 4500)]))

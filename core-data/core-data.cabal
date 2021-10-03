@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c99644702092be6ca1289e7578f03a04dd4ee516e4d66849bd6bf7403459f3e5
+-- hash: b8e47b01b780a98a3e9525f83792d3659340e9a1a73e09fcd92cca2d1090d3cb
 
 name:           core-data
-version:        0.2.1.9
+version:        0.2.2.0
 synopsis:       Convenience wrappers around common data structures and encodings
 description:    Wrappers around common data structures and encodings.
                 .
@@ -27,7 +27,7 @@ copyright:      © 2018-2021 Athae Eredh Siniath and Others
 license:        MIT
 license-file:   LICENSE
 tested-with:
-    GHC == 8.10.6
+    GHC == 8.10.7
 build-type:     Simple
 
 source-repository head
