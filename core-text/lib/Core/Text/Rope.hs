@@ -285,6 +285,8 @@ singletonRope = Rope . F.singleton . S.singleton
 A 'Rope' built from a list of characters. Equivalent to calling 'intoRope' on
 the String, but can help you avoid ambiguious type errors when composing
 functions or working with literals.
+
+@since 0.3.4
 -}
 packRope :: String -> Rope
 packRope xs = Rope . F.singleton . S.pack $ xs
