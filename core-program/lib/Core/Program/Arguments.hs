@@ -46,6 +46,7 @@ module Core.Program.Arguments (
     blank,
     simple,
     complex,
+    emptyParameters,
 ) where
 
 import Data.Hashable (Hashable)
@@ -410,6 +411,14 @@ data Parameters = Parameters
     , environmentValuesFrom :: Map LongName ParameterValue
     }
     deriving (Show, Eq)
+
+emptyParameters :: Parameters
+emptyParameters =
+    Parameters
+        { commandNameFrom = Nothing
+        , parameterValuesFrom = emptyMap
+        , environmentValuesFrom = emptyMap
+        }
 
 baselineOptions :: [Options]
 baselineOptions =

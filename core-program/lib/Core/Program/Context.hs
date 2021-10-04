@@ -71,8 +71,7 @@ data Trace = Trace
     { traceIdentifierFrom :: Rope
     }
 
-
-{-|
+{- |
 Implementation of a forwarder for structured logging of the telemetry channel.
 -}
 data Exporter = Exporter
@@ -109,6 +108,7 @@ application data of type @τ@ which can be retrieved with
 data Context τ = Context
     { programNameFrom :: MVar Rope
     , versionFrom :: Version
+    , initialConfigFrom :: Config
     , commandLineFrom :: Parameters
     , exitSemaphoreFrom :: MVar ExitCode
     , startTimeFrom :: MVar TimeStamp
@@ -167,7 +167,8 @@ level specified on the command-line by calling
 data Verbosity
     = Output
     | Event
-    | Verbose  -- ^ @since 0.2.12
+    | -- | @since 0.2.12
+      Verbose
     | Debug
     deriving (Show)
 
@@ -283,27 +284,26 @@ configure version t config = do
 
     arg0 <- getProgName
     n <- newMVar (intoRope arg0)
-    p <- handleCommandLine version config
     q <- newEmptyMVar
     i <- newMVar start
     columns <- getConsoleWidth
+    level <- newEmptyMVar
     out <- newTQueueIO
     tel <- newTQueueIO
     s <- newEmptyMVar
 
     u <- newMVar t
 
-    l <- handleVerbosityLevel p
-
     return
         $! Context
             { programNameFrom = n
             , versionFrom = version
-            , commandLineFrom = p
+            , initialConfigFrom = config
+            , commandLineFrom = emptyParameters -- will be filled in handleCommandLine
             , exitSemaphoreFrom = q
             , startTimeFrom = i
             , terminalWidthFrom = columns
-            , verbosityLevelFrom = l
+            , verbosityLevelFrom = level -- will be filled in handleVerbosityLevel
             , outputChannelFrom = out
             , telemetryChannelFrom = tel
             , telemetryExporterFrom = emptyExporter
