@@ -188,7 +188,7 @@ Available options:
                  Perform a trial run at the specified time but don't
                  actually do anything.
   -q, --quiet    Supress normal output.
-  -v, --verbose  Turn on event tracing. By default the logging stream will go
+  -v, --verbose  Turn on informational messages. The logging stream will go
                  to standard output on your terminal.
       --debug    Turn on debug level logging. Implies --verbose.
 
@@ -427,15 +427,15 @@ baselineOptions =
         (Just 'v')
         Empty
         [quote|
-        Turn on event tracing. By default the logging stream will go to
-        standard output on your terminal.
+        Turn on informational messages. The logging stream will go
+        to standard output in your terminal.
     |]
     , Option
         "debug"
         Nothing
         Empty
         [quote|
-        Turn on debug level logging. Implies --verbose.
+        Turn on debug output. Implies --verbose.
     |]
     ]
 
