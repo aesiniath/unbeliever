@@ -16,6 +16,8 @@ module Core.Program.Context (
     Datum (..),
     Trace (..),
     Context (..),
+    handleCommandLine,
+    handleVerbosityLevel,
     Exporter (..),
     emptyExporter,
     None (..),
@@ -30,7 +32,7 @@ module Core.Program.Context (
 ) where
 
 import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
-import Control.Concurrent.MVar (MVar, newEmptyMVar, newMVar, readMVar)
+import Control.Concurrent.MVar (MVar, newEmptyMVar, newMVar, putMVar, readMVar)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
 import qualified Control.Exception.Safe as Safe (throw)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow (throwM))
@@ -339,14 +341,21 @@ terminate here.
     called that in Core.Program.Arguments). And, returning here lets us set
     up the layout width to match (one off the) actual width of console.
 -}
-handleCommandLine :: Version -> Config -> IO Parameters
-handleCommandLine version config = do
+handleCommandLine :: Context τ -> IO (Context τ)
+handleCommandLine context = do
     argv <- getArgs
-    let result = parseCommandLine config argv
+
+    let config = initialConfigFrom context
+        version = versionFrom context
+        result = parseCommandLine config argv
+
     case result of
         Right parameters -> do
             pairs <- lookupEnvironmentVariables config parameters
-            return parameters{environmentValuesFrom = pairs}
+            let params = parameters{environmentValuesFrom = pairs}
+            -- update the result of all this and return in
+            let context' = context{commandLineFrom = params}
+            pure context'
         Left e -> case e of
             HelpRequest mode -> do
                 render (buildUsage config mode)
@@ -381,16 +390,19 @@ lookupEnvironmentVariables config params = do
             Just value -> insertKeyValue name (Value value) acc
             Nothing -> acc
 
-handleVerbosityLevel :: Parameters -> IO (MVar Verbosity)
-handleVerbosityLevel params = do
-    let result = queryVerbosityLevel params
+handleVerbosityLevel :: Context τ -> IO (MVar Verbosity)
+handleVerbosityLevel context = do
+    let params = commandLineFrom context
+        level = verbosityLevelFrom context
+        result = queryVerbosityLevel params
     case result of
-        Right level -> do
-            newMVar level
         Left exit -> do
-            putStrLn "error: To set logging level use --verbose or --debug; neither take values."
+            putStrLn "error: To set logging level use --verbose or --debug; neither take a value."
             hFlush stdout
             exitWith exit
+        Right verbosity -> do
+            putMVar level verbosity
+            pure level
 
 queryVerbosityLevel :: Parameters -> Either ExitCode Verbosity
 queryVerbosityLevel params =

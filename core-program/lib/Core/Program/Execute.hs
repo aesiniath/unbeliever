@@ -221,7 +221,7 @@ calls 'configure' with an appropriate default when initializing.
 execute :: Program None α -> IO ()
 execute program = do
     context <- configure "" None (simpleConfig [])
-    executeWith context program
+    executeActual context program
 
 {- |
 Embelish a program with useful behaviours, supplying a configuration
@@ -229,15 +229,20 @@ for command-line options & argument parsing and an initial value for
 the top-level application state, if appropriate.
 -}
 executeWith :: Context τ -> Program τ α -> IO ()
-executeWith context program = do
+executeWith = executeActual
+
+executeActual :: Context τ -> Program τ α -> IO ()
+executeActual context0 program = do
     -- command line +RTS -Nn -RTS value
     when (numCapabilities == 1) (getNumProcessors >>= setNumCapabilities)
 
     -- force UTF-8 working around bad VMs
     setLocaleEncoding utf8
 
+    context <- handleCommandLine context0
+    level <- handleVerbosityLevel context
+
     let quit = exitSemaphoreFrom context
-        level = verbosityLevelFrom context
         out = outputChannelFrom context
         tel = telemetryChannelFrom context
         exporter = telemetryExporterFrom context
