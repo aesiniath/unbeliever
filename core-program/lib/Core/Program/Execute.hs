@@ -239,8 +239,8 @@ executeWith context program = do
     let quit = exitSemaphoreFrom context
         level = verbosityLevelFrom context
         out = outputChannelFrom context
-        log = loggerChannelFrom context
-        exporter = loggerExporterFrom context
+        tel = telemetryChannelFrom context
+        exporter = telemetryExporterFrom context
 
     -- set up signal handlers
     _ <-
@@ -255,7 +255,7 @@ executeWith context program = do
     -- set up debug logger
     l <-
         Async.async $ do
-            processTelemetryMessages exporter log
+            processTelemetryMessages exporter tel
 
     -- run actual program, ensuring to grab any otherwise uncaught exceptions.
     code <-
@@ -284,7 +284,7 @@ executeWith context program = do
     Async.race_
         ( do
             atomically $ do
-                done2 <- isEmptyTQueue log
+                done2 <- isEmptyTQueue tel
                 check done2
 
                 done1 <- isEmptyTQueue out

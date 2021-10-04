@@ -105,11 +105,11 @@ initializeTelemetry :: Exporter -> Context τ -> IO (Context τ)
 initializeTelemetry exporter context =
     pure
         ( context
-            { loggerExporterFrom = exporter
+            { telemetryExporterFrom = exporter
             }
         )
 
-honeycomb :: Exporter
+honeycomb :: Rope -> Exporter
 honeycomb = undefined
 
 encloseSpan :: Rope -> Program z a -> Program z a

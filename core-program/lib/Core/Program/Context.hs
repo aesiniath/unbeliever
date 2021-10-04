@@ -115,8 +115,8 @@ data Context τ = Context
     , terminalWidthFrom :: Int
     , verbosityLevelFrom :: MVar Verbosity
     , outputChannelFrom :: TQueue Rope
-    , loggerChannelFrom :: TQueue Datum
-    , loggerExporterFrom :: Exporter
+    , telemetryChannelFrom :: TQueue Datum
+    , telemetryExporterFrom :: Exporter
     , currentDatumFrom :: MVar Datum
     , applicationDataFrom :: MVar τ
     }
@@ -288,7 +288,7 @@ configure version t config = do
     i <- newMVar start
     columns <- getConsoleWidth
     out <- newTQueueIO
-    log <- newTQueueIO
+    tel <- newTQueueIO
     s <- newEmptyMVar
 
     u <- newMVar t
@@ -305,8 +305,8 @@ configure version t config = do
             , terminalWidthFrom = columns
             , verbosityLevelFrom = l
             , outputChannelFrom = out
-            , loggerChannelFrom = log
-            , loggerExporterFrom = emptyExporter
+            , telemetryChannelFrom = tel
+            , telemetryExporterFrom = emptyExporter
             , currentDatumFrom = s
             , applicationDataFrom = u
             }
@@ -402,6 +402,6 @@ queryVerbosityLevel params =
                 Value _ -> Left (ExitFailure 2)
             Nothing -> case verbose of
                 Just value -> case value of
-                    Empty -> Right Event
+                    Empty -> Right Verbose
                     Value _ -> Left (ExitFailure 2)
                 Nothing -> Right Output
