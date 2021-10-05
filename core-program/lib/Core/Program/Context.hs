@@ -45,6 +45,7 @@ import Core.Program.Metadata
 import Core.System.Base hiding (catch, throw)
 import Core.Text.Rope
 import Data.Foldable (foldrM)
+import Data.Int (Int64)
 import Prettyprinter (LayoutOptions (..), PageWidth (..), layoutPretty)
 import Prettyprinter.Render.Text (renderIO)
 import qualified System.Console.Terminal.Size as Terminal (Window (..), size)
@@ -58,17 +59,10 @@ data Datum = Datum
     , datumTimeFrom :: TimeStamp
     , parentTraceFrom :: Maybe Trace
     , parentSpanFrom :: Maybe Datum
-    , datumDuration :: Maybe Int -- milliseconds?
+    , datumDuration :: Maybe Int64
     , attachedMetadata :: Map JsonKey JsonValue
     }
 
-createSpan :: Rope -> Datum
-createSpan label = undefined
-
-{- Span { spanIdentifierFrom = label
-     ,parentTraceFrom =
-}
--}
 data Trace = Trace
     { traceIdentifierFrom :: Rope
     }

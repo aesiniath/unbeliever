@@ -2,6 +2,10 @@
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
+{- |
+For spans to be connected together by an observability tool they need to be
+part of a /trace/.
+-}
 module Core.Program.Telemetry (
     MetricValue,
     Telemetry (metric),
@@ -16,8 +20,13 @@ module Core.Program.Telemetry (
     sendEvent,
 ) where
 
+import Control.Concurrent.MVar (newMVar, readMVar)
+import Control.Concurrent.STM (atomically)
+import Control.Concurrent.STM.TQueue (writeTQueue)
 import Core.Encoding.Json
 import Core.Program.Context
+import Core.System.Base (liftIO)
+import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
 import Core.Text.Rope
 import qualified Data.ByteString as B (ByteString)
 import qualified Data.ByteString.Lazy as L (ByteString)
@@ -113,25 +122,67 @@ honeycomb :: Rope -> Exporter
 honeycomb = undefined
 
 encloseSpan :: Rope -> Program z a -> Program z a
-encloseSpan label action = undefined
+encloseSpan label action = do
+    context <- getContext
 
-{- do
-    bracket
-        (beginSpan)
-        (endSpan)
-        (\_ -> action)
-    where
-        beginSpan :: Program z Span
-        beginSpan = undefined
+    liftIO $ do
+        let v = currentDatumFrom context
+        datum <- readMVar v
 
-        endSpan :: Program z ()
-        ensSpan = do
-            eventT
+        -- prepare new span
+        unique <- randomIdentifier
+        start <- getCurrentTimeNanoseconds
+
+        let datum' =
+                datum
+                    { datumIdentifierFrom = unique
+                    , datumNameFrom = label
+                    , datumTimeFrom = start
+                    , parentSpanFrom = Just datum
+                    }
+        v' <- newMVar datum'
+
+        let context' =
+                context
+                    { currentDatumFrom = v'
+                    }
+
+        -- execute nested program
+        result <- subProgram context' action
+
+        -- finalize span and queue for sending
+        datum2 <- readMVar v'
+
+        finish <- getCurrentTimeNanoseconds
+        let datum2' =
+                datum2
+                    { datumDuration = Just (unTimeStamp finish - unTimeStamp start)
+                    }
+
+        let telem = telemetryChannelFrom context
+
+        atomically $ do
+            writeTQueue telem datum2'
+
+        pure result
+
+randomIdentifier :: IO Rope
+randomIdentifier = undefined
+
+
+{- |
+Start a new trace. A random identifier will be generated.
 -}
-
 beginTrace :: Program τ α -> Program τ α
 beginTrace = undefined
 
+{- |
+Begin a new trace, but using a trace identifier provided externally. This is
+the most common case. Internal services that are play a part of a larger
+request will inherit a job identifier, sequence number, or other externally
+supplied unique code. Even an internet facing web service might have a
+correlation ID provided by the outside load balancers.
+-}
 usingTrace :: Rope -> Program τ α -> Program τ α
 usingTrace = undefined
 
