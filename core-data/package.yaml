@@ -33,7 +33,7 @@ dependencies:
  - text
  - unordered-containers
  - vector
- - core-text >= 0.3.0
+ - core-text >= 0.3.4
 
 library:
   source-dirs: lib

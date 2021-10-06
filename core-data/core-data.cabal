@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 260497a0e95dff55d9accf09c1963868083e4600c441f37d283e6a2c0bd29639
+-- hash: 48545a1876c96d75c06bc415c0242e002b50e6b6e6c184b90e8aafebc9ee6bbf
 
 name:           core-data
 version:        0.2.1.10
@@ -48,7 +48,7 @@ library
     , base >=4.11 && <5
     , bytestring
     , containers
-    , core-text >=0.3.0
+    , core-text >=0.3.4
     , hashable >=1.2 && <1.4
     , prettyprinter >=1.6.2
     , scientific
