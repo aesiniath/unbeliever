@@ -169,12 +169,13 @@ encloseSpan label action = do
 randomIdentifier :: IO Rope
 randomIdentifier = undefined
 
-
 {- |
 Start a new trace. A random identifier will be generated.
 -}
 beginTrace :: Program τ α -> Program τ α
-beginTrace = undefined
+beginTrace = do
+    traceId <- randomIdentifier
+    usingTrace traceId Nothing
 
 {- |
 Begin a new trace, but using a trace identifier provided externally. This is
@@ -182,9 +183,39 @@ the most common case. Internal services that are play a part of a larger
 request will inherit a job identifier, sequence number, or other externally
 supplied unique code. Even an internet facing web service might have a
 correlation ID provided by the outside load balancers.
+
+If you are continuting an existing trace within the execution path of another,
+larger, enclosing service then you need to specify what the parent span's
+identifier is in the second argument.
 -}
-usingTrace :: Rope -> Program τ α -> Program τ α
-usingTrace = undefined
+usingTrace :: Rope -> Maybe Rope -> Program τ α -> Program τ α
+usingTrace traceId possibleParentId  action= do
+    context <- getContext
+
+    liftIO $ do
+        -- prepare new span
+        let trace =
+                Trace
+                    { traceIdentifierFrom = traceId
+                    }
+
+        let datum =
+                emptyDatum
+                    { parentTraceFrom = Just trace
+                    , parentSpanFrom = possibleParentId
+                    }
+
+HERE -- we could maybe drop MVar Datum to just Datum, and put
+    -- the metadataalon map alone in Datum behind the MVar 
+
+        v <- newMVar datum
+        let context' =
+                context
+                    { currentDatumFrom = v
+                    }
+
+        -- execute nested program
+        subProgram context' action
 
 telemetry :: [MetricValue] -> Program τ ()
 telemetry = undefined

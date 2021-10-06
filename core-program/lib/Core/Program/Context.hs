@@ -14,6 +14,7 @@
 -- This is an Internal module, hidden from Haddock
 module Core.Program.Context (
     Datum (..),
+    emptyDatum,
     Trace (..),
     Context (..),
     handleCommandLine,
@@ -60,8 +61,20 @@ data Datum = Datum
     , parentTraceFrom :: Maybe Trace
     , parentSpanFrom :: Maybe Datum
     , datumDuration :: Maybe Int64
-    , attachedMetadata :: Map JsonKey JsonValue
+    , attachedMetadata :: MVar (Map JsonKey JsonValue)
     }
+
+emptyDatum :: Datum
+emptyDatum =
+    Datum
+        { datumIdentifierFrom = emptyRope
+        , datumNameFrom = emptyRope
+        , datumTimeFrom = 0
+        , parentTraceFrom = Nothing
+        , parentSpanFrom = Nothing
+        , datumDuration = Nothing
+        , attachedMetadata = emptyMap
+        }
 
 data Trace = Trace
     { traceIdentifierFrom :: Rope
