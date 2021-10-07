@@ -28,10 +28,12 @@ import Core.Program.Context
 import Core.System.Base (liftIO)
 import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
 import Core.Text.Rope
+import System.Random (newStdGen, randomRs)
 import qualified Data.ByteString as B (ByteString)
 import qualified Data.ByteString.Lazy as L (ByteString)
 import Data.Int (Int32, Int64)
 import Data.Scientific (Scientific)
+import Data.Char (chr)
 import qualified Data.Text as T (Text)
 import qualified Data.Text.Lazy as U (Text)
 
@@ -126,56 +128,68 @@ encloseSpan label action = do
     context <- getContext
 
     liftIO $ do
-        let v = currentDatumFrom context
-        datum <- readMVar v
+        let datum = currentDatumFrom context
 
         -- prepare new span
         unique <- randomIdentifier
         start <- getCurrentTimeNanoseconds
+
+        -- slightly tricky: we need to pull the Map out of this datum, and
+        -- create a new MVar to wrap it to pass in to new one.
+        meta <- readMVar (attachedMetadata datum)
+        meta' <- newMVar meta
 
         let datum' =
                 datum
                     { datumIdentifierFrom = unique
                     , datumNameFrom = label
                     , datumTimeFrom = start
-                    , parentSpanFrom = Just datum
+                    , parentSpanFrom = Just (datumIdentifierFrom datum)
+                    , attachedMetadata = meta'
                     }
-        v' <- newMVar datum'
 
         let context' =
                 context
-                    { currentDatumFrom = v'
+                    { currentDatumFrom = datum'
                     }
 
         -- execute nested program
         result <- subProgram context' action
 
-        -- finalize span and queue for sending
-        datum2 <- readMVar v'
-
         finish <- getCurrentTimeNanoseconds
-        let datum2' =
-                datum2
+        let datum2 =
+                datum'
                     { datumDuration = Just (unTimeStamp finish - unTimeStamp start)
                     }
 
         let telem = telemetryChannelFrom context
 
         atomically $ do
-            writeTQueue telem datum2'
+            writeTQueue telem datum2
 
         pure result
 
+represent :: Int -> Char
+represent x
+    | x < 10 = chr (48 + x)
+    | x < 36 = chr (65 + x - 10)
+    | x < 62 = chr (97 + x - 36)
+    | otherwise = '@'
+
+-- TODO replace this with something that gets a UUID
 randomIdentifier :: IO Rope
-randomIdentifier = undefined
+randomIdentifier = do
+    gen <- newStdGen
+    let result = packRope . fmap represent . take 16 . randomRs (0, 61) $ gen
+    pure result
 
 {- |
 Start a new trace. A random identifier will be generated.
 -}
 beginTrace :: Program τ α -> Program τ α
-beginTrace = do
-    traceId <- randomIdentifier
-    usingTrace traceId Nothing
+beginTrace action = do
+    traceId <- liftIO randomIdentifier
+    usingTrace traceId Nothing action
 
 {- |
 Begin a new trace, but using a trace identifier provided externally. This is
@@ -189,7 +203,7 @@ larger, enclosing service then you need to specify what the parent span's
 identifier is in the second argument.
 -}
 usingTrace :: Rope -> Maybe Rope -> Program τ α -> Program τ α
-usingTrace traceId possibleParentId  action= do
+usingTrace traceId possibleParentId action = do
     context <- getContext
 
     liftIO $ do
