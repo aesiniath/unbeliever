@@ -205,13 +205,9 @@ usingTrace traceId possibleParentId  action= do
                     , parentSpanFrom = possibleParentId
                     }
 
-HERE -- we could maybe drop MVar Datum to just Datum, and put
-    -- the metadataalon map alone in Datum behind the MVar 
-
-        v <- newMVar datum
         let context' =
                 context
-                    { currentDatumFrom = v
+                    { currentDatumFrom = datum
                     }
 
         -- execute nested program
