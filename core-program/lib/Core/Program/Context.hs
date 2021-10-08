@@ -16,6 +16,9 @@ module Core.Program.Context (
     Datum (..),
     emptyDatum,
     Trace (..),
+    unSpan,
+    Span (..),
+    unTrace,
     Context (..),
     handleCommandLine,
     handleVerbosityLevel,
@@ -47,6 +50,7 @@ import Core.System.Base hiding (catch, throw)
 import Core.Text.Rope
 import Data.Foldable (foldrM)
 import Data.Int (Int64)
+import Data.String (IsString)
 import Prettyprinter (LayoutOptions (..), PageWidth (..), layoutPretty)
 import Prettyprinter.Render.Text (renderIO)
 import qualified System.Console.Terminal.Size as Terminal (Window (..), size)
@@ -55,28 +59,47 @@ import System.Exit (ExitCode (..), exitWith)
 import Prelude hiding (log)
 
 data Datum = Datum
-    { datumIdentifierFrom :: Rope
-    , datumNameFrom :: Rope
-    , datumTimeFrom :: TimeStamp
-    , parentTraceFrom :: Maybe Trace
-    , parentSpanFrom :: Maybe Rope
-    , datumDuration :: Maybe Int64
+    { spanIdentifierFrom :: Span
+    , spanNameFrom :: Rope
+    , spanTimeFrom :: TimeStamp
+    , traceIdentifierFrom :: Maybe Trace
+    , parentIdentifierFrom :: Maybe Span
+    , durationFrom :: Maybe Int64
     , attachedMetadata :: Map JsonKey JsonValue
     }
 
 emptyDatum :: Datum
 emptyDatum =
     Datum
-        { datumIdentifierFrom = emptyRope
-        , datumNameFrom = emptyRope
-        , datumTimeFrom = 0
-        , parentTraceFrom = Nothing
-        , parentSpanFrom = Nothing
-        , datumDuration = Nothing
+        { spanIdentifierFrom = emptySpan
+        , spanNameFrom = emptyRope
+        , spanTimeFrom = 0
+        , traceIdentifierFrom = Nothing
+        , parentIdentifierFrom = Nothing
+        , durationFrom = Nothing
         , attachedMetadata = emptyMap
         }
 
+{- |
+Unique identifier for a span.
+-}
+newtype Span = Span Rope
+    deriving (Show, IsString)
+
+emptySpan :: Span
+emptySpan = Span ""
+
+unSpan :: Span -> Rope
+unSpan (Span text) = text
+
+{- |
+Unique identifier for a trace.
+-}
 newtype Trace = Trace Rope
+    deriving (Show, IsString)
+
+unTrace :: Trace -> Rope
+unTrace (Trace text) = text
 
 {- |
 Implementation of a forwarder for structured logging of the telemetry channel.

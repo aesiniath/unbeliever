@@ -141,10 +141,13 @@ encloseSpan label action = do
 
         let datum' =
                 datum
-                    { datumIdentifierFrom = unique
-                    , datumNameFrom = label
-                    , datumTimeFrom = start
-                    , parentSpanFrom = Just (datumIdentifierFrom datum)
+                    { spanIdentifierFrom = Span unique
+                    , spanNameFrom = label
+                    , spanTimeFrom = start
+                    , parentIdentifierFrom =
+                        if nullRope (unSpan (spanIdentifierFrom datum)) -- ugly, but we can't set parent span until we know we're not the top
+                            then Nothing
+                            else Just (spanIdentifierFrom datum)
                     }
 
         v' <- newMVar datum'
@@ -162,7 +165,7 @@ encloseSpan label action = do
         finish <- getCurrentTimeNanoseconds
         let datum2 =
                 datum'
-                    { datumDuration = Just (unTimeStamp finish - unTimeStamp start)
+                    { durationFrom = Just (unTimeStamp finish - unTimeStamp start)
                     }
 
         let telem = telemetryChannelFrom context
@@ -194,8 +197,8 @@ Start a new trace. A random identifier will be generated.
 -}
 beginTrace :: Program τ α -> Program τ α
 beginTrace action = do
-    traceId <- liftIO randomIdentifier
-    usingTrace traceId Nothing action
+    trace <- liftIO randomIdentifier
+    usingTrace (Trace trace) Nothing action
 
 {- |
 Begin a new trace, but using a trace identifier provided externally. This is
@@ -208,25 +211,23 @@ If you are continuting an existing trace within the execution path of another,
 larger, enclosing service then you need to specify what the parent span's
 identifier is in the second argument.
 -}
-usingTrace :: Rope -> Maybe Rope -> Program τ α -> Program τ α
-usingTrace traceId possibleParentId action = do
+usingTrace :: Trace -> Maybe Span -> Program τ α -> Program τ α
+usingTrace trace possibleParent action = do
     context <- getContext
 
-    case possibleParentId of
+    case possibleParent of
         Nothing -> do
-            debug "traceId" traceId
-        Just parentId -> do
-            debug "traceId" traceId
-            debug "parentId" parentId
+            debug "traceId" (unTrace trace)
+        Just parent -> do
+            debug "traceId" (unTrace trace)
+            debug "parentId" (unSpan parent)
 
     liftIO $ do
         -- prepare new span
-        let trace = Trace traceId
-
         let datum =
                 emptyDatum
-                    { parentTraceFrom = Just trace
-                    , parentSpanFrom = possibleParentId
+                    { traceIdentifierFrom = Just trace
+                    , parentIdentifierFrom = possibleParent
                     }
 
         v <- newMVar datum
