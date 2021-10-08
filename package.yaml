@@ -80,6 +80,15 @@ tests:
      - CheckProgramMonad
      - CheckRopeBehaviour
 
+  snippet:
+    dependencies:
+     - core-telemetry
+    ghc-options: -threaded
+    source-dirs:
+     - tests
+    main: TelemetrySnippet.hs
+    other-modules: []
+
 benchmarks:
   performance:
     dependencies:

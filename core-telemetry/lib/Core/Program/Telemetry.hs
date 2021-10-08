@@ -20,22 +20,24 @@ module Core.Program.Telemetry (
     sendEvent,
 ) where
 
-import Control.Concurrent.MVar (newMVar, readMVar)
+import Control.Concurrent.MVar (newMVar, putMVar, readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (writeTQueue)
+import Core.Data.Structures (Map, insertKeyValue)
 import Core.Encoding.Json
 import Core.Program.Context
 import Core.System.Base (liftIO)
 import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
 import Core.Text.Rope
-import System.Random (newStdGen, randomRs)
 import qualified Data.ByteString as B (ByteString)
 import qualified Data.ByteString.Lazy as L (ByteString)
-import Data.Int (Int32, Int64)
-import Data.Scientific (Scientific)
 import Data.Char (chr)
+import Data.Int (Int32, Int64)
+import qualified Data.List as List (foldl')
+import Data.Scientific (Scientific)
 import qualified Data.Text as T (Text)
 import qualified Data.Text.Lazy as U (Text)
+import System.Random (newStdGen, randomRs)
 
 {- |
 A telemetry value that can be sent over the wire. This is a wrapper around
@@ -136,8 +138,9 @@ encloseSpan label action = do
 
         -- slightly tricky: we need to pull the Map out of this datum, and
         -- create a new MVar to wrap it to pass in to new one.
-        meta <- readMVar (attachedMetadata datum)
-        meta' <- newMVar meta
+        let v = attachedMetadata datum
+        meta <- readMVar v
+        v' <- newMVar meta
 
         let datum' =
                 datum
@@ -145,7 +148,7 @@ encloseSpan label action = do
                     , datumNameFrom = label
                     , datumTimeFrom = start
                     , parentSpanFrom = Just (datumIdentifierFrom datum)
-                    , attachedMetadata = meta'
+                    , attachedMetadata = v'
                     }
 
         let context' =
@@ -228,7 +231,21 @@ usingTrace traceId possibleParentId action = do
         subProgram context' action
 
 telemetry :: [MetricValue] -> Program τ ()
-telemetry = undefined
+telemetry values = do
+    -- get the map out
+    context <- getContext
+    let datum = currentDatumFrom context
+    let v = attachedMetadata datum
+    meta <- liftIO (readMVar v)
+
+    -- update the map
+    let meta' = List.foldl' f meta values
+
+    -- replace the map back into the span
+    liftIO (putMVar v meta')
+  where
+    f :: Map JsonKey JsonValue -> MetricValue -> Map JsonKey JsonValue
+    f acc (MetricValue k v) = insertKeyValue k v acc
 
 sendEvent :: Rope -> [MetricValue] -> Program τ ()
 sendEvent label = undefined
