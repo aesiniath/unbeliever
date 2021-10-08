@@ -76,17 +76,20 @@ emptyDatum =
         , attachedMetadata = emptyMap
         }
 
-data Trace = Trace
-    { traceIdentifierFrom :: Rope
-    }
+newtype Trace = Trace Rope
 
 {- |
 Implementation of a forwarder for structured logging of the telemetry channel.
 -}
 data Exporter = Exporter
+    { processorFrom :: Datum -> IO ()
+    }
 
 emptyExporter :: Exporter
-emptyExporter = Exporter
+emptyExporter =
+    Exporter
+        { processorFrom = \_ -> pure ()
+        }
 
 {- |
 Internal context for a running program. You access this via actions in the

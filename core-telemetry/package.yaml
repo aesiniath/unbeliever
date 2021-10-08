@@ -1,5 +1,5 @@
 name: core-telemetry
-version: 0.1.0.0
+version: 0.1.0.1
 synopsis: Advanced telemetry
 description: |
   This is part of a library to help build command-line programs, both tools and
@@ -43,5 +43,22 @@ library:
   source-dirs:
   - lib
   exposed-modules:
-   - Core.Program.Telemetry
+   - Core.Telemetry
+   - Core.Telemetry.Observability
+   - Core.Telemetry.Backends
   other-modules: []
+
+executables:
+  snippet:
+    dependencies:
+     - core-data
+     - core-program
+     - core-telemetry
+     - core-text
+     - template-haskell
+    ghc-options: -threaded
+    source-dirs:
+     - ../tests
+    main: TelemetrySnippet.hs
+    other-modules: []
+

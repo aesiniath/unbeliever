@@ -327,12 +327,12 @@ processTelemetryMessages :: Exporter -> TQueue Datum -> IO ()
 processTelemetryMessages exporter log = do
     Safe.catch
         ( do
+            let processor = processorFrom exporter
             forever $ do
                 -- TODO do sactually do something with log messages
                 -- Message now severity text potentialValue <- ...
-                _ <- atomically (readTQueue log)
-
-                return ()
+                datum <- atomically (readTQueue log)
+                processor datum
         )
         (collapseHandler "telemetry processing collapsed")
 

@@ -6,13 +6,11 @@
 For spans to be connected together by an observability tool they need to be
 part of a /trace/.
 -}
-module Core.Program.Telemetry (
+module Core.Telemetry.Observability (
     MetricValue,
     Telemetry (metric),
     service,
-    Exporter,
     initializeTelemetry,
-    honeycomb,
     beginTrace,
     usingTrace,
     encloseSpan,
@@ -123,9 +121,6 @@ initializeTelemetry exporter context =
             }
         )
 
-honeycomb :: Rope -> Exporter
-honeycomb _ = emptyExporter
-
 encloseSpan :: Rope -> Program z a -> Program z a
 encloseSpan label action = do
     context <- getContext
@@ -226,10 +221,7 @@ usingTrace traceId possibleParentId action = do
 
     liftIO $ do
         -- prepare new span
-        let trace =
-                Trace
-                    { traceIdentifierFrom = traceId
-                    }
+        let trace = Trace traceId
 
         let datum =
                 emptyDatum
