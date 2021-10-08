@@ -8,8 +8,8 @@ Implementations of different backends that telemetry can be exported to.
 module Core.Telemetry.Backends (
     Dataset,
     Exporter,
-    debugExporter,
-    honeycomb,
+    consoleExporter,
+    honeycombExporter,
 ) where
 
 import Core.Data.Structures (Map, insertKeyValue)
@@ -22,22 +22,28 @@ import Core.Text.Colour
 import Core.Text.Rope
 import qualified Data.ByteString as B (ByteString)
 import qualified Data.ByteString.Lazy as L (ByteString)
-import Data.Maybe (fromMaybe)
 
-debugExporter :: Exporter
-debugExporter =
+-- TODO convert this into a Render instance
+
+-- Somewhat counterintuitively, this does NOT do I/O, but instead returns text
+-- which `processTelemetryMessages` will then forward to the main output queue
+-- consumed by `processStandardOutput`. This is a bit roundabout, but ensures
+-- debug output from this function doesn't smash the console.
+consoleExporter :: Exporter
+consoleExporter =
     Exporter
-        { processorFrom = \datum ->
+        { codenameFrom = "console"
+        , processorFrom = \datum ->
             let text =
                     (intoEscapes brightBlue) <> "name: "
                         <> spanNameFrom datum
                         <> "\ntrace: "
                         <> case traceIdentifierFrom datum of
-                            Nothing -> (intoEscapes pureRed) <> "??? no trace" <> (intoEscapes brightBlue)
+                            Nothing -> (intoEscapes pureRed) <> "[missing]" <> (intoEscapes brightBlue)
                             Just trace -> unTrace trace
                         <> "\nspan: "
                         <> case spanIdentifierFrom datum of
-                            Nothing -> (intoEscapes pureRed) <> "??? empty" <> (intoEscapes brightBlue)
+                            Nothing -> (intoEscapes pureRed) <> "[missing]" <> (intoEscapes brightBlue)
                             Just self -> unSpan self
                         <> "\nparent: "
                         <> case parentIdentifierFrom datum of
@@ -47,7 +53,7 @@ debugExporter =
                         <> intoRope (show (spanTimeFrom datum))
                         <> "\nduration: "
                         <> case durationFrom datum of
-                            Nothing -> "[no duration]"
+                            Nothing -> (intoEscapes dullYellow) <> "[none]" <> (intoEscapes brightBlue)
                             Just elapsed -> intoRope (show elapsed) <> " ns"
                         <> "\nmetadata:\n"
                         <> "FIXME"
@@ -55,7 +61,10 @@ debugExporter =
              in pure text
         }
 
+{- |
+Indicate which \"dataset\" spans and events will be posted into
+-}
 type Dataset = Rope
 
-honeycomb :: Dataset -> Exporter
-honeycomb _ = emptyExporter
+honeycombExporter :: Dataset -> Exporter
+honeycombExporter _ = emptyExporter{codenameFrom = "honeycomb"}

@@ -329,10 +329,13 @@ processTelemetryMessages exporter out log = do
         ( do
             let process = processorFrom exporter
             forever $ do
-                -- TODO do sactually do something with log messages
-                -- Message now severity text potentialValue <- ...
+                -- wait for an event
                 datum <- atomically (readTQueue log)
+
+                -- let Exporter handle it
                 result <- process datum
+
+                -- send any text returned to stdout
                 unless (nullRope result) $ do
                     atomically (writeTQueue out result)
         )

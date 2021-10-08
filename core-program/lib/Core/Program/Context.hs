@@ -110,13 +110,15 @@ unTrace (Trace text) = text
 Implementation of a forwarder for structured logging of the telemetry channel.
 -}
 data Exporter = Exporter
-    { processorFrom :: Datum -> IO Rope
+    { codenameFrom :: Rope
+    , processorFrom :: Datum -> IO Rope
     }
 
 emptyExporter :: Exporter
 emptyExporter =
     Exporter
-        { processorFrom = \_ -> pure emptyRope
+        { codenameFrom = "empty"
+        , processorFrom = \_ -> pure emptyRope
         }
 
 {- |
