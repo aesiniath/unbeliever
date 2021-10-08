@@ -30,11 +30,11 @@ debugExporter =
             let text =
                     (intoEscapes brightBlue) <> "name: "
                         <> spanNameFrom datum
-                        <> "\ntrace:  "
+                        <> "\ntrace: "
                         <> case traceIdentifierFrom datum of
                             Nothing -> (intoEscapes pureRed) <> "??? no trace" <> (intoEscapes brightBlue)
                             Just trace -> unTrace trace
-                        <> "\nspan:   "
+                        <> "\nspan: "
                         <> unSpan (spanIdentifierFrom datum)
                         <> "\nparent: "
                         <> case parentIdentifierFrom datum of
@@ -47,9 +47,9 @@ debugExporter =
                             Nothing -> "[no duration]"
                             Just elapsed -> intoRope (show elapsed) <> " ns"
                         <> "\nmetadata:\n"
+                        <> "FIXME"
                         <> (intoEscapes resetColour)
-             in do
-                    hWrite stdout text
+             in pure text
         }
 
 honeycomb :: Rope -> Exporter

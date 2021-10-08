@@ -117,10 +117,10 @@ import qualified Control.Concurrent.Async as Async (
  )
 import Control.Concurrent.MVar (modifyMVar_, newMVar, putMVar, readMVar)
 import Control.Concurrent.STM (atomically, check)
-import Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue, readTQueue)
+import Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue, readTQueue, writeTQueue)
 import qualified Control.Exception as Base (throwIO)
 import qualified Control.Exception.Safe as Safe (catch, catchesAsync, throw)
-import Control.Monad (forever, void, when)
+import Control.Monad (forever, unless, void, when)
 import Control.Monad.Catch (Handler (..))
 import Control.Monad.Reader.Class (MonadReader (ask))
 import Core.Data.Structures
@@ -260,7 +260,7 @@ executeActual context0 program = do
     -- set up debug logger
     l <-
         Async.async $ do
-            processTelemetryMessages exporter tel
+            processTelemetryMessages exporter out tel
 
     -- run actual program, ensuring to grab any otherwise uncaught exceptions.
     code <-
@@ -323,16 +323,18 @@ processStandardOutput out =
         )
         (collapseHandler "output processing collapsed")
 
-processTelemetryMessages :: Exporter -> TQueue Datum -> IO ()
-processTelemetryMessages exporter log = do
+processTelemetryMessages :: Exporter -> TQueue Rope -> TQueue Datum -> IO ()
+processTelemetryMessages exporter out log = do
     Safe.catch
         ( do
-            let processor = processorFrom exporter
+            let process = processorFrom exporter
             forever $ do
                 -- TODO do sactually do something with log messages
                 -- Message now severity text potentialValue <- ...
                 datum <- atomically (readTQueue log)
-                processor datum
+                result <- process datum
+                unless (nullRope result) $ do
+                    atomically (writeTQueue out result)
         )
         (collapseHandler "telemetry processing collapsed")
 
