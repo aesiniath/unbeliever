@@ -141,13 +141,10 @@ encloseSpan label action = do
 
         let datum' =
                 datum
-                    { spanIdentifierFrom = Span unique
+                    { spanIdentifierFrom = Just (Span unique)
                     , spanNameFrom = label
                     , spanTimeFrom = start
-                    , parentIdentifierFrom =
-                        if nullRope (unSpan (spanIdentifierFrom datum)) -- ugly, but we can't set parent span until we know we're not the top
-                            then Nothing
-                            else Just (spanIdentifierFrom datum)
+                    , parentIdentifierFrom = spanIdentifierFrom datum
                     }
 
         v' <- newMVar datum'

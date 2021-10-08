@@ -6,6 +6,7 @@
 Implementations of different backends that telemetry can be exported to.
 -}
 module Core.Telemetry.Backends (
+    Dataset,
     Exporter,
     debugExporter,
     honeycomb,
@@ -35,7 +36,9 @@ debugExporter =
                             Nothing -> (intoEscapes pureRed) <> "??? no trace" <> (intoEscapes brightBlue)
                             Just trace -> unTrace trace
                         <> "\nspan: "
-                        <> unSpan (spanIdentifierFrom datum)
+                        <> case spanIdentifierFrom datum of
+                            Nothing -> (intoEscapes pureRed) <> "??? empty" <> (intoEscapes brightBlue)
+                            Just self -> unSpan self
                         <> "\nparent: "
                         <> case parentIdentifierFrom datum of
                             Nothing -> (intoEscapes dullYellow) <> "[none]" <> (intoEscapes brightBlue)
@@ -52,5 +55,7 @@ debugExporter =
              in pure text
         }
 
-honeycomb :: Rope -> Exporter
+type Dataset = Rope
+
+honeycomb :: Dataset -> Exporter
 honeycomb _ = emptyExporter

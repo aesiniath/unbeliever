@@ -58,8 +58,16 @@ import System.Environment (getArgs, getProgName, lookupEnv)
 import System.Exit (ExitCode (..), exitWith)
 import Prelude hiding (log)
 
+{-|
+Carrier for spans and events while their data is being accumulated, and later
+sent down the telemetry channel. There is one of these in the Program monad's
+Context.
+-}
+-- `spanIdentifierFrom` is a Maybe because at startup there is not yet a
+-- current span. When the first (root) span is formed in `encloseSpan` it uses
+-- this as the parent value - in this case, no parent, which is what we want.
 data Datum = Datum
-    { spanIdentifierFrom :: Span
+    { spanIdentifierFrom :: Maybe Span
     , spanNameFrom :: Rope
     , spanTimeFrom :: TimeStamp
     , traceIdentifierFrom :: Maybe Trace
@@ -71,7 +79,7 @@ data Datum = Datum
 emptyDatum :: Datum
 emptyDatum =
     Datum
-        { spanIdentifierFrom = emptySpan
+        { spanIdentifierFrom = Nothing
         , spanNameFrom = emptyRope
         , spanTimeFrom = 0
         , traceIdentifierFrom = Nothing
@@ -85,9 +93,6 @@ Unique identifier for a span.
 -}
 newtype Span = Span Rope
     deriving (Show, IsString)
-
-emptySpan :: Span
-emptySpan = Span ""
 
 unSpan :: Span -> Rope
 unSpan (Span text) = text
