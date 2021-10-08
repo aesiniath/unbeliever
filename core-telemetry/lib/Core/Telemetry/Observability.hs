@@ -128,7 +128,7 @@ encloseSpan label action = do
     info (label <> " starting")
 
     unique <- liftIO randomIdentifier
-    debug "spanId" unique
+    debug "span" unique
 
     result0 <- liftIO $ do
         -- prepare new span
@@ -176,7 +176,7 @@ encloseSpan label action = do
         -- now back to your regularly scheduled Haskell program
         pure result
 
-    info (label <> " finishing")
+    info (label <> " finished")
     pure result0
 represent :: Int -> Char
 represent x
@@ -217,10 +217,10 @@ usingTrace trace possibleParent action = do
 
     case possibleParent of
         Nothing -> do
-            debug "traceId" (unTrace trace)
+            debug "trace" (unTrace trace)
         Just parent -> do
-            debug "traceId" (unTrace trace)
-            debug "parentId" (unSpan parent)
+            debug "trace" (unTrace trace)
+            debug "parent" (unSpan parent)
 
     liftIO $ do
         -- prepare new span
