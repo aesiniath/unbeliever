@@ -32,7 +32,7 @@ library:
    - async
    - core-text >= 0.3.2
    - core-data
-   - core-program
+   - core-program >= 0.3.0
    - chronologique
    - exceptions
    - mtl

@@ -20,12 +20,13 @@ module Core.Program.Telemetry (
     sendEvent,
 ) where
 
-import Control.Concurrent.MVar (newMVar, putMVar, readMVar)
+import Control.Concurrent.MVar (modifyMVar_, newMVar, readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (writeTQueue)
 import Core.Data.Structures (Map, insertKeyValue)
 import Core.Encoding.Json
 import Core.Program.Context
+import Core.Program.Logging
 import Core.System.Base (liftIO)
 import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
 import Core.Text.Rope
@@ -123,15 +124,19 @@ initializeTelemetry exporter context =
         )
 
 honeycomb :: Rope -> Exporter
-honeycomb = undefined
+honeycomb _ = emptyExporter
 
 encloseSpan :: Rope -> Program z a -> Program z a
 encloseSpan label action = do
     context <- getContext
 
-    liftIO $ do
+    info (label <> " starting")
+
+    unique <- liftIO randomIdentifier
+    debug "spanId" unique
+
+    result0 <- liftIO $ do
         -- prepare new span
-        unique <- randomIdentifier
         start <- getCurrentTimeNanoseconds
 
         -- slightly tricky: create a new Context with a new MVar with an
@@ -155,8 +160,10 @@ encloseSpan label action = do
                     }
 
         -- execute nested program
+
         result <- subProgram context' action
 
+        -- finalize the Datum with its duration and send it
         finish <- getCurrentTimeNanoseconds
         let datum2 =
                 datum'
@@ -168,8 +175,11 @@ encloseSpan label action = do
         atomically $ do
             writeTQueue telem datum2
 
+        -- now back to your regularly scheduled Haskell program
         pure result
 
+    info (label <> " finishing")
+    pure result0
 represent :: Int -> Char
 represent x
     | x < 10 = chr (48 + x)
@@ -207,6 +217,13 @@ usingTrace :: Rope -> Maybe Rope -> Program τ α -> Program τ α
 usingTrace traceId possibleParentId action = do
     context <- getContext
 
+    case possibleParentId of
+        Nothing -> do
+            debug "traceId" traceId
+        Just parentId -> do
+            debug "traceId" traceId
+            debug "parentId" parentId
+
     liftIO $ do
         -- prepare new span
         let trace =
@@ -237,19 +254,22 @@ telemetry values = do
     liftIO $ do
         -- get the map out
         let v = currentDatumFrom context
-        datum <- readMVar v
-        let meta = attachedMetadata datum
+        modifyMVar_
+            v
+            ( \datum -> do
+                let meta = attachedMetadata datum
 
-        -- update the map
-        let meta' = List.foldl' f meta values
+                -- update the map
+                let meta' = List.foldl' f meta values
 
-        -- replace the map back into the Datum (and thereby back into the
-        -- Context), updating it
-        let datum' =
-                datum
-                    { attachedMetadata = meta'
-                    }
-        putMVar v datum'
+                -- replace the map back into the Datum (and thereby back into the
+                -- Context), updating it
+                let datum' =
+                        datum
+                            { attachedMetadata = meta'
+                            }
+                pure datum'
+            )
   where
     f :: Map JsonKey JsonValue -> MetricValue -> Map JsonKey JsonValue
     f acc (MetricValue k v) = insertKeyValue k v acc
