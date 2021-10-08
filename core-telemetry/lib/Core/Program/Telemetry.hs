@@ -130,17 +130,14 @@ encloseSpan label action = do
     context <- getContext
 
     liftIO $ do
-        let datum = currentDatumFrom context
-
         -- prepare new span
         unique <- randomIdentifier
         start <- getCurrentTimeNanoseconds
 
-        -- slightly tricky: we need to pull the Map out of this datum, and
-        -- create a new MVar to wrap it to pass in to new one.
-        let v = attachedMetadata datum
-        meta <- readMVar v
-        v' <- newMVar meta
+        -- slightly tricky: create a new Context with a new MVar with an
+        -- forked copy of the current Datum, creating the nested span.
+        let v = currentDatumFrom context
+        datum <- readMVar v
 
         let datum' =
                 datum
@@ -148,12 +145,13 @@ encloseSpan label action = do
                     , datumNameFrom = label
                     , datumTimeFrom = start
                     , parentSpanFrom = Just (datumIdentifierFrom datum)
-                    , attachedMetadata = v'
                     }
+
+        v' <- newMVar datum'
 
         let context' =
                 context
-                    { currentDatumFrom = datum'
+                    { currentDatumFrom = v'
                     }
 
         -- execute nested program
@@ -222,9 +220,11 @@ usingTrace traceId possibleParentId action = do
                     , parentSpanFrom = possibleParentId
                     }
 
+        v <- newMVar datum
+
         let context' =
                 context
-                    { currentDatumFrom = datum
+                    { currentDatumFrom = v
                     }
 
         -- execute nested program
@@ -232,17 +232,24 @@ usingTrace traceId possibleParentId action = do
 
 telemetry :: [MetricValue] -> Program τ ()
 telemetry values = do
-    -- get the map out
     context <- getContext
-    let datum = currentDatumFrom context
-    let v = attachedMetadata datum
-    meta <- liftIO (readMVar v)
 
-    -- update the map
-    let meta' = List.foldl' f meta values
+    liftIO $ do
+        -- get the map out
+        let v = currentDatumFrom context
+        datum <- readMVar v
+        let meta = attachedMetadata datum
 
-    -- replace the map back into the span
-    liftIO (putMVar v meta')
+        -- update the map
+        let meta' = List.foldl' f meta values
+
+        -- replace the map back into the Datum (and thereby back into the
+        -- Context), updating it
+        let datum' =
+                datum
+                    { attachedMetadata = meta'
+                    }
+        putMVar v datum'
   where
     f :: Map JsonKey JsonValue -> MetricValue -> Map JsonKey JsonValue
     f acc (MetricValue k v) = insertKeyValue k v acc

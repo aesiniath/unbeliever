@@ -61,7 +61,7 @@ data Datum = Datum
     , parentTraceFrom :: Maybe Trace
     , parentSpanFrom :: Maybe Rope
     , datumDuration :: Maybe Int64
-    , attachedMetadata :: MVar (Map JsonKey JsonValue)
+    , attachedMetadata :: Map JsonKey JsonValue
     }
 
 emptyDatum :: Datum
@@ -73,7 +73,7 @@ emptyDatum =
         , parentTraceFrom = Nothing
         , parentSpanFrom = Nothing
         , datumDuration = Nothing
-        , attachedMetadata = error "Need to initialize attachedMetadata MVar before using"
+        , attachedMetadata = emptyMap
         }
 
 data Trace = Trace
@@ -126,7 +126,7 @@ data Context τ = Context
     , outputChannelFrom :: TQueue Rope
     , telemetryChannelFrom :: TQueue Datum
     , telemetryExporterFrom :: Exporter
-    , currentDatumFrom :: Datum
+    , currentDatumFrom :: MVar Datum
     , applicationDataFrom :: MVar τ
     }
 
@@ -300,6 +300,7 @@ configure version t config = do
     out <- newTQueueIO
     tel <- newTQueueIO
 
+    v <- newEmptyMVar
     u <- newMVar t
 
     return
@@ -315,7 +316,7 @@ configure version t config = do
             , outputChannelFrom = out
             , telemetryChannelFrom = tel
             , telemetryExporterFrom = emptyExporter
-            , currentDatumFrom = emptyDatum
+            , currentDatumFrom = v
             , applicationDataFrom = u
             }
 
