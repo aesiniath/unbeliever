@@ -50,12 +50,6 @@ dependencies:
  - core-program >= 0.3.0.0
  - core-telemetry >= 0.1.0.0
 
-library:
-  source-dirs: tests
-  exposed-modules: []
-  other-modules:
-    - Everything
-
 tests:
   check:
     dependencies:
@@ -89,5 +83,19 @@ benchmarks:
     ghc-options: -threaded
     source-dirs:
      - bench
-    main: GeneralPerformance.hs
+    main: GeneralPerformance.hs 
+    other-modules: []
+
+executables:
+  snippet:
+    dependencies:
+     - core-data
+     - core-program
+     - core-telemetry
+     - core-text
+     - template-haskell
+    ghc-options: -threaded
+    source-dirs:
+     - tests
+    main: TelemetrySnippet.hs
     other-modules: []
