@@ -73,7 +73,7 @@ data Datum = Datum
     , traceIdentifierFrom :: Maybe Trace
     , parentIdentifierFrom :: Maybe Span
     , durationFrom :: Maybe Int64
-    , attachedMetadata :: Map JsonKey JsonValue
+    , attachedMetadataFrom :: Map JsonKey JsonValue
     }
 
 emptyDatum :: Datum
@@ -85,7 +85,7 @@ emptyDatum =
         , traceIdentifierFrom = Nothing
         , parentIdentifierFrom = Nothing
         , durationFrom = Nothing
-        , attachedMetadata = emptyMap
+        , attachedMetadataFrom = emptyMap
         }
 
 {- |

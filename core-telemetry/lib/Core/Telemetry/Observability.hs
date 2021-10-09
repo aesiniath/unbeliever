@@ -37,6 +37,7 @@ import Data.Scientific (Scientific)
 import qualified Data.Text as T (Text)
 import qualified Data.Text.Lazy as U (Text)
 import System.Random (newStdGen, randomRs)
+import Core.Program.Context (Context(currentDatumFrom))
 
 {- |
 A telemetry value that can be sent over the wire. This is a wrapper around
@@ -46,6 +47,7 @@ Json values of type string, number, or boolean.
 -- a bit specific to Honeycomb's very limited data model, but what else is
 -- there?
 data MetricValue = MetricValue JsonKey JsonValue
+    deriving Show
 
 {- |
 Record the name of the service that this span and its children are a part of.
@@ -158,17 +160,19 @@ encloseSpan label action = do
 
         result <- subProgram context' action
 
-        -- finalize the Datum with its duration and send it
+        -- extract the Datum as it stands after running the action, finalize
+        -- with its duration, and send it
         finish <- getCurrentTimeNanoseconds
-        let datum2 =
-                datum'
+        datum2 <- readMVar v'
+        let datum2' =
+                datum2
                     { durationFrom = Just (unTimeStamp finish - unTimeStamp start)
                     }
 
         let telem = telemetryChannelFrom context
 
         atomically $ do
-            writeTQueue telem datum2
+            writeTQueue telem datum2'
 
         -- now back to your regularly scheduled Haskell program
         pure result
@@ -241,13 +245,15 @@ telemetry :: [MetricValue] -> Program τ ()
 telemetry values = do
     context <- getContext
 
+    debugS "values" values
+
     liftIO $ do
         -- get the map out
         let v = currentDatumFrom context
         modifyMVar_
             v
             ( \datum -> do
-                let meta = attachedMetadata datum
+                let meta = attachedMetadataFrom datum
 
                 -- update the map
                 let meta' = List.foldl' f meta values
@@ -256,7 +262,7 @@ telemetry values = do
                 -- Context), updating it
                 let datum' =
                         datum
-                            { attachedMetadata = meta'
+                            { attachedMetadataFrom = meta'
                             }
                 pure datum'
             )
@@ -265,4 +271,7 @@ telemetry values = do
     f acc (MetricValue k v) = insertKeyValue k v acc
 
 sendEvent :: Rope -> [MetricValue] -> Program τ ()
-sendEvent label = undefined
+sendEvent _ _ = pure ()
+
+-- get current time after digging out datum and override spanTimeFrom before
+-- sending Datum
