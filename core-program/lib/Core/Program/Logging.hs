@@ -123,6 +123,8 @@ to the program using /kill/:
 -}
 module Core.Program.Logging (
     putMessage,
+    formatLogMessage,
+    Severity (..),
     Verbosity (..),
 
     -- * Normal output

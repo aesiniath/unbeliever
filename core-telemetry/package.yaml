@@ -47,18 +47,3 @@ library:
    - Core.Telemetry.Observability
    - Core.Telemetry.Backends
   other-modules: []
-
-executables:
-  snippet:
-    dependencies:
-     - core-data
-     - core-program
-     - core-telemetry
-     - core-text
-     - template-haskell
-    ghc-options: -threaded
-    source-dirs:
-     - ../tests
-    main: TelemetrySnippet.hs
-    other-modules: []
-

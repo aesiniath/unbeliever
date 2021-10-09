@@ -37,7 +37,6 @@ import Data.Scientific (Scientific)
 import qualified Data.Text as T (Text)
 import qualified Data.Text.Lazy as U (Text)
 import System.Random (newStdGen, randomRs)
-import Core.Program.Context (Context(currentDatumFrom))
 
 {- |
 A telemetry value that can be sent over the wire. This is a wrapper around
@@ -46,8 +45,10 @@ Json values of type string, number, or boolean.
 
 -- a bit specific to Honeycomb's very limited data model, but what else is
 -- there?
-data MetricValue = MetricValue JsonKey JsonValue
-    deriving Show
+data MetricValue
+    = MetricValue JsonKey JsonValue
+    | ServiceName Rope
+    deriving (Show)
 
 {- |
 Record the name of the service that this span and its children are a part of.
@@ -58,7 +59,7 @@ This will end up as the @service_name@ parameter when exported.
 -- Open Telemmtry it was just a property floating around and regardless of
 -- what it gets called it needs to get sent.
 service :: Rope -> MetricValue
-service v = MetricValue "service_name" (JsonString v)
+service v = ServiceName v
 
 class Telemetry σ where
     metric :: Rope -> σ -> MetricValue
@@ -132,7 +133,7 @@ encloseSpan label action = do
     unique <- liftIO randomIdentifier
     debug "span" unique
 
-    result0 <- liftIO $ do
+    liftIO $ do
         -- prepare new span
         start <- getCurrentTimeNanoseconds
 
@@ -177,8 +178,6 @@ encloseSpan label action = do
         -- now back to your regularly scheduled Haskell program
         pure result
 
-    info (label <> " finished")
-    pure result0
 represent :: Int -> Char
 represent x
     | x < 10 = chr (48 + x)
@@ -245,8 +244,6 @@ telemetry :: [MetricValue] -> Program τ ()
 telemetry values = do
     context <- getContext
 
-    debugS "values" values
-
     liftIO $ do
         -- get the map out
         let v = currentDatumFrom context
@@ -258,17 +255,25 @@ telemetry values = do
                 -- update the map
                 let meta' = List.foldl' f meta values
 
+                let possibeService = List.foldl' g Nothing values
+
                 -- replace the map back into the Datum (and thereby back into the
                 -- Context), updating it
                 let datum' =
                         datum
-                            { attachedMetadataFrom = meta'
+                            { serviceNameFrom = possibeService
+                            , attachedMetadataFrom = meta'
                             }
                 pure datum'
             )
   where
     f :: Map JsonKey JsonValue -> MetricValue -> Map JsonKey JsonValue
     f acc (MetricValue k v) = insertKeyValue k v acc
+    f acc (ServiceName _) = acc
+
+    g :: Maybe Rope -> MetricValue -> Maybe Rope
+    g _ (ServiceName svc) = Just svc
+    g acc _ = acc
 
 sendEvent :: Rope -> [MetricValue] -> Program τ ()
 sendEvent _ _ = pure ()

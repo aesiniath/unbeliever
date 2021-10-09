@@ -35,42 +35,31 @@ consoleExporter :: Exporter
 consoleExporter =
     Exporter
         { codenameFrom = "console"
-        , processorFrom = \datum ->
-            let text =
-                    (intoEscapes dullBlue) <> "name: "
-                        <> spanNameFrom datum
-                        <> "\ntrace: "
-                        <> case traceIdentifierFrom datum of
-                            Nothing -> (intoEscapes pureRed) <> "[missing]" <> (intoEscapes dullBlue)
-                            Just trace -> unTrace trace
-                        <> "\nspan: "
-                        <> case spanIdentifierFrom datum of
-                            Nothing -> (intoEscapes pureRed) <> "[missing]" <> (intoEscapes dullBlue)
-                            Just self -> unSpan self
-                        <> "\nparent: "
-                        <> case parentIdentifierFrom datum of
-                            Nothing -> (intoEscapes dullYellow) <> "[none]" <> (intoEscapes dullBlue)
-                            Just parent -> unSpan parent
-                        <> "\nstart: "
-                        <> intoRope (show (spanTimeFrom datum))
-                        <> "\nduration: "
-                        <> case durationFrom datum of
-                            Nothing -> (intoEscapes dullYellow) <> "[none]" <> (intoEscapes dullBlue)
-                            Just elapsed -> intoRope (show elapsed) <> " ns"
-                        <> "\nmetadata:"
-                        <> let pairs :: [(JsonKey, JsonValue)]
-                               pairs = fromMap (attachedMetadataFrom datum)
-                            in List.foldl' f emptyRope pairs
-                                <> (intoEscapes resetColour)
-             in pure text
+        , processorFrom = process
         }
   where
+    process :: Datum -> IO Rope
+    process datum = do
+        now <- getCurrentTimeNanoseconds
+        let start = spanTimeFrom datum
+        let text =
+                (intoEscapes pureGrey)
+                    <> spanNameFrom datum
+                    <> " metrics:"
+                    <> let pairs :: [(JsonKey, JsonValue)]
+                           pairs = fromMap (attachedMetadataFrom datum)
+                        in List.foldl' f emptyRope pairs
+                            <> (intoEscapes resetColour)
+
+        let result = formatLogMessage start now SeverityDebug text
+        pure result
+
     f :: Rope -> (JsonKey, JsonValue) -> Rope
     f acc (k, v) =
         acc <> "\n  "
-            <> (intoEscapes dullBlue)
+            <> (intoEscapes pureGrey)
             <> render 80 k
-            <> (intoEscapes dullBlue)
+            <> (intoEscapes pureGrey)
             <> " = "
             <> render 80 v
 
