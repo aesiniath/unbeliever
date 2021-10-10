@@ -292,19 +292,23 @@ executeActual context0 program = do
                 done2 <- isEmptyTQueue tel
                 check done2
 
+            threadDelay 1000 -- instead of yield
+
+            atomically $ do
                 done1 <- isEmptyTQueue out
                 check done1
+
+            threadDelay 1000 -- instead of yield
         )
         ( do
             threadDelay 100000
             putStrLn "error: Timeout"
         )
 
-    threadDelay 100 -- instead of yield
-    hFlush stdout
-
     Async.cancel l
     Async.cancel o
+
+    hFlush stdout
 
     -- exiting this way avoids "Exception: ExitSuccess" noise in GHCi
     if code == ExitSuccess
