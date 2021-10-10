@@ -4,7 +4,17 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
 {- |
-A backend exporter that sends telemetry to Honeycomb.
+A backend exporter that sends telemetry in the form of traces of your
+application's behaviour, or event data—accompanied either way by [conceivably
+very wide] additional metadata—to the Honeycomb observability service.
+
+/Notice/
+
+This library is Open Source but the Honeycomb service is /not/. Honeycomb
+offers a free tier which is quite suitable for individual use and small local
+applications. You can also look at "Core.Telemetry.Other" if you instead want
+to forward to a generic OpenTelemetry provider. There's also
+"Core.Telemetry.Console" which simply dumps telemetry to console.
 -}
 module Core.Telemetry.Honeycomb (
     Dataset,
@@ -29,6 +39,19 @@ Indicate which \"dataset\" spans and events will be posted into
 -}
 type Dataset = Rope
 
+{-|
+Configure your application to send telemetry in the form of spans and traces
+to the Honeycomb observability service.
+
+You need to specify the \"dataset\" that your telemetry data will be posted
+into.
+
+@
+    context <- configure ...
+    context' <- initializeTelemetry (honeycombExporter "web-service-prod") context
+    executeWith context' ...
+@
+-}
 honeycombExporter :: Dataset -> Exporter
 honeycombExporter _ =
     Exporter

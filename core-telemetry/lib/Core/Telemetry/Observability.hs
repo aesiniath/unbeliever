@@ -7,14 +7,25 @@ For spans to be connected together by an observability tool they need to be
 part of a /trace/.
 -}
 module Core.Telemetry.Observability (
-    MetricValue,
-    Telemetry (metric),
+    -- * Initializing
     setServiceName,
     initializeTelemetry,
+
+    -- * Traces
+    Trace,
     beginTrace,
     usingTrace,
+
+    -- * Spans
+    Span,
     encloseSpan,
+
+    -- * Creating telemetry
+    MetricValue,
+    Telemetry (metric),
     telemetry,
+
+    -- * Events
     sendEvent,
 ) where
 
