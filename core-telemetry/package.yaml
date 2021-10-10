@@ -38,11 +38,13 @@ library:
    - core-program >= 0.3.0
    - chronologique
    - exceptions
+   - http-streams
    - mtl
    - random
    - safe-exceptions
    - scientific
    - stm
+   - unix
   source-dirs:
   - lib
   exposed-modules:
