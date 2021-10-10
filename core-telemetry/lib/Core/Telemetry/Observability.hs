@@ -255,13 +255,17 @@ telemetry values = do
                 -- update the map
                 let meta' = List.foldl' f meta values
 
-                let possibeService = List.foldl' g Nothing values
+                let currentName = serviceNameFrom datum
+                let possibleUpdate = List.foldl' g Nothing values
+                let updatedName = case possibleUpdate of
+                        Just name' -> Just name'
+                        Nothing -> currentName
 
                 -- replace the map back into the Datum (and thereby back into the
                 -- Context), updating it
                 let datum' =
                         datum
-                            { serviceNameFrom = possibeService
+                            { serviceNameFrom = updatedName
                             , attachedMetadataFrom = meta'
                             }
                 pure datum'
