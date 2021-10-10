@@ -337,7 +337,7 @@ configure version t config = do
     out <- newTQueueIO
     tel <- newTQueueIO
 
-    v <- newEmptyMVar
+    v <- newMVar (emptyDatum)
     u <- newMVar t
 
     return

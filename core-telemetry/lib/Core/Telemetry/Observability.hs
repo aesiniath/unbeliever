@@ -9,7 +9,7 @@ part of a /trace/.
 module Core.Telemetry.Observability (
     MetricValue,
     Telemetry (metric),
-    service,
+    setServiceName,
     initializeTelemetry,
     beginTrace,
     usingTrace,
@@ -47,19 +47,37 @@ Json values of type string, number, or boolean.
 -- there?
 data MetricValue
     = MetricValue JsonKey JsonValue
-    | ServiceName Rope
     deriving (Show)
 
 {- |
 Record the name of the service that this span and its children are a part of.
+A reasonable default is the name of the binary that's running, but frequently
+you'll want to put something a bit more nuanced or specific to your
+application. This is the overall name of the independent service, component,
+or program complimenting the @label@ set when calling 'encloseSpan', which
+descibes the name of the current phase, step, or even function name within the
+overall scope of the \"service\".
+
 This will end up as the @service_name@ parameter when exported.
 -}
 
 -- This field name appears to be very Honeycomb specific, but looking around
 -- Open Telemmtry it was just a property floating around and regardless of
 -- what it gets called it needs to get sent.
-service :: Rope -> MetricValue
-service v = ServiceName v
+setServiceName :: Rope -> Program τ ()
+setServiceName service = do
+    context <- getContext
+    let v = currentDatumFrom context
+    liftIO $ do
+        modifyMVar_
+            v
+            ( \datum -> do
+                let datum' =
+                        datum
+                            { serviceNameFrom = Just service
+                            }
+                pure datum'
+            )
 
 class Telemetry σ where
     metric :: Rope -> σ -> MetricValue
@@ -150,21 +168,21 @@ encloseSpan label action = do
                     , parentIdentifierFrom = spanIdentifierFrom datum
                     }
 
-        v' <- newMVar datum'
+        v2 <- newMVar datum'
 
-        let context' =
+        let context2 =
                 context
-                    { currentDatumFrom = v'
+                    { currentDatumFrom = v2
                     }
 
         -- execute nested program
 
-        result <- subProgram context' action
+        result <- subProgram context2 action
 
         -- extract the Datum as it stands after running the action, finalize
         -- with its duration, and send it
         finish <- getCurrentTimeNanoseconds
-        datum2 <- readMVar v'
+        datum2 <- readMVar v2
         let datum2' =
                 datum2
                     { durationFrom = Just (unTimeStamp finish - unTimeStamp start)
@@ -224,21 +242,25 @@ usingTrace trace possibleParent action = do
 
     liftIO $ do
         -- prepare new span
-        let datum =
-                emptyDatum
+        let v = currentDatumFrom context
+        datum <- readMVar v
+
+        let datum2 =
+                datum
                     { traceIdentifierFrom = Just trace
                     , parentIdentifierFrom = possibleParent
                     }
 
-        v <- newMVar datum
+        -- fork the Context
+        v2 <- newMVar datum2
 
-        let context' =
+        let context2 =
                 context
-                    { currentDatumFrom = v
+                    { currentDatumFrom = v2
                     }
 
         -- execute nested program
-        subProgram context' action
+        subProgram context2 action
 
 telemetry :: [MetricValue] -> Program τ ()
 telemetry values = do
@@ -255,29 +277,17 @@ telemetry values = do
                 -- update the map
                 let meta' = List.foldl' f meta values
 
-                let currentName = serviceNameFrom datum
-                let possibleUpdate = List.foldl' g Nothing values
-                let updatedName = case possibleUpdate of
-                        Just name' -> Just name'
-                        Nothing -> currentName
-
                 -- replace the map back into the Datum (and thereby back into the
                 -- Context), updating it
                 let datum' =
                         datum
-                            { serviceNameFrom = updatedName
-                            , attachedMetadataFrom = meta'
+                            { attachedMetadataFrom = meta'
                             }
                 pure datum'
             )
   where
     f :: Map JsonKey JsonValue -> MetricValue -> Map JsonKey JsonValue
     f acc (MetricValue k v) = insertKeyValue k v acc
-    f acc (ServiceName _) = acc
-
-    g :: Maybe Rope -> MetricValue -> Maybe Rope
-    g _ (ServiceName svc) = Just svc
-    g acc _ = acc
 
 sendEvent :: Rope -> [MetricValue] -> Program τ ()
 sendEvent _ _ = pure ()
