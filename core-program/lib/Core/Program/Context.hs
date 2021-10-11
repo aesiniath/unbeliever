@@ -22,8 +22,8 @@ module Core.Program.Context (
     Context (..),
     handleCommandLine,
     handleVerbosityLevel,
-    Exporter (..),
-    emptyExporter,
+    Forwarder (..),
+    emptyForwarder,
     None (..),
     isNone,
     configure,
@@ -113,16 +113,14 @@ unTrace (Trace text) = text
 {- |
 Implementation of a forwarder for structured logging of the telemetry channel.
 -}
-data Exporter = Exporter
-    { codenameFrom :: Rope
-    , processorFrom :: Datum -> IO Rope
+data Forwarder = Forwarder
+    { telemetryHandlerFrom :: Datum -> IO ()
     }
 
-emptyExporter :: Exporter
-emptyExporter =
-    Exporter
-        { codenameFrom = "empty"
-        , processorFrom = \_ -> pure emptyRope
+emptyForwarder :: Forwarder
+emptyForwarder =
+    Forwarder
+        { telemetryHandlerFrom = \_ -> pure ()
         }
 
 {- |
@@ -162,7 +160,7 @@ data Context τ = Context
     , verbosityLevelFrom :: MVar Verbosity
     , outputChannelFrom :: TQueue Rope
     , telemetryChannelFrom :: TQueue Datum
-    , telemetryExporterFrom :: Exporter
+    , telemetryForwarderFrom :: Forwarder
     , currentDatumFrom :: MVar Datum
     , applicationDataFrom :: MVar τ
     }
@@ -352,7 +350,7 @@ configure version t config = do
             , verbosityLevelFrom = level -- will be filled in handleVerbosityLevel
             , outputChannelFrom = out
             , telemetryChannelFrom = tel
-            , telemetryExporterFrom = emptyExporter
+            , telemetryForwarderFrom = emptyForwarder
             , currentDatumFrom = v
             , applicationDataFrom = u
             }

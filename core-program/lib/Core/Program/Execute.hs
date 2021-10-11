@@ -245,7 +245,7 @@ executeActual context0 program = do
     let quit = exitSemaphoreFrom context
         out = outputChannelFrom context
         tel = telemetryChannelFrom context
-        exporter = telemetryExporterFrom context
+        forwarder = telemetryForwarderFrom context
 
     -- set up signal handlers
     _ <-
@@ -260,7 +260,7 @@ executeActual context0 program = do
     -- set up debug logger
     l <-
         Async.async $ do
-            processTelemetryMessages exporter out tel
+            processTelemetryMessages forwarder tel
 
     -- run actual program, ensuring to grab any otherwise uncaught exceptions.
     code <-
@@ -327,21 +327,17 @@ processStandardOutput out =
         )
         (collapseHandler "output processing collapsed")
 
-processTelemetryMessages :: Exporter -> TQueue Rope -> TQueue Datum -> IO ()
-processTelemetryMessages exporter out log = do
+processTelemetryMessages :: Forwarder -> TQueue Datum -> IO ()
+processTelemetryMessages processor log = do
     Safe.catch
         ( do
-            let process = processorFrom exporter
+            let process = telemetryHandlerFrom processor
             forever $ do
                 -- wait for an event
                 datum <- atomically (readTQueue log)
 
                 -- let Exporter handle it
-                result <- process datum
-
-                -- send any text returned to stdout
-                unless (nullRope result) $ do
-                    atomically (writeTQueue out result)
+                process datum
         )
         (collapseHandler "telemetry processing collapsed")
 

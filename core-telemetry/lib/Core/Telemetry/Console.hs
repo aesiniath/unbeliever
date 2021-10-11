@@ -10,11 +10,14 @@ module Core.Telemetry.Console (
     consoleExporter,
 ) where
 
+import Control.Concurrent.STM (atomically)
+import Control.Concurrent.STM.TQueue (TQueue, writeTQueue)
 import Core.Data.Structures (fromMap)
 import Core.Encoding.Json
 import Core.Program.Context
 import Core.Program.Logging
 import Core.System.External (getCurrentTimeNanoseconds)
+import Core.Telemetry.Internal
 import Core.Text.Colour
 import Core.Text.Rope
 import Core.Text.Utilities
@@ -30,30 +33,39 @@ consoleExporter :: Exporter
 consoleExporter =
     Exporter
         { codenameFrom = "console"
-        , processorFrom = process
+        , setupActionFrom = setup
         }
-  where
-    process :: Datum -> IO Rope
-    process datum = do
-        now <- getCurrentTimeNanoseconds
-        let start = spanTimeFrom datum
-        let text =
-                (intoEscapes pureGrey)
-                    <> spanNameFrom datum
-                    <> " metrics:"
-                    <> let pairs :: [(JsonKey, JsonValue)]
-                           pairs = fromMap (attachedMetadataFrom datum)
-                        in List.foldl' f emptyRope pairs
-                            <> (intoEscapes resetColour)
 
-        let result = formatLogMessage start now SeverityDebug text
-        pure result
+setup :: Context τ -> IO Forwarder
+setup context = do
+    let out = outputChannelFrom context
+    pure
+        ( Forwarder
+            { telemetryHandlerFrom = process out
+            }
+        )
 
-    f :: Rope -> (JsonKey, JsonValue) -> Rope
-    f acc (k, v) =
-        acc <> "\n  "
-            <> (intoEscapes pureGrey)
-            <> render 80 k
-            <> (intoEscapes pureGrey)
-            <> " = "
-            <> render 80 v
+process :: TQueue Rope -> Datum -> IO ()
+process out datum = do
+    now <- getCurrentTimeNanoseconds
+    let start = spanTimeFrom datum
+    let text =
+            (intoEscapes pureGrey)
+                <> spanNameFrom datum
+                <> " metrics:"
+                <> let pairs :: [(JsonKey, JsonValue)]
+                       pairs = fromMap (attachedMetadataFrom datum)
+                    in List.foldl' f emptyRope pairs
+                        <> (intoEscapes resetColour)
+
+    let result = formatLogMessage start now SeverityDebug text
+    atomically (writeTQueue out result)
+
+f :: Rope -> (JsonKey, JsonValue) -> Rope
+f acc (k, v) =
+    acc <> "\n  "
+        <> (intoEscapes pureGrey)
+        <> render 80 k
+        <> (intoEscapes pureGrey)
+        <> " = "
+        <> render 80 v

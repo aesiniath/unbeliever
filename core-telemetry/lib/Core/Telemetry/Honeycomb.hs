@@ -27,6 +27,7 @@ import Core.Program.Context
 import Core.Program.Logging
 import Core.System.Base (stdout)
 import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
+import Core.Telemetry.Internal
 import Core.Text.Bytes
 import Core.Text.Colour
 import Core.Text.Rope
@@ -66,8 +67,16 @@ into.
 -- and in the guts of the library. So all the work we've done to provide
 -- sensible access to environment variables etc isn't available here and we
 -- have to replicate a bunch of stuff we've done elsewhere.
-honeycombExporter :: Dataset -> IO Exporter
-honeycombExporter dataset = do
+honeycombExporter :: Dataset -> Exporter
+honeycombExporter dataset =
+    Exporter
+        { codenameFrom = "honeycomb"
+        , setupActionFrom = setup dataset
+        }
+
+-- TODO use context!!!
+setup :: Dataset -> Context τ -> IO Forwarder
+setup dataset context = do
     possible <- lookupEnv "HONEYCOMB_TEAM"
 
     apikey <- case possible of
@@ -78,19 +87,16 @@ honeycombExporter dataset = do
         Just value -> pure (packRope value)
 
     pure
-        ( Exporter
-            { codenameFrom = "honeycomb"
-            , processorFrom = process apikey dataset
+        ( Forwarder
+            { telemetryHandlerFrom = process apikey dataset
             }
         )
 
-process :: ApiKey -> Dataset -> Datum -> IO Rope
+-- use partually applied
+process :: ApiKey -> Dataset -> Datum -> IO ()
 process apikey dataset datum = do
     let json = convertDatumToJson datum
-
     postEventToHoneycombAPI apikey dataset json
-
-    pure (render 80 json)
 
 convertDatumToJson :: Datum -> JsonValue
 convertDatumToJson datum =
@@ -152,5 +158,5 @@ postEventToHoneycombAPI apikey dataset json = do
     if (C.null result)
         then pure ()
         else do
-            putStr "Failed to post to Honeycomb: "
+            -- putStr "Failed to post to Honeycomb: "
             C.putStrLn result

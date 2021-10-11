@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 
 {- |
 For spans to be connected together by an observability tool they need to be
@@ -9,6 +10,7 @@ part of a /trace/.
 module Core.Telemetry.Observability (
     -- * Initializing
     setServiceName,
+    Exporter,
     initializeTelemetry,
 
     -- * Traces
@@ -38,6 +40,7 @@ import Core.Program.Context
 import Core.Program.Logging
 import Core.System.Base (liftIO)
 import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
+import Core.Telemetry.Internal
 import Core.Text.Rope
 import qualified Data.ByteString as B (ByteString)
 import qualified Data.ByteString.Lazy as L (ByteString)
@@ -145,14 +148,24 @@ instance Telemetry U.Text where
 instance Telemetry Bool where
     metric k v = MetricValue (JsonKey k) (JsonBool v)
 
+{- |
+Activate the telemetry subsystem for use within the 'Program' monad.
+-}
 initializeTelemetry :: Exporter -> Context τ -> IO (Context τ)
-initializeTelemetry exporter context =
+initializeTelemetry exporter context = do
+    let setup = setupActionFrom exporter
+
+    forwarder <- setup context
+
     pure
         ( context
-            { telemetryExporterFrom = exporter
+            { telemetryForwarderFrom = forwarder
             }
         )
 
+{- |
+Begin a span.
+-}
 encloseSpan :: Rope -> Program z a -> Program z a
 encloseSpan label action = do
     context <- getContext

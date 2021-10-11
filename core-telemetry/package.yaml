@@ -1,5 +1,5 @@
 name: core-telemetry
-version: 0.1.1.0
+version: 0.1.3.0
 synopsis: Advanced telemetry
 description: |
   This is part of a library to help build command-line programs, both tools and
@@ -52,4 +52,5 @@ library:
    - Core.Telemetry.Observability
    - Core.Telemetry.Console
    - Core.Telemetry.Honeycomb
-  other-modules: []
+  other-modules:
+   - Core.Telemetry.Internal
