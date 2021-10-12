@@ -190,7 +190,7 @@ The one and only time you want this is inside an endless loop:
             ( bracket
                 obtainResource
                 releaseResource
-                useResournce
+                useResource
             )
 @
 
