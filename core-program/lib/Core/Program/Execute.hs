@@ -117,10 +117,10 @@ import qualified Control.Concurrent.Async as Async (
  )
 import Control.Concurrent.MVar (modifyMVar_, newMVar, putMVar, readMVar)
 import Control.Concurrent.STM (atomically, check)
-import Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue, readTQueue, writeTQueue)
+import Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue, readTQueue)
 import qualified Control.Exception as Base (throwIO)
 import qualified Control.Exception.Safe as Safe (catch, catchesAsync, throw)
-import Control.Monad (forever, unless, void, when)
+import Control.Monad (forever, void, when)
 import Control.Monad.Catch (Handler (..))
 import Control.Monad.Reader.Class (MonadReader (ask))
 import Core.Data.Structures

@@ -394,9 +394,15 @@ handleCommandLine context = do
     case result of
         Right parameters -> do
             pairs <- lookupEnvironmentVariables config parameters
-            let params = parameters{environmentValuesFrom = pairs}
+            let params =
+                    parameters
+                        { environmentValuesFrom = pairs
+                        }
             -- update the result of all this and return in
-            let context' = context{commandLineFrom = params}
+            let context' =
+                    context
+                        { commandLineFrom = params
+                        }
             pure context'
         Left e -> case e of
             HelpRequest mode -> do
