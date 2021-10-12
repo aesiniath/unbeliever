@@ -36,6 +36,7 @@ module Core.Program.Arguments (
 
     -- * Programs with Commands
     Commands (..),
+    appendOption,
 
     -- * Internals
     parseCommandLine,
@@ -353,6 +354,18 @@ data Options
     = Option LongName (Maybe ShortName) ParameterValue Description
     | Argument LongName Description
     | Variable LongName Description
+
+appendOption :: Options -> Config -> Config
+appendOption option config =
+    case config of
+        Blank -> Blank
+        Simple options -> Simple (List.reverse (option : options))
+        Complex commands -> Complex (List.foldl' f [] commands)
+  where
+    f :: [Commands] -> Commands -> [Commands]
+    f acc command = case command of
+        Global options -> Global (List.reverse (option : options)) : acc
+        c@(Command _ _ _) -> c : acc
 
 {- |
 Individual parameters read in off the command-line can either have a value

@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 
 {- |
@@ -36,12 +37,14 @@ import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (writeTQueue)
 import Core.Data.Structures (Map, insertKeyValue)
 import Core.Encoding.Json
+import Core.Program.Arguments
 import Core.Program.Context
 import Core.Program.Logging
 import Core.System.Base (liftIO)
 import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
 import Core.Telemetry.Internal
 import Core.Text.Rope
+import Core.Text.Utilities (quote)
 import qualified Data.ByteString as B (ByteString)
 import qualified Data.ByteString.Lazy as L (ByteString)
 import Data.Char (chr)
@@ -153,13 +156,34 @@ Activate the telemetry subsystem for use within the 'Program' monad.
 -}
 initializeTelemetry :: Exporter -> Context τ -> IO (Context τ)
 initializeTelemetry exporter context = do
+    let name = codenameFrom exporter
     let setup = setupActionFrom exporter
+    let config = initialConfigFrom context
 
     forwarder <- setup context
 
+    let config' =
+            appendOption
+                ( Option
+                    "telemetry"
+                    Nothing
+                    (Value "EXPORTER")
+                    ( [quote|
+                    Turn on telemetry. Tracing data and metrics from events
+                    will be forwarded via the specified exporter. Valid values
+                    are "none", "console", and
+                      |]
+                        <> singletonRope '"'
+                        <> name
+                        <> singletonRope '"'
+                    )
+                )
+                config
+
     pure
         ( context
-            { telemetryForwarderFrom = forwarder
+            { initialConfigFrom = config'
+            , telemetryForwarderFrom = forwarder
             }
         )
 

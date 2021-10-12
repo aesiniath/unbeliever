@@ -25,10 +25,6 @@ import qualified Data.List as List
 
 -- TODO convert this into a Render instance
 
--- Somewhat counterintuitively, this does NOT do I/O, but instead returns text
--- which `processTelemetryMessages` will then forward to the main output queue
--- consumed by `processStandardOutput`. This is a bit roundabout, but ensures
--- debug output from this function doesn't smash the console.
 consoleExporter :: Exporter
 consoleExporter =
     Exporter
