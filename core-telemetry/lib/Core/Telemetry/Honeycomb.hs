@@ -53,35 +53,40 @@ type ApiKey = Rope
 Configure your application to send telemetry in the form of spans and traces
 to the Honeycomb observability service.
 
-You need to specify the \"dataset\" that your telemetry data will be posted
-into.
-
 @
     context <- configure ...
-    context' <- initializeTelemetry (honeycombExporter "web-service-prod") context
+    context' <- initializeTelemetry honeycombExporter context
     executeWith context' ...
 @
 -}
+honeycombExporter :: Exporter
+honeycombExporter =
+    Exporter
+        { codenameFrom = "honeycomb"
+        , setupActionFrom = setup
+        }
 
 -- so this is annoying: we're _under_ (and indeed, before) the Program monad
 -- and in the guts of the library. So all the work we've done to provide
 -- sensible access to environment variables etc isn't available here and we
 -- have to replicate a bunch of stuff we've done elsewhere.
-honeycombExporter :: Dataset -> Exporter
-honeycombExporter dataset =
-    Exporter
-        { codenameFrom = "honeycomb"
-        , setupActionFrom = setup dataset
-        }
 
 -- TODO use context!!!
-setup :: Dataset -> Context τ -> IO Forwarder
-setup dataset context = do
-    possible <- lookupEnv "HONEYCOMB_TEAM"
+setup :: Context τ -> IO Forwarder
+setup context = do
+    possibleTeam <- lookupEnv "HONEYCOMB_TEAM"
+    possibleDataset <- lookupEnv "HONEYCOMB_DATASET"
 
-    apikey <- case possible of
+    apikey <- case possibleTeam of
         Nothing -> do
             putStrLn "error: HONEYCOMB_TEAM environment variable not set with API key"
+            Posix.exitImmediately (ExitFailure 99)
+            undefined
+        Just value -> pure (packRope value)
+
+    dataset <- case possibleDataset of
+        Nothing -> do
+            putStrLn "error: HONEYCOMB_DATASET environment variable not set with a dataset name"
             Posix.exitImmediately (ExitFailure 99)
             undefined
         Just value -> pure (packRope value)
