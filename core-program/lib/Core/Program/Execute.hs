@@ -239,7 +239,9 @@ executeActual context0 program = do
     -- force UTF-8 working around bad VMs
     setLocaleEncoding utf8
 
-    context <- handleCommandLine context0
+    context1 <- handleCommandLine context0
+    context <- handleTelemetryChoice context1
+
     level <- handleVerbosityLevel context
 
     let quit = exitSemaphoreFrom context

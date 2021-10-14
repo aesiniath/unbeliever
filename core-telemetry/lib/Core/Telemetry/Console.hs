@@ -6,7 +6,6 @@
 Implementations of different backends that telemetry can be exported to.
 -}
 module Core.Telemetry.Console (
-    Exporter,
     consoleExporter,
 ) where
 
@@ -15,9 +14,9 @@ import Control.Concurrent.STM.TQueue (TQueue, writeTQueue)
 import Core.Data.Structures (fromMap)
 import Core.Encoding.Json
 import Core.Program.Context
+import Core.Program.Arguments
 import Core.Program.Logging
 import Core.System.External (getCurrentTimeNanoseconds)
-import Core.Telemetry.Internal
 import Core.Text.Colour
 import Core.Text.Rope
 import Core.Text.Utilities
@@ -29,11 +28,15 @@ consoleExporter :: Exporter
 consoleExporter =
     Exporter
         { codenameFrom = "console"
-        , setupActionFrom = setup
+        , setupConfigFrom = setupConsoleConfig
+        , setupActionFrom = setupConsoleAction
         }
 
-setup :: Context τ -> IO Forwarder
-setup context = do
+setupConsoleConfig :: Config -> Config
+setupConsoleConfig = id
+
+setupConsoleAction :: Context τ -> IO Forwarder
+setupConsoleAction context = do
     let out = outputChannelFrom context
     pure
         ( Forwarder

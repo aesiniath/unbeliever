@@ -52,5 +52,4 @@ library:
    - Core.Telemetry.Observability
    - Core.Telemetry.Console
    - Core.Telemetry.Honeycomb
-  other-modules:
-   - Core.Telemetry.Internal
+  other-modules: []

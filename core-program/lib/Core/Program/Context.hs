@@ -22,6 +22,8 @@ module Core.Program.Context (
     Context (..),
     handleCommandLine,
     handleVerbosityLevel,
+    handleTelemetryChoice,
+    Exporter (..),
     Forwarder (..),
     emptyForwarder,
     None (..),
@@ -56,6 +58,7 @@ import Prettyprinter.Render.Text (renderIO)
 import qualified System.Console.Terminal.Size as Terminal (Window (..), size)
 import System.Environment (getArgs, getProgName, lookupEnv)
 import System.Exit (ExitCode (..), exitWith)
+import qualified System.Posix.Process as Posix (exitImmediately)
 import Prelude hiding (log)
 
 {- |
@@ -110,6 +113,12 @@ newtype Trace = Trace Rope
 unTrace :: Trace -> Rope
 unTrace (Trace text) = text
 
+data Exporter = Exporter
+    { codenameFrom :: Rope
+    , setupConfigFrom :: Config -> Config
+    , setupActionFrom :: forall τ. Context τ -> IO Forwarder
+    }
+
 {- |
 Implementation of a forwarder for structured logging of the telemetry channel.
 -}
@@ -150,17 +159,24 @@ application data of type @τ@ which can be retrieved with
 -- that field name as a local variable name.
 --
 data Context τ = Context
-    { programNameFrom :: MVar Rope
-    , versionFrom :: Version
-    , initialConfigFrom :: Config
-    , commandLineFrom :: Parameters
-    , exitSemaphoreFrom :: MVar ExitCode
-    , startTimeFrom :: MVar TimeStamp
+    { -- runtime properties
+      programNameFrom :: MVar Rope
     , terminalWidthFrom :: Int
+    , versionFrom :: Version
+    , -- only used during initial setup
+      initialConfigFrom :: Config
+    , initialExportersFrom :: [Exporter]
+    , -- derived at startup
+      commandLineFrom :: Parameters
+    , -- operational state
+      exitSemaphoreFrom :: MVar ExitCode
+    , startTimeFrom :: MVar TimeStamp
     , verbosityLevelFrom :: MVar Verbosity
-    , outputChannelFrom :: TQueue Rope
+    , -- communication channels
+      outputChannelFrom :: TQueue Rope
     , telemetryChannelFrom :: TQueue Datum
-    , telemetryForwarderFrom :: Forwarder
+    , -- machinery for telemetry
+      telemetryForwarderFrom :: Forwarder
     , currentDatumFrom :: MVar Datum
     , applicationDataFrom :: MVar τ
     }
@@ -341,12 +357,13 @@ configure version t config = do
     return
         $! Context
             { programNameFrom = n
+            , terminalWidthFrom = columns
             , versionFrom = version
             , initialConfigFrom = config
+            , initialExportersFrom = []
             , commandLineFrom = emptyParameters -- will be filled in handleCommandLine
             , exitSemaphoreFrom = q
             , startTimeFrom = i
-            , terminalWidthFrom = columns
             , verbosityLevelFrom = level -- will be filled in handleVerbosityLevel
             , outputChannelFrom = out
             , telemetryChannelFrom = tel
@@ -465,3 +482,39 @@ queryVerbosityLevel params =
                     Empty -> Right Verbose
                     Value _ -> Left (ExitFailure 2)
                 Nothing -> Right Output
+
+handleTelemetryChoice :: Context τ -> IO (Context τ)
+handleTelemetryChoice context = do
+    let params = commandLineFrom context
+        options = parameterValuesFrom params
+        exporters = initialExportersFrom context
+
+    case lookupKeyValue "telemetry" options of
+        Nothing -> pure context
+        Just Empty -> do
+            putStrLn "error: Need to supply a value when specifiying --telemetry."
+            Posix.exitImmediately (ExitFailure 99)
+            undefined
+        Just (Value value) -> case lookupExporter (intoRope value) exporters of
+            Nothing -> do
+                putStrLn ("error: supplied value \"" ++ value ++ "\" not a valid telemetry exporter.")
+                Posix.exitImmediately (ExitFailure 99)
+                undefined
+            Just exporter -> do
+                let setupAction = setupActionFrom exporter
+
+                -- run the IO action to setup the Forwareder
+                forwarder <- setupAction context
+
+                -- and return it
+                pure
+                    context
+                        { telemetryForwarderFrom = forwarder
+                        }
+  where
+    lookupExporter :: Rope -> [Exporter] -> Maybe Exporter
+    lookupExporter _ [] = Nothing
+    lookupExporter target (exporter : exporters) =
+        case target == codenameFrom exporter of
+            False -> lookupExporter target exporters
+            True -> Just exporter

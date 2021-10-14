@@ -23,11 +23,11 @@ module Core.Telemetry.Honeycomb (
 
 import Core.Data.Structures (Map, fromMap, insertKeyValue, intoMap)
 import Core.Encoding.Json
+import Core.Program.Arguments
 import Core.Program.Context
 import Core.Program.Logging
 import Core.System.Base (stdout)
 import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
-import Core.Telemetry.Internal
 import Core.Text.Bytes
 import Core.Text.Colour
 import Core.Text.Rope
@@ -63,7 +63,8 @@ honeycombExporter :: Exporter
 honeycombExporter =
     Exporter
         { codenameFrom = "honeycomb"
-        , setupActionFrom = setup
+        , setupConfigFrom = setupHoneycombConfig
+        , setupActionFrom = setupHoneycombAction
         }
 
 -- so this is annoying: we're _under_ (and indeed, before) the Program monad

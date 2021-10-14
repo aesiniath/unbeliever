@@ -42,7 +42,6 @@ import Core.Program.Context
 import Core.Program.Logging
 import Core.System.Base (liftIO)
 import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
-import Core.Telemetry.Internal
 import Core.Text.Rope
 import Core.Text.Utilities (quote)
 import qualified Data.ByteString as B (ByteString)
