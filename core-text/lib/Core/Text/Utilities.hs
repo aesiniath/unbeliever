@@ -20,6 +20,7 @@ module Core.Text.Utilities (
 
     -- * Helpers
     indefinite,
+    oxford,
     breakWords,
     breakLines,
     breakPieces,
@@ -55,6 +56,16 @@ import Data.Char (intToDigit)
 import qualified Data.FingerTree as F (ViewL (..), viewl, (<|))
 import qualified Data.List as List (dropWhileEnd, foldl', splitAt)
 import qualified Data.Text as T
+import qualified Data.Text.Short as S (
+    ShortText,
+    replicate,
+    singleton,
+    toText,
+    uncons,
+ )
+import Data.Word (Word8)
+import Language.Haskell.TH (litE, stringL)
+import Language.Haskell.TH.Quote (QuasiQuoter (QuasiQuoter))
 import Prettyprinter (
     Doc,
     LayoutOptions (LayoutOptions),
@@ -74,16 +85,6 @@ import Prettyprinter (
     vcat,
  )
 import Prettyprinter.Render.Text (renderLazy)
-import qualified Data.Text.Short as S (
-    ShortText,
-    replicate,
-    singleton,
-    toText,
-    uncons,
- )
-import Data.Word (Word8)
-import Language.Haskell.TH (litE, stringL)
-import Language.Haskell.TH.Quote (QuasiQuoter (QuasiQuoter))
 
 {- |
 Types which can be rendered "prettily", that is, formatted by a pretty printer
@@ -287,6 +288,43 @@ indefinite text =
                     if c `elem` ['A', 'E', 'I', 'O', 'U', 'a', 'e', 'i', 'o', 'u']
                         then intoRope ("an " F.<| x)
                         else intoRope ("a " F.<| x)
+
+{- |
+Given a list of items (one word per Rope in the list) enumerate them with commas and
+an oxford comma before the last item. As you'd expect:
+
+@
+λ> __oxford ["one", "two", "three"]__
+"one, two, and three"
+@
+
+Because English is ridiculous, however, and we can't have nice things, two
+items are a special case:
+
+@
+λ> __oxford ["four", "five"]__
+"four and five"
+@
+
+Sadly if there is only one item you don't get an Oxford comma, either:
+
+@
+λ> __oxford ["six"]__
+"six"
+λ> __oxford []__
+""
+@
+
+-}
+oxford :: [Rope] -> Rope
+oxford [] = emptyRope
+oxford (first : []) = first
+oxford (first : second : []) = first <> " and " <> second
+oxford (first : remainder) = first <> series remainder
+  where
+    series [] = emptyRope
+    series (item : []) = ", and " <> item
+    series (item : items) = ", " <> item <> series items
 
 {- |
 Often the input text represents a paragraph, but does not have any internal

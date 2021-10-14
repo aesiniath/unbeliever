@@ -43,7 +43,7 @@ import Core.Program.Logging
 import Core.System.Base (liftIO)
 import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
 import Core.Text.Rope
-import Core.Text.Utilities (quote)
+import Core.Text.Utilities (quote, oxford)
 import qualified Data.ByteString as B (ByteString)
 import qualified Data.ByteString.Lazy as L (ByteString)
 import Data.Char (chr)

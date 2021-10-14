@@ -84,6 +84,12 @@ checkRopeBehaviour = do
         it "exports to Text (Lazy)" $ do
             fromRope sulfuric_acid `shouldBe` U.pack "H₂SO₄"
 
+        it "knows how to use an Oxford comma properly" $ do
+            oxford ["one", "two", "three"] `shouldBe` "one, two, and three"
+            oxford ["four", "five"] `shouldBe` "four and five"
+            oxford ["six"]`shouldBe`"six"
+            oxford []`shouldBe`""
+
         it "does the splits" $ do
             -- compare behaviour on Haskell lists
             List.splitAt 0 ("123456789" :: String) `shouldBe` ("", "123456789")
