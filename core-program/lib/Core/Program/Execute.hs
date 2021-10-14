@@ -76,6 +76,7 @@ module Core.Program.Execute (
     -- * Useful actions
     outputEntire,
     inputEntire,
+    execProcess,
 
     -- * Concurrency
     Thread,
@@ -137,6 +138,7 @@ import GHC.Conc (getNumProcessors, numCapabilities, setNumCapabilities)
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import System.Exit (ExitCode (..))
 import qualified System.Posix.Process as Posix (exitImmediately)
+import System.Process.Typed (closed, proc, readProcess, setStdin)
 import Prelude hiding (log)
 
 --
@@ -485,6 +487,26 @@ inputEntire handle = liftIO (hInput handle)
 {-# DEPRECATED input "Use inputEntire instead" #-}
 input :: Handle -> Program τ Bytes
 input = inputEntire
+
+{-
+Thin wrapper around **typed-process**'s `readProcess` so that the command
+to be executed can be logged. Bit of an annoyance that the command and the
+arguments have to be specified to `proc` separately, but that's _execvp(3)_
+for you.
+-}
+execProcess :: Rope -> Program t (ExitCode, Rope, Rope)
+execProcess cmd =
+  let cmdStr = fromRope cmd
+      task = proc "bash" ("-c" : [cmdStr])
+      task' = setStdin closed task
+   in do
+        debugS "command" task'
+
+        (exit, out, err) <- liftIO $ do
+          readProcess task'
+
+        return (exit, intoRope out, intoRope err)
+
 
 {- |
 A thread for concurrent computation. Haskell uses green threads: small lines
