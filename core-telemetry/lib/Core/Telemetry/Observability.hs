@@ -10,7 +10,6 @@ part of a /trace/.
 -}
 module Core.Telemetry.Observability (
     -- * Initializing
-    setServiceName,
     Exporter,
     initializeTelemetry,
 
@@ -18,10 +17,12 @@ module Core.Telemetry.Observability (
     Trace,
     beginTrace,
     usingTrace,
+    setServiceName,
 
     -- * Spans
     Span,
     encloseSpan,
+    setStartTime,
 
     -- * Creating telemetry
     MetricValue,
@@ -320,6 +321,9 @@ usingTrace trace possibleParent action = do
         -- execute nested program
         subProgram context2 action
 
+{-|
+Add measurements to the current span.
+-}
 telemetry :: [MetricValue] -> Program τ ()
 telemetry values = do
     context <- getContext
@@ -352,3 +356,22 @@ sendEvent _ _ = pure ()
 
 -- get current time after digging out datum and override spanTimeFrom before
 -- sending Datum
+
+{- |
+Override the start time of the current span.
+
+Under normal circumstances this shouldn't be necessary. The start and end of a
+span are recorded automatically when calling 'encloseSpan'. Observabilty tools
+are designed to be used live; traces and spans should be created in real time
+in your code.
+-}
+setStartTime :: TimeStamp -> Program τ ()
+setStartTime time = do
+    context <- getContext
+
+    liftIO $ do
+        -- get the map out
+        let v = currentDatumFrom context
+        modifyMVar_
+            v
+            (\datum -> pure datum{spanTimeFrom = time})
