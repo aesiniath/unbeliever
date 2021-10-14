@@ -494,10 +494,12 @@ to be executed can be logged. Bit of an annoyance that the command and the
 arguments have to be specified to `proc` separately, but that's _execvp(3)_
 for you.
 -}
-execProcess :: Rope -> Program t (ExitCode, Rope, Rope)
-execProcess cmd =
+execProcess :: [Rope] -> Program t (ExitCode, Rope, Rope)
+execProcess [] = error "No command provided"
+execProcess (cmd : args) =
   let cmdStr = fromRope cmd
-      task = proc "bash" ("-c" : [cmdStr])
+      argsStr = fromRope <$> args
+      task = proc cmdStr argsStr
       task' = setStdin closed task
    in do
         debugS "command" task'
@@ -506,7 +508,6 @@ execProcess cmd =
           readProcess task'
 
         return (exit, intoRope out, intoRope err)
-
 
 {- |
 A thread for concurrent computation. Haskell uses green threads: small lines
