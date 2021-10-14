@@ -21,7 +21,7 @@ module Core.Telemetry.Honeycomb (
     honeycombExporter,
 ) where
 
-import Core.Data.Structures (Map, fromMap, insertKeyValue, intoMap)
+import Core.Data.Structures (Map, fromMap, insertKeyValue, intoMap, lookupKeyValue)
 import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Context
@@ -72,31 +72,68 @@ honeycombExporter =
 -- sensible access to environment variables etc isn't available here and we
 -- have to replicate a bunch of stuff we've done elsewhere.
 
--- TODO use context!!!
-setup :: Context τ -> IO Forwarder
-setup context = do
-    possibleTeam <- lookupEnv "HONEYCOMB_TEAM"
-    possibleDataset <- lookupEnv "HONEYCOMB_DATASET"
+setupHoneycombConfig :: Config -> Config
+setupHoneycombConfig config0 =
+    let config1 =
+            appendOption
+                ( Variable
+                    "HONEYCOMB_TEAM"
+                    "The API key used to permit writes to Honeycomb."
+                )
+                config0
+
+        config2 =
+            appendOption
+                ( Option
+                    "honeycomb-dataset"
+                    Nothing
+                    (Value "DATASET")
+                    "The name of the dataset within your Honeycomb account that this program's telemetry will be written to."
+                )
+                config1
+     in config2
+
+setupHoneycombAction :: Context τ -> IO Forwarder
+setupHoneycombAction context = do
+    let params = commandLineFrom context
+        pairs = environmentValuesFrom params
+        possibleTeam = lookupKeyValue "HONEYCOMB_TEAM" pairs
 
     apikey <- case possibleTeam of
         Nothing -> do
-            putStrLn "error: HONEYCOMB_TEAM environment variable not set with API key"
+            putStrLn "error: Need to supply an API key in the HONEYCOMB_TEAM environment variable."
             Posix.exitImmediately (ExitFailure 99)
             undefined
-        Just value -> pure (packRope value)
+        Just param -> case param of
+            Empty -> do
+                putStrLn "error: Need to actually supply a value in HONEYCOMB_TEAM environment variable."
+                Posix.exitImmediately (ExitFailure 99)
+                undefined
+            Value value -> pure (intoRope value)
+
+    let options = parameterValuesFrom params
+        possibleDataset = lookupKeyValue "honeycomb-dataset" options
 
     dataset <- case possibleDataset of
         Nothing -> do
-            putStrLn "error: HONEYCOMB_DATASET environment variable not set with a dataset name"
+            putStrLn "error: Need to specify the dataset that metrics will be written to via --honeycomb-dataset."
             Posix.exitImmediately (ExitFailure 99)
             undefined
-        Just value -> pure (packRope value)
+        Just param -> case param of
+            Empty -> do
+                putStrLn "error: Need to actually supply a value to the --honeycomb-dataset option."
+                Posix.exitImmediately (ExitFailure 99)
+                undefined
+            Value "" -> do
+                putStrLn "error: Need to actually supply a value to the --honeycomb-dataset option."
+                Posix.exitImmediately (ExitFailure 99)
+                undefined
+            Value value -> pure (intoRope value)
 
     pure
-        ( Forwarder
+        Forwarder
             { telemetryHandlerFrom = process apikey dataset
             }
-        )
 
 -- use partually applied
 process :: ApiKey -> Dataset -> Datum -> IO ()
