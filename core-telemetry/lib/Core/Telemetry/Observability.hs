@@ -43,7 +43,7 @@ import Core.Program.Logging
 import Core.System.Base (liftIO)
 import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
 import Core.Text.Rope
-import Core.Text.Utilities (quote, oxford)
+import Core.Text.Utilities (oxford, quote)
 import qualified Data.ByteString as B (ByteString)
 import qualified Data.ByteString.Lazy as L (ByteString)
 import Data.Char (chr)
@@ -153,15 +153,18 @@ instance Telemetry Bool where
 {- |
 Activate the telemetry subsystem for use within the 'Program' monad.
 -}
-initializeTelemetry :: Exporter -> Context τ -> IO (Context τ)
-initializeTelemetry exporter context = do
-    let name = codenameFrom exporter
-    let setup = setupActionFrom exporter
-    let config = initialConfigFrom context
+initializeTelemetry :: [Exporter] -> Context τ -> IO (Context τ)
+initializeTelemetry exporters1 context =
+    let exporters0 = initialExportersFrom context
+        exporters2 = exporters0 ++ exporters1
 
-    forwarder <- setup context
+        codenames =
+            fmap (\name -> singletonRope '"' <> name <> singletonRope '"')
+                . fmap codenameFrom
+                $ exporters2
 
-    let config' =
+        config0 = initialConfigFrom context
+        config1 =
             appendOption
                 ( Option
                     "telemetry"
@@ -170,21 +173,29 @@ initializeTelemetry exporter context = do
                     ( [quote|
                     Turn on telemetry. Tracing data and metrics from events
                     will be forwarded via the specified exporter. Valid values
-                    are "none", "console", and
+                    are
                       |]
-                        <> singletonRope '"'
-                        <> name
-                        <> singletonRope '"'
+                        <> oxford codenames
                     )
                 )
-                config
+                config0
 
-    pure
-        ( context
-            { initialConfigFrom = config'
-            , telemetryForwarderFrom = forwarder
-            }
-        )
+        config2 = List.foldl' f config1 exporters2
+     in pure
+            ( context
+                { initialConfigFrom = config2
+                , initialExportersFrom = exporters2
+                }
+            )
+  where
+    -- This doesn't actually setup the telemetry processor; that's done in
+    -- executeAction. Here we're setting up each  of the exporters so they
+    -- show up in --help. When we process command-line arguments we'll find
+    -- out which exporter was activated, if any.
+    f :: Config -> Exporter -> Config
+    f config exporter =
+        let setup = setupConfigFrom exporter
+         in setup config
 
 {- |
 Begin a span.
