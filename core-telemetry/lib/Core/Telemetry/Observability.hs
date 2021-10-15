@@ -205,8 +205,6 @@ encloseSpan :: Rope -> Program z a -> Program z a
 encloseSpan label action = do
     context <- getContext
 
-    info (label <> " starting")
-
     unique <- liftIO randomIdentifier
     debug "span" unique
 

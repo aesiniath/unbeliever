@@ -13,8 +13,8 @@ import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (TQueue, writeTQueue)
 import Core.Data.Structures (fromMap)
 import Core.Encoding.Json
-import Core.Program.Context
 import Core.Program.Arguments
+import Core.Program.Context
 import Core.Program.Logging
 import Core.System.External (getCurrentTimeNanoseconds)
 import Core.Text.Colour
@@ -51,7 +51,7 @@ process out datum = do
     let text =
             (intoEscapes pureGrey)
                 <> spanNameFrom datum
-                <> " metrics:"
+                <> singletonRope ':'
                 <> let pairs :: [(JsonKey, JsonValue)]
                        pairs = fromMap (attachedMetadataFrom datum)
                     in List.foldl' f emptyRope pairs
@@ -64,7 +64,6 @@ f :: Rope -> (JsonKey, JsonValue) -> Rope
 f acc (k, v) =
     acc <> "\n  "
         <> (intoEscapes pureGrey)
-        <> render 80 k
-        <> (intoEscapes pureGrey)
+        <> intoRope k
         <> " = "
         <> render 80 v

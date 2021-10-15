@@ -85,7 +85,7 @@ setupHoneycombConfig config0 =
         config2 =
             appendOption
                 ( Option
-                    "honeycomb-dataset"
+                    "dataset"
                     Nothing
                     (Value "DATASET")
                     "The name of the dataset within your Honeycomb account that this program's telemetry will be written to."
@@ -112,20 +112,20 @@ setupHoneycombAction context = do
             Value value -> pure (intoRope value)
 
     let options = parameterValuesFrom params
-        possibleDataset = lookupKeyValue "honeycomb-dataset" options
+        possibleDataset = lookupKeyValue "dataset" options
 
     dataset <- case possibleDataset of
         Nothing -> do
-            putStrLn "error: Need to specify the dataset that metrics will be written to via --honeycomb-dataset."
+            putStrLn "error: Need to specify the dataset that metrics will be written to via --dataset."
             Posix.exitImmediately (ExitFailure 99)
             undefined
         Just param -> case param of
             Empty -> do
-                putStrLn "error: Need to actually supply a value to the --honeycomb-dataset option."
+                putStrLn "error: Need to actually supply a value to the --dataset option."
                 Posix.exitImmediately (ExitFailure 99)
                 undefined
             Value "" -> do
-                putStrLn "error: Need to actually supply a value to the --honeycomb-dataset option."
+                putStrLn "error: Need to actually supply a value to the --dataset option."
                 Posix.exitImmediately (ExitFailure 99)
                 undefined
             Value value -> pure (intoRope value)
