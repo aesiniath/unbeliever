@@ -14,14 +14,12 @@ module Core.Telemetry.Observability (
     initializeTelemetry,
 
     -- * Traces
-    Trace,
     beginTrace,
     usingTrace,
     setServiceName,
 
     -- * Spans
-    Span,
-    encloseSpan,
+    Label,
     setStartTime,
 
     -- * Creating telemetry
@@ -31,6 +29,13 @@ module Core.Telemetry.Observability (
 
     -- * Events
     sendEvent,
+
+    -- * Internals
+    Trace,
+    mkTrace,
+    Span,
+    mkSpan,
+    encloseSpan,
 ) where
 
 import Control.Concurrent.MVar (modifyMVar_, newMVar, readMVar)
@@ -71,9 +76,9 @@ Record the name of the service that this span and its children are a part of.
 A reasonable default is the name of the binary that's running, but frequently
 you'll want to put something a bit more nuanced or specific to your
 application. This is the overall name of the independent service, component,
-or program complimenting the @label@ set when calling 'encloseSpan', which
-descibes the name of the current phase, step, or even function name within the
-overall scope of the \"service\".
+or program complimenting the @label@ set when calling 'encloseSpan', which by
+contrast descibes the name of the current phase, step, or even function name
+within the overall scope of the \"service\".
 
 This will end up as the @service_name@ parameter when exported.
 -}
@@ -198,10 +203,28 @@ initializeTelemetry exporters1 context =
         let setup = setupConfigFrom exporter
          in setup config
 
+type Label = Rope
+
 {- |
 Begin a span.
+
+You need to call this from within the context of a trace, which is established
+either by calling `beginTrace` or `usingTrace` somewhere above this point in
+the program.
+
+You can nest spans as you make your way through your program, which means each
+span has a parent (except for the first one, which is the root span) In the
+context of a trace, allows an observability tool to reconstruct the sequence
+of events and to display them as a nested tree correspoding to your program
+flow.
+
+The current time will be noted when entering the 'Program' this span encloses,
+and its duration recorded when the sub @Program@ exits. Start time, duration,
+the unique identifier of the span (generated for you), the identifier of the
+parent, and the unique identifier of the overall trace will be appended as
+metadata points and then sent to the telemetry channel.
 -}
-encloseSpan :: Rope -> Program z a -> Program z a
+encloseSpan :: Label -> Program z a -> Program z a
 encloseSpan label action = do
     context <- getContext
 
@@ -319,7 +342,7 @@ usingTrace trace possibleParent action = do
         -- execute nested program
         subProgram context2 action
 
-{-|
+{- |
 Add measurements to the current span.
 -}
 telemetry :: [MetricValue] -> Program τ ()
