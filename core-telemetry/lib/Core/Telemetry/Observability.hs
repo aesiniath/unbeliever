@@ -349,8 +349,48 @@ telemetry values = do
     f :: Map JsonKey JsonValue -> MetricValue -> Map JsonKey JsonValue
     f acc (MetricValue k v) = insertKeyValue k v acc
 
-sendEvent :: Rope -> [MetricValue] -> Program τ ()
-sendEvent _ _ = pure ()
+{-|
+Record telemetry about an event. Specify a label for the event and then
+whichever metrics you wish to record.
+
+The emphasis of this package is to create traces and spans. There are,
+however, times when you just want to send telemetry about an event. You can
+use 'sendEvent' to accomplush this.
+
+If you call 'sendEvent' within an enclosing span created with 'encloseSpan'
+(the usual and expected use case) then this event will be \"linked\" to this
+span so that the observability tool can deisplay it attached to the span in
+the in which it occured.
+
+Not every situation is in the context of traces and spans and so you can use
+this to send arbitrary telemetry.
+-}
+sendEvent :: Label -> [MetricValue] -> Program τ ()
+sendEvent label values = do
+    context <- getContext
+
+    liftIO $ do
+        -- get the map out
+        let v = currentDatumFrom context
+        datum <- readMVar v
+
+        let meta = attachedMetadataFrom datum
+
+        -- update the map
+        let meta1 = List.foldl' f meta values
+            meta2 = insertKeyValue "name" (JsonString label) meta1
+
+        -- replace the map back into the Datum and queue for sending
+        let datum' =
+                datum
+                    { attachedMetadataFrom = meta2
+                    }
+
+        let tel = telemetryChannelFrom context
+        atomically (writeTQueue tel datum')
+  where
+    f :: Map JsonKey JsonValue -> MetricValue -> Map JsonKey JsonValue
+    f acc (MetricValue k v) = insertKeyValue k v acc
 
 -- get current time after digging out datum and override spanTimeFrom before
 -- sending Datum
