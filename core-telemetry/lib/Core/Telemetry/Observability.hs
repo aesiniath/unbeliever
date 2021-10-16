@@ -391,6 +391,7 @@ sendEvent label values = do
     context <- getContext
 
     liftIO $ do
+        now <- getCurrentTimeNanoseconds
         -- get the map out
         let v = currentDatumFrom context
         datum <- readMVar v
@@ -398,13 +399,15 @@ sendEvent label values = do
         let meta = attachedMetadataFrom datum
 
         -- update the map
-        let meta1 = List.foldl' f meta values
-            meta2 = insertKeyValue "name" (JsonString label) meta1
-
+        let meta' = List.foldl' f meta values
         -- replace the map back into the Datum and queue for sending
         let datum' =
                 datum
-                    { attachedMetadataFrom = meta2
+                    { spanNameFrom = label
+                    , spanIdentifierFrom = Nothing
+                    , parentIdentifierFrom = spanIdentifierFrom datum
+                    , spanTimeFrom = now
+                    , attachedMetadataFrom = meta'
                     }
 
         let tel = telemetryChannelFrom context

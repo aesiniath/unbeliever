@@ -148,7 +148,7 @@ convertDatumToJson datum =
         meta1 = insertKeyValue "name" (JsonString (spanNameFrom datum)) meta0
 
         meta2 = case spanIdentifierFrom datum of
-            Nothing -> meta1
+            Nothing -> insertKeyValue "meta.annotation_type" (JsonString "span_event") meta1
             Just self -> insertKeyValue "trace.span_id" (JsonString (unSpan self)) meta1
 
         meta3 = case parentIdentifierFrom datum of
