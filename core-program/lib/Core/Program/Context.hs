@@ -16,7 +16,6 @@ module Core.Program.Context (
     Datum (..),
     emptyDatum,
     Trace (..),
-    mkTrace,
     unTrace,
     Span (..),
     mkSpan,
@@ -117,9 +116,6 @@ Unique identifier for a trace.
 -}
 newtype Trace = Trace Rope
     deriving (Show, IsString)
-
-mkTrace :: Rope -> Trace
-mkTrace = Trace
 
 unTrace :: Trace -> Rope
 unTrace (Trace text) = text

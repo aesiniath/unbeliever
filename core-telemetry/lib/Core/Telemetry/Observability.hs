@@ -31,10 +31,8 @@ module Core.Telemetry.Observability (
     sendEvent,
 
     -- * Internals
-    Trace,
-    mkTrace,
-    Span,
-    mkSpan,
+    Trace (..),
+    Span (..),
     encloseSpan,
 ) where
 
@@ -372,7 +370,7 @@ telemetry values = do
     f :: Map JsonKey JsonValue -> MetricValue -> Map JsonKey JsonValue
     f acc (MetricValue k v) = insertKeyValue k v acc
 
-{-|
+{- |
 Record telemetry about an event. Specify a label for the event and then
 whichever metrics you wish to record.
 
