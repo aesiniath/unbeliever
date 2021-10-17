@@ -193,6 +193,8 @@ postEventToHoneycombAPI apikey dataset json = do
             setContentType "application/json"
             setHeader "X-Honeycomb-Team" (fromRope (apikey))
 
+    putStrLn (fromRope ("Processing " <> render 80 json))
+
     sendRequest c q (simpleBody (fromBytes (encodeToUTF8 json)))
     result <- receiveResponse c simpleHandler
 
@@ -202,4 +204,5 @@ postEventToHoneycombAPI apikey dataset json = do
         then pure ()
         else do
             -- putStr "Failed to post to Honeycomb: "
+            C.putStrLn "Response"
             C.putStrLn result

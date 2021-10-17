@@ -115,12 +115,24 @@ import qualified Control.Concurrent.Async as Async (
     race_,
     wait,
  )
-import Control.Concurrent.MVar (modifyMVar_, newMVar, putMVar, readMVar)
-import Control.Concurrent.STM (atomically, check)
-import Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue, readTQueue)
+import Control.Concurrent.MVar (
+    modifyMVar_,
+    newMVar,
+    putMVar,
+    readMVar,
+ )
+import Control.Concurrent.STM (atomically)
+import Control.Concurrent.STM.TQueue (
+    TQueue,
+    readTQueue,
+    writeTQueue,
+ )
 import qualified Control.Exception as Base (throwIO)
 import qualified Control.Exception.Safe as Safe (catch, catchesAsync, throw)
-import Control.Monad (forever, void, when)
+import Control.Monad (
+    void,
+    when,
+ )
 import Control.Monad.Catch (Handler (..))
 import Control.Monad.Reader.Class (MonadReader (ask))
 import Core.Data.Structures
@@ -286,29 +298,25 @@ executeActual context0 program = do
             )
             (escapeHandlers context)
 
-    -- drain message queues. Allow 0.1 seconds, then timeout, in case
-    -- something has gone wrong and queues don't empty.
+    -- instruct handlers to finish, and wait for the message queues to drain.
+    -- Allow 0.1 seconds, then timeout, in case something has gone wrong and
+    -- queues don't empty.
     Async.race_
         ( do
             atomically $ do
-                done2 <- isEmptyTQueue tel
-                check done2
+                writeTQueue tel Nothing
+                writeTQueue out Nothing
 
-            threadDelay 1000 -- instead of yield
-
-            atomically $ do
-                done1 <- isEmptyTQueue out
-                check done1
-
-            threadDelay 1000 -- instead of yield
+            Async.wait l
+            Async.wait o
         )
         ( do
-            threadDelay 100000
+            threadDelay 5000000
+
+            Async.cancel l
+            Async.cancel o
             putStrLn "error: Timeout"
         )
-
-    Async.cancel l
-    Async.cancel o
 
     hFlush stdout
 
@@ -317,31 +325,47 @@ executeActual context0 program = do
         then return ()
         else (Base.throwIO code)
 
-processStandardOutput :: TQueue Rope -> IO ()
+processStandardOutput :: TQueue (Maybe Rope) -> IO ()
 processStandardOutput out =
     Safe.catch
-        ( do
-            forever $ do
-                text <- atomically (readTQueue out)
-
-                hWrite stdout text
-                B.hPut stdout (C.singleton '\n')
-        )
+        (processQueue action out)
         (collapseHandler "output processing collapsed")
+  where
+    action :: Rope -> IO ()
+    action text = do
+        hWrite stdout text
+        B.hPut stdout (C.singleton '\n')
 
-processTelemetryMessages :: Forwarder -> TQueue Datum -> IO ()
-processTelemetryMessages processor log = do
+processTelemetryMessages :: Forwarder -> TQueue (Maybe Datum) -> IO ()
+processTelemetryMessages processor tel = do
     Safe.catch
-        ( do
-            let process = telemetryHandlerFrom processor
-            forever $ do
-                -- wait for an event
-                datum <- atomically (readTQueue log)
-
-                -- let Exporter handle it
-                process datum
-        )
+        (processQueue action tel)
         (collapseHandler "telemetry processing collapsed")
+  where
+    action = telemetryHandlerFrom processor
+
+--
+-- I'm embarrased how long it took to get here. At one point we were firing
+-- off an Async.race of two threads for every item coming down the queue. And
+-- you know what? Thta didn't work either. After all of that, realized that
+-- the technique used by **io-streams** to just pass along a stream of Maybes,
+-- with Nothing signalling end-of-stream is exactly good enough for our needs.
+--
+processQueue :: (a -> IO ()) -> TQueue (Maybe a) -> IO ()
+processQueue action queue = loop
+  where
+    loop :: IO ()
+    loop = do
+        -- block waiting for an item
+        probable <- atomically $ do
+            readTQueue queue
+
+        -- handle it and loop, unless we're done
+        case probable of
+            Nothing -> pure ()
+            Just item -> do
+                action item
+                loop
 
 {- |
 Safely exit the program with the supplied exit code. Current output and

@@ -266,10 +266,10 @@ encloseSpan label action = do
                     { durationFrom = Just (unTimeStamp finish - unTimeStamp start)
                     }
 
-        let telem = telemetryChannelFrom context
+        let tel = telemetryChannelFrom context
 
         atomically $ do
-            writeTQueue telem datum2'
+            writeTQueue tel (Just datum2')
 
         -- now back to your regularly scheduled Haskell program
         pure result
@@ -411,7 +411,8 @@ sendEvent label values = do
                     }
 
         let tel = telemetryChannelFrom context
-        atomically (writeTQueue tel datum')
+        atomically $ do
+            writeTQueue tel (Just datum')
   where
     f :: Map JsonKey JsonValue -> MetricValue -> Map JsonKey JsonValue
     f acc (MetricValue k v) = insertKeyValue k v acc

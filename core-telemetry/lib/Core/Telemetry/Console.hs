@@ -44,7 +44,7 @@ setupConsoleAction context = do
             }
         )
 
-process :: TQueue Rope -> Datum -> IO ()
+process :: TQueue (Maybe Rope) -> Datum -> IO ()
 process out datum = do
     now <- getCurrentTimeNanoseconds
     let start = spanTimeFrom datum
@@ -58,7 +58,8 @@ process out datum = do
                         <> (intoEscapes resetColour)
 
     let result = formatLogMessage start now SeverityDebug text
-    atomically (writeTQueue out result)
+    atomically $ do
+        writeTQueue out (Just result)
 
 f :: Rope -> (JsonKey, JsonValue) -> Rope
 f acc (k, v) =

@@ -180,8 +180,8 @@ data Context τ = Context
     , startTimeFrom :: MVar TimeStamp
     , verbosityLevelFrom :: MVar Verbosity
     , -- communication channels
-      outputChannelFrom :: TQueue Rope
-    , telemetryChannelFrom :: TQueue Datum
+      outputChannelFrom :: TQueue (Maybe Rope)
+    , telemetryChannelFrom :: TQueue (Maybe Datum)
     , -- machinery for telemetry
       telemetryForwarderFrom :: Forwarder
     , currentDatumFrom :: MVar Datum

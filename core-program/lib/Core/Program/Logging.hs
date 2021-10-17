@@ -188,7 +188,7 @@ putMessage context (Message now level text possiblelValue) = do
     let !result = formatLogMessage start now level display
 
     atomically $ do
-        writeTQueue output result
+        writeTQueue output (Just result)
 
 formatLogMessage :: TimeStamp -> TimeStamp -> Severity -> Rope -> Rope
 formatLogMessage start now severity message =
@@ -258,7 +258,8 @@ write text = do
         let out = outputChannelFrom context
 
         !text' <- evaluate text
-        atomically (writeTQueue out text')
+        atomically $ do
+            writeTQueue out (Just text')
 
 {- |
 Call 'show' on the supplied argument and write the resultant text to
@@ -283,7 +284,7 @@ writeR thing = do
 
         let text = render columns thing
         !text' <- evaluate text
-        atomically (writeTQueue out text')
+        atomically (writeTQueue out (Just text'))
 
 {- |
 Note a significant event, state transition, status; also used as a heading for
