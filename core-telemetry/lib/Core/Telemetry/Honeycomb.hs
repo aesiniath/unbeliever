@@ -32,6 +32,7 @@ import Core.Text.Bytes
 import Core.Text.Colour
 import Core.Text.Rope
 import Core.Text.Utilities
+import Data.ByteString (ByteString)
 import qualified Data.ByteString as B (ByteString)
 import qualified Data.ByteString.Char8 as C (append, null, putStrLn)
 import qualified Data.ByteString.Lazy as L (ByteString)
@@ -40,6 +41,7 @@ import qualified Data.List as List
 import Network.Http.Client
 import System.Environment (lookupEnv)
 import System.Exit (ExitCode (..))
+import System.IO.Streams (InputStream)
 import qualified System.Posix.Process as Posix (exitImmediately)
 
 {- |
@@ -193,16 +195,34 @@ postEventToHoneycombAPI apikey dataset json = do
             setContentType "application/json"
             setHeader "X-Honeycomb-Team" (fromRope (apikey))
 
-    putStrLn (fromRope ("Processing " <> render 80 json))
-
     sendRequest c q (simpleBody (fromBytes (encodeToUTF8 json)))
-    result <- receiveResponse c simpleHandler
+    receiveResponse c handler
+  where
+    {-
+    Response to Batch API looks like:
 
-    -- this is rubbish error handling. We'll clean this up! we're not,
-    -- however, going to crash out.
-    if (C.null result)
-        then pure ()
-        else do
-            -- putStr "Failed to post to Honeycomb: "
-            C.putStrLn "Response"
-            C.putStrLn result
+    [{"status":202}]
+
+    -}
+    handler :: Response -> InputStream ByteString -> IO ()
+    handler p i = do
+        let code = getStatusCode p
+        case code of
+            200 -> do
+                body <- simpleHandler p i
+                let responses = decodeFromUTF8 (intoBytes body)
+                case responses of
+                    Just (JsonArray pairs) -> mapM_ f pairs
+                      where
+                        f pair = case pair of
+                            JsonObject kvs -> case lookupKeyValue "status" kvs of
+                                Just (JsonNumber 202) -> pure ()
+                                _ -> do
+                                    putStrLn "No status returned;"
+                                    C.putStrLn body
+                            _ -> putStrLn "internal: wtf?"
+                    _ -> do
+                        putStrLn "internal: Unexpected response from Honeycomb"
+                        C.putStrLn body
+            _ -> do
+                putStrLn "internal: Failed to post to Honeycomb"

@@ -39,6 +39,7 @@ library:
    - chronologique
    - exceptions
    - http-streams
+   - io-streams
    - mtl
    - random
    - safe-exceptions
