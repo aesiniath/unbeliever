@@ -124,12 +124,15 @@ import Control.Concurrent.MVar (
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (
     TQueue,
+    flushTQueue,
+    peekTQueue,
     readTQueue,
     writeTQueue,
  )
 import qualified Control.Exception as Base (throwIO)
 import qualified Control.Exception.Safe as Safe (catch, catchesAsync, throw)
 import Control.Monad (
+    forM_,
     void,
     when,
  )
@@ -328,44 +331,59 @@ executeActual context0 program = do
 processStandardOutput :: TQueue (Maybe Rope) -> IO ()
 processStandardOutput out =
     Safe.catch
-        (processQueue action out)
+        (loop)
         (collapseHandler "output processing collapsed")
   where
-    action :: Rope -> IO ()
-    action text = do
-        hWrite stdout text
-        B.hPut stdout (C.singleton '\n')
+    loop :: IO ()
+    loop = do
+        probable <- atomically $ do
+            readTQueue out
 
-processTelemetryMessages :: Forwarder -> TQueue (Maybe Datum) -> IO ()
-processTelemetryMessages processor tel = do
-    Safe.catch
-        (processQueue action tel)
-        (collapseHandler "telemetry processing collapsed")
-  where
-    action = telemetryHandlerFrom processor
+        case probable of
+            Nothing -> pure ()
+            Just text -> do
+                hWrite stdout text
+                B.hPut stdout (C.singleton '\n')
+                loop
 
 --
 -- I'm embarrased how long it took to get here. At one point we were firing
 -- off an Async.race of two threads for every item coming down the queue. And
--- you know what? Thta didn't work either. After all of that, realized that
--- the technique used by **io-streams** to just pass along a stream of Maybes,
+-- you know what? That didn't work either. After all of that, realized that
+-- the technique used   by **io-streams** to just pass along a stream of Maybes,
 -- with Nothing signalling end-of-stream is exactly good enough for our needs.
 --
-processQueue :: (a -> IO ()) -> TQueue (Maybe a) -> IO ()
-processQueue action queue = loop
+processTelemetryMessages :: Forwarder -> TQueue (Maybe Datum) -> IO ()
+processTelemetryMessages processor tel = do
+    Safe.catch
+        (loop)
+        (collapseHandler "telemetry processing collapsed")
   where
+    action = telemetryHandlerFrom processor
+
     loop :: IO ()
     loop = do
         -- block waiting for an item
-        probable <- atomically $ do
-            readTQueue queue
+        possibleItems <- atomically $ do
+            _ <- peekTQueue tel -- blocks
+            flushTQueue tel
+
+        let (items, stop) = foldr f ([], False) possibleItems
 
         -- handle it and loop, unless we're done
+        case items of
+            [] -> pure ()
+            _ -> action items
+
+        case stop of
+            True -> pure ()
+            False -> loop
+
+    f :: Maybe a -> ([a], Bool) -> ([a], Bool)
+    f probable (items, stop) =
         case probable of
-            Nothing -> pure ()
-            Just item -> do
-                action item
-                loop
+            Nothing -> (items, True)
+            Just item -> (item : items, stop)
 
 {- |
 Safely exit the program with the supplied exit code. Current output and

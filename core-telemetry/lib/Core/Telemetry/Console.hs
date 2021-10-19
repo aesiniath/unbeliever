@@ -44,22 +44,26 @@ setupConsoleAction context = do
             }
         )
 
-process :: TQueue (Maybe Rope) -> Datum -> IO ()
-process out datum = do
-    now <- getCurrentTimeNanoseconds
-    let start = spanTimeFrom datum
-    let text =
-            (intoEscapes pureGrey)
-                <> spanNameFrom datum
-                <> singletonRope ':'
-                <> let pairs :: [(JsonKey, JsonValue)]
-                       pairs = fromMap (attachedMetadataFrom datum)
-                    in List.foldl' f emptyRope pairs
-                        <> (intoEscapes resetColour)
+process :: TQueue (Maybe Rope) -> [Datum] -> IO ()
+process out datums = do
+    mapM_ processOne datums
+  where
+    processOne :: Datum -> IO ()
+    processOne datum = do
+        now <- getCurrentTimeNanoseconds
+        let start = spanTimeFrom datum
+        let text =
+                (intoEscapes pureGrey)
+                    <> spanNameFrom datum
+                    <> singletonRope ':'
+                    <> let pairs :: [(JsonKey, JsonValue)]
+                           pairs = fromMap (attachedMetadataFrom datum)
+                        in List.foldl' f emptyRope pairs
+                            <> (intoEscapes resetColour)
 
-    let result = formatLogMessage start now SeverityDebug text
-    atomically $ do
-        writeTQueue out (Just result)
+        let result = formatLogMessage start now SeverityDebug text
+        atomically $ do
+            writeTQueue out (Just result)
 
 f :: Rope -> (JsonKey, JsonValue) -> Rope
 f acc (k, v) =

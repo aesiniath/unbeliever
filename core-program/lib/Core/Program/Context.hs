@@ -130,7 +130,7 @@ data Exporter = Exporter
 Implementation of a forwarder for structured logging of the telemetry channel.
 -}
 data Forwarder = Forwarder
-    { telemetryHandlerFrom :: Datum -> IO ()
+    { telemetryHandlerFrom :: [Datum] -> IO ()
     }
 
 emptyForwarder :: Forwarder

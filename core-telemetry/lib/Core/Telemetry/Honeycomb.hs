@@ -138,9 +138,9 @@ setupHoneycombAction context = do
             }
 
 -- use partually applied
-process :: ApiKey -> Dataset -> Datum -> IO ()
-process apikey dataset datum = do
-    let json = convertDatumToJson datum
+process :: ApiKey -> Dataset -> [Datum] -> IO ()
+process apikey dataset datums = do
+    let json = JsonArray (fmap convertDatumToJson datums)
     postEventToHoneycombAPI apikey dataset json
 
 convertDatumToJson :: Datum -> JsonValue
@@ -183,7 +183,7 @@ convertDatumToJson datum =
                     , (JsonKey "data", JsonObject meta6)
                     ]
                 )
-     in JsonArray [point]
+     in point
 
 postEventToHoneycombAPI :: ApiKey -> Dataset -> JsonValue -> IO ()
 postEventToHoneycombAPI apikey dataset json = do
@@ -226,3 +226,5 @@ postEventToHoneycombAPI apikey dataset json = do
                         C.putStrLn body
             _ -> do
                 putStrLn "internal: Failed to post to Honeycomb"
+                debugHandler p i
+
