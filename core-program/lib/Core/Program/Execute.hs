@@ -314,7 +314,7 @@ executeActual context0 program = do
             Async.wait o
         )
         ( do
-            threadDelay 5000000
+            threadDelay 10000000
 
             Async.cancel l
             Async.cancel o
