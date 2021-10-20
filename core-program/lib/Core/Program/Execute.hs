@@ -121,18 +121,20 @@ import Control.Concurrent.MVar (
     putMVar,
     readMVar,
  )
-import Control.Concurrent.STM (atomically)
+import Control.Concurrent.STM (
+    STM,
+    atomically,
+ )
 import Control.Concurrent.STM.TQueue (
     TQueue,
-    flushTQueue,
-    peekTQueue,
     readTQueue,
+    tryReadTQueue,
+    unGetTQueue,
     writeTQueue,
  )
 import qualified Control.Exception as Base (throwIO)
 import qualified Control.Exception.Safe as Safe (catch, catchesAsync, throw)
 import Control.Monad (
-    forM_,
     void,
     when,
  )
@@ -356,34 +358,55 @@ processStandardOutput out =
 processTelemetryMessages :: Forwarder -> TQueue (Maybe Datum) -> IO ()
 processTelemetryMessages processor tel = do
     Safe.catch
-        (loop)
+        (loopForever)
         (collapseHandler "telemetry processing collapsed")
   where
     action = telemetryHandlerFrom processor
 
-    loop :: IO ()
-    loop = do
+    loopForever :: IO ()
+    loopForever = do
         -- block waiting for an item
         possibleItems <- atomically $ do
-            _ <- peekTQueue tel -- blocks
-            flushTQueue tel
-
-        let (items, stop) = foldr f ([], False) possibleItems
+            cycleOverQueue []
 
         -- handle it and loop, unless we're done
+        case possibleItems of
+            Nothing -> pure ()
+            Just items -> do
+                action (reverse items)
+                loopForever
+
+    -- this will read until either end of queue or Nothing, building up a list.
+
+    cycleOverQueue :: [Datum] -> STM (Maybe [Datum])
+    cycleOverQueue items =
         case items of
-            [] -> pure ()
-            _ -> action items
-
-        case stop of
-            True -> pure ()
-            False -> loop
-
-    f :: Maybe a -> ([a], Bool) -> ([a], Bool)
-    f probable (items, stop) =
-        case probable of
-            Nothing -> (items, True)
-            Just item -> (item : items, stop)
+            [] -> do
+                possibleItem <- readTQueue tel -- blocks
+                case possibleItem of
+                    -- we're finished! time to shutdown
+                    Nothing -> pure Nothing
+                    -- otherwise start accumulating
+                    Just item -> do
+                        cycleOverQueue (item : [])
+            _ -> do
+                pending <- tryReadTQueue tel -- doesn't block
+                case pending of
+                    -- nothing left in the queue
+                    Nothing -> pure (Just items)
+                    -- otherwise we get one of our Maybe Datum, and consider it
+                    Just possibleItem -> do
+                        case possibleItem of
+                            -- oh, time to stop! We put the Nothing back into
+                            -- the queue, then let the accumulated items get
+                            -- processed. The next loop will read the
+                            -- Nothing and shutdown.
+                            Nothing -> do
+                                unGetTQueue tel Nothing
+                                pure (Just items)
+                            -- continue accumulating!
+                            Just item -> do
+                                cycleOverQueue (item : items)
 
 {- |
 Safely exit the program with the supplied exit code. Current output and
