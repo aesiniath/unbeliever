@@ -6,6 +6,8 @@ import CheckContainerBehaviour
 import CheckJsonWrapper
 import CheckProgramMonad
 import CheckRopeBehaviour (checkRopeBehaviour)
+import CheckTelemetryMachinery
+
 import Core.System
 import Test.Hspec
 
@@ -21,3 +23,4 @@ suite = do
   checkJsonWrapper
   checkArgumentsParsing
   checkProgramMonad
+  checkTelemetryMachinery

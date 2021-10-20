@@ -99,6 +99,7 @@ module Core.Program.Execute (
     update,
     output,
     input,
+    loopForever,
 ) where
 
 import Chrono.TimeStamp (getCurrentTimeNanoseconds)
@@ -122,7 +123,6 @@ import Control.Concurrent.MVar (
     readMVar,
  )
 import Control.Concurrent.STM (
-    STM,
     atomically,
  )
 import Control.Concurrent.STM.TQueue (
@@ -358,31 +358,28 @@ processStandardOutput out =
 processTelemetryMessages :: Forwarder -> TQueue (Maybe Datum) -> IO ()
 processTelemetryMessages processor tel = do
     Safe.catch
-        (loopForever)
+        (loopForever action tel)
         (collapseHandler "telemetry processing collapsed")
   where
     action = telemetryHandlerFrom processor
 
-    loopForever :: IO ()
-    loopForever = do
-        -- block waiting for an item
-        possibleItems <- atomically $ do
-            cycleOverQueue []
+loopForever :: ([a] -> IO ()) -> TQueue (Maybe a) -> IO ()
+loopForever action queue = do
+    -- block waiting for an item
+    possibleItems <- atomically $ do
+        cycleOverQueue []
 
-        -- handle it and loop, unless we're done
-        case possibleItems of
-            Nothing -> pure ()
-            Just items -> do
-                action (reverse items)
-                loopForever
-
-    -- this will read until either end of queue or Nothing, building up a list.
-
-    cycleOverQueue :: [Datum] -> STM (Maybe [Datum])
+    -- handle it and loop, unless we're done
+    case possibleItems of
+        Nothing -> pure ()
+        Just items -> do
+            action (reverse items)
+            loopForever action queue
+  where
     cycleOverQueue items =
         case items of
             [] -> do
-                possibleItem <- readTQueue tel -- blocks
+                possibleItem <- readTQueue queue -- blocks
                 case possibleItem of
                     -- we're finished! time to shutdown
                     Nothing -> pure Nothing
@@ -390,7 +387,7 @@ processTelemetryMessages processor tel = do
                     Just item -> do
                         cycleOverQueue (item : [])
             _ -> do
-                pending <- tryReadTQueue tel -- doesn't block
+                pending <- tryReadTQueue queue -- doesn't block
                 case pending of
                     -- nothing left in the queue
                     Nothing -> pure (Just items)
@@ -402,7 +399,7 @@ processTelemetryMessages processor tel = do
                             -- processed. The next loop will read the
                             -- Nothing and shutdown.
                             Nothing -> do
-                                unGetTQueue tel Nothing
+                                unGetTQueue queue Nothing
                                 pure (Just items)
                             -- continue accumulating!
                             Just item -> do
