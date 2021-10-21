@@ -12,8 +12,8 @@ When specifying the 'honeycombExporter' you have to specify certain
 command-line options and environment variables to enable it:
 
 @
-$ export HONEYCOMB_TEAM="62e3626a2cc34475adef4d799eca0407"
-$ burger-service --telemetry=honeycomb --dataset=prod-restaurant-001
+\$ export HONEYCOMB_TEAM="62e3626a2cc34475adef4d799eca0407"
+\$ burger-service --telemetry=honeycomb --dataset=prod-restaurant-001
 @
 
 /Notice/
@@ -153,21 +153,26 @@ process apikey dataset datums = do
 
 convertDatumToJson :: Datum -> JsonValue
 convertDatumToJson datum =
-    let meta0 = attachedMetadataFrom datum
+    let spani = spanIdentifierFrom datum
+        trace = traceIdentifierFrom datum
+        parent = parentIdentifierFrom datum
+        meta0 = attachedMetadataFrom datum
 
         meta1 = insertKeyValue "name" (JsonString (spanNameFrom datum)) meta0
 
-        meta2 = case spanIdentifierFrom datum of
-            Nothing -> insertKeyValue "meta.annotation_type" (JsonString "span_event") meta1
-            Just self -> insertKeyValue "trace.span_id" (JsonString (unSpan self)) meta1
+        meta2 = case spani of
+            Nothing -> case trace of
+                Nothing -> meta1
+                Just _ -> insertKeyValue "meta.annotation_type" (JsonString "span_event") meta1
+            Just value -> insertKeyValue "trace.span_id" (JsonString (unSpan value)) meta1
 
-        meta3 = case parentIdentifierFrom datum of
+        meta3 = case parent of
             Nothing -> meta2
-            Just parent -> insertKeyValue "trace.parent_id" (JsonString (unSpan parent)) meta2
+            Just value -> insertKeyValue "trace.parent_id" (JsonString (unSpan value)) meta2
 
-        meta4 = case traceIdentifierFrom datum of
+        meta4 = case trace of
             Nothing -> meta3
-            Just trace -> insertKeyValue "trace.trace_id" (JsonString (unTrace trace)) meta3
+            Just value -> insertKeyValue "trace.trace_id" (JsonString (unTrace value)) meta3
 
         meta5 = case serviceNameFrom datum of
             Nothing -> meta4
@@ -235,4 +240,3 @@ postEventToHoneycombAPI apikey dataset json = do
             _ -> do
                 putStrLn "internal: Failed to post to Honeycomb"
                 debugHandler p i
-

@@ -15,7 +15,7 @@ import "Core.Telemetry"
 main :: 'IO' ()
 main = do
     context <- 'Core.Program.Execute.configure' \"1.0\" 'Core.Program.Execute.None' ('simpleConfig' [])
-    context' <- 'initializeTelemetry' [ 'Core.Telemetry.Console.consoleExporter', 'Core.Telemetry.Console.structuredExporter', 'Core.Telemetry.Console.honeycombExporter'] context
+    context' <- 'initializeTelemetry' ['Core.Telemetry.Console.consoleExporter', 'Core.Telemetry.Console.structuredExporter', 'Core.Telemetry.Console.honeycombExporter'] context
     'Core.Program.Execute.executeWith' context' program
 @
 
@@ -226,6 +226,9 @@ instance Telemetry U.Text where
 
 instance Telemetry Bool where
     metric k v = MetricValue (JsonKey k) (JsonBool v)
+
+instance Telemetry JsonValue where
+    metric k v = MetricValue (JsonKey k) v
 
 {- |
 Activate the telemetry subsystem for use within the
