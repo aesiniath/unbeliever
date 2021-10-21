@@ -50,7 +50,7 @@ library
     , chronologique
     , core-data
     , core-program >=0.3.0
-    , core-text >=0.3.2
+    , core-text >=0.3.5
     , exceptions
     , http-streams
     , io-streams

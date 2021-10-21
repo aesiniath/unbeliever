@@ -33,7 +33,7 @@ dependencies:
 library:
   dependencies:
    - async
-   - core-text >= 0.3.2
+   - core-text >= 0.3.5
    - core-data
    - core-program >= 0.3.0
    - chronologique
