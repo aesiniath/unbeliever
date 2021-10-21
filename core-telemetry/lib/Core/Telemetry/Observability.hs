@@ -5,8 +5,81 @@
 {-# LANGUAGE RankNTypes #-}
 
 {- |
+To use this capability, first you need to initialize the telemetry subsystem
+with an appropriate exporter.
+
+@
+import "Core.Program"
+import "Core.Telemetry"
+
+main :: 'IO' ()
+main = do
+    context <- 'Core.Program.Execute.configure' \"1.0\" 'Core.Program.Execute.None' ('simpleConfig' [])
+    context' <- 'initializeTelemetry' ['Core.Telemetry.Console.consoleExporter'] context
+    'Core.Program.Execute.executeWith' context' program
+@
+
+/Traces and Spans/
+
 For spans to be connected together by an observability tool they need to be
 part of a /trace/.
+
+At the top of your program or request loop you need to start a new trace (with
+'beginTrace') or continue one inherited from another service (with
+'usingTrace'):
+
+@
+program :: Program None ()
+program = do
+    'beginTrace' $ do
+        'encloseSpan' \"Service Request\" $ do
+
+            -- do stuff!
+            
+            ...
+
+            -- add appropriate telemetry values to the span 
+            'telemetry'
+                [ 'metric' \"colour\" currentSkyObservation
+                , 'metric' \"temperature" currentAirTemperature
+                ]
+@
+
+will result in @colour=\"Blue\"@ and @temperature=26.1@ being sent by the
+telemetry system to the observability service that's been activated.
+
+The real magic here is that spans /nest/. As you go into each subcomponent on
+your request path you can again call 'encloseSpan' creating a new span. Any
+metrics added before entering the new span will be inherited by the subspan
+and sent when it finishes so you don't have to keep re-attaching data if it's
+common across all the spans in your trace.
+
+/Events/
+
+In other circumstances you will just want to send metrics:
+
+@
+            -- not again!
+            'sendEvent' \"Cat meowed\"
+                [ 'metric' \"room\" (\"living room\" :: 'Rope')
+                , 'metric' "volume\" (127.44 :: 'Float') -- decibels
+                , 'metric' \"apparently_hungry\" 'True'
+                ]
+@
+
+will result in @room=\"living room\"@, @volume=127.44@, and
+@apparently_hungry=true@ being sent as you'd expect. Ordinarily when you call
+'metric' you are passing in a variable that already has a type, but when
+hardcoding literals like in this example (less common but not unheard of)
+you'll need to add a type annotation.
+
+You /do not/ have to call 'sendEvent' from within a span, but if you do
+appropriate metadata will be added to help the observability system link the
+event to the context of the span it occured during.
+
+Either way, explicitly sending an event, or upon exiting a span, the telemetry
+will be gathered up and sent via the chosen exporter and forwarded to the
+observability or monitoring service you have chosen.
 -}
 module Core.Telemetry.Observability (
     -- * Initializing
@@ -14,12 +87,15 @@ module Core.Telemetry.Observability (
     initializeTelemetry,
 
     -- * Traces
+    Trace (..),
+    Span (..),
     beginTrace,
     usingTrace,
     setServiceName,
 
     -- * Spans
     Label,
+    encloseSpan,
     setStartTime,
 
     -- * Creating telemetry
@@ -29,11 +105,6 @@ module Core.Telemetry.Observability (
 
     -- * Events
     sendEvent,
-
-    -- * Internals
-    Trace (..),
-    Span (..),
-    encloseSpan,
 ) where
 
 import Control.Concurrent.MVar (modifyMVar_, newMVar, readMVar)
@@ -290,6 +361,16 @@ randomIdentifier = do
 
 {- |
 Start a new trace. A random identifier will be generated.
+
+You /must/ have a single \"root span\" immediately below starting a new trace.
+
+@
+program :: Program None ()
+program = do
+    'beginTrace' $ do
+        'encloseSpan' \"Service Request\" $ do
+            ...
+@
 -}
 beginTrace :: Program τ α -> Program τ α
 beginTrace action = do
