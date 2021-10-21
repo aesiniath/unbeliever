@@ -15,7 +15,7 @@ import "Core.Telemetry"
 main :: 'IO' ()
 main = do
     context <- 'Core.Program.Execute.configure' \"1.0\" 'Core.Program.Execute.None' ('simpleConfig' [])
-    context' <- 'initializeTelemetry' ['Core.Telemetry.Console.consoleExporter'] context
+    context' <- 'initializeTelemetry' [ 'Core.Telemetry.Console.consoleExporter', 'Core.Telemetry.Console.structuredExporter', 'Core.Telemetry.Console.honeycombExporter'] context
     'Core.Program.Execute.executeWith' context' program
 @
 
@@ -29,7 +29,7 @@ At the top of your program or request loop you need to start a new trace (with
 'usingTrace'):
 
 @
-program :: Program None ()
+program :: 'Core.Program.Execute.Program' 'Core.Program.Execute.None' ()
 program = do
     'beginTrace' $ do
         'encloseSpan' \"Service Request\" $ do
@@ -45,8 +45,8 @@ program = do
                 ]
 @
 
-will result in @colour=\"Blue\"@ and @temperature=26.1@ being sent by the
-telemetry system to the observability service that's been activated.
+will result in @colour=\"Blue\"@ and @temperature=26.1@ or whatever being sent
+by the telemetry system to the observability service that's been activated.
 
 The real magic here is that spans /nest/. As you go into each subcomponent on
 your request path you can again call 'encloseSpan' creating a new span. Any
@@ -131,7 +131,9 @@ import System.Random (newStdGen, randomRs)
 
 {- |
 A telemetry value that can be sent over the wire. This is a wrapper around
-Json values of type string, number, or boolean.
+JSON values of type string, number, or boolean. You create these using the
+'metric' method provided by a 'Telemetry' instance and passing them to the
+'telemetry' function in a span or 'sendEvent' if noting an event.
 -}
 
 -- a bit specific to Honeycomb's very limited data model, but what else is
@@ -226,7 +228,33 @@ instance Telemetry Bool where
     metric k v = MetricValue (JsonKey k) (JsonBool v)
 
 {- |
-Activate the telemetry subsystem for use within the 'Program' monad.
+Activate the telemetry subsystem for use within the
+'Core.Program.Execute.Program' monad.
+
+Each exporter specified here will add setup and configuration to the context,
+including command-line options and environment variables needed as
+approrpiate:
+
+@
+    context' <- 'initializeTelemetry' ['Core.Telemetry.Console.consoleExporter'] context
+@
+
+This will allow you to then select the appropriate backend at runtime:
+
+@
+$ burger-service --telemetry=console
+@
+
+which will result in it spitting out metrics as it goes,
+
+@
+  calories = 667.0
+  flavour = true
+  meal_name = "hamburger"
+  precise = 45.0
+@
+
+and so on.
 -}
 initializeTelemetry :: [Exporter] -> Context τ -> IO (Context τ)
 initializeTelemetry exporters1 context =
@@ -365,7 +393,7 @@ Start a new trace. A random identifier will be generated.
 You /must/ have a single \"root span\" immediately below starting a new trace.
 
 @
-program :: Program None ()
+program :: 'Core.Program.Execute.Program' 'Core.Program.Execute.None' ()
 program = do
     'beginTrace' $ do
         'encloseSpan' \"Service Request\" $ do
@@ -387,6 +415,21 @@ correlation ID provided by the outside load balancers.
 If you are continuting an existing trace within the execution path of another,
 larger, enclosing service then you need to specify what the parent span's
 identifier is in the second argument.
+
+@
+program :: 'Core.Program.Execute.Program' 'Core.Program.Execute.None' ()
+program = do
+    
+    -- do something that gets the trace ID
+    trace <- ...
+
+    -- and somethign to get the parent span ID
+    parent <- ...
+
+    'usingTrace' ('Trace' trace) ('Just' ('Span' span)) $ do
+        'encloseSpan' \"Internal processing\" $ do
+            ...
+@
 -}
 usingTrace :: Trace -> Maybe Span -> Program τ α -> Program τ α
 usingTrace trace possibleParent action = do
@@ -423,6 +466,19 @@ usingTrace trace possibleParent action = do
 
 {- |
 Add measurements to the current span.
+
+@
+            telemetry
+                [ metric "calories" (667 :: Int)
+                , metric "precise" measurement
+                , metric "meal_name" ("hamburger" :: Rope)
+                , metric "flavour" True
+                ]
+@
+
+The 'metric' function is a method provided by instances of the 'Telemtetry'
+typeclass which is mostly a wrapper around constructing key/value pairs
+suitable to be sent as measurements up to an observability service.
 -}
 telemetry :: [MetricValue] -> Program τ ()
 telemetry values = do

@@ -8,6 +8,14 @@ A backend exporter that sends telemetry in the form of traces of your
 application's behaviour, or event data—accompanied either way by [conceivably
 very wide] additional metadata—to the Honeycomb observability service.
 
+When specifying the 'honeycombExporter' you have to specify certain
+command-line options and environment variables to enable it:
+
+@
+$ export HONEYCOMB_TEAM="62e3626a2cc34475adef4d799eca0407"
+$ burger-service --telemetry=honeycomb --dataset=prod-restaurant-001
+@
+
 /Notice/
 
 This library is Open Source but the Honeycomb service is /not/. Honeycomb
