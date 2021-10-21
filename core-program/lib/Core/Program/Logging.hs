@@ -123,6 +123,8 @@ to the program using /kill/:
 -}
 module Core.Program.Logging (
     putMessage,
+    formatLogMessage,
+    Severity (..),
     Verbosity (..),
 
     -- * Normal output
@@ -183,10 +185,10 @@ putMessage context (Message now level text possiblelValue) = do
                     else text <> " = " <> value
             Nothing -> text
 
-    let result = formatLogMessage start now level display
+    let !result = formatLogMessage start now level display
 
     atomically $ do
-        writeTQueue output result
+        writeTQueue output (Just result)
 
 formatLogMessage :: TimeStamp -> TimeStamp -> Severity -> Rope -> Rope
 formatLogMessage start now severity message =
@@ -204,7 +206,7 @@ formatLogMessage start now severity message =
                 now
 
         -- I hate doing math in Haskell
-        elapsed = fromRational (toRational (now' - start') / 1e9) :: Fixed E3
+        !elapsed = fromRational (toRational (now' - start') / 1e9) :: Fixed E3
 
         !color = case severity of
             SeverityNone -> emptyRope
@@ -213,7 +215,7 @@ formatLogMessage start now severity message =
             SeverityInfo -> intoEscapes dullWhite
             SeverityDebug -> intoEscapes pureGrey
 
-        reset = intoEscapes resetColour
+        !reset = intoEscapes resetColour
      in mconcat
             [ intoEscapes dullWhite
             , intoRope stampZ
@@ -237,8 +239,8 @@ padWithZeros :: Int -> String -> Rope
 padWithZeros digits str =
     intoRope pad <> intoRope str
   where
-    pad = S.replicate len "0"
-    len = digits - length str
+    !pad = S.replicate len "0"
+    !len = digits - length str
 
 {- |
 Write the supplied text to @stdout@.
@@ -256,7 +258,8 @@ write text = do
         let out = outputChannelFrom context
 
         !text' <- evaluate text
-        atomically (writeTQueue out text')
+        atomically $ do
+            writeTQueue out (Just text')
 
 {- |
 Call 'show' on the supplied argument and write the resultant text to
@@ -281,7 +284,7 @@ writeR thing = do
 
         let text = render columns thing
         !text' <- evaluate text
-        atomically (writeTQueue out text')
+        atomically (writeTQueue out (Just text'))
 
 {- |
 Note a significant event, state transition, status; also used as a heading for

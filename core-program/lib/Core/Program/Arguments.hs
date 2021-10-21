@@ -36,6 +36,7 @@ module Core.Program.Arguments (
 
     -- * Programs with Commands
     Commands (..),
+    appendOption,
 
     -- * Internals
     parseCommandLine,
@@ -46,6 +47,7 @@ module Core.Program.Arguments (
     blank,
     simple,
     complex,
+    emptyParameters,
 ) where
 
 import Data.Hashable (Hashable)
@@ -187,7 +189,7 @@ Available options:
                  Perform a trial run at the specified time but don't
                  actually do anything.
   -q, --quiet    Supress normal output.
-  -v, --verbose  Turn on event tracing. By default the logging stream will go
+  -v, --verbose  Turn on informational messages. The logging stream will go
                  to standard output on your terminal.
       --debug    Turn on debug level logging. Implies --verbose.
 
@@ -353,6 +355,18 @@ data Options
     | Argument LongName Description
     | Variable LongName Description
 
+appendOption :: Options -> Config -> Config
+appendOption option config =
+    case config of
+        Blank -> Blank
+        Simple options -> Simple (List.reverse (option : options))
+        Complex commands -> Complex (List.foldl' f [] commands)
+  where
+    f :: [Commands] -> Commands -> [Commands]
+    f acc command = case command of
+        Global options -> Global (List.reverse (option : options)) : acc
+        c@(Command _ _ _) -> c : acc
+
 {- |
 Individual parameters read in off the command-line can either have a value
 (in the case of arguments and options taking a value) or be empty (in the
@@ -411,6 +425,14 @@ data Parameters = Parameters
     }
     deriving (Show, Eq)
 
+emptyParameters :: Parameters
+emptyParameters =
+    Parameters
+        { commandNameFrom = Nothing
+        , parameterValuesFrom = emptyMap
+        , environmentValuesFrom = emptyMap
+        }
+
 baselineOptions :: [Options]
 baselineOptions =
     [ Option
@@ -418,15 +440,15 @@ baselineOptions =
         (Just 'v')
         Empty
         [quote|
-        Turn on event tracing. By default the logging stream will go to
-        standard output on your terminal.
+        Turn on informational messages. The logging stream will go
+        to standard output in your terminal.
     |]
     , Option
         "debug"
         Nothing
         Empty
         [quote|
-        Turn on debug level logging. Implies --verbose.
+        Turn on debug output. Implies --verbose.
     |]
     ]
 

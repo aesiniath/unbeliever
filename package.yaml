@@ -1,5 +1,5 @@
 name: unbeliever
-version: 0.10.0.9
+version: 0.11.0.0
 synopsis: Opinionated Haskell Interoperability
 description: |
   A library to help build command-line programs, both tools and
@@ -47,22 +47,19 @@ dependencies:
  - base >= 4.11 && < 5
  - core-text >= 0.3.4.0
  - core-data >= 0.2.1.10
- - core-program >= 0.2.12.0
-
-library:
-  source-dirs: tests
-  exposed-modules: []
-  other-modules:
-    - Everything
+ - core-program >= 0.3.0.0
+ - core-telemetry >= 0.1.0.0
 
 tests:
   check:
     dependencies:
+     - async
      - bytestring
      - fingertree
      - hashable
      - hspec
      - safe-exceptions
+     - stm
      - text
      - text-short
      - unordered-containers
@@ -78,6 +75,7 @@ tests:
      - CheckJsonWrapper
      - CheckProgramMonad
      - CheckRopeBehaviour
+     - CheckTelemetryMachinery
 
 benchmarks:
   performance:
@@ -88,5 +86,19 @@ benchmarks:
     ghc-options: -threaded
     source-dirs:
      - bench
-    main: GeneralPerformance.hs
+    main: GeneralPerformance.hs 
+    other-modules: []
+
+executables:
+  snippet:
+    dependencies:
+     - core-data
+     - core-program
+     - core-telemetry
+     - core-text
+     - template-haskell
+    ghc-options: -threaded
+    source-dirs:
+     - tests
+    main: TelemetrySnippet.hs
     other-modules: []

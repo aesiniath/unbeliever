@@ -19,6 +19,7 @@ module Core.Program
     -- |
     -- A top-level Program type giving you unified access to logging, concurrency,
     -- and more.
+    module Core.Program.Context,
     module Core.Program.Execute,
     module Core.Program.Unlift,
     module Core.Program.Metadata,
@@ -36,6 +37,7 @@ module Core.Program
     -- |
     -- Facilities for noting events through your program and doing debugging.
     module Core.Program.Logging,
+
     -- |
     -- There are a few common use cases which require a bit of wrapping to use
     -- effectively. Watching files for changes and taking action in the event of a
@@ -47,6 +49,7 @@ where
 import Core.Program.Arguments
 import Core.Program.Execute
 import Core.Program.Logging
+import Core.Program.Context
 import Core.Program.Metadata
 import Core.Program.Notify
 import Core.Program.Unlift
