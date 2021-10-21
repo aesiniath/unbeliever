@@ -80,9 +80,7 @@ module Core.Program.Execute (
     -- * Concurrency
     Thread,
     forkThread,
-    fork,
     sleepThread,
-    sleep,
     resetTimer,
     waitThread,
     waitThread_,
@@ -95,10 +93,6 @@ module Core.Program.Execute (
     unProgram,
     unThread,
     invalid,
-    retrieve,
-    update,
-    output,
-    input,
     loopForever,
 ) where
 
@@ -513,16 +507,6 @@ setApplicationState user = do
         let v = applicationDataFrom context
         modifyMVar_ v (\_ -> pure user)
 
--- |
-{-# DEPRECATED retrieve "Use getApplicationState instead" #-}
-retrieve :: Program τ τ
-retrieve = getApplicationState
-
--- |
-{-# DEPRECATED update "Use setApplicationState instead" #-}
-update :: τ -> Program τ ()
-update = setApplicationState
-
 {- |
 Write the supplied @Bytes@ to the given @Handle@. Note that in contrast to
 'write' we don't output a trailing newline.
@@ -545,21 +529,11 @@ blob you pass in is other than UTF-8 text).
 outputEntire :: Handle -> Bytes -> Program τ ()
 outputEntire handle contents = liftIO (hOutput handle contents)
 
--- |
-{-# DEPRECATED output "Use outputEntire instead" #-}
-output :: Handle -> Bytes -> Program τ ()
-output = outputEntire
-
 {- |
  Read the (entire) contents of the specified @Handle@.
 -}
 inputEntire :: Handle -> Program τ Bytes
 inputEntire handle = liftIO (hInput handle)
-
--- |
-{-# DEPRECATED input "Use inputEntire instead" #-}
-input :: Handle -> Program τ Bytes
-input = inputEntire
 
 {- |
 A thread for concurrent computation. Haskell uses green threads: small lines
@@ -597,10 +571,6 @@ forkThread program = do
             subProgram context' program
         Async.link a
         return (Thread a)
-
-fork :: Program τ α -> Program τ (Thread α)
-fork = forkThread
-{-# DEPRECATED fork "Use forkThread instead" #-}
 
 {- |
 Reset the start time (used to calculate durations shown in event- and
@@ -648,10 +618,6 @@ sleepThread :: Rational -> Program τ ()
 sleepThread seconds =
     let us = floor (toRational (seconds * 1e6))
      in liftIO $ threadDelay us
-
-sleep :: Rational -> Program τ ()
-sleep = sleepThread
-{-# DEPRECATED sleep "Use sleepThread instead" #-}
 
 {- |
 Wait for the completion of a thread, returning the result. This is a blocking

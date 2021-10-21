@@ -141,9 +141,6 @@ module Core.Program.Logging (
     debug,
     debugS,
     debugR,
-
-    -- * Internals
-    event,
 ) where
 
 import Chrono.TimeStamp (TimeStamp (..), getCurrentTimeNanoseconds)
@@ -314,10 +311,6 @@ info text = do
             now <- getCurrentTimeNanoseconds
             putMessage context (Message now SeverityInfo text Nothing)
 
-event :: Rope -> Program τ ()
-event = info
-{-# DEPRECATED event "Use info instead" #-}
-
 {- |
 Emit a diagnostic message warning of an off-nominal condition. They are best
 used for unexpected conditions or places where defaults are being applied
@@ -389,14 +382,12 @@ critical text = do
 isEvent :: Verbosity -> Bool
 isEvent level = case level of
     Output -> False
-    Event -> True
     Verbose -> True
     Debug -> True
 
 isDebug :: Verbosity -> Bool
 isDebug level = case level of
     Output -> False
-    Event -> False
     Verbose -> False
     Debug -> True
 

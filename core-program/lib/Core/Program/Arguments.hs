@@ -44,9 +44,6 @@ module Core.Program.Arguments (
     InvalidCommandLine (..),
     buildUsage,
     buildVersion,
-    blank,
-    simple,
-    complex,
     emptyParameters,
 ) where
 
@@ -137,10 +134,6 @@ which would be weird in most cases. Prefer 'simple'.
 blankConfig :: Config
 blankConfig = Blank
 
-blank :: Config
-blank = blankConfig
-{-# DEPRECATED blank "use blankConfig instead" #-}
-
 {- |
 Declare a simple (as in normal) configuration for a program with any number
 of optional parameters and mandatory arguments. For example:
@@ -206,10 +199,6 @@ see 'quote' in "Core.Text.Utilities".
 -}
 simpleConfig :: [Options] -> Config
 simpleConfig options = Simple (options ++ baselineOptions)
-
-simple :: [Options] -> Config
-simple = simpleConfig
-{-# DEPRECATED simple "Use simpleConfig instead" #-}
 
 {- |
 Declare a complex configuration (implying a larger tool with various
@@ -296,10 +285,6 @@ see 'quote' in "Core.Text.Utilities".
 -}
 complexConfig :: [Commands] -> Config
 complexConfig commands = Complex (commands ++ [Global baselineOptions])
-
-complex :: [Commands] -> Config
-complex = complexConfig
-{-# DEPRECATED complex "Use complexConfig instead" #-}
 
 {- |
 Description of the command-line structure of a program which has

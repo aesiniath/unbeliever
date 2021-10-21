@@ -233,13 +233,10 @@ level specified on the command-line by calling
 -}
 data Verbosity
     = Output
-    | Event
     | -- | @since 0.2.12
       Verbose
     | Debug
     deriving (Show)
-
-{-# DEPRECATED Event "Use Verbose instead" #-}
 
 {- |
 The type of a top-level program.

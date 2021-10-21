@@ -18,7 +18,7 @@ instance Exception Boom
 
 main :: IO ()
 main = execute $ do
-  event "Processing..."
+  info "Processing..."
   debugR "b" b
 
   let x = error "No!"
@@ -26,6 +26,6 @@ main = execute $ do
   write $ case x of
     Nothing -> "Nothing!"
 
-  sleep 0.2
+  sleepThread 0.2
 
   write "Done"
