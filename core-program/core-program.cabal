@@ -1,0 +1,78 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.34.4.
+--
+-- see: https://github.com/sol/hpack
+
+name:           core-program
+version:        0.3.0.7
+synopsis:       Opinionated Haskell Interoperability
+description:    A library to help build command-line programs, both tools and
+                longer-running daemons.
+                .
+                A description of this package, a list of features, and some background
+                to its design is contained in the
+                <https://github.com/aesiniath/unbeliever/blob/master/README.markdown README>
+                on GitHub.
+                .
+                See "Core.Program.Execute" to get started.
+category:       System
+stability:      experimental
+homepage:       https://github.com/aesiniath/unbeliever#readme
+bug-reports:    https://github.com/aesiniath/unbeliever/issues
+author:         Andrew Cowie <istathar@gmail.com>
+maintainer:     Andrew Cowie <istathar@gmail.com>
+copyright:      © 2018-2021 Athae Eredh Siniath and Others
+license:        MIT
+license-file:   LICENSE
+build-type:     Simple
+tested-with:
+    GHC == 8.10.7
+
+source-repository head
+  type: git
+  location: https://github.com/aesiniath/unbeliever
+
+library
+  exposed-modules:
+      Core.Program
+      Core.Program.Arguments
+      Core.Program.Context
+      Core.Program.Execute
+      Core.Program.Logging
+      Core.Program.Metadata
+      Core.Program.Notify
+      Core.Program.Unlift
+      Core.System
+      Core.System.Base
+      Core.System.External
+      Core.System.Pretty
+  other-modules:
+      Core.Program.Signal
+  hs-source-dirs:
+      lib
+  ghc-options: -Wall -Wwarn -fwarn-tabs
+  build-depends:
+      async
+    , base >=4.11 && <5
+    , bytestring
+    , chronologique
+    , core-data >=0.2.1.10
+    , core-text >=0.3.4.0
+    , directory
+    , exceptions
+    , filepath
+    , fsnotify
+    , hashable >=1.2
+    , hourglass
+    , mtl
+    , prettyprinter >=1.6.2
+    , safe-exceptions
+    , stm
+    , template-haskell >=2.14 && <3
+    , terminal-size
+    , text
+    , text-short
+    , transformers
+    , unix
+  default-language: Haskell2010

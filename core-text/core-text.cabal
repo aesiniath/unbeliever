@@ -1,0 +1,68 @@
+cabal-version: 1.18
+
+-- This file has been generated from package.yaml by hpack version 0.34.4.
+--
+-- see: https://github.com/sol/hpack
+
+name:           core-text
+version:        0.3.5.0
+synopsis:       A rope type based on a finger tree over UTF-8 fragments
+description:    A rope data type for text, built as a finger tree over UTF-8 text
+                fragments. The package also includes utiltiy functions for breaking and
+                re-wrapping lines, conveniences for pretty printing and colourizing
+                terminal output, and a simple mechanism for multi-line Rope literals.
+                .
+                The main @Rope@ type and its usage are described at "Core.Text.Rope" in
+                this package.
+                .
+                This is part of a library intended to ease interoperability and assist in
+                building command-line programs, both tools and longer-running daemons.
+                A list of features and some background to the library's design is contained
+                in the
+                <https://github.com/aesiniath/unbeliever/blob/master/README.markdown README>
+                on GitHub.
+category:       System
+stability:      experimental
+homepage:       https://github.com/aesiniath/unbeliever#readme
+bug-reports:    https://github.com/aesiniath/unbeliever/issues
+author:         Andrew Cowie <istathar@gmail.com>
+maintainer:     Andrew Cowie <istathar@gmail.com>
+copyright:      © 2018-2021 Athae Eredh Siniath and Others
+license:        MIT
+license-file:   LICENSE
+build-type:     Simple
+tested-with:
+    GHC == 8.10.7
+extra-doc-files:
+    AnsiColours.png
+
+source-repository head
+  type: git
+  location: https://github.com/aesiniath/unbeliever
+
+library
+  exposed-modules:
+      Core.Text
+      Core.Text.Bytes
+      Core.Text.Colour
+      Core.Text.Rope
+      Core.Text.Utilities
+  other-modules:
+      Core.Text.Breaking
+      Core.Text.Parsing
+  hs-source-dirs:
+      lib
+  ghc-options: -Wall -Wwarn -fwarn-tabs
+  build-depends:
+      ansi-terminal
+    , base >=4.11 && <5
+    , bytestring
+    , colour
+    , deepseq
+    , fingertree
+    , hashable >=1.2
+    , prettyprinter >=1.6.2
+    , template-haskell >=2.14 && <3
+    , text
+    , text-short
+  default-language: Haskell2010
