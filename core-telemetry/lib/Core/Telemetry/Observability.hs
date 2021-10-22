@@ -295,7 +295,7 @@ approrpiate:
 This will allow you to then select the appropriate backend at runtime:
 
 @
-\$ __burgerservice --telemetry=structured__
+\$ __burgerservice --telemetry=console__
 @
 
 which will result in it spitting out metrics as it goes,
@@ -571,7 +571,7 @@ use 'sendEvent' to accomplish this.
 
 If you do call 'sendEvent' within an enclosing span created with 'encloseSpan'
 (the usual and expected use case) then this event will be \"linked\" to this
-span so that the observability tool can deisplay it attached to the span in
+span so that the observability tool can display it attached to the span in
 the in which it occured.
 
 @
