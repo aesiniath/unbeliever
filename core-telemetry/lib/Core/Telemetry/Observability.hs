@@ -66,14 +66,14 @@ program = do
 
             ...
 
-            colour <- currentSkyObservation
+            obs <- currentSkyObservation
             temp <- currentAirTemperature
 
             ...
 
             -- add appropriate telemetry values to the span
             'telemetry'
-                [ 'metric' \"sky_colour\" colour
+                [ 'metric' \"sky_colour\" (colourFrom obs)
                 , 'metric' \"temperature" temp
                 ]
 @
@@ -87,7 +87,7 @@ your request path you can again call 'encloseSpan' creating a new span, which
 can have its own telemetry:
 
 @
-currentSkyObservation :: 'Core.Program.Execute.Program' 'Core.Program.Execute.None' ()
+currentSkyObservation :: 'Core.Program.Execute.Program' 'Core.Program.Execute.None' Observation
 currentSkyObservation = do
     'encloseSpan' "Observe sky" $ do
         ...
@@ -96,6 +96,8 @@ currentSkyObservation = do
             [ 'metric' \"radar_frequency\" freq
             , 'metric' \"cloud_cover\" blockageLevel
             ]
+
+        'pure' result
 @
 
 Any metrics added before entering the new span will be inherited by the
@@ -562,17 +564,22 @@ telemetry values = do
 Record telemetry about an event. Specify a label for the event and then
 whichever metrics you wish to record.
 
+
 The emphasis of this package is to create traces and spans. There are,
 however, times when you just want to send telemetry about an event. You can
-use 'sendEvent' to accomplush this.
+use 'sendEvent' to accomplish this.
 
-If you call 'sendEvent' within an enclosing span created with 'encloseSpan'
+If you do call 'sendEvent' within an enclosing span created with 'encloseSpan'
 (the usual and expected use case) then this event will be \"linked\" to this
 span so that the observability tool can deisplay it attached to the span in
 the in which it occured.
 
-Not every situation is in the context of traces and spans and so you can use
-this to send arbitrary telemetry.
+@
+            sendEvent
+                "Make tea"
+                [ metric "sugar" False
+                ]
+@
 -}
 sendEvent :: Label -> [MetricValue] -> Program τ ()
 sendEvent label values = do
