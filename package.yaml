@@ -88,17 +88,3 @@ benchmarks:
      - bench
     main: GeneralPerformance.hs 
     other-modules: []
-
-executables:
-  snippet:
-    dependencies:
-     - core-data
-     - core-program
-     - core-telemetry
-     - core-text
-     - template-haskell
-    ghc-options: -threaded
-    source-dirs:
-     - tests
-    main: TelemetrySnippet.hs
-    other-modules: []
