@@ -43,7 +43,7 @@ main = do
 Then when you run your program you can pick the exporter:
 
 @
-\$ burgerservice --telemetry=console
+\$ __burgerservice --telemetry=console__
 @
 
 to activate sending telemetry to, in this case, the console. Other exporters
@@ -295,7 +295,7 @@ approrpiate:
 This will allow you to then select the appropriate backend at runtime:
 
 @
-\$ burgerservice --telemetry=console
+\$ __burgerservice --telemetry=structured__
 @
 
 which will result in it spitting out metrics as it goes,
@@ -476,7 +476,7 @@ program = do
     -- do something that gets the trace ID
     trace <- ...
 
-    -- and somethign to get the parent span ID
+    -- and something to get the parent span ID
     parent <- ...
 
     'usingTrace' ('Trace' trace) ('Just' ('Span' span)) $ do
@@ -521,11 +521,11 @@ usingTrace trace possibleParent action = do
 Add measurements to the current span.
 
 @
-            telemetry
-                [ metric "calories" (667 :: Int)
-                , metric "precise" measurement
-                , metric "meal_name" ("hamburger" :: Rope)
-                , metric "flavour" True
+            'telemetry'
+                [ 'metric' \"calories\" (667 :: 'Int')
+                , 'metric' \"precise\" measurement
+                , 'metric' \"meal_name\" ("hamburger" :: 'Rope')
+                , 'metric' \"flavour\" 'True'
                 ]
 @
 
@@ -575,9 +575,9 @@ span so that the observability tool can deisplay it attached to the span in
 the in which it occured.
 
 @
-            sendEvent
+            'sendEvent'
                 "Make tea"
-                [ metric "sugar" False
+                [ 'metric' \"sugar\" 'False'
                 ]
 @
 -}

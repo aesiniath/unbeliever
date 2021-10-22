@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           core-telemetry
-version:        0.1.6.0
+version:        0.1.7.0
 synopsis:       Advanced telemetry
 description:    This is part of a library to help build command-line programs, both tools and
                 longer-running daemons.
@@ -37,9 +37,10 @@ source-repository head
 library
   exposed-modules:
       Core.Telemetry
-      Core.Telemetry.Observability
       Core.Telemetry.Console
       Core.Telemetry.Honeycomb
+      Core.Telemetry.Observability
+      Core.Telemetry.Structured
   hs-source-dirs:
       lib
   ghc-options: -Wall -Wwarn -fwarn-tabs
@@ -48,8 +49,8 @@ library
     , base >=4.11 && <5
     , bytestring
     , chronologique
-    , core-data
-    , core-program >=0.3.0
+    , core-data >=0.2.1.11
+    , core-program >=0.3.0.8
     , core-text >=0.3.5
     , exceptions
     , http-streams
