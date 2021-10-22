@@ -5,8 +5,29 @@
 {-# LANGUAGE RankNTypes #-}
 
 {- |
+Traditional \"monitoring\" systems were concerned with gathering together obscene
+quantities of metrics and graphing them. This makes for /very/ pretty billboard
+displays in Network Operations Centers which impress visitors tremendously,
+but (it turns out) are of limited use when actually trying to troubleshoot
+problems or improve the performance of our systems.  We all put a lot of
+effort into trying to detect anamolies but really, despite person-centuries of
+effort, graphing raw system metrics doesn't get us as far as we would have liked.
+
+Experience with large-scale distributed systems has led to the insight that
+what you need is to be able to trace the path a request takes as it moves
+through a system, correlating and comparing this trace to others like it. This
+has led to the modern \"observability\" movement, more concerned with metrics
+which descirbe user-visible experience, service levels, error budgets, and
+being able to do ad-hoc analysis of evolving situations.
+
+This library aims to support both models of using telemetry, with the primary
+emphasis being on the /traces/ and /spans/ that can be connected together by
+an observability tool.
+
+= Usage
+
 To use this capability, first you need to initialize the telemetry subsystem
-with an appropriate exporter.
+with an appropriate exporter:
 
 @
 import "Core.Program"
@@ -19,10 +40,17 @@ main = do
     'Core.Program.Execute.executeWith' context' program
 @
 
-/Traces and Spans/
+Then when you run your program you can pick the exporter:
 
-For spans to be connected together by an observability tool they need to be
-part of a /trace/.
+@
+\$ burgerservice --telemetry=console
+@
+
+to activate sending telemetry to, in this case, the console. Other exporters
+add additional command-line options with which to configure how and where the
+metrics will be sent.
+
+= Traces and Spans
 
 At the top of your program or request loop you need to start a new trace (with
 'beginTrace') or continue one inherited from another service (with
@@ -32,29 +60,49 @@ At the top of your program or request loop you need to start a new trace (with
 program :: 'Core.Program.Execute.Program' 'Core.Program.Execute.None' ()
 program = do
     'beginTrace' $ do
-        'encloseSpan' \"Service Request\" $ do
+        'encloseSpan' \"Service request\" $ do
 
             -- do stuff!
-            
+
             ...
 
-            -- add appropriate telemetry values to the span 
+            colour <- currentSkyObservation
+            temp <- currentAirTemperature
+
+            ...
+
+            -- add appropriate telemetry values to the span
             'telemetry'
-                [ 'metric' \"colour\" currentSkyObservation
-                , 'metric' \"temperature" currentAirTemperature
+                [ 'metric' \"sky_colour\" colour
+                , 'metric' \"temperature" temp
                 ]
 @
 
-will result in @colour=\"Blue\"@ and @temperature=26.1@ or whatever being sent
-by the telemetry system to the observability service that's been activated.
+will result in @sky_colour=\"Blue\"@ and @temperature=26.1@ or whatever being
+sent by the telemetry system to the observability service that's been
+activated.
 
 The real magic here is that spans /nest/. As you go into each subcomponent on
-your request path you can again call 'encloseSpan' creating a new span. Any
-metrics added before entering the new span will be inherited by the subspan
-and sent when it finishes so you don't have to keep re-attaching data if it's
-common across all the spans in your trace.
+your request path you can again call 'encloseSpan' creating a new span, which
+can have its own telemetry:
 
-/Events/
+@
+currentSkyObservation :: 'Core.Program.Execute.Program' 'Core.Program.Execute.None' ()
+currentSkyObservation = do
+    'encloseSpan' "Observe sky" $ do
+        ...
+
+        'telemetry'
+            [ 'metric' \"radar_frequency\" freq
+            , 'metric' \"cloud_cover\" blockageLevel
+            ]
+@
+
+Any metrics added before entering the new span will be inherited by the
+subspan and sent when it finishes so you don't have to keep re-attaching data
+if it's common across all the spans in your trace.
+
+= Events
 
 In other circumstances you will just want to send metrics:
 
@@ -245,7 +293,7 @@ approrpiate:
 This will allow you to then select the appropriate backend at runtime:
 
 @
-$ burger-service --telemetry=console
+\$ burgerservice --telemetry=console
 @
 
 which will result in it spitting out metrics as it goes,
@@ -422,7 +470,7 @@ identifier is in the second argument.
 @
 program :: 'Core.Program.Execute.Program' 'Core.Program.Execute.None' ()
 program = do
-    
+
     -- do something that gets the trace ID
     trace <- ...
 
