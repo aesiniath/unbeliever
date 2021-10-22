@@ -273,7 +273,7 @@ executeActual context0 program = do
     -- set up debug logger
     l <-
         Async.async $ do
-            processTelemetryMessages forwarder tel
+            processTelemetryMessages forwarder out tel
 
     -- run actual program, ensuring to grab any otherwise uncaught exceptions.
     code <-
@@ -349,26 +349,40 @@ processStandardOutput out =
 -- the technique used   by **io-streams** to just pass along a stream of Maybes,
 -- with Nothing signalling end-of-stream is exactly good enough for our needs.
 --
-processTelemetryMessages :: Forwarder -> TQueue (Maybe Datum) -> IO ()
-processTelemetryMessages processor tel = do
+processTelemetryMessages :: Forwarder -> TQueue (Maybe Rope) -> TQueue (Maybe Datum) -> IO ()
+processTelemetryMessages processor out tel = do
     Safe.catch
-        (loopForever action tel)
+        (loopForever action out tel)
         (collapseHandler "telemetry processing collapsed")
   where
     action = telemetryHandlerFrom processor
 
-loopForever :: ([a] -> IO ()) -> TQueue (Maybe a) -> IO ()
-loopForever action queue = do
+loopForever :: ([a] -> IO ()) -> TQueue (Maybe Rope) -> TQueue (Maybe a) -> IO ()
+loopForever action out queue = do
+    start <- getCurrentTimeNanoseconds
     -- block waiting for an item
     possibleItems <- atomically $ do
         cycleOverQueue []
 
-    -- handle it and loop, unless we're done
     case possibleItems of
+        -- we're done!
         Nothing -> pure ()
+        -- handle it and loop
         Just items -> do
-            action (reverse items)
-            loopForever action queue
+            catch
+                (action (reverse items))
+                ( \(e :: SomeException) -> do
+                    now <- getCurrentTimeNanoseconds
+                    let result =
+                            formatLogMessage
+                                start
+                                now
+                                SeverityWarn
+                                ("sending telemetry failed (Exception: " <> intoRope (show e) <> "); Restarting exporter.")
+                    atomically $ do
+                        writeTQueue out (Just result)
+                )
+            loopForever action out queue
   where
     cycleOverQueue items =
         case items of

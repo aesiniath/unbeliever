@@ -50,7 +50,6 @@ process out datums = do
   where
     processOne :: Datum -> IO ()
     processOne datum = do
-        now <- getCurrentTimeNanoseconds
         let start = spanTimeFrom datum
         let text =
                 (intoEscapes pureGrey)
@@ -61,7 +60,13 @@ process out datums = do
                         in List.foldl' f emptyRope pairs
                             <> (intoEscapes resetColour)
 
-        let result = formatLogMessage start now SeverityDebug text
+        now <- getCurrentTimeNanoseconds
+        let result =
+                formatLogMessage
+                    start
+                    now
+                    SeverityDebug
+                    text
         atomically $ do
             writeTQueue out (Just result)
 
