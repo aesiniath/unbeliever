@@ -89,8 +89,9 @@ import Core.Text.Utilities (
     breakPieces,
  )
 import qualified Data.Aeson as Aeson
+import qualified Data.Aeson.Key as Aeson
+import qualified Data.Aeson.KeyMap as Aeson
 import Data.Coerce
-import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable (Hashable)
 import qualified Data.List as List
 import Data.Scientific (
@@ -233,8 +234,16 @@ instance Textual JsonKey where
 fromAeson :: Aeson.Value -> JsonValue
 fromAeson value = case value of
     Aeson.Object o ->
-        let tvs = HashMap.toList o
-            kvs = fmap (\(k, v) -> (JsonKey (intoRope k), fromAeson v)) tvs
+        let tvs = Aeson.toList o
+            kvs =
+                fmap
+                    ( \(k, v) ->
+                        ( JsonKey
+                            (intoRope (Aeson.toText k))
+                        , fromAeson v
+                        )
+                    )
+                    tvs
 
             kvm :: Map JsonKey JsonValue
             kvm = intoMap kvs
