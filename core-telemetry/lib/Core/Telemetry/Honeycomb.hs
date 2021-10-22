@@ -151,6 +151,7 @@ process apikey dataset datums = do
     let json = JsonArray (fmap convertDatumToJson datums)
     postEventToHoneycombAPI apikey dataset json
 
+-- implements the spec described at <https://docs.honeycomb.io/getting-data-in/tracing/send-trace-data/>
 convertDatumToJson :: Datum -> JsonValue
 convertDatumToJson datum =
     let spani = spanIdentifierFrom datum

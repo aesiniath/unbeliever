@@ -476,7 +476,7 @@ program = do
     -- do something that gets the trace ID
     trace <- ...
 
-    -- and somethign to get the parent span ID
+    -- and something to get the parent span ID
     parent <- ...
 
     'usingTrace' ('Trace' trace) ('Just' ('Span' span)) $ do
