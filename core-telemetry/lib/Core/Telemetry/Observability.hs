@@ -109,12 +109,12 @@ if it's common across all the spans in your trace.
 In other circumstances you will just want to send metrics:
 
 @
-            -- not again!
-            'sendEvent' \"Cat meowed\"
-                [ 'metric' \"room\" (\"living room\" :: 'Rope')
-                , 'metric' "volume\" (127.44 :: 'Float') -- decibels
-                , 'metric' \"apparently_hungry\" 'True'
-                ]
+        -- not again!
+        'sendEvent' \"Cat meowed\"
+            [ 'metric' \"room\" (\"living room\" :: 'Rope')
+            , 'metric' "volume\" (127.44 :: 'Float') -- decibels
+            , 'metric' \"apparently_hungry\" 'True'
+            ]
 @
 
 will result in @room=\"living room\"@, @volume=127.44@, and
@@ -521,12 +521,12 @@ usingTrace trace possibleParent action = do
 Add measurements to the current span.
 
 @
-            'telemetry'
-                [ 'metric' \"calories\" (667 :: 'Int')
-                , 'metric' \"precise\" measurement
-                , 'metric' \"meal_name\" ("hamburger" :: 'Rope')
-                , 'metric' \"flavour\" 'True'
-                ]
+        'telemetry'
+            [ 'metric' \"calories\" (667 :: 'Int')
+            , 'metric' \"precise\" measurement
+            , 'metric' \"meal_name\" ("hamburger" :: 'Rope')
+            , 'metric' \"flavour\" 'True'
+            ]
 @
 
 The 'metric' function is a method provided by instances of the 'Telemtetry'
@@ -575,10 +575,10 @@ span so that the observability tool can display it attached to the span in
 the in which it occured.
 
 @
-            'sendEvent'
-                "Make tea"
-                [ 'metric' \"sugar\" 'False'
-                ]
+        'sendEvent'
+            "Make tea"
+            [ 'metric' \"sugar\" 'False'
+            ]
 @
 -}
 sendEvent :: Label -> [MetricValue] -> Program τ ()
