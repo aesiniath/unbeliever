@@ -80,9 +80,7 @@ module Core.Program.Execute (
     -- * Concurrency
     Thread,
     forkThread,
-    fork,
     sleepThread,
-    sleep,
     resetTimer,
     waitThread,
     waitThread_,
@@ -95,10 +93,7 @@ module Core.Program.Execute (
     unProgram,
     unThread,
     invalid,
-    retrieve,
-    update,
-    output,
-    input,
+    loopForever,
 ) where
 
 import Chrono.TimeStamp (getCurrentTimeNanoseconds)
@@ -115,12 +110,28 @@ import qualified Control.Concurrent.Async as Async (
     race_,
     wait,
  )
-import Control.Concurrent.MVar (modifyMVar_, newMVar, putMVar, readMVar)
-import Control.Concurrent.STM (atomically, check)
-import Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue, readTQueue)
+import Control.Concurrent.MVar (
+    modifyMVar_,
+    newMVar,
+    putMVar,
+    readMVar,
+ )
+import Control.Concurrent.STM (
+    atomically,
+ )
+import Control.Concurrent.STM.TQueue (
+    TQueue,
+    readTQueue,
+    tryReadTQueue,
+    unGetTQueue,
+    writeTQueue,
+ )
 import qualified Control.Exception as Base (throwIO)
 import qualified Control.Exception.Safe as Safe (catch, catchesAsync, throw)
-import Control.Monad (forever, void, when)
+import Control.Monad (
+    void,
+    when,
+ )
 import Control.Monad.Catch (Handler (..))
 import Control.Monad.Reader.Class (MonadReader (ask))
 import Core.Data.Structures
@@ -190,7 +201,7 @@ The one and only time you want this is inside an endless loop:
             ( bracket
                 obtainResource
                 releaseResource
-                useResournce
+                useResource
             )
 @
 
@@ -221,7 +232,7 @@ calls 'configure' with an appropriate default when initializing.
 execute :: Program None α -> IO ()
 execute program = do
     context <- configure "" None (simpleConfig [])
-    executeWith context program
+    executeActual context program
 
 {- |
 Embelish a program with useful behaviours, supplying a configuration
@@ -229,17 +240,25 @@ for command-line options & argument parsing and an initial value for
 the top-level application state, if appropriate.
 -}
 executeWith :: Context τ -> Program τ α -> IO ()
-executeWith context program = do
+executeWith = executeActual
+
+executeActual :: Context τ -> Program τ α -> IO ()
+executeActual context0 program = do
     -- command line +RTS -Nn -RTS value
     when (numCapabilities == 1) (getNumProcessors >>= setNumCapabilities)
 
     -- force UTF-8 working around bad VMs
     setLocaleEncoding utf8
 
+    context1 <- handleCommandLine context0
+    context <- handleTelemetryChoice context1
+
+    level <- handleVerbosityLevel context
+
     let quit = exitSemaphoreFrom context
-        level = verbosityLevelFrom context
         out = outputChannelFrom context
-        log = loggerChannelFrom context
+        tel = telemetryChannelFrom context
+        forwarder = telemetryForwarderFrom context
 
     -- set up signal handlers
     _ <-
@@ -254,7 +273,7 @@ executeWith context program = do
     -- set up debug logger
     l <-
         Async.async $ do
-            processDebugMessages log
+            processTelemetryMessages forwarder out tel
 
     -- run actual program, ensuring to grab any otherwise uncaught exceptions.
     code <-
@@ -278,57 +297,121 @@ executeWith context program = do
             )
             (escapeHandlers context)
 
-    -- drain message queues. Allow 0.1 seconds, then timeout, in case
-    -- something has gone wrong and queues don't empty.
+    -- instruct handlers to finish, and wait for the message queues to drain.
+    -- Allow 0.1 seconds, then timeout, in case something has gone wrong and
+    -- queues don't empty.
     Async.race_
         ( do
             atomically $ do
-                done2 <- isEmptyTQueue log
-                check done2
+                writeTQueue tel Nothing
+                writeTQueue out Nothing
 
-                done1 <- isEmptyTQueue out
-                check done1
+            Async.wait l
+            Async.wait o
         )
         ( do
-            threadDelay 100000
+            threadDelay 10000000
+
+            Async.cancel l
+            Async.cancel o
             putStrLn "error: Timeout"
         )
 
-    threadDelay 100 -- instead of yield
     hFlush stdout
-
-    Async.cancel l
-    Async.cancel o
 
     -- exiting this way avoids "Exception: ExitSuccess" noise in GHCi
     if code == ExitSuccess
         then return ()
         else (Base.throwIO code)
 
-processStandardOutput :: TQueue Rope -> IO ()
+processStandardOutput :: TQueue (Maybe Rope) -> IO ()
 processStandardOutput out =
     Safe.catch
-        ( do
-            forever $ do
-                text <- atomically (readTQueue out)
+        (loop)
+        (collapseHandler "output processing collapsed")
+  where
+    loop :: IO ()
+    loop = do
+        probable <- atomically $ do
+            readTQueue out
 
+        case probable of
+            Nothing -> pure ()
+            Just text -> do
                 hWrite stdout text
                 B.hPut stdout (C.singleton '\n')
-        )
-        (collapseHandler "output processing collapsed")
+                loop
 
-processDebugMessages :: TQueue () -> IO ()
-processDebugMessages log =
+--
+-- I'm embarrased how long it took to get here. At one point we were firing
+-- off an Async.race of two threads for every item coming down the queue. And
+-- you know what? That didn't work either. After all of that, realized that
+-- the technique used   by **io-streams** to just pass along a stream of Maybes,
+-- with Nothing signalling end-of-stream is exactly good enough for our needs.
+--
+processTelemetryMessages :: Forwarder -> TQueue (Maybe Rope) -> TQueue (Maybe Datum) -> IO ()
+processTelemetryMessages processor out tel = do
     Safe.catch
-        ( do
-            forever $ do
-                -- TODO do sactually do something with log messages
-                -- Message now severity text potentialValue <- ...
-                _ <- atomically (readTQueue log)
+        (loopForever action out tel)
+        (collapseHandler "telemetry processing collapsed")
+  where
+    action = telemetryHandlerFrom processor
 
-                return ()
-        )
-        (collapseHandler "debug processing collapsed")
+loopForever :: ([a] -> IO ()) -> TQueue (Maybe Rope) -> TQueue (Maybe a) -> IO ()
+loopForever action out queue = do
+    start <- getCurrentTimeNanoseconds
+    -- block waiting for an item
+    possibleItems <- atomically $ do
+        cycleOverQueue []
+
+    case possibleItems of
+        -- we're done!
+        Nothing -> pure ()
+        -- handle it and loop
+        Just items -> do
+            catch
+                (action (reverse items))
+                ( \(e :: SomeException) -> do
+                    now <- getCurrentTimeNanoseconds
+                    let result =
+                            formatLogMessage
+                                start
+                                now
+                                SeverityWarn
+                                ("sending telemetry failed (Exception: " <> intoRope (show e) <> "); Restarting exporter.")
+                    atomically $ do
+                        writeTQueue out (Just result)
+                )
+            loopForever action out queue
+  where
+    cycleOverQueue items =
+        case items of
+            [] -> do
+                possibleItem <- readTQueue queue -- blocks
+                case possibleItem of
+                    -- we're finished! time to shutdown
+                    Nothing -> pure Nothing
+                    -- otherwise start accumulating
+                    Just item -> do
+                        cycleOverQueue (item : [])
+            _ -> do
+                pending <- tryReadTQueue queue -- doesn't block
+                case pending of
+                    -- nothing left in the queue
+                    Nothing -> pure (Just items)
+                    -- otherwise we get one of our Maybe Datum, and consider it
+                    Just possibleItem -> do
+                        case possibleItem of
+                            -- oh, time to stop! We put the Nothing back into
+                            -- the queue, then let the accumulated items get
+                            -- processed. The next loop will read the
+                            -- Nothing and shutdown.
+                            Nothing -> do
+                                unGetTQueue queue Nothing
+                                pure (Just items)
+                            -- continue accumulating!
+                            Just item -> do
+                                cycleOverQueue (item : items)
 
 {- |
 Safely exit the program with the supplied exit code. Current output and
@@ -438,16 +521,6 @@ setApplicationState user = do
         let v = applicationDataFrom context
         modifyMVar_ v (\_ -> pure user)
 
--- |
-{-# DEPRECATED retrieve "Use getApplicationState instead" #-}
-retrieve :: Program τ τ
-retrieve = getApplicationState
-
--- |
-{-# DEPRECATED update "Use setApplicationState instead" #-}
-update :: τ -> Program τ ()
-update = setApplicationState
-
 {- |
 Write the supplied @Bytes@ to the given @Handle@. Note that in contrast to
 'write' we don't output a trailing newline.
@@ -470,21 +543,11 @@ blob you pass in is other than UTF-8 text).
 outputEntire :: Handle -> Bytes -> Program τ ()
 outputEntire handle contents = liftIO (hOutput handle contents)
 
--- |
-{-# DEPRECATED output "Use outputEntire instead" #-}
-output :: Handle -> Bytes -> Program τ ()
-output = outputEntire
-
 {- |
  Read the (entire) contents of the specified @Handle@.
 -}
 inputEntire :: Handle -> Program τ Bytes
 inputEntire handle = liftIO (hInput handle)
-
--- |
-{-# DEPRECATED input "Use inputEntire instead" #-}
-input :: Handle -> Program τ Bytes
-input = inputEntire
 
 {- |
 A thread for concurrent computation. Haskell uses green threads: small lines
@@ -522,10 +585,6 @@ forkThread program = do
             subProgram context' program
         Async.link a
         return (Thread a)
-
-fork :: Program τ α -> Program τ (Thread α)
-fork = forkThread
-{-# DEPRECATED fork "Use forkThread instead" #-}
 
 {- |
 Reset the start time (used to calculate durations shown in event- and
@@ -573,10 +632,6 @@ sleepThread :: Rational -> Program τ ()
 sleepThread seconds =
     let us = floor (toRational (seconds * 1e6))
      in liftIO $ threadDelay us
-
-sleep :: Rational -> Program τ ()
-sleep = sleepThread
-{-# DEPRECATED sleep "Use sleepThread instead" #-}
 
 {- |
 Wait for the completion of a thread, returning the result. This is a blocking

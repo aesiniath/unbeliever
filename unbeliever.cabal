@@ -3,11 +3,9 @@ cabal-version: 1.12
 -- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
---
--- hash: 3b2c1bfc88c7c5424bf2b085acf796ef26a8cc0cad375dbbfdf862dd559b25f6
 
 name:           unbeliever
-version:        0.10.0.8
+version:        0.11.0.0
 synopsis:       Opinionated Haskell Interoperability
 description:    A library to help build command-line programs, both tools and
                 longer-running daemons. Its @Program@ type provides unified ouptut &
@@ -47,26 +45,13 @@ maintainer:     Andrew Cowie <istathar@gmail.com>
 copyright:      © 2018-2021 Athae Eredh Siniath and Others
 license:        MIT
 license-file:   LICENSE
-tested-with:
-    GHC == 8.10.5
 build-type:     Simple
+tested-with:
+    GHC == 8.10.7
 
 source-repository head
   type: git
   location: https://github.com/aesiniath/unbeliever
-
-library
-  other-modules:
-      Everything
-  hs-source-dirs:
-      tests
-  ghc-options: -Wall -Wwarn -fwarn-tabs
-  build-depends:
-      base >=4.11 && <5
-    , core-data >=0.2.1.9
-    , core-program >=0.2.6.0
-    , core-text >=0.3.2.0
-  default-language: Haskell2010
 
 test-suite check
   type: exitcode-stdio-1.0
@@ -78,20 +63,24 @@ test-suite check
       CheckJsonWrapper
       CheckProgramMonad
       CheckRopeBehaviour
+      CheckTelemetryMachinery
   hs-source-dirs:
       tests
   ghc-options: -Wall -Wwarn -fwarn-tabs -threaded
   build-depends:
-      base >=4.11 && <5
+      async
+    , base >=4.11 && <5
     , bytestring
-    , core-data >=0.2.1.9
-    , core-program >=0.2.6.0
-    , core-text >=0.3.2.0
+    , core-data >=0.2.1.11
+    , core-program >=0.3.0.8
+    , core-telemetry >=0.1.6.1
+    , core-text >=0.3.4.0
     , fingertree
     , hashable
     , hspec
     , prettyprinter
     , safe-exceptions
+    , stm
     , text
     , text-short
     , unordered-containers
@@ -106,9 +95,10 @@ benchmark performance
   build-depends:
       base >=4.11 && <5
     , bytestring
-    , core-data >=0.2.1.9
-    , core-program >=0.2.6.0
-    , core-text >=0.3.2.0
+    , core-data >=0.2.1.11
+    , core-program >=0.3.0.8
+    , core-telemetry >=0.1.6.1
+    , core-text >=0.3.4.0
     , gauge
     , text
   default-language: Haskell2010

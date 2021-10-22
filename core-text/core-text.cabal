@@ -3,11 +3,9 @@ cabal-version: 1.18
 -- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
---
--- hash: 530a2649aa827894f3d5d158c255950e6244709a892b3897b521eff3818a21ac
 
 name:           core-text
-version:        0.3.4.0
+version:        0.3.5.0
 synopsis:       A rope type based on a finger tree over UTF-8 fragments
 description:    A rope data type for text, built as a finger tree over UTF-8 text
                 fragments. The package also includes utiltiy functions for breaking and
@@ -32,9 +30,9 @@ maintainer:     Andrew Cowie <istathar@gmail.com>
 copyright:      © 2018-2021 Athae Eredh Siniath and Others
 license:        MIT
 license-file:   LICENSE
+build-type:     Simple
 tested-with:
     GHC == 8.10.7
-build-type:     Simple
 extra-doc-files:
     AnsiColours.png
 

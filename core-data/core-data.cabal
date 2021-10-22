@@ -3,8 +3,6 @@ cabal-version: 1.12
 -- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
---
--- hash: b8e47b01b780a98a3e9525f83792d3659340e9a1a73e09fcd92cca2d1090d3cb
 
 name:           core-data
 version:        0.2.2.0
@@ -26,9 +24,9 @@ maintainer:     Andrew Cowie <istathar@gmail.com>
 copyright:      © 2018-2021 Athae Eredh Siniath and Others
 license:        MIT
 license-file:   LICENSE
+build-type:     Simple
 tested-with:
     GHC == 8.10.7
-build-type:     Simple
 
 source-repository head
   type: git
@@ -44,11 +42,11 @@ library
       lib
   ghc-options: -Wall -Wwarn -fwarn-tabs
   build-depends:
-      aeson
+      aeson <2.0
     , base >=4.11 && <5
     , bytestring
     , containers
-    , core-text >=0.3.0
+    , core-text >=0.3.4
     , hashable >=1.2 && <1.4
     , prettyprinter >=1.6.2
     , scientific

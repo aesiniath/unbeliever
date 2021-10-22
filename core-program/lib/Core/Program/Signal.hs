@@ -53,7 +53,6 @@ logLevelHandler v = Catch $ do
         v
         ( \level -> case level of
             Output -> pure Debug
-            Event -> pure Debug
             Verbose -> pure Debug
             Debug -> pure Output
         )

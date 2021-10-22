@@ -36,6 +36,7 @@ module Core.Program.Arguments (
 
     -- * Programs with Commands
     Commands (..),
+    appendOption,
 
     -- * Internals
     parseCommandLine,
@@ -43,9 +44,7 @@ module Core.Program.Arguments (
     InvalidCommandLine (..),
     buildUsage,
     buildVersion,
-    blank,
-    simple,
-    complex,
+    emptyParameters,
 ) where
 
 import Data.Hashable (Hashable)
@@ -135,10 +134,6 @@ which would be weird in most cases. Prefer 'simple'.
 blankConfig :: Config
 blankConfig = Blank
 
-blank :: Config
-blank = blankConfig
-{-# DEPRECATED blank "use blankConfig instead" #-}
-
 {- |
 Declare a simple (as in normal) configuration for a program with any number
 of optional parameters and mandatory arguments. For example:
@@ -187,7 +182,7 @@ Available options:
                  Perform a trial run at the specified time but don't
                  actually do anything.
   -q, --quiet    Supress normal output.
-  -v, --verbose  Turn on event tracing. By default the logging stream will go
+  -v, --verbose  Turn on informational messages. The logging stream will go
                  to standard output on your terminal.
       --debug    Turn on debug level logging. Implies --verbose.
 
@@ -204,10 +199,6 @@ see 'quote' in "Core.Text.Utilities".
 -}
 simpleConfig :: [Options] -> Config
 simpleConfig options = Simple (options ++ baselineOptions)
-
-simple :: [Options] -> Config
-simple = simpleConfig
-{-# DEPRECATED simple "Use simpleConfig instead" #-}
 
 {- |
 Declare a complex configuration (implying a larger tool with various
@@ -295,10 +286,6 @@ see 'quote' in "Core.Text.Utilities".
 complexConfig :: [Commands] -> Config
 complexConfig commands = Complex (commands ++ [Global baselineOptions])
 
-complex :: [Commands] -> Config
-complex = complexConfig
-{-# DEPRECATED complex "Use complexConfig instead" #-}
-
 {- |
 Description of the command-line structure of a program which has
 \"commands\" (sometimes referred to as \"subcommands\") representing
@@ -352,6 +339,18 @@ data Options
     = Option LongName (Maybe ShortName) ParameterValue Description
     | Argument LongName Description
     | Variable LongName Description
+
+appendOption :: Options -> Config -> Config
+appendOption option config =
+    case config of
+        Blank -> Blank
+        Simple options -> Simple (List.reverse (option : options))
+        Complex commands -> Complex (List.foldl' f [] commands)
+  where
+    f :: [Commands] -> Commands -> [Commands]
+    f acc command = case command of
+        Global options -> Global (List.reverse (option : options)) : acc
+        c@(Command _ _ _) -> c : acc
 
 {- |
 Individual parameters read in off the command-line can either have a value
@@ -411,6 +410,14 @@ data Parameters = Parameters
     }
     deriving (Show, Eq)
 
+emptyParameters :: Parameters
+emptyParameters =
+    Parameters
+        { commandNameFrom = Nothing
+        , parameterValuesFrom = emptyMap
+        , environmentValuesFrom = emptyMap
+        }
+
 baselineOptions :: [Options]
 baselineOptions =
     [ Option
@@ -418,15 +425,15 @@ baselineOptions =
         (Just 'v')
         Empty
         [quote|
-        Turn on event tracing. By default the logging stream will go to
-        standard output on your terminal.
+        Turn on informational messages. The logging stream will go
+        to standard output in your terminal.
     |]
     , Option
         "debug"
         Nothing
         Empty
         [quote|
-        Turn on debug level logging. Implies --verbose.
+        Turn on debug output. Implies --verbose.
     |]
     ]
 
