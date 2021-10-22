@@ -46,9 +46,9 @@ github: aesiniath/unbeliever
 dependencies:
  - base >= 4.11 && < 5
  - core-text >= 0.3.4.0
- - core-data >= 0.2.1.10
- - core-program >= 0.3.0.0
- - core-telemetry >= 0.1.0.0
+ - core-data >= 0.2.1.11
+ - core-program >= 0.3.0.8
+ - core-telemetry >= 0.1.6.1
 
 tests:
   check:
