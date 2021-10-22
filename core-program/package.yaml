@@ -29,6 +29,7 @@ dependencies:
  - hashable >= 1.2
  - prettyprinter >= 1.6.2
  - template-haskell >= 2.14 && < 3
+ - typed-process
  - text
  - text-short
 
