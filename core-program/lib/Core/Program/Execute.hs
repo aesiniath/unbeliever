@@ -558,18 +558,20 @@ list. This helper then logs the command being executed to the debug output,
 which can be useful when you're trying to find out what exactly what program
 is being invoked.
 
-Having to write out the individual options and arguments is a bit of an
-annoyance but that's /execvp(3)/ for you. Remember that this isn't invoking a
-shell; arguments and their values have to be enumerated separately:
+Keep in mind that this isn't invoking a shell; arguments and their values have
+to be enumerated separately:
 
 @
     'execProcess' [\"\/usr\/bin\/ssh\", \"-l\", \"admin\", \"203.0.113.42\", \"\\\'remote command here\\\'\"]
 @
 
+having to write out the individual options and arguments and deal with
+escaping is a bit of an annoyance but that's /execvp(3)/ for you.
+
 The return tuple is the exit code from the child process, its entire @stdout@
-and its entire @stderr@, if any. Note that this isn't a streaming interface,
-so if you're doing something that returns volumous output you'll want to use
-something like __io-streams__ instead.
+and its entire @stderr@, if any. Note that this is not a streaming interface,
+so if you're doing something that returns huge amounts of output you'll want
+to use something like __io-streams__ instead.
 
 (this wraps __typed-process__'s 'readProcess')
 -}
