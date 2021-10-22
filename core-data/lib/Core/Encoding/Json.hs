@@ -66,10 +66,8 @@ module Core.Encoding.Json (
 
 import Core.Data.Structures (Key, Map, fromMap, intoMap)
 import Core.Text.Bytes (Bytes, fromBytes, intoBytes)
-import Core.Text.Rope (Rope, Textual, fromRope, intoRope)
-import Core.Text.Utilities (
+import Core.Text.Colour (
     AnsiColour,
-    Render (Token, colourize, highlight),
     brightBlue,
     brightGrey,
     brightMagenta,
@@ -79,12 +77,28 @@ import Core.Text.Utilities (
     dullYellow,
     pureGrey,
  )
+import Core.Text.Rope (
+    Rope,
+    Textual,
+    fromRope,
+    intoRope,
+    singletonRope,
+ )
+import Core.Text.Utilities (
+    Render (Token, colourize, highlight),
+    breakPieces,
+ )
 import qualified Data.Aeson as Aeson
 import Data.Coerce
-import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable (Hashable)
-import Data.Scientific (Scientific)
+import qualified Data.List as List
+import Data.Scientific (
+    FPFormat (..),
+    Scientific,
+    formatScientific,
+    isFloating,
+ )
 import Data.String (IsString (..))
 import qualified Data.Text as T
 import qualified Data.Vector as V
@@ -120,7 +134,42 @@ I know we're not /supposed/ to rely on types to document functions, but
 really, this one does what it says on the tin.
 -}
 encodeToUTF8 :: JsonValue -> Bytes
-encodeToUTF8 = intoBytes . Aeson.encode . intoAeson
+encodeToUTF8 = intoBytes . encodeAsRope
+
+encodeAsRope :: JsonValue -> Rope
+encodeAsRope value = case value of
+    JsonObject xm ->
+        let kvs = fromMap xm
+            members = fmap (\((JsonKey k), v) -> doublequote <> escapeString k <> doublequote <> colonspace <> encodeAsRope v) kvs
+         in openbrace <> mconcat (List.intersperse commaspace members) <> closebrace
+    JsonArray xs ->
+        openbracket <> mconcat (List.intersperse commaspace (fmap encodeAsRope xs)) <> closebracket
+    JsonString x ->
+        doublequote <> escapeString x <> doublequote
+    JsonNumber x -> case isFloating x of
+        True -> intoRope (formatScientific Generic Nothing x)
+        False -> intoRope (formatScientific Fixed (Just 0) x)
+    JsonBool x -> case x of
+        True -> "true"
+        False -> "false"
+    JsonNull -> "null"
+  where
+    commaspace = singletonRope ','
+    colonspace = singletonRope ':'
+    doublequote = singletonRope '"'
+    openbrace = singletonRope '{'
+    closebrace = singletonRope '}'
+    openbracket = singletonRope '['
+    closebracket = singletonRope ']'
+
+{- |
+-- Escape any quotes in a JsonString.
+-}
+escapeString :: Rope -> Rope
+escapeString text =
+    let pieces = breakPieces (== '"') text
+     in mconcat (List.intersperse "\\\"" pieces)
+{-# INLINEABLE escapeString #-}
 
 {- |
 Given an array of bytes, attempt to decode it as a JSON value.
@@ -166,22 +215,6 @@ instance Fractional JsonValue where
     fromRational = JsonNumber . fromRational
     (/) = error "Sorry, you can't do division on JsonValues"
 
-intoAeson :: JsonValue -> Aeson.Value
-intoAeson value = case value of
-    JsonObject xm ->
-        let kvs = fromMap xm
-            tvs = fmap (\(k, v) -> (fromRope (coerce k), intoAeson v)) kvs
-            tvm :: HashMap T.Text Aeson.Value
-            tvm = HashMap.fromList tvs
-         in Aeson.Object tvm
-    JsonArray xs ->
-        let vs = fmap intoAeson xs
-         in Aeson.Array (V.fromList vs)
-    JsonString x -> Aeson.String (fromRope x)
-    JsonNumber x -> Aeson.Number x
-    JsonBool x -> Aeson.Bool x
-    JsonNull -> Aeson.Null
-
 {- |
 Keys in a JSON object.
 -}
@@ -192,10 +225,6 @@ newtype JsonKey
 instance Hashable JsonKey
 
 instance Key JsonKey
-
--- FIXME what is this instance?
-instance Aeson.ToJSON Rope where
-    toJSON text = Aeson.toJSON (fromRope text :: T.Text) -- BAD
 
 instance Textual JsonKey where
     fromRope t = coerce t
@@ -232,9 +261,9 @@ colourized with ANSI escape codes you can use the 'Render' instance:
 will get you:
 
 @
-23:46:04Z (00000.007) j =
+23:46:04Z (00.007) j =
 {
-    "answer": 42.0
+    "answer": 42
 }
 @
 -}
