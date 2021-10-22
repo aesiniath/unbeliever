@@ -48,8 +48,8 @@ library
     , base >=4.11 && <5
     , bytestring
     , chronologique
-    , core-data
-    , core-program >=0.3.0.7
+    , core-data >=0.2.1.11
+    , core-program >=0.3.0.8
     , core-text >=0.3.5
     , exceptions
     , http-streams
