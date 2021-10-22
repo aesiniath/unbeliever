@@ -31,15 +31,17 @@ checkTelemetryMachinery :: Spec
 checkTelemetryMachinery = do
     describe "Queue processing" $ do
         it "processes an item put on queue" $ do
+            out <- newTQueueIO
             queue <- newTQueueIO
 
             atomically $ do
                 writeTQueue queue (Just 1)
                 writeTQueue queue Nothing
 
-            loopForever (countingAction 1) queue
+            loopForever (countingAction 1) out queue
 
         it "processes mutlitple items" $ do
+            out <- newTQueueIO
             queue <- newTQueueIO
 
             atomically $ do
@@ -48,20 +50,22 @@ checkTelemetryMachinery = do
                 writeTQueue queue (Just 3)
                 writeTQueue queue Nothing
 
-            loopForever (matchingAction [1, 2, 3]) queue
+            loopForever (matchingAction [1, 2, 3]) out queue
 
         it "stops even if only empty" $ do
+            out <- newTQueueIO
             queue <- newTQueueIO
 
             atomically $ do
                 writeTQueue queue Nothing
 
-            loopForever (countingAction 0) queue
+            loopForever (countingAction 0) out queue
 
         it "extended sequeence handled in right order" $ do
+            out <- newTQueueIO
             queue <- newTQueueIO
 
-            a <- Async.async (loopForever storingAction queue)
+            a <- Async.async (loopForever storingAction out queue)
 
             mapM_
                 ( \i -> atomically $ do
