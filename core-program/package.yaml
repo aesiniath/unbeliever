@@ -1,5 +1,5 @@
 name: core-program
-version: 0.3.0.8
+version: 0.3.1.0
 synopsis: Opinionated Haskell Interoperability
 description: |
   A library to help build command-line programs, both tools and
@@ -31,6 +31,7 @@ dependencies:
  - template-haskell >= 2.14 && < 3
  - text
  - text-short
+ - typed-process
 
 library:
   dependencies:

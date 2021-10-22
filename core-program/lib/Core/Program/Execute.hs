@@ -76,6 +76,7 @@ module Core.Program.Execute (
     -- * Useful actions
     outputEntire,
     inputEntire,
+    execProcess,
 
     -- * Concurrency
     Thread,
@@ -148,6 +149,7 @@ import GHC.Conc (getNumProcessors, numCapabilities, setNumCapabilities)
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import System.Exit (ExitCode (..))
 import qualified System.Posix.Process as Posix (exitImmediately)
+import System.Process.Typed (closed, proc, readProcess, setStdin)
 import Prelude hiding (log)
 
 --
@@ -544,10 +546,47 @@ outputEntire :: Handle -> Bytes -> Program τ ()
 outputEntire handle contents = liftIO (hOutput handle contents)
 
 {- |
- Read the (entire) contents of the specified @Handle@.
+Read the (entire) contents of the specified @Handle@.
 -}
 inputEntire :: Handle -> Program τ Bytes
 inputEntire handle = liftIO (hInput handle)
+
+{- |
+Execute an external child process and wait for its output and result. The
+command is specified first and and subsequent arguments as elements of the
+list. This helper then logs the command being executed to the debug output,
+which can be useful when you're trying to find out what exactly what program
+is being invoked.
+
+Having to write out the individual options and arguments is a bit of an
+annoyance but that's /execvp(3)/ for you. Remember that this isn't invoking a
+shell; arguments and their values have to be enumerated separately:
+
+@
+    'execProcess' [\"\/usr\/bin\/ssh\", \"-l\", \"admin\", \"203.0.113.42\", \"\\\'remote command here\\\'\"]
+@
+
+The return tuple is the exit code from the child process, its entire @stdout@
+and its entire @stderr@, if any. Note that this isn't a streaming interface,
+so if you're doing something that returns volumous output you'll want to use
+something like __io-streams__ instead.
+
+(this wraps __typed-process__'s 'readProcess')
+-}
+execProcess :: [Rope] -> Program t (ExitCode, Rope, Rope)
+execProcess [] = error "No command provided"
+execProcess (cmd : args) =
+    let cmdStr = fromRope cmd
+        argsStr = fromRope <$> args
+        task = proc cmdStr argsStr
+        task' = setStdin closed task
+     in do
+            debugS "command" task'
+
+            (exit, out, err) <- liftIO $ do
+                readProcess task'
+
+            return (exit, intoRope out, intoRope err)
 
 {- |
 A thread for concurrent computation. Haskell uses green threads: small lines
