@@ -40,6 +40,7 @@ library
       Core.Telemetry.Console
       Core.Telemetry.Honeycomb
       Core.Telemetry.Observability
+      Core.Telemetry.Other
       Core.Telemetry.Structured
   hs-source-dirs:
       lib
