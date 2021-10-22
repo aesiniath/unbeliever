@@ -3,7 +3,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 {- |
-Implementations of different backends that telemetry can be exported to.
+A simple exporter backend that prints your metrics to the terminal as they are
+submitted.
+
+Taking the example from 'Core.Telemetry.Observability.telemetry', the output
+would be:
+
+@
+09:58:54Z (03.755) Process order:
+  calories = 667.0
+  flavour = true
+  meal_name = "hamburger"
+  precise = 45.0
+@
 -}
 module Core.Telemetry.Console (
     consoleExporter,
@@ -22,8 +34,11 @@ import Core.Text.Rope
 import Core.Text.Utilities
 import qualified Data.List as List
 
--- TODO convert this into a Render instance
-
+{-|
+Output metrics to the terminal. This is mostly useful for debugging, but it
+can also be used as general output mechanism if your program is mostly
+concerned with gathering metrics and displaying them.
+-}
 consoleExporter :: Exporter
 consoleExporter =
     Exporter
@@ -40,12 +55,12 @@ setupConsoleAction context = do
     let out = outputChannelFrom context
     pure
         ( Forwarder
-            { telemetryHandlerFrom = process out
+            { telemetryHandlerFrom = processConsoleOutput out
             }
         )
 
-process :: TQueue (Maybe Rope) -> [Datum] -> IO ()
-process out datums = do
+processConsoleOutput :: TQueue (Maybe Rope) -> [Datum] -> IO ()
+processConsoleOutput out datums = do
     mapM_ processOne datums
   where
     processOne :: Datum -> IO ()

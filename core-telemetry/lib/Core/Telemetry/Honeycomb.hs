@@ -4,7 +4,7 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
 {- |
-A backend exporter that sends telemetry in the form of traces of your
+A exporter backend that sends telemetry in the form of traces of your
 application's behaviour, or event data—accompanied either way by [conceivably
 very wide] additional metadata—to the Honeycomb observability service.
 
@@ -187,8 +187,6 @@ convertDatumToJson datum =
                     (JsonNumber (fromRational (toRational duration / 1e6)))
                     meta5
 
-        -- start = show (fromRational (toRational (spanTimeFrom datum) / 1e9) :: Fixed E9)
-        -- meta7 = insertKeyValue "timestamp" (JsonString (intoRope (show (spanTimeFrom datum)))) meta6
         time = intoRope (show (spanTimeFrom datum))
         point =
             JsonObject

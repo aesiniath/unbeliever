@@ -109,10 +109,11 @@ unSpan (Span text) = text
 
 {- |
 Unique identifier for a trace. If your program is the top of an service stack
-then you can use 'beginTrace' to generate a new idenfifier for this request or
-iteration. More commonly, however, you will inherit the trace identifier from
-the application or service which invokes this program or request handler, and
-you can specify it by using 'usingTrace'.
+then you can use 'Core.Telemetry.Observability.beginTrace' to generate a new
+idenfifier for this request or iteration. More commonly, however, you will
+inherit the trace identifier from the application or service which invokes
+this program or request handler, and you can specify it by using
+'Core.Telemetry.Observability.usingTrace'.
 -}
 newtype Trace = Trace Rope
     deriving (Show, IsString)
