@@ -12,8 +12,8 @@ When specifying the 'honeycombExporter' you have to specify certain
 command-line options and environment variables to enable it:
 
 @
-\$ export HONEYCOMB_TEAM="62e3626a2cc34475adef4d799eca0407"
-\$ burger-service --telemetry=honeycomb --dataset=prod-restaurant-001
+\$ __export HONEYCOMB_TEAM="62e3626a2cc34475adef4d799eca0407"__
+\$ __burger-service --telemetry=honeycomb --dataset=prod-restaurant-001__
 @
 
 If you annotate your program with spans, you can get a trace like this:
@@ -24,9 +24,9 @@ If you annotate your program with spans, you can get a trace like this:
 
 This library is Open Source but the Honeycomb service is /not/. Honeycomb
 offers a free tier which is quite suitable for individual use and small local
-applications. You can also look at "Core.Telemetry.General" if you instead
-want to forward to a generic OpenTelemetry provider. There's also
-"Core.Telemetry.Console" which simply dumps telemetry to console.
+applications. In the future you may be able to look at
+"Core.Telemetry.General" if you instead want to forward to a generic
+OpenTelemetry provider.
 -}
 module Core.Telemetry.Honeycomb (
     Dataset,

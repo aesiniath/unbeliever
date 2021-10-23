@@ -1,5 +1,4 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
 
 module Core.Program.Signal (
     setupSignalHandlers,

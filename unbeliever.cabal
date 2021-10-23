@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           unbeliever
-version:        0.11.0.0
+version:        0.11.0.1
 synopsis:       Opinionated Haskell Interoperability
 description:    A library to help build command-line programs, both tools and
                 longer-running daemons. Its @Program@ type provides unified ouptut &
@@ -32,6 +32,7 @@ description:    A library to help build command-line programs, both tools and
                 * __core-text__
                 * __core-data__
                 * __core-program__
+                * __core-telemetry__
                 .
                 with more forthcoming as we continue to add convenince and
                 interoperability wrappers around streaming, webservers, and database
@@ -71,7 +72,7 @@ test-suite check
       async
     , base >=4.11 && <5
     , bytestring
-    , core-data >=0.2.1.11
+    , core-data >=0.3.0.0
     , core-program >=0.3.0.8
     , core-telemetry >=0.1.6.1
     , core-text >=0.3.4.0
@@ -95,7 +96,7 @@ benchmark performance
   build-depends:
       base >=4.11 && <5
     , bytestring
-    , core-data >=0.2.1.11
+    , core-data >=0.3.0.0
     , core-program >=0.3.0.8
     , core-telemetry >=0.1.6.1
     , core-text >=0.3.4.0
