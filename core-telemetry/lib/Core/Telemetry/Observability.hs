@@ -36,19 +36,19 @@ import "Core.Telemetry"
 main :: 'IO' ()
 main = do
     context <- 'Core.Program.Execute.configure' \"1.0\" 'Core.Program.Execute.None' ('simpleConfig' [])
-    context' <- 'initializeTelemetry' ['Core.Telemetry.Console.consoleExporter', 'Core.Telemetry.Console.structuredExporter', 'Core.Telemetry.Console.honeycombExporter'] context
+    context' <- 'initializeTelemetry' ['Core.Telemetry.Console.consoleExporter', 'Core.Telemetry.Structured.structuredExporter', 'Core.Telemetry.Honeycomb.honeycombExporter'] context
     'Core.Program.Execute.executeWith' context' program
 @
 
 Then when you run your program you can pick the exporter:
 
 @
-\$ __burgerservice --telemetry=console__
+\$ __burgerservice --telemetry=structured__
 @
 
-to activate sending telemetry to, in this case, the console. Other exporters
-add additional command-line options with which to configure how and where the
-metrics will be sent.
+to activate sending telemetry, in this case, to the console in the form of
+structured JSON logs. Other exporters add additional command-line options with
+which to configure how and where the metrics will be sent.
 
 = Traces and Spans
 
@@ -109,12 +109,12 @@ if it's common across all the spans in your trace.
 In other circumstances you will just want to send metrics:
 
 @
-            -- not again!
-            'sendEvent' \"Cat meowed\"
-                [ 'metric' \"room\" (\"living room\" :: 'Rope')
-                , 'metric' "volume\" (127.44 :: 'Float') -- decibels
-                , 'metric' \"apparently_hungry\" 'True'
-                ]
+        -- not again!
+        'sendEvent' \"Cat meowed\"
+            [ 'metric' \"room\" (\"living room\" :: 'Rope')
+            , 'metric' "volume\" (127.44 :: 'Float') -- decibels
+            , 'metric' \"apparently_hungry\" 'True'
+            ]
 @
 
 will result in @room=\"living room\"@, @volume=127.44@, and
@@ -295,7 +295,7 @@ approrpiate:
 This will allow you to then select the appropriate backend at runtime:
 
 @
-\$ __burgerservice --telemetry=structured__
+\$ __burgerservice --telemetry=console__
 @
 
 which will result in it spitting out metrics as it goes,
@@ -521,12 +521,12 @@ usingTrace trace possibleParent action = do
 Add measurements to the current span.
 
 @
-            'telemetry'
-                [ 'metric' \"calories\" (667 :: 'Int')
-                , 'metric' \"precise\" measurement
-                , 'metric' \"meal_name\" ("hamburger" :: 'Rope')
-                , 'metric' \"flavour\" 'True'
-                ]
+        'telemetry'
+            [ 'metric' \"calories\" (667 :: 'Int')
+            , 'metric' \"precise\" measurement
+            , 'metric' \"meal_name\" ("hamburger" :: 'Rope')
+            , 'metric' \"flavour\" 'True'
+            ]
 @
 
 The 'metric' function is a method provided by instances of the 'Telemtetry'
@@ -571,14 +571,14 @@ use 'sendEvent' to accomplish this.
 
 If you do call 'sendEvent' within an enclosing span created with 'encloseSpan'
 (the usual and expected use case) then this event will be \"linked\" to this
-span so that the observability tool can deisplay it attached to the span in
+span so that the observability tool can display it attached to the span in
 the in which it occured.
 
 @
-            'sendEvent'
-                "Make tea"
-                [ 'metric' \"sugar\" 'False'
-                ]
+        'sendEvent'
+            "Make tea"
+            [ 'metric' \"sugar\" 'False'
+            ]
 @
 -}
 sendEvent :: Label -> [MetricValue] -> Program τ ()

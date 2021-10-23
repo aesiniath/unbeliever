@@ -26,11 +26,13 @@ module Core.Telemetry (
     -- |
     -- Processors to export telemetry to a backend.
     module Core.Telemetry.Console,
+    module Core.Telemetry.General,
     module Core.Telemetry.Honeycomb,
     module Core.Telemetry.Structured
 ) where
 
 import Core.Telemetry.Console
+import Core.Telemetry.General
 import Core.Telemetry.Honeycomb
 import Core.Telemetry.Observability
 import Core.Telemetry.Structured
