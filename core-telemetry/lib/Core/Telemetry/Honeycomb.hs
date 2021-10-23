@@ -16,12 +16,16 @@ command-line options and environment variables to enable it:
 \$ burger-service --telemetry=honeycomb --dataset=prod-restaurant-001
 @
 
+If you annotate your program with spans, you can get a trace like this:
+
+![Example Trace](HoneycombTraceExample.png)
+
 /Notice/
 
 This library is Open Source but the Honeycomb service is /not/. Honeycomb
 offers a free tier which is quite suitable for individual use and small local
-applications. You can also look at "Core.Telemetry.Other" if you instead want
-to forward to a generic OpenTelemetry provider. There's also
+applications. You can also look at "Core.Telemetry.General" if you instead
+want to forward to a generic OpenTelemetry provider. There's also
 "Core.Telemetry.Console" which simply dumps telemetry to console.
 -}
 module Core.Telemetry.Honeycomb (

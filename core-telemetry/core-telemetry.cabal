@@ -1,11 +1,11 @@
-cabal-version: 1.12
+cabal-version: 1.18
 
 -- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 
 name:           core-telemetry
-version:        0.1.7.0
+version:        0.1.7.1
 synopsis:       Advanced telemetry
 description:    This is part of a library to help build command-line programs, both tools and
                 longer-running daemons.
@@ -29,6 +29,8 @@ license-file:   LICENSE
 build-type:     Simple
 tested-with:
     GHC == 8.10.7
+extra-doc-files:
+    HoneycombTraceExample.png
 
 source-repository head
   type: git
@@ -38,9 +40,9 @@ library
   exposed-modules:
       Core.Telemetry
       Core.Telemetry.Console
+      Core.Telemetry.General
       Core.Telemetry.Honeycomb
       Core.Telemetry.Observability
-      Core.Telemetry.Other
       Core.Telemetry.Structured
   hs-source-dirs:
       lib

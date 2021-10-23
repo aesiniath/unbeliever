@@ -36,19 +36,19 @@ import "Core.Telemetry"
 main :: 'IO' ()
 main = do
     context <- 'Core.Program.Execute.configure' \"1.0\" 'Core.Program.Execute.None' ('simpleConfig' [])
-    context' <- 'initializeTelemetry' ['Core.Telemetry.Console.consoleExporter', 'Core.Telemetry.Console.structuredExporter', 'Core.Telemetry.Console.honeycombExporter'] context
+    context' <- 'initializeTelemetry' ['Core.Telemetry.Console.consoleExporter', 'Core.Telemetry.Structured.structuredExporter', 'Core.Telemetry.Honeycomb.honeycombExporter'] context
     'Core.Program.Execute.executeWith' context' program
 @
 
 Then when you run your program you can pick the exporter:
 
 @
-\$ __burgerservice --telemetry=console__
+\$ __burgerservice --telemetry=structured__
 @
 
-to activate sending telemetry to, in this case, the console. Other exporters
-add additional command-line options with which to configure how and where the
-metrics will be sent.
+to activate sending telemetry, in this case, to the console in the form of
+structured JSON logs. Other exporters add additional command-line options with
+which to configure how and where the metrics will be sent.
 
 = Traces and Spans
 

@@ -575,7 +575,7 @@ to use something like __io-streams__ instead.
 
 (this wraps __typed-process__'s 'readProcess')
 -}
-execProcess :: [Rope] -> Program t (ExitCode, Rope, Rope)
+execProcess :: [Rope] -> Program τ (ExitCode, Rope, Rope)
 execProcess [] = error "No command provided"
 execProcess (cmd : args) =
     let cmdStr = fromRope cmd
