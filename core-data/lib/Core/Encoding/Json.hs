@@ -53,7 +53,9 @@ readable code or if you need the type annotations.
 module Core.Encoding.Json (
     -- * Encoding and Decoding
     encodeToUTF8,
+    encodeToRope,
     decodeFromUTF8,
+    decodeFromRope,
     JsonValue (..),
     JsonKey (..),
 
@@ -135,16 +137,20 @@ I know we're not /supposed/ to rely on types to document functions, but
 really, this one does what it says on the tin.
 -}
 encodeToUTF8 :: JsonValue -> Bytes
-encodeToUTF8 = intoBytes . encodeAsRope
+encodeToUTF8 = intoBytes . encodeToRope
 
-encodeAsRope :: JsonValue -> Rope
-encodeAsRope value = case value of
+{- |
+Given a JSON value, encode it to a Rope (which, by definition, is UTF-8
+internally).
+-}
+encodeToRope :: JsonValue -> Rope
+encodeToRope value = case value of
     JsonObject xm ->
         let kvs = fromMap xm
-            members = fmap (\((JsonKey k), v) -> doublequote <> escapeString k <> doublequote <> colonspace <> encodeAsRope v) kvs
+            members = fmap (\((JsonKey k), v) -> doublequote <> escapeString k <> doublequote <> colonspace <> encodeToRope v) kvs
          in openbrace <> mconcat (List.intersperse commaspace members) <> closebrace
     JsonArray xs ->
-        openbracket <> mconcat (List.intersperse commaspace (fmap encodeAsRope xs)) <> closebracket
+        openbracket <> mconcat (List.intersperse commaspace (fmap encodeToRope xs)) <> closebracket
     JsonString x ->
         doublequote <> escapeString x <> doublequote
     JsonNumber x -> case isFloating x of
@@ -179,6 +185,16 @@ decodeFromUTF8 :: Bytes -> Maybe JsonValue
 decodeFromUTF8 b =
     let x :: Maybe Aeson.Value
         x = Aeson.decodeStrict' (fromBytes b)
+     in fmap fromAeson x
+
+{- |
+Given an string that is full of a bunch of JSON, attempt to decode
+it.
+-}
+decodeFromRope :: Rope -> Maybe JsonValue
+decodeFromRope text =
+    let x :: Maybe Aeson.Value
+        x = Aeson.decodeStrict' (fromRope text)
      in fmap fromAeson x
 
 {- |
