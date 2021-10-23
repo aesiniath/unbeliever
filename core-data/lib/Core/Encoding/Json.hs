@@ -296,11 +296,6 @@ instance Render JsonKey where
     colourize = colourizeJson
     highlight = prettyKey
 
-instance Render Aeson.Value where
-    type Token Aeson.Value = JsonToken
-    colourize = colourizeJson
-    highlight = prettyValue . fromAeson
-
 --
 --  Ugh. If you want to experiment with narrower output, then:
 --
