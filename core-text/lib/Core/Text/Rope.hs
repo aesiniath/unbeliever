@@ -93,6 +93,7 @@ module Core.Text.Rope (
     unRope,
     nullRope,
     unsafeIntoRope,
+    copyRope,
     Width (..),
 ) where
 
@@ -137,7 +138,6 @@ import qualified Data.Text.Lazy.Builder as U (
     fromText,
     toLazyText,
  )
-import Prettyprinter (Pretty (..), emptyDoc)
 import qualified Data.Text.Short as S (
     ShortText,
     any,
@@ -158,6 +158,7 @@ import qualified Data.Text.Short as S (
  )
 import qualified Data.Text.Short.Unsafe as S (fromByteStringUnsafe)
 import GHC.Generics (Generic)
+import Prettyprinter (Pretty (..), emptyDoc)
 import System.IO (Handle)
 
 {- |
@@ -291,7 +292,6 @@ functions or working with literals.
 packRope :: String -> Rope
 packRope xs = Rope . F.singleton . S.pack $ xs
 
-
 {- |
 Repeat the input 'Rope' @n@ times. The follows the same semantics as other
 @replicate@ functions; if you ask for zero copies you'll get an empty text and
@@ -423,10 +423,34 @@ findIndexRope predicate = fst . foldl f (Nothing, 0) . unRope
 -- corresponding tree.
 --
 instance Hashable Rope where
-    hashWithSalt salt (Rope x) = foldl' f salt x
-      where
-        f :: Int -> S.ShortText -> Int
-        f num piece = hashWithSalt num piece
+    hashWithSalt salt text =
+        let (Rope x') = copyRope text
+            piece = case F.viewl x' of
+                F.EmptyL -> S.empty
+                (F.:<) first _ -> first
+         in hashWithSalt salt piece
+
+{- |
+Copy the pieces underlying a 'Rope' into a single piece object.
+
+/Warning/
+
+This function was necessary to have a reliable 'Hashable' instance. Currently
+constructing this new @Rope@ is quite inefficient if the number of pieces or
+their respective lengths are large. Usually, however, we're calling 'hash' so
+the value can be used as a key in a hash table and such keys are typically
+simple (or at least not ridiculously long), so this is not an issue in normal
+usage.
+-}
+copyRope :: Rope -> Rope
+copyRope text@(Rope x) =
+    case F.viewl x of
+        F.EmptyL -> text
+        (F.:<) _ x' -> case F.viewl x' of
+            F.EmptyL -> text
+            -- TODO replace this with a function that allocates a ByteArray#
+            -- of the appropriate length then copies the pieces in
+            _ -> Rope (F.singleton (foldl' S.append S.empty x))
 
 {- |
 Machinery to interpret a type as containing valid Unicode that can be
@@ -457,10 +481,7 @@ class Textual α where
     -- | Take another text-like type and convert it to a @Rope@.
     intoRope :: α -> Rope
 
-    -- | Append some text to this @Rope@. The default implementation is
-    -- basically a convenience wrapper around calling 'intoRope' and
-    -- 'mappend'ing it to your text (which will work just fine, but for some
-    -- types more efficient implementations are possible).
+    -- | Append some text to this @Rope@. The default implementation is basically a convenience wrapper around calling 'intoRope' and 'mappend'ing it to your text (which will work just fine, but for some types more efficient implementations are possible).
     appendRope :: α -> Rope -> Rope
     appendRope thing text = text <> intoRope thing
 

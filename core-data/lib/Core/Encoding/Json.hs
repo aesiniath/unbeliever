@@ -53,7 +53,9 @@ readable code or if you need the type annotations.
 module Core.Encoding.Json (
     -- * Encoding and Decoding
     encodeToUTF8,
+    encodeToRope,
     decodeFromUTF8,
+    decodeFromRope,
     JsonValue (..),
     JsonKey (..),
 
@@ -66,10 +68,8 @@ module Core.Encoding.Json (
 
 import Core.Data.Structures (Key, Map, fromMap, intoMap)
 import Core.Text.Bytes (Bytes, fromBytes, intoBytes)
-import Core.Text.Rope (Rope, Textual, fromRope, intoRope)
-import Core.Text.Utilities (
+import Core.Text.Colour (
     AnsiColour,
-    Render (Token, colourize, highlight),
     brightBlue,
     brightGrey,
     brightMagenta,
@@ -79,12 +79,29 @@ import Core.Text.Utilities (
     dullYellow,
     pureGrey,
  )
+import Core.Text.Rope (
+    Rope,
+    Textual,
+    fromRope,
+    intoRope,
+    singletonRope,
+ )
+import Core.Text.Utilities (
+    Render (Token, colourize, highlight),
+    breakPieces,
+ )
 import qualified Data.Aeson as Aeson
+import qualified Data.Aeson.Key as Aeson
+import qualified Data.Aeson.KeyMap as Aeson
 import Data.Coerce
-import Data.HashMap.Strict (HashMap)
-import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable (Hashable)
-import Data.Scientific (Scientific)
+import qualified Data.List as List
+import Data.Scientific (
+    FPFormat (..),
+    Scientific,
+    formatScientific,
+    isFloating,
+ )
 import Data.String (IsString (..))
 import qualified Data.Text as T
 import qualified Data.Vector as V
@@ -120,7 +137,46 @@ I know we're not /supposed/ to rely on types to document functions, but
 really, this one does what it says on the tin.
 -}
 encodeToUTF8 :: JsonValue -> Bytes
-encodeToUTF8 = intoBytes . Aeson.encode . intoAeson
+encodeToUTF8 = intoBytes . encodeToRope
+
+{- |
+Given a JSON value, encode it to a Rope (which, by definition, is UTF-8
+internally).
+-}
+encodeToRope :: JsonValue -> Rope
+encodeToRope value = case value of
+    JsonObject xm ->
+        let kvs = fromMap xm
+            members = fmap (\((JsonKey k), v) -> doublequote <> escapeString k <> doublequote <> colonspace <> encodeToRope v) kvs
+         in openbrace <> mconcat (List.intersperse commaspace members) <> closebrace
+    JsonArray xs ->
+        openbracket <> mconcat (List.intersperse commaspace (fmap encodeToRope xs)) <> closebracket
+    JsonString x ->
+        doublequote <> escapeString x <> doublequote
+    JsonNumber x -> case isFloating x of
+        True -> intoRope (formatScientific Generic Nothing x)
+        False -> intoRope (formatScientific Fixed (Just 0) x)
+    JsonBool x -> case x of
+        True -> "true"
+        False -> "false"
+    JsonNull -> "null"
+  where
+    commaspace = singletonRope ','
+    colonspace = singletonRope ':'
+    doublequote = singletonRope '"'
+    openbrace = singletonRope '{'
+    closebrace = singletonRope '}'
+    openbracket = singletonRope '['
+    closebracket = singletonRope ']'
+
+{- |
+-- Escape any quotes in a JsonString.
+-}
+escapeString :: Rope -> Rope
+escapeString text =
+    let pieces = breakPieces (== '"') text
+     in mconcat (List.intersperse "\\\"" pieces)
+{-# INLINEABLE escapeString #-}
 
 {- |
 Given an array of bytes, attempt to decode it as a JSON value.
@@ -129,6 +185,16 @@ decodeFromUTF8 :: Bytes -> Maybe JsonValue
 decodeFromUTF8 b =
     let x :: Maybe Aeson.Value
         x = Aeson.decodeStrict' (fromBytes b)
+     in fmap fromAeson x
+
+{- |
+Given an string that is full of a bunch of JSON, attempt to decode
+it.
+-}
+decodeFromRope :: Rope -> Maybe JsonValue
+decodeFromRope text =
+    let x :: Maybe Aeson.Value
+        x = Aeson.decodeStrict' (fromRope text)
      in fmap fromAeson x
 
 {- |
@@ -166,22 +232,6 @@ instance Fractional JsonValue where
     fromRational = JsonNumber . fromRational
     (/) = error "Sorry, you can't do division on JsonValues"
 
-intoAeson :: JsonValue -> Aeson.Value
-intoAeson value = case value of
-    JsonObject xm ->
-        let kvs = fromMap xm
-            tvs = fmap (\(k, v) -> (fromRope (coerce k), intoAeson v)) kvs
-            tvm :: HashMap T.Text Aeson.Value
-            tvm = HashMap.fromList tvs
-         in Aeson.Object tvm
-    JsonArray xs ->
-        let vs = fmap intoAeson xs
-         in Aeson.Array (V.fromList vs)
-    JsonString x -> Aeson.String (fromRope x)
-    JsonNumber x -> Aeson.Number x
-    JsonBool x -> Aeson.Bool x
-    JsonNull -> Aeson.Null
-
 {- |
 Keys in a JSON object.
 -}
@@ -193,10 +243,6 @@ instance Hashable JsonKey
 
 instance Key JsonKey
 
--- FIXME what is this instance?
-instance Aeson.ToJSON Rope where
-    toJSON text = Aeson.toJSON (fromRope text :: T.Text) -- BAD
-
 instance Textual JsonKey where
     fromRope t = coerce t
     intoRope x = coerce x
@@ -204,8 +250,16 @@ instance Textual JsonKey where
 fromAeson :: Aeson.Value -> JsonValue
 fromAeson value = case value of
     Aeson.Object o ->
-        let tvs = HashMap.toList o
-            kvs = fmap (\(k, v) -> (JsonKey (intoRope k), fromAeson v)) tvs
+        let tvs = Aeson.toList o
+            kvs =
+                fmap
+                    ( \(k, v) ->
+                        ( JsonKey
+                            (intoRope (Aeson.toText k))
+                        , fromAeson v
+                        )
+                    )
+                    tvs
 
             kvm :: Map JsonKey JsonValue
             kvm = intoMap kvs
@@ -232,9 +286,9 @@ colourized with ANSI escape codes you can use the 'Render' instance:
 will get you:
 
 @
-23:46:04Z (00000.007) j =
+23:46:04Z (00.007) j =
 {
-    "answer": 42.0
+    "answer": 42
 }
 @
 -}
@@ -257,11 +311,6 @@ instance Render JsonKey where
     type Token JsonKey = JsonToken
     colourize = colourizeJson
     highlight = prettyKey
-
-instance Render Aeson.Value where
-    type Token Aeson.Value = JsonToken
-    colourize = colourizeJson
-    highlight = prettyValue . fromAeson
 
 --
 --  Ugh. If you want to experiment with narrower output, then:

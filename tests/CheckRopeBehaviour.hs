@@ -54,8 +54,11 @@ checkRopeBehaviour = do
             ("H₂" :: Rope) == ("H₂" :: Rope) `shouldBe` True
             ("H₂" :: Rope) /= ("SO₄" :: Rope) `shouldBe` True
 
+        it "can be copied into a single piece" $ do
+            copyRope compound `shouldBe` ("3-ethyl-4-methylhexane" :: Rope)
+
         it "Hashable instance behaves" $ do
-            hash ("Hello" :: Rope) `shouldBe` hash (singletonRope 'H' <> intoRope ("ello" :: String))
+            hash compound `shouldBe` hash ("3-ethyl-4-methylhexane" :: Rope)
 
         -- depended on Textual instance for String being fixed and
         -- the Eq instance being customized to ignore tree structure
