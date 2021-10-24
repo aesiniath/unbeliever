@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -91,8 +92,13 @@ import Core.Text.Utilities (
     breakPieces,
  )
 import qualified Data.Aeson as Aeson
+
+#if MIN_VERSION_aeson(2,0,1)
 import qualified Data.Aeson.Key as Aeson
 import qualified Data.Aeson.KeyMap as Aeson
+#else
+import qualified Data.HashMap.Strict as HashMap
+#endif
 import Data.Coerce
 import Data.Hashable (Hashable)
 import qualified Data.List as List
@@ -249,6 +255,7 @@ instance Textual JsonKey where
 
 fromAeson :: Aeson.Value -> JsonValue
 fromAeson value = case value of
+#if MIN_VERSION_aeson(2,0,1)
     Aeson.Object o ->
         let tvs = Aeson.toList o
             kvs =
@@ -260,10 +267,24 @@ fromAeson value = case value of
                         )
                     )
                     tvs
-
             kvm :: Map JsonKey JsonValue
             kvm = intoMap kvs
          in JsonObject kvm
+#else
+    Aeson.Object o ->
+        let tvs = HashMap.toList o
+            kvs =
+                fmap ( \(k, v) ->
+                        ( JsonKey
+                            (intoRope k)
+                        , fromAeson v
+                        )
+                    )
+                    tvs
+            kvm :: Map JsonKey JsonValue
+            kvm = intoMap kvs
+         in JsonObject kvm
+#endif
     Aeson.Array v -> JsonArray (fmap fromAeson (V.toList v))
     Aeson.String t -> JsonString (intoRope t)
     Aeson.Number n -> JsonNumber n
