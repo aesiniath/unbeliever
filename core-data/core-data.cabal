@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           core-data
-version:        0.3.0.0
+version:        0.3.0.1
 synopsis:       Convenience wrappers around common data structures and encodings
 description:    Wrappers around common data structures and encodings.
                 .
@@ -42,7 +42,7 @@ library
       lib
   ghc-options: -Wall -Wwarn -fwarn-tabs
   build-depends:
-      aeson >=2.0.1
+      aeson >=1.5 && <2 || >=2.0.1
     , base >=4.11 && <5
     , bytestring
     , containers
