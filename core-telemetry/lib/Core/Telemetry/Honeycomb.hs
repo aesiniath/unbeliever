@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
 {- |
@@ -38,6 +39,7 @@ import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Context
 import Core.Program.Logging
+import Core.System
 import Core.System.Base (stdout)
 import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
 import Core.Text.Bytes
@@ -49,6 +51,7 @@ import qualified Data.ByteString as B (ByteString)
 import qualified Data.ByteString.Char8 as C (append, null, putStrLn)
 import qualified Data.ByteString.Lazy as L (ByteString)
 import Data.Fixed
+import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import qualified Data.List as List
 import Network.Http.Client
 import System.Environment (lookupEnv)
@@ -144,16 +147,18 @@ setupHoneycombAction context = do
                 undefined
             Value value -> pure (intoRope value)
 
+    r <- newIORef Nothing
+
     pure
         Forwarder
-            { telemetryHandlerFrom = process apikey dataset
+            { telemetryHandlerFrom = process r apikey dataset
             }
 
 -- use partually applied
-process :: ApiKey -> Dataset -> [Datum] -> IO ()
-process apikey dataset datums = do
+process :: IORef (Maybe Connection) -> ApiKey -> Dataset -> [Datum] -> IO ()
+process r apikey dataset datums = do
     let json = JsonArray (fmap convertDatumToJson datums)
-    postEventToHoneycombAPI apikey dataset json
+    postEventToHoneycombAPI r apikey dataset json
 
 -- implements the spec described at <https://docs.honeycomb.io/getting-data-in/tracing/send-trace-data/>
 convertDatumToJson :: Datum -> JsonValue
@@ -201,19 +206,49 @@ convertDatumToJson datum =
                 )
      in point
 
-postEventToHoneycombAPI :: ApiKey -> Dataset -> JsonValue -> IO ()
-postEventToHoneycombAPI apikey dataset json = do
-    ctx <- baselineContextSSL
-    c <- openConnectionSSL ctx "api.honeycomb.io" 443
+acquireConnection :: IORef (Maybe Connection) -> IO Connection
+acquireConnection r = do
+    possible <- readIORef r
+    case possible of
+        Nothing -> do
+            ctx <- baselineContextSSL
+            c <- openConnectionSSL ctx "api.honeycomb.io" 443
+            pure c
+        Just c ->
+            pure c
 
-    let q = buildRequest1 $ do
-            http POST (C.append "/1/batch/" (fromRope dataset))
-            setContentType "application/json"
-            setHeader "X-Honeycomb-Team" (fromRope (apikey))
+cleanupConnection :: IORef (Maybe Connection) -> IO ()
+cleanupConnection r = do
+    finally
+        ( do
+            possible <- readIORef r
+            case possible of
+                Nothing -> pure ()
+                Just c -> closeConnection c
+        )
+        ( do
+            writeIORef r Nothing
+        )
 
-    sendRequest c q (simpleBody (fromBytes (encodeToUTF8 json)))
-    receiveResponse c handler
+postEventToHoneycombAPI :: IORef (Maybe Connection) -> ApiKey -> Dataset -> JsonValue -> IO ()
+postEventToHoneycombAPI r apikey dataset json = do
+    catch
+        ( do
+            c <- acquireConnection r
+
+            sendRequest c q (simpleBody (fromBytes (encodeToUTF8 json)))
+            receiveResponse c handler
+        )
+        ( \(e :: SomeException) -> do
+            cleanupConnection r
+            throw e
+        )
   where
+    q = buildRequest1 $ do
+        http POST (C.append "/1/batch/" (fromRope dataset))
+        setContentType "application/json"
+        setHeader "X-Honeycomb-Team" (fromRope (apikey))
+
     {-
     Response to Batch API looks like:
 
