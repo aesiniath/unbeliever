@@ -213,8 +213,10 @@ acquireConnection r = do
         Nothing -> do
             ctx <- baselineContextSSL
             c <- openConnectionSSL ctx "api.honeycomb.io" 443
+
+            writeIORef r (Just c)
             pure c
-        Just c ->
+        Just c -> do
             pure c
 
 cleanupConnection :: IORef (Maybe Connection) -> IO ()
@@ -236,10 +238,13 @@ postEventToHoneycombAPI r apikey dataset json = do
         ( do
             c <- acquireConnection r
 
+            -- actually transmit telemetry to Honeycomb
             sendRequest c q (simpleBody (fromBytes (encodeToUTF8 json)))
             receiveResponse c handler
         )
         ( \(e :: SomeException) -> do
+            -- ideally we don't get here, but if the SSL connection collapses
+            -- we will. TODO we probably need to loop to retransmit the frame?
             cleanupConnection r
             throw e
         )
@@ -254,6 +259,7 @@ postEventToHoneycombAPI r apikey dataset json = do
 
     [{"status":202}]
 
+    TODO we need to handle other status responses properly.
     -}
     handler :: Response -> InputStream ByteString -> IO ()
     handler p i = do
@@ -267,9 +273,12 @@ postEventToHoneycombAPI r apikey dataset json = do
                       where
                         f pair = case pair of
                             JsonObject kvs -> case lookupKeyValue "status" kvs of
-                                Just (JsonNumber 202) -> pure ()
+                                Just (JsonNumber 202) -> do
+                                    -- normal response
+                                    pure ()
                                 _ -> do
-                                    putStrLn "No status returned;"
+                                    -- some other status!
+                                    putStrLn "Unexpected status returned;"
                                     C.putStrLn body
                             _ -> putStrLn "internal: wtf?"
                     _ -> do
