@@ -145,8 +145,12 @@ import Core.Text.Bytes
 import Core.Text.Rope
 import qualified Data.ByteString as B (hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
+import qualified Data.List as List (intercalate, intersperse)
 import GHC.Conc (getNumProcessors, numCapabilities, setNumCapabilities)
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
+import System.Directory (
+    doesFileExist,
+ )
 import System.Exit (ExitCode (..))
 import qualified System.Posix.Process as Posix (exitImmediately)
 import System.Process.Typed (closed, proc, readProcess, setStdin)
@@ -551,6 +555,12 @@ Read the (entire) contents of the specified @Handle@.
 inputEntire :: Handle -> Program τ Bytes
 inputEntire handle = liftIO (hInput handle)
 
+data ProcessProblem
+    = CommandNotFound Rope
+    deriving (Show)
+
+instance Exception ProcessProblem
+
 {- |
 Execute an external child process and wait for its output and result. The
 command is specified first and and subsequent arguments as elements of the
@@ -578,17 +588,23 @@ to use something like __io-streams__ instead.
 execProcess :: [Rope] -> Program τ (ExitCode, Rope, Rope)
 execProcess [] = error "No command provided"
 execProcess (cmd : args) =
-    let cmdStr = fromRope cmd
-        argsStr = fromRope <$> args
-        task = proc cmdStr argsStr
-        task' = setStdin closed task
+    let cmd' = fromRope cmd
+        args' = fmap fromRope args
+        task = proc cmd' args'
+        task1 = setStdin closed task
+        command = mconcat (List.intersperse (singletonRope ' ') (cmd : args))
      in do
-            debugS "command" task'
+            debug "command" command
 
-            (exit, out, err) <- liftIO $ do
-                readProcess task'
+            probe <- liftIO (doesFileExist cmd')
+            case probe of
+                False -> do
+                    throw (CommandNotFound cmd)
+                True -> do
+                    (exit, out, err) <- liftIO $ do
+                        readProcess task1
 
-            return (exit, intoRope out, intoRope err)
+                    pure (exit, intoRope out, intoRope err)
 
 {- |
 A thread for concurrent computation. Haskell uses green threads: small lines
