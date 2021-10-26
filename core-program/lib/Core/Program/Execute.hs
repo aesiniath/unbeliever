@@ -146,11 +146,11 @@ import Core.Text.Bytes
 import Core.Text.Rope
 import qualified Data.ByteString as B (hPut)
 import qualified Data.ByteString.Char8 as C (singleton)
-import qualified Data.List as List (intercalate, intersperse)
+import qualified Data.List as List (intersperse)
 import GHC.Conc (getNumProcessors, numCapabilities, setNumCapabilities)
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import System.Directory (
-    doesFileExist,
+    findExecutable
  )
 import System.Exit (ExitCode (..))
 import qualified System.Posix.Process as Posix (exitImmediately)
@@ -598,11 +598,11 @@ execProcess (cmd : args) =
             debug "command" command
 
             probe <- liftIO $ do
-                doesFileExist cmd'
+                findExecutable cmd'
             case probe of
-                False -> do
+                Nothing -> do
                     throw (CommandNotFound cmd)
-                True -> do
+                Just _ -> do
                     (exit, out, err) <- liftIO $ do
                         readProcess task1
 
