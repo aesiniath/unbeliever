@@ -35,6 +35,7 @@ module Core.Program.Context (
     getContext,
     fmapContext,
     subProgram,
+    Boom(..),
 ) where
 
 import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
@@ -523,3 +524,11 @@ handleTelemetryChoice context = do
         case target == codenameFrom exporter of
             False -> lookupExporter target exporters
             True -> Just exporter
+
+{-|
+A utility exception for those occasions when you just need to go "boom".
+-}
+data Boom = Boom
+  deriving Show
+
+instance Exception Boom

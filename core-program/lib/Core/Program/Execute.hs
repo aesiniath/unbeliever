@@ -94,6 +94,7 @@ module Core.Program.Execute (
     unProgram,
     unThread,
     invalid,
+    Boom(..),
     loopForever,
 ) where
 
@@ -596,7 +597,8 @@ execProcess (cmd : args) =
      in do
             debug "command" command
 
-            probe <- liftIO (doesFileExist cmd')
+            probe <- liftIO $ do
+                doesFileExist cmd'
             case probe of
                 False -> do
                     throw (CommandNotFound cmd)
