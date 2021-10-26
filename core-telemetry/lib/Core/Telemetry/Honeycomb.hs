@@ -233,22 +233,28 @@ cleanupConnection r = do
         )
 
 postEventToHoneycombAPI :: IORef (Maybe Connection) -> ApiKey -> Dataset -> JsonValue -> IO ()
-postEventToHoneycombAPI r apikey dataset json = do
-    catch
-        ( do
-            c <- acquireConnection r
-
-            -- actually transmit telemetry to Honeycomb
-            sendRequest c q (simpleBody (fromBytes (encodeToUTF8 json)))
-            receiveResponse c handler
-        )
-        ( \(e :: SomeException) -> do
-            -- ideally we don't get here, but if the SSL connection collapses
-            -- we will. TODO we probably need to loop to retransmit the frame?
-            cleanupConnection r
-            throw e
-        )
+postEventToHoneycombAPI r apikey dataset json = attempt False
   where
+    attempt retrying = do
+        catch
+            ( do
+                c <- acquireConnection r
+
+                -- actually transmit telemetry to Honeycomb
+                sendRequest c q (simpleBody (fromBytes (encodeToUTF8 json)))
+                receiveResponse c handler
+            )
+            ( \(e :: SomeException) -> do
+                -- ideally we don't get here, but if the SSL connection collapses
+                -- we will. We retry /once/, and otherwise throw the exception out.
+                cleanupConnection r
+                case retrying of
+                    False -> do
+                        putStrLn "Reattempting"
+                        attempt True
+                    True -> throw e
+            )
+
     q = buildRequest1 $ do
         http POST (C.append "/1/batch/" (fromRope dataset))
         setContentType "application/json"
