@@ -440,19 +440,23 @@ getUniqueId = do
 {- |
 Generate a UUID but expressed in Latin 25, with least significant bits (the
 time stamp) ordered to the left so that visual distinctiveness is on the left.
+The MAC address in the lower 48 bits is /not/ reversed, leaving the most
+distinctiveness [the actual host as opposed to manufacturer] hanging on the
+right hand edge of the identifier.
 -}
 generateIdentifierLatin25 :: Program τ Rope
 generateIdentifierLatin25 = do
     uuid <- getUniqueId
     let (w1, w2, w3, w4) = toWords uuid
-        l1 = convert w1
-        l2 = convert w2
-        l3 = convert w3
-        l4 = convert w4
+        l1 = convertL w1
+        l2 = convertL w2
+        l3 = convertB w3
+        l4 = convertB w4
         result = l1 <> l2 <> l3 <> l4
     pure result
   where
-    convert = intoRope . padWithZeros 7 . reverse . toLatin25 . fromIntegral
+    convertL = intoRope . padWithZeros 7 . reverse . toLatin25 . fromIntegral
+    convertB = intoRope . padWithZeros 7 . toLatin25 . fromIntegral
 
 {- |
 Generate a UUID but expressed in Base 62.
@@ -461,14 +465,15 @@ generateIdentifierBase62 :: Program τ Rope
 generateIdentifierBase62 = do
     uuid <- getUniqueId
     let (w1, w2, w3, w4) = toWords uuid
-        b1 = convert w1
-        b2 = convert w2
-        b3 = convert w3
-        b4 = convert w4
+        b1 = convertL w1
+        b2 = convertL w2
+        b3 = convertB w3
+        b4 = convertB w4
         result = b1 <> b2 <> b3 <> b4
     pure result
   where
-    convert = intoRope . padWithZeros 6 . reverse . toBase62 . fromIntegral
+    convertL = intoRope . padWithZeros 6 . reverse . toBase62 . fromIntegral
+    convertB = intoRope . padWithZeros 6 . toBase62 . fromIntegral
 
 {- |
 Start a new trace. A random identifier will be generated.
