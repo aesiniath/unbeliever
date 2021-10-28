@@ -164,6 +164,7 @@ import Core.Data.Structures (Map, insertKeyValue)
 import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Context
+import Core.Program.Execute (sleepThread)
 import Core.Program.Logging
 import Core.System.Base (liftIO)
 import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
@@ -171,13 +172,14 @@ import Core.Text.Rope
 import Core.Text.Utilities (oxford, quote)
 import qualified Data.ByteString as B (ByteString)
 import qualified Data.ByteString.Lazy as L (ByteString)
-import Data.Char (chr)
 import Data.Int (Int32, Int64)
 import qualified Data.List as List (foldl')
+import Data.Locator (padWithZeros, toBase62, toLatin25)
 import Data.Scientific (Scientific)
 import qualified Data.Text as T (Text)
 import qualified Data.Text.Lazy as U (Text)
-import System.Random (newStdGen, randomRs)
+import Data.UUID (UUID, toWords)
+import Data.UUID.V1 (nextUUID)
 
 {- |
 A telemetry value that can be sent over the wire. This is a wrapper around
@@ -378,7 +380,7 @@ encloseSpan :: Label -> Program z a -> Program z a
 encloseSpan label action = do
     context <- getContext
 
-    unique <- liftIO randomIdentifier
+    unique <- generateIdentifierBase62
     debug "span" unique
 
     liftIO $ do
@@ -426,19 +428,47 @@ encloseSpan label action = do
         -- now back to your regularly scheduled Haskell program
         pure result
 
-represent :: Int -> Char
-represent x
-    | x < 10 = chr (48 + x)
-    | x < 36 = chr (65 + x - 10)
-    | x < 62 = chr (97 + x - 36)
-    | otherwise = '@'
+getUniqueId :: Program τ UUID
+getUniqueId = do
+    next <- liftIO nextUUID
+    case next of
+        Just uuid -> pure uuid
+        Nothing -> do
+            sleepThread 0.000001
+            getUniqueId
 
--- TODO replace this with something that gets a UUID
-randomIdentifier :: IO Rope
-randomIdentifier = do
-    gen <- newStdGen
-    let result = packRope . fmap represent . take 16 . randomRs (0, 61) $ gen
+{- |
+Generate a UUID but expressed in Latin 25, with least significant bits (the
+time stamp) ordered to the left so that visual distinctiveness is on the left.
+-}
+generateIdentifierLatin25 :: Program τ Rope
+generateIdentifierLatin25 = do
+    uuid <- getUniqueId
+    let (w1, w2, w3, w4) = toWords uuid
+        l1 = convert w1
+        l2 = convert w2
+        l3 = convert w3
+        l4 = convert w4
+        result = l1 <> l2 <> l3 <> l4
     pure result
+  where
+    convert = intoRope . padWithZeros 7 . reverse . toLatin25 . fromIntegral
+
+{- |
+Generate a UUID but expressed in Base 62.
+-}
+generateIdentifierBase62 :: Program τ Rope
+generateIdentifierBase62 = do
+    uuid <- getUniqueId
+    let (w1, w2, w3, w4) = toWords uuid
+        b1 = convert w1
+        b2 = convert w2
+        b3 = convert w3
+        b4 = convert w4
+        result = b1 <> b2 <> b3 <> b4
+    pure result
+  where
+    convert = intoRope . padWithZeros 6 . reverse . toBase62 . fromIntegral
 
 {- |
 Start a new trace. A random identifier will be generated.
@@ -455,7 +485,7 @@ program = do
 -}
 beginTrace :: Program τ α -> Program τ α
 beginTrace action = do
-    trace <- liftIO randomIdentifier
+    trace <- generateIdentifierLatin25
     usingTrace (Trace trace) Nothing action
 
 {- |
@@ -564,15 +594,14 @@ telemetry values = do
 Record telemetry about an event. Specify a label for the event and then
 whichever metrics you wish to record.
 
-
 The emphasis of this package is to create traces and spans. There are,
 however, times when you just want to send telemetry about an event. You can
 use 'sendEvent' to accomplish this.
 
 If you do call 'sendEvent' within an enclosing span created with 'encloseSpan'
 (the usual and expected use case) then this event will be \"linked\" to this
-span so that the observability tool can display it attached to the span in
-the in which it occured.
+span so that the observability tool can display it attached to the span in the
+in which it occured.
 
 @
         'sendEvent'
