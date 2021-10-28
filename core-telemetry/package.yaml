@@ -40,12 +40,14 @@ library:
    - exceptions
    - http-streams
    - io-streams
+   - locators
    - mtl
    - random
    - safe-exceptions
    - scientific
    - stm
    - unix
+   - uuid
   source-dirs:
   - lib
   exposed-modules:
