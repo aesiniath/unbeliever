@@ -34,7 +34,7 @@ import Core.Text.Rope
 import Core.Text.Utilities
 import qualified Data.List as List
 
-{-|
+{- |
 Output metrics to the terminal. This is mostly useful for debugging, but it
 can also be used as general output mechanism if your program is mostly
 concerned with gathering metrics and displaying them.
@@ -67,20 +67,21 @@ processConsoleOutput out datums = do
     processOne datum = do
         let start = spanTimeFrom datum
         let text =
-                (intoEscapes pureGrey)
+                singletonRope '\n'
+                    <> intoEscapes pureGrey
                     <> spanNameFrom datum
                     <> singletonRope ':'
                     <> let pairs :: [(JsonKey, JsonValue)]
                            pairs = fromMap (attachedMetadataFrom datum)
                         in List.foldl' f emptyRope pairs
-                            <> (intoEscapes resetColour)
+                            <> intoEscapes resetColour
 
         now <- getCurrentTimeNanoseconds
         let result =
                 formatLogMessage
                     start
                     now
-                    SeverityDebug
+                    SeverityInternal
                     text
         atomically $ do
             writeTQueue out (Just result)
@@ -88,7 +89,7 @@ processConsoleOutput out datums = do
 f :: Rope -> (JsonKey, JsonValue) -> Rope
 f acc (k, v) =
     acc <> "\n  "
-        <> (intoEscapes pureGrey)
+        <> intoEscapes pureGrey
         <> intoRope k
         <> " = "
         <> render 80 v

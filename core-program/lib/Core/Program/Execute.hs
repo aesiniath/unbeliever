@@ -94,7 +94,7 @@ module Core.Program.Execute (
     unProgram,
     unThread,
     invalid,
-    Boom(..),
+    Boom (..),
     loopForever,
 ) where
 
@@ -113,6 +113,7 @@ import qualified Control.Concurrent.Async as Async (
     wait,
  )
 import Control.Concurrent.MVar (
+    MVar,
     modifyMVar_,
     newMVar,
     putMVar,
@@ -150,7 +151,7 @@ import qualified Data.List as List (intersperse)
 import GHC.Conc (getNumProcessors, numCapabilities, setNumCapabilities)
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import System.Directory (
-    findExecutable
+    findExecutable,
  )
 import System.Exit (ExitCode (..))
 import qualified System.Posix.Process as Posix (exitImmediately)
@@ -280,7 +281,7 @@ executeActual context0 program = do
     -- set up debug logger
     l <-
         Async.async $ do
-            processTelemetryMessages forwarder out tel
+            processTelemetryMessages forwarder level out tel
 
     -- run actual program, ensuring to grab any otherwise uncaught exceptions.
     code <-
@@ -359,17 +360,16 @@ processStandardOutput out =
 -- the technique used   by **io-streams** to just pass along a stream of Maybes,
 -- with Nothing signalling end-of-stream is exactly good enough for our needs.
 --
-processTelemetryMessages :: Forwarder -> TQueue (Maybe Rope) -> TQueue (Maybe Datum) -> IO ()
-processTelemetryMessages processor out tel = do
+processTelemetryMessages :: Forwarder -> MVar Verbosity -> TQueue (Maybe Rope) -> TQueue (Maybe Datum) -> IO ()
+processTelemetryMessages processor v out tel = do
     Safe.catch
-        (loopForever action out tel)
+        (loopForever action v out tel)
         (collapseHandler "telemetry processing collapsed")
   where
     action = telemetryHandlerFrom processor
 
-loopForever :: ([a] -> IO ()) -> TQueue (Maybe Rope) -> TQueue (Maybe a) -> IO ()
-loopForever action out queue = do
-    start <- getCurrentTimeNanoseconds
+loopForever :: ([a] -> IO ()) -> MVar Verbosity -> TQueue (Maybe Rope) -> TQueue (Maybe a) -> IO ()
+loopForever action v out queue = do
     -- block waiting for an item
     possibleItems <- atomically $ do
         cycleOverQueue []
@@ -379,20 +379,16 @@ loopForever action out queue = do
         Nothing -> pure ()
         -- handle it and loop
         Just items -> do
+            start <- getCurrentTimeNanoseconds
             catch
-                (action (reverse items))
-                ( \(e :: SomeException) -> do
-                    now <- getCurrentTimeNanoseconds
-                    let result =
-                            formatLogMessage
-                                start
-                                now
-                                SeverityWarn
-                                ("sending telemetry failed (Exception: " <> intoRope (show e) <> "); Restarting exporter.")
-                    atomically $ do
-                        writeTQueue out (Just result)
+                ( do
+                    action (reverse items)
+                    reportStatus start (length items)
                 )
-            loopForever action out queue
+                ( \(e :: SomeException) -> do
+                    reportProblem start e
+                )
+            loopForever action v out queue
   where
     cycleOverQueue items =
         case items of
@@ -422,6 +418,35 @@ loopForever action out queue = do
                             -- continue accumulating!
                             Just item -> do
                                 cycleOverQueue (item : items)
+
+    reportStatus start num = do
+        level <- readMVar v
+        when (isDebug level) $ do
+            now <- getCurrentTimeNanoseconds
+            let desc = case num of
+                    1 -> "1 event"
+                    _ -> intoRope (show num) <> " events"
+                message =
+                    formatLogMessage
+                        start
+                        now
+                        SeverityInternal
+                        ("sent = " <> desc)
+            atomically $ do
+                writeTQueue out (Just message)
+
+    reportProblem start e = do
+        level <- readMVar v
+        when (isEvent level) $ do
+            now <- getCurrentTimeNanoseconds
+            let message =
+                    formatLogMessage
+                        start
+                        now
+                        SeverityWarn
+                        ("sending telemetry failed (Exception: " <> intoRope (show e) <> "); Restarting exporter.")
+            atomically $ do
+                writeTQueue out (Just message)
 
 {- |
 Safely exit the program with the supplied exit code. Current output and

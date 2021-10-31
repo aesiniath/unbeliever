@@ -140,6 +140,11 @@ module Core.Program.Logging (
     debug,
     debugS,
     debugR,
+
+    -- internal
+    internal,
+    isEvent,
+    isDebug,
 ) where
 
 import Chrono.TimeStamp (TimeStamp (..), getCurrentTimeNanoseconds)
@@ -167,6 +172,7 @@ data Severity
     | SeverityWarn
     | SeverityInfo
     | SeverityDebug
+    | SeverityInternal
 
 putMessage :: Context τ -> Message -> IO ()
 putMessage context (Message now level text possiblelValue) = do
@@ -204,12 +210,13 @@ formatLogMessage start now severity message =
         -- I hate doing math in Haskell
         !elapsed = fromRational (toRational (now' - start') / 1e9) :: Fixed E3
 
-        !color = case severity of
+        !colour = case severity of
             SeverityNone -> emptyRope
             SeverityCritical -> intoEscapes pureRed
             SeverityWarn -> intoEscapes pureYellow
             SeverityInfo -> intoEscapes dullWhite
             SeverityDebug -> intoEscapes pureGrey
+            SeverityInternal -> intoEscapes dullBlue
 
         !reset = intoEscapes resetColour
      in mconcat
@@ -218,7 +225,7 @@ formatLogMessage start now severity message =
             , " ("
             , padWithZeros 6 (show elapsed)
             , ") "
-            , color
+            , colour
             , message
             , reset
             ]
@@ -448,3 +455,13 @@ debugR label thing = do
             let value = render columns thing
             !value' <- evaluate value
             putMessage context (Message now SeverityDebug label (Just value'))
+
+internal :: Rope -> Rope -> Program τ ()
+internal label value = do
+    context <- ask
+    liftIO $ do
+        level <- readMVar (verbosityLevelFrom context)
+        when (isDebug level) $ do
+            now <- getCurrentTimeNanoseconds
+            !value' <- evaluate value
+            putMessage context (Message now SeverityInternal label (Just value'))

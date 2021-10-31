@@ -381,7 +381,7 @@ encloseSpan label action = do
     context <- getContext
 
     unique <- generateIdentifierBase62
-    debug "span" unique
+    internal "span" unique
 
     liftIO $ do
         -- prepare new span
@@ -525,10 +525,10 @@ usingTrace trace possibleParent action = do
 
     case possibleParent of
         Nothing -> do
-            debug "trace" (unTrace trace)
+            internal "trace" (unTrace trace)
         Just parent -> do
-            debug "trace" (unTrace trace)
-            debug "parent" (unSpan parent)
+            internal "trace" (unTrace trace)
+            internal "parent" (unSpan parent)
 
     liftIO $ do
         -- prepare new span
