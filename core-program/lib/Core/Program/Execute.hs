@@ -311,9 +311,12 @@ executeActual context0 program = do
         ( do
             atomically $ do
                 writeTQueue tel Nothing
-                writeTQueue out Nothing
 
             Async.wait l
+
+            atomically $ do
+                writeTQueue out Nothing
+
             Async.wait o
         )
         ( do
