@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -338,6 +339,7 @@ with an underscore:
 data Options
     = Option LongName (Maybe ShortName) ParameterValue Description
     | Argument LongName Description
+    | Remaining LongName Description
     | Variable LongName Description
 
 appendOption :: Options -> Config -> Config
@@ -406,6 +408,7 @@ would be parsed as:
 data Parameters = Parameters
     { commandNameFrom :: Maybe LongName
     , parameterValuesFrom :: Map LongName ParameterValue
+    , remainingArgumentsFrom :: [String]
     , environmentValuesFrom :: Map LongName ParameterValue
     }
     deriving (Show, Eq)
@@ -415,6 +418,7 @@ emptyParameters =
     Parameters
         { commandNameFrom = Nothing
         , parameterValuesFrom = emptyMap
+        , remainingArgumentsFrom = []
         , environmentValuesFrom = emptyMap
         }
 
@@ -535,22 +539,24 @@ calls 'configure' with a default @Config@ when initializing).
 -}
 parseCommandLine :: Config -> [String] -> Either InvalidCommandLine Parameters
 parseCommandLine config argv = case config of
-    Blank -> return (Parameters Nothing emptyMap emptyMap)
+    Blank -> return (Parameters Nothing emptyMap [] emptyMap)
     Simple options -> do
-        params <- extractor Nothing options argv
-        return (Parameters Nothing params emptyMap)
+        (params, remainder) <- extractor Nothing options argv
+        checkRemainder options remainder
+        return (Parameters Nothing params remainder emptyMap)
     Complex commands ->
         let globalOptions = extractGlobalOptions commands
             modes = extractValidModes commands
          in do
                 (possibles, argv') <- splitCommandLine1 argv
-                params1 <- extractor Nothing globalOptions possibles
-                (first, remainingArgs) <- splitCommandLine2 argv'
+                (params1, _) <- extractor Nothing globalOptions possibles
+                (first, moreArgs) <- splitCommandLine2 argv'
                 (mode, localOptions) <- parseIndicatedCommand modes first
-                params2 <- extractor (Just mode) localOptions remainingArgs
-                return (Parameters (Just mode) ((<>) params1 params2) emptyMap)
+                (params2, remainder) <- extractor (Just mode) localOptions moreArgs
+                checkRemainder localOptions remainder
+                return (Parameters (Just mode) ((<>) params1 params2) remainder emptyMap)
   where
-    extractor :: Maybe LongName -> [Options] -> [String] -> Either InvalidCommandLine (Map LongName ParameterValue)
+    extractor :: Maybe LongName -> [Options] -> [String] -> Either InvalidCommandLine ((Map LongName ParameterValue), [String])
     extractor mode options args =
         let (possibles, arguments) = List.partition isOption args
             valids = extractValidNames options
@@ -558,8 +564,27 @@ parseCommandLine config argv = case config of
             needed = extractRequiredArguments options
          in do
                 list1 <- parsePossibleOptions mode valids shorts possibles
-                list2 <- parseRequiredArguments needed arguments
-                return ((<>) (intoMap list1) (intoMap list2))
+                (list2, arguments') <- parseRequiredArguments needed arguments
+                pure (((<>) (intoMap list1) (intoMap list2)), arguments')
+
+    checkRemainder :: [Options] -> [String] -> Either InvalidCommandLine ()
+    checkRemainder options remainder =
+        if List.null remainder
+            then Right ()
+            else
+                if remaining
+                    then Right ()
+                    else Left (UnexpectedArguments remainder)
+      where
+        -- is one of the options Remaining?
+        remaining =
+            List.foldl'
+                ( \acc option -> case option of
+                    Remaining _ _ -> True
+                    _ -> acc
+                )
+                False
+                options
 
 isOption :: String -> Bool
 isOption arg = case arg of
@@ -603,21 +628,20 @@ parsePossibleOptions mode valids shorts args = mapM f args
 parseRequiredArguments ::
     [LongName] ->
     [String] ->
-    Either InvalidCommandLine [(LongName, ParameterValue)]
+    Either InvalidCommandLine ([(LongName, ParameterValue)], [String])
 parseRequiredArguments needed argv = iter needed argv
   where
-    iter :: [LongName] -> [String] -> Either InvalidCommandLine [(LongName, ParameterValue)]
-
-    iter [] [] = Right []
+    iter :: [LongName] -> [String] -> Either InvalidCommandLine ([(LongName, ParameterValue)], [String])
+    iter [] [] = Right ([], [])
     -- more arguments supplied than expected
-    iter [] args = Left (UnexpectedArguments args)
+    iter [] args = Right ([], args)
     -- more arguments required, not satisfied
     iter (name : _) [] = Left (MissingArgument name)
     iter (name : names) (arg : args) =
         let deeper = iter names args
          in case deeper of
                 Left e -> Left e
-                Right list -> Right ((name, Value arg) : list)
+                Right (list, remainder) -> Right (((name, Value arg) : list), remainder)
 
 parseIndicatedCommand ::
     Map LongName [Options] ->
@@ -842,6 +866,7 @@ buildUsage config mode = case config of
     f :: Options -> ([Options], [Options]) -> ([Options], [Options])
     f o@(Option _ _ _ _) (opts, args) = (o : opts, args)
     f a@(Argument _ _) (opts, args) = (opts, a : args)
+    f a@(Remaining _ _) (opts, args) = (opts, a : args)
     f (Variable _ _) (opts, args) = (opts, args)
 
     formatParameters :: [Options] -> Doc ann
@@ -873,6 +898,10 @@ buildUsage config mode = case config of
         let l = pretty longname
             d = fromRope description
          in fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
+    g (Remaining longname description) acc =
+        let l = pretty longname
+            d = fromRope description
+         in fillBreak 16 ("  " <> l <> "... ") <+> align (reflow d) <> hardline <> acc
     g (Variable longname description) acc =
         let l = pretty longname
             d = fromRope description
