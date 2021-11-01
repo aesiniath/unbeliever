@@ -331,7 +331,7 @@ description you supply alongside.
 
 @
         [ ...
-        , 'Remaining' "The files you wish to delete permenantly."
+        , 'Remaining' "The files you wish to delete permanently."
         , ...
         ]
 @
