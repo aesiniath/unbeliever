@@ -27,11 +27,6 @@ commands =
         []
     ]
 
-data Boom = Boom
-    deriving (Show)
-
-instance Exception Boom
-
 boom :: Selector Boom
 boom = const True
 

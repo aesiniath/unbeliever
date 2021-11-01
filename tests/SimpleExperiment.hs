@@ -42,11 +42,6 @@ b = intoBytes (S.pack "{\"cost\": 4500}")
 
 r = JsonArray [JsonBool False, JsonNull, 42]
 
-data Boom = Boom
-    deriving (Show)
-
-instance Exception Boom
-
 program :: Program None ()
 program = do
     info "Starting..."

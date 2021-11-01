@@ -7,7 +7,7 @@ module CheckTelemetryMachinery where
 import Control.Concurrent.MVar (MVar, modifyMVar_, newMVar, readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (newTQueueIO, writeTQueue)
-import Core.Program.Execute (loopForever)
+import Core.Program
 import Core.System
 import qualified Control.Concurrent.Async as Async (async, wait)
 
@@ -31,6 +31,7 @@ checkTelemetryMachinery :: Spec
 checkTelemetryMachinery = do
     describe "Queue processing" $ do
         it "processes an item put on queue" $ do
+            v <- newMVar Debug
             out <- newTQueueIO
             queue <- newTQueueIO
 
@@ -38,9 +39,10 @@ checkTelemetryMachinery = do
                 writeTQueue queue (Just 1)
                 writeTQueue queue Nothing
 
-            loopForever (countingAction 1) out queue
+            loopForever (countingAction 1) v out queue
 
         it "processes mutlitple items" $ do
+            v <- newMVar Debug
             out <- newTQueueIO
             queue <- newTQueueIO
 
@@ -50,22 +52,24 @@ checkTelemetryMachinery = do
                 writeTQueue queue (Just 3)
                 writeTQueue queue Nothing
 
-            loopForever (matchingAction [1, 2, 3]) out queue
+            loopForever (matchingAction [1, 2, 3]) v out queue
 
         it "stops even if only empty" $ do
+            v <- newMVar Debug
             out <- newTQueueIO
             queue <- newTQueueIO
 
             atomically $ do
                 writeTQueue queue Nothing
 
-            loopForever (countingAction 0) out queue
+            loopForever (countingAction 0) v out queue
 
         it "extended sequeence handled in right order" $ do
+            v <- newMVar Debug
             out <- newTQueueIO
             queue <- newTQueueIO
 
-            a <- Async.async (loopForever storingAction out queue)
+            a <- Async.async (loopForever storingAction v out queue)
 
             mapM_
                 ( \i -> atomically $ do
