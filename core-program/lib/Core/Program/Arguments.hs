@@ -324,6 +324,18 @@ By convention a /description/ is one or more complete sentences each of
 which ends with a full stop. For options that take values, use /upper case/
 when specifying the label to be used in help output.
 
+'Remaining' is special; it indicates that you are expecting a variable number
+of additional, non-mandatory arguments. This is used for programs which take a
+list of files to process, for example. It'll show up in the help with the
+description you supply alongside.
+
+@
+        [ ...
+        , 'Remaining' "The files you wish to delete permenantly."
+        , ...
+        ]
+@
+
 'Variable' declares an /environment variable/ that, if present, will be
 read by the program and stored in its runtime context. By convention these
 are /upper case/. If the identifier is two or more words they are joined
