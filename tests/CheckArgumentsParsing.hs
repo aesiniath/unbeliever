@@ -35,7 +35,7 @@ options3 =
 
 options4 :: [Options]
 options4 =
-    [ Remaining "files" "All the files"
+    [ Remaining "All the rest of the files"
     ]
 
 commands1 :: [Commands]

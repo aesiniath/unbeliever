@@ -114,6 +114,7 @@ main = do
             The file you want to frobnicate.
           |]
                 , Variable "HOME" "Home directory"
+                , Remaining "The rest of the files"
                 ]
             )
 

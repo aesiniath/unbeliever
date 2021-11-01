@@ -339,7 +339,7 @@ with an underscore:
 data Options
     = Option LongName (Maybe ShortName) ParameterValue Description
     | Argument LongName Description
-    | Remaining LongName Description
+    | Remaining Description
     | Variable LongName Description
 
 appendOption :: Options -> Config -> Config
@@ -572,19 +572,20 @@ parseCommandLine config argv = case config of
         if List.null remainder
             then Right ()
             else
-                if remaining
+                if hasRemaining options
                     then Right ()
                     else Left (UnexpectedArguments remainder)
-      where
-        -- is one of the options Remaining?
-        remaining =
-            List.foldl'
-                ( \acc option -> case option of
-                    Remaining _ _ -> True
-                    _ -> acc
-                )
-                False
-                options
+
+-- is one of the options Remaining?
+hasRemaining :: [Options] -> Bool
+hasRemaining options =
+    List.foldl'
+        ( \acc option -> case option of
+            Remaining _ -> True
+            _ -> acc
+        )
+        False
+        options
 
 isOption :: String -> Bool
 isOption arg = case arg of
@@ -775,6 +776,7 @@ buildUsage config mode = case config of
                             [ pretty programName
                             , optionsSummary o
                             , argumentsSummary a
+                            , remainingSummary a
                             ]
                         )
                     )
@@ -820,6 +822,7 @@ buildUsage config mode = case config of
                                     , commandSummary modes
                                     , localSummary oL
                                     , argumentsSummary aL
+                                    , remainingSummary aL
                                     ]
                                 )
                             )
@@ -859,6 +862,9 @@ buildUsage config mode = case config of
 
     argumentsHeading as = if length as > 0 then hardline <> "Required arguments:" <> hardline else emptyDoc
 
+    remainingSummary :: [Options] -> Doc ann
+    remainingSummary as = if hasRemaining as then  " ..." else emptyDoc
+
     -- there is a corner case of complex config with no commands
     commandSummary modes = if length modes > 0 then softline <> commandName else emptyDoc
     commandHeading modes = if length modes > 0 then hardline <> "Available commands:" <> hardline else emptyDoc
@@ -866,7 +872,7 @@ buildUsage config mode = case config of
     f :: Options -> ([Options], [Options]) -> ([Options], [Options])
     f o@(Option _ _ _ _) (opts, args) = (o : opts, args)
     f a@(Argument _ _) (opts, args) = (opts, a : args)
-    f a@(Remaining _ _) (opts, args) = (opts, a : args)
+    f a@(Remaining _) (opts, args) = (opts, a : args)
     f (Variable _ _) (opts, args) = (opts, args)
 
     formatParameters :: [Options] -> Doc ann
@@ -898,10 +904,9 @@ buildUsage config mode = case config of
         let l = pretty longname
             d = fromRope description
          in fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
-    g (Remaining longname description) acc =
-        let l = pretty longname
-            d = fromRope description
-         in fillBreak 16 ("  " <> l <> "... ") <+> align (reflow d) <> hardline <> acc
+    g (Remaining description) acc =
+        let d = fromRope description
+         in fillBreak 16 ("  " <>  "... ") <+> align (reflow d) <> hardline <> acc
     g (Variable longname description) acc =
         let l = pretty longname
             d = fromRope description

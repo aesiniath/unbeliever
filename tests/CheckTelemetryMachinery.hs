@@ -64,7 +64,7 @@ checkTelemetryMachinery = do
 
             loopForever (countingAction 0) v out queue
 
-        it "extended sequeence handled in right order" $ do
+        it "extended sequence handled in right order" $ do
             v <- newMVar Debug
             out <- newTQueueIO
             queue <- newTQueueIO
