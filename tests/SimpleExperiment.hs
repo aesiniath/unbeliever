@@ -42,11 +42,6 @@ b = intoBytes (S.pack "{\"cost\": 4500}")
 
 r = JsonArray [JsonBool False, JsonNull, 42]
 
-data Boom = Boom
-    deriving (Show)
-
-instance Exception Boom
-
 program :: Program None ()
 program = do
     info "Starting..."
@@ -119,6 +114,7 @@ main = do
             The file you want to frobnicate.
           |]
                 , Variable "HOME" "Home directory"
+                , Remaining "The rest of the files"
                 ]
             )
 

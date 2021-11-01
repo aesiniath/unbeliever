@@ -1,5 +1,5 @@
 name: core-data
-version: 0.3.0.1
+version: 0.3.0.2
 synopsis: Convenience wrappers around common data structures and encodings
 description: |
   Wrappers around common data structures and encodings.
@@ -27,7 +27,7 @@ dependencies:
  - base >= 4.11 && < 5
  - bytestring
  - containers
- - hashable >= 1.2 && < 1.4
+ - hashable >= 1.2
  - prettyprinter >= 1.6.2
  - scientific
  - text

@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
@@ -7,6 +6,7 @@ module CheckArgumentsParsing (
     main,
 ) where
 
+import Core.Data.Structures
 import Core.Program.Arguments
 import Core.System.Base
 import Test.Hspec
@@ -33,6 +33,11 @@ options3 =
     [ Option "all" (Just 'a') Empty "Good will to everyone"
     ]
 
+options4 :: [Options]
+options4 =
+    [ Remaining "All the rest of the files"
+    ]
+
 commands1 :: [Commands]
 commands1 =
     [ Global
@@ -57,13 +62,27 @@ commands2 =
         options3
     ]
 
+commands4 :: [Commands]
+commands4 =
+    [ Global
+        options1
+    , Command
+        "add"
+        "Add a new file"
+        options2
+    , Command
+        "commit"
+        "Commit for eternity"
+        options4
+    ]
+
 checkArgumentsParsing :: Spec
 checkArgumentsParsing = do
     describe "Parsing of simple command-lines" $ do
         it "recognizes a single specified options" $
             let config = simpleConfig options1
                 actual = parseCommandLine config ["--verbose"]
-                expect = Parameters Nothing [("verbose", Empty)] []
+                expect = Parameters Nothing (intoMap [("verbose", Empty)]) [] emptyMap
              in actual `shouldBe` Right expect
         it "recognizes all specified options" $
             let config = simpleConfig options1
@@ -71,11 +90,14 @@ checkArgumentsParsing = do
                 expect =
                     Parameters
                         Nothing
-                        [ ("verbose", Empty)
-                        , ("quiet", Empty)
-                        , ("dry-run", Value "Tomorrow")
-                        ]
+                        ( intoMap
+                            [ ("verbose", Empty)
+                            , ("quiet", Empty)
+                            , ("dry-run", Value "Tomorrow")
+                            ]
+                        )
                         []
+                        emptyMap
              in actual `shouldBe` Right expect
 
         it "recognizes required arguments" $
@@ -84,9 +106,12 @@ checkArgumentsParsing = do
                 expect =
                     Parameters
                         Nothing
-                        [ ("filename", Value "hello.txt")
-                        ]
+                        ( intoMap
+                            [ ("filename", Value "hello.txt")
+                            ]
+                        )
                         []
+                        emptyMap
              in actual `shouldBe` Right expect
 
         it "handles valued parameter" $
@@ -95,9 +120,12 @@ checkArgumentsParsing = do
                 expect =
                     Parameters
                         Nothing
-                        [ ("filename", Value "hello.txt")
-                        ]
+                        ( intoMap
+                            [ ("filename", Value "hello.txt")
+                            ]
+                        )
                         []
+                        emptyMap
              in actual `shouldBe` Right expect
 
         it "rejects unknown options" $
@@ -127,11 +155,14 @@ checkArgumentsParsing = do
                 expect =
                     Parameters
                         (Just "add")
-                        [ ("quiet", Empty)
-                        , ("recursive", Empty)
-                        , ("filename", Value "Hello.hs")
-                        ]
+                        ( intoMap
+                            [ ("quiet", Empty)
+                            , ("recursive", Empty)
+                            , ("filename", Value "Hello.hs")
+                            ]
+                        )
                         []
+                        emptyMap
              in actual `shouldBe` Right expect
 
         it "fails on missing command" $
@@ -147,13 +178,19 @@ checkArgumentsParsing = do
         it "recognizes different command" $ -- ie, now from among multiple choices
             let config = complexConfig commands2
                 actual = parseCommandLine config ["commit"]
-                expect = Parameters (Just "commit") [] []
+                expect = Parameters (Just "commit") emptyMap [] emptyMap
              in actual `shouldBe` Right expect
 
         it "rejects further trailing arguments" $
             let config = complexConfig commands2
                 actual = parseCommandLine config ["commit", "some"]
              in actual `shouldBe` Left (UnexpectedArguments ["some"])
+
+        it "accepts trailing arguments as remainder" $
+            let config = complexConfig commands4
+                actual = parseCommandLine config ["commit", "one", "two", "tree"]
+                expect = Parameters (Just "commit") emptyMap ["one", "two", "tree"] emptyMap
+             in actual `shouldBe` Right expect
 
         -- in complex mode wasn't accpting --version as a global option.
 

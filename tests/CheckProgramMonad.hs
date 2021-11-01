@@ -27,11 +27,6 @@ commands =
         []
     ]
 
-data Boom = Boom
-    deriving (Show)
-
-instance Exception Boom
-
 boom :: Selector Boom
 boom = const True
 
@@ -56,7 +51,7 @@ checkProgramMonad = do
                 liftIO $ do
                     -- this assumes that hspec isn't passing any
                     -- command-line arguments through to us.
-                    params `shouldBe` (Parameters Nothing emptyMap emptyMap)
+                    params `shouldBe` (Parameters Nothing emptyMap [] emptyMap)
 
         -- not strictly necessary but sets up next spec item
         it "sub-programs can be run" $ do
