@@ -7,7 +7,7 @@ module CheckProgramMonad where
 import qualified Control.Exception.Safe as Safe
 import Core.Data.Structures
 import Core.Program.Arguments
-import Core.Program.Execute
+import Core.Program.Execute hiding (Boom)
 import Core.Program.Unlift
 import Core.System.Base
 import Test.Hspec hiding (context)
