@@ -464,4 +464,4 @@ internal label value = do
         when (isDebug level) $ do
             now <- getCurrentTimeNanoseconds
             !value' <- evaluate value
-            putMessage context (Message now SeverityInternal label (Just value'))
+            putMessage context (Message now SeverityInternal (label <> value') Nothing)

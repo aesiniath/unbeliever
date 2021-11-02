@@ -431,7 +431,7 @@ loopForever action v out queue = do
                         start
                         now
                         SeverityInternal
-                        ("sent = " <> desc)
+                        ("telemetry: sent " <> desc)
             atomically $ do
                 writeTQueue out (Just message)
 
