@@ -64,6 +64,7 @@ module Core.Program.Execute (
     queryOptionFlag,
     queryOptionValue,
     queryArgument,
+    queryRemaining,
     queryEnvironmentValue,
     getProgramName,
     setProgramName,
@@ -784,8 +785,7 @@ the parameter have a value?"
 
 This is available should you need to differentiate between a @Value@ and an
 @Empty@ 'ParameterValue', but for many cases as a convenience you can use the
-'lookupOptionFlag', 'lookupOptionValue', and 'lookupArgument' functions below
-(which are just wrappers around a code block like the example shown here).
+'queryOptionFlag', 'queryOptionValue', and 'queryArgument' functions below.
 -}
 getCommandLine :: Program τ (Parameters)
 getCommandLine = do
@@ -795,6 +795,12 @@ getCommandLine = do
 {- |
 Arguments are mandatory, so by the time your program is running a value
 has already been identified. This retreives the value for that parameter.
+
+@
+program = do
+    file <- 'queryArgument' \"filename\"
+    ...
+@
 -}
 queryArgument :: LongName -> Program τ Rope
 queryArgument name = do
@@ -816,8 +822,34 @@ lookupArgument name params =
 {-# DEPRECATED lookupArgument "Use queryArgument instead" #-}
 
 {- |
+In other applications, you want to gather up the remaining arguments on the
+command-line. You need to have specified 'Remaining' in the configuration.
+
+@
+program = do
+    files \<- 'queryRemaining'
+    ...
+@
+-}
+queryRemaining :: Program τ [Rope]
+queryRemaining = do
+    context <- ask
+    let params = commandLineFrom context
+    let remaining = remainingArgumentsFrom params
+    pure (fmap intoRope remaining)
+
+{- |
 Look to see if the user supplied a valued option and if so, what its value
-was.
+was. Use of the @LambdaCase@ extension might make accessing the parameter a
+bit eaiser:
+
+@
+program = do
+    count \<- 'queryOptionValue' \"count\" '>>=' \\case
+        'Nothing' -> 'pure' 0
+        'Just' value -> 'pure' value
+    ...
+@
 -}
 queryOptionValue :: LongName -> Program τ (Maybe Rope)
 queryOptionValue name = do
@@ -840,6 +872,12 @@ lookupOptionValue name params =
 
 {- |
 Returns @True@ if the option is present, and @False@ if it is not.
+
+@
+program = do
+    overwrite \<- 'queryOptionValue' \"overwrite\"
+    ...
+@
 -}
 queryOptionFlag :: LongName -> Program τ Bool
 queryOptionFlag name = do
