@@ -61,10 +61,11 @@ module Core.Program.Execute (
 
     -- * Accessing program context
     getCommandLine,
-    lookupOptionFlag,
-    lookupOptionValue,
-    lookupArgument,
-    lookupEnvironmentValue,
+    queryOptionFlag,
+    queryOptionValue,
+    queryArgument,
+    queryRemaining,
+    queryEnvironmentValue,
     getProgramName,
     setProgramName,
     getVerbosityLevel,
@@ -96,6 +97,10 @@ module Core.Program.Execute (
     invalid,
     Boom (..),
     loopForever,
+    lookupOptionFlag,
+    lookupOptionValue,
+    lookupArgument,
+    lookupEnvironmentValue,
 ) where
 
 import Chrono.TimeStamp (getCurrentTimeNanoseconds)
@@ -780,8 +785,7 @@ the parameter have a value?"
 
 This is available should you need to differentiate between a @Value@ and an
 @Empty@ 'ParameterValue', but for many cases as a convenience you can use the
-'lookupOptionFlag', 'lookupOptionValue', and 'lookupArgument' functions below
-(which are just wrappers around a code block like the example shown here).
+'queryOptionFlag', 'queryOptionValue', and 'queryArgument' functions below.
 -}
 getCommandLine :: Program τ (Parameters)
 getCommandLine = do
@@ -790,11 +794,24 @@ getCommandLine = do
 
 {- |
 Arguments are mandatory, so by the time your program is running a value
-has already been identified. This returns the value for that parameter.
--}
+has already been identified. This retreives the value for that parameter.
 
--- this is Maybe because you can inadvertently ask for an unconfigured name
--- this could be fixed with a much stronger Config type, potentially.
+@
+program = do
+    file <- 'queryArgument' \"filename\"
+    ...
+@
+-}
+queryArgument :: LongName -> Program τ Rope
+queryArgument name = do
+    context <- ask
+    let params = commandLineFrom context
+    case lookupKeyValue name (parameterValuesFrom params) of
+        Nothing -> error "Attempted lookup of unconfigured argument"
+        Just argument -> case argument of
+            Empty -> error "Invalid State"
+            Value value -> pure (intoRope value)
+
 lookupArgument :: LongName -> Parameters -> Maybe String
 lookupArgument name params =
     case lookupKeyValue name (parameterValuesFrom params) of
@@ -802,13 +819,48 @@ lookupArgument name params =
         Just argument -> case argument of
             Empty -> error "Invalid State"
             Value value -> Just value
+{-# DEPRECATED lookupArgument "Use queryArgument instead" #-}
+
+{- |
+In other applications, you want to gather up the remaining arguments on the
+command-line. You need to have specified 'Remaining' in the configuration.
+
+@
+program = do
+    files \<- 'queryRemaining'
+    ...
+@
+-}
+queryRemaining :: Program τ [Rope]
+queryRemaining = do
+    context <- ask
+    let params = commandLineFrom context
+    let remaining = remainingArgumentsFrom params
+    pure (fmap intoRope remaining)
 
 {- |
 Look to see if the user supplied a valued option and if so, what its value
-was.
--}
+was. Use of the @LambdaCase@ extension might make accessing the parameter a
+bit eaiser:
 
--- Should this be more severe if it encounters Empty?
+@
+program = do
+    count \<- 'queryOptionValue' \"count\" '>>=' \\case
+        'Nothing' -> 'pure' 0
+        'Just' value -> 'pure' value
+    ...
+@
+-}
+queryOptionValue :: LongName -> Program τ (Maybe Rope)
+queryOptionValue name = do
+    context <- ask
+    let params = commandLineFrom context
+    case lookupKeyValue name (parameterValuesFrom params) of
+        Nothing -> pure Nothing
+        Just argument -> case argument of
+            Empty -> pure (Just emptyRope)
+            Value value -> pure (Just (intoRope value))
+
 lookupOptionValue :: LongName -> Parameters -> Maybe String
 lookupOptionValue name params =
     case lookupKeyValue name (parameterValuesFrom params) of
@@ -816,24 +868,47 @@ lookupOptionValue name params =
         Just argument -> case argument of
             Empty -> Nothing
             Value value -> Just value
+{-# DEPRECATED lookupOptionValue "Use queryOptionValue instead" #-}
 
 {- |
-Returns @Just True@ if the option is present, and @Nothing@ if it is not.
--}
+Returns @True@ if the option is present, and @False@ if it is not.
 
--- The type is boolean to support a possible future extension of negated
--- arguments.
+@
+program = do
+    overwrite \<- 'queryOptionValue' \"overwrite\"
+    ...
+@
+-}
+queryOptionFlag :: LongName -> Program τ Bool
+queryOptionFlag name = do
+    context <- ask
+    let params = commandLineFrom context
+    case lookupKeyValue name (parameterValuesFrom params) of
+        Nothing -> pure False
+        Just _ -> pure True
+
 lookupOptionFlag :: LongName -> Parameters -> Maybe Bool
 lookupOptionFlag name params =
     case lookupKeyValue name (parameterValuesFrom params) of
         Nothing -> Nothing
         Just argument -> case argument of
             _ -> Just True -- nom, nom
+{-# DEPRECATED lookupOptionFlag "Use queryOptionFlag instead" #-}
 
 {- |
 Look to see if the user supplied the named environment variable and if so,
 return what its value was.
 -}
+queryEnvironmentValue :: LongName -> Program τ (Maybe Rope)
+queryEnvironmentValue name = do
+    context <- ask
+    let params = commandLineFrom context
+    case lookupKeyValue name (environmentValuesFrom params) of
+        Nothing -> error "Attempted lookup of unconfigured environment variable"
+        Just param -> case param of
+            Empty -> pure Nothing
+            Value str -> pure (Just (intoRope str))
+
 lookupEnvironmentValue :: LongName -> Parameters -> Maybe String
 lookupEnvironmentValue name params =
     case lookupKeyValue name (environmentValuesFrom params) of
@@ -841,6 +916,7 @@ lookupEnvironmentValue name params =
         Just param -> case param of
             Empty -> Nothing
             Value str -> Just str
+{-# DEPRECATED lookupEnvironmentValue "Use queryEnvironment instead" #-}
 
 {- |
 Illegal internal state resulting from what should be unreachable code or
