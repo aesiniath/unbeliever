@@ -72,9 +72,9 @@ test-suite check
       async
     , base >=4.11 && <5
     , bytestring
-    , core-data >=0.3.0.1
-    , core-program >=0.3.0.8
-    , core-telemetry >=0.1.6.1
+    , core-data >=0.3.0.2
+    , core-program >=0.3.4.0
+    , core-telemetry >=0.1.7.3
     , core-text >=0.3.4.0
     , fingertree
     , hashable
@@ -96,9 +96,9 @@ benchmark performance
   build-depends:
       base >=4.11 && <5
     , bytestring
-    , core-data >=0.3.0.1
-    , core-program >=0.3.0.8
-    , core-telemetry >=0.1.6.1
+    , core-data >=0.3.0.2
+    , core-program >=0.3.4.0
+    , core-telemetry >=0.1.7.3
     , core-text >=0.3.4.0
     , gauge
     , text
