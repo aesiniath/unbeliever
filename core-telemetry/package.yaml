@@ -35,7 +35,7 @@ library:
    - async
    - core-text >= 0.3.5
    - core-data >= 0.2.1.11
-   - core-program >= 0.3.0.8
+   - core-program >= 0.3.4
    - chronologique
    - exceptions
    - http-streams
