@@ -365,8 +365,20 @@ processStandardOutput out =
 -- the technique used   by **io-streams** to just pass along a stream of Maybes,
 -- with Nothing signalling end-of-stream is exactly good enough for our needs.
 --
-processTelemetryMessages :: Forwarder -> MVar Verbosity -> TQueue (Maybe Rope) -> TQueue (Maybe Datum) -> IO ()
-processTelemetryMessages processor v out tel = do
+processTelemetryMessages :: Maybe Forwarder -> MVar Verbosity -> TQueue (Maybe Rope) -> TQueue (Maybe Datum) -> IO ()
+processTelemetryMessages Nothing _ _ tel = do
+    ignoreForever tel
+  where
+    ignoreForever queue = do
+        possibleItem <- atomically $ do
+            readTQueue queue -- blocks
+        case possibleItem of
+            -- time to shutdown
+            Nothing -> pure ()
+            -- otherwise igonore
+            Just _ -> do
+                ignoreForever queue
+processTelemetryMessages (Just processor) v out tel = do
     Safe.catch
         (loopForever action v out tel)
         (collapseHandler "telemetry processing collapsed")

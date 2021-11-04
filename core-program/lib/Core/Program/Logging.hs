@@ -140,7 +140,6 @@ module Core.Program.Logging (
     debug,
     debugS,
     debugR,
-
     -- internal
     internal,
     isEvent,
@@ -163,6 +162,7 @@ import Core.System.Base
 import Core.Text.Colour
 import Core.Text.Rope
 import Core.Text.Utilities
+import Data.Maybe (isJust)
 
 data Message = Message TimeStamp Severity Rope (Maybe Rope)
 
@@ -456,12 +456,18 @@ debugR label thing = do
             !value' <- evaluate value
             putMessage context (Message now SeverityDebug label (Just value'))
 
+isTelemetry :: Context t -> Bool
+isTelemetry context =
+    let forwarder = telemetryForwarderFrom context
+     in isJust forwarder
+
 internal :: Rope -> Rope -> Program τ ()
 internal label value = do
     context <- ask
     liftIO $ do
         level <- readMVar (verbosityLevelFrom context)
-        when (isDebug level) $ do
+
+        when ((isDebug level) && (isTelemetry context)) $ do
             now <- getCurrentTimeNanoseconds
             !value' <- evaluate value
             putMessage context (Message now SeverityInternal (label <> value') Nothing)

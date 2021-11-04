@@ -25,7 +25,6 @@ module Core.Program.Context (
     handleTelemetryChoice,
     Exporter (..),
     Forwarder (..),
-    emptyForwarder,
     None (..),
     isNone,
     configure,
@@ -35,7 +34,7 @@ module Core.Program.Context (
     getContext,
     fmapContext,
     subProgram,
-    Boom(..),
+    Boom (..),
 ) where
 
 import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
@@ -135,12 +134,6 @@ data Forwarder = Forwarder
     { telemetryHandlerFrom :: [Datum] -> IO ()
     }
 
-emptyForwarder :: Forwarder
-emptyForwarder =
-    Forwarder
-        { telemetryHandlerFrom = \_ -> pure ()
-        }
-
 {- |
 Internal context for a running program. You access this via actions in the
 'Program' monad. The principal item here is the user-supplied top-level
@@ -185,7 +178,7 @@ data Context τ = Context
       outputChannelFrom :: TQueue (Maybe Rope)
     , telemetryChannelFrom :: TQueue (Maybe Datum)
     , -- machinery for telemetry
-      telemetryForwarderFrom :: Forwarder
+      telemetryForwarderFrom :: Maybe Forwarder
     , currentDatumFrom :: MVar Datum
     , applicationDataFrom :: MVar τ
     }
@@ -373,7 +366,7 @@ configure version t config = do
             , verbosityLevelFrom = level -- will be filled in handleVerbosityLevel
             , outputChannelFrom = out
             , telemetryChannelFrom = tel
-            , telemetryForwarderFrom = emptyForwarder
+            , telemetryForwarderFrom = Nothing
             , currentDatumFrom = v
             , applicationDataFrom = u
             }
@@ -515,7 +508,7 @@ handleTelemetryChoice context = do
                 -- and return it
                 pure
                     context
-                        { telemetryForwarderFrom = forwarder
+                        { telemetryForwarderFrom = Just forwarder
                         }
   where
     lookupExporter :: Rope -> [Exporter] -> Maybe Exporter
@@ -525,10 +518,10 @@ handleTelemetryChoice context = do
             False -> lookupExporter target exporters
             True -> Just exporter
 
-{-|
+{- |
 A utility exception for those occasions when you just need to go "boom".
 -}
 data Boom = Boom
-  deriving Show
+    deriving (Show)
 
 instance Exception Boom
