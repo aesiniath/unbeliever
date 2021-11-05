@@ -452,7 +452,7 @@ lookupEnvironmentVariables config params = do
         result <- lookupEnv var
         return $ case result of
             Just value -> insertKeyValue name (Value value) acc
-            Nothing -> acc
+            Nothing -> insertKeyValue name Empty acc
 
 handleVerbosityLevel :: Context τ -> IO (MVar Verbosity)
 handleVerbosityLevel context = do
