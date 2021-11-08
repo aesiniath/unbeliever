@@ -690,11 +690,11 @@ extractShortNames options =
 
 extractRequiredArguments :: [Options] -> [LongName]
 extractRequiredArguments arguments =
-    foldr h [] arguments
+    List.foldl' h [] arguments
   where
-    h :: Options -> [LongName] -> [LongName]
-    h (Argument longname _) needed = longname : needed
-    h _ needed = needed
+    h :: [LongName] -> Options -> [LongName]
+    h needed (Argument longname _) = longname : needed
+    h needed _ = needed
 
 extractGlobalOptions :: [Commands] -> [Options]
 extractGlobalOptions commands =
@@ -875,7 +875,7 @@ buildUsage config mode = case config of
     argumentsHeading as = if length as > 0 then hardline <> "Required arguments:" <> hardline else emptyDoc
 
     remainingSummary :: [Options] -> Doc ann
-    remainingSummary as = if hasRemaining as then  " ..." else emptyDoc
+    remainingSummary as = if hasRemaining as then " ..." else emptyDoc
 
     -- there is a corner case of complex config with no commands
     commandSummary modes = if length modes > 0 then softline <> commandName else emptyDoc
@@ -889,7 +889,7 @@ buildUsage config mode = case config of
 
     formatParameters :: [Options] -> Doc ann
     formatParameters [] = emptyDoc
-    formatParameters options = hardline <> foldr g emptyDoc options
+    formatParameters options = hardline <> List.foldl' g emptyDoc options
 
     --
     -- 16 characters width for short option, long option, and two spaces. If the
@@ -900,8 +900,8 @@ buildUsage config mode = case config of
     -- pretty good and better than waiting until column 8.
     --
 
-    g :: Options -> Doc ann -> Doc ann
-    g (Option longname shortname valued description) acc =
+    g :: Doc ann -> Options -> Doc ann
+    g acc (Option longname shortname valued description) =
         let s = case shortname of
                 Just shortchar -> "  -" <> pretty shortchar <> ", --"
                 Nothing -> "      --"
@@ -912,27 +912,27 @@ buildUsage config mode = case config of
                     fillBreak 16 (s <> l <> " ") <+> align (reflow d) <> hardline <> acc
                 Value label ->
                     fillBreak 16 (s <> l <> "=" <> pretty label <> " ") <+> align (reflow d) <> hardline <> acc
-    g (Argument longname description) acc =
+    g acc (Argument longname description) =
         let l = pretty longname
             d = fromRope description
          in fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
-    g (Remaining description) acc =
+    g acc (Remaining description) =
         let d = fromRope description
-         in fillBreak 16 ("  " <>  "... ") <+> align (reflow d) <> hardline <> acc
-    g (Variable longname description) acc =
+         in fillBreak 16 ("  " <> "... ") <+> align (reflow d) <> hardline <> acc
+    g acc (Variable longname description) =
         let l = pretty longname
             d = fromRope description
          in fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
 
     formatCommands :: [Commands] -> Doc ann
-    formatCommands commands = hardline <> foldr h emptyDoc commands
+    formatCommands commands = hardline <> List.foldl' h emptyDoc commands
 
-    h :: Commands -> Doc ann -> Doc ann
-    h (Command longname description _) acc =
+    h :: Doc ann -> Commands -> Doc ann
+    h acc (Command longname description _) =
         let l = pretty longname
             d = fromRope description
          in fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
-    h _ acc = acc
+    h acc _ = acc
 
 buildVersion :: Version -> Doc ann
 buildVersion version =
