@@ -870,7 +870,7 @@ buildUsage config mode = case config of
         Nothing -> "COMMAND..."
 
     argumentsSummary :: [Options] -> Doc ann
-    argumentsSummary as = " " <> fillSep (fmap pretty (extractRequiredArguments as))
+    argumentsSummary as = " " <> fillSep (fmap (\x -> "<" <> pretty x <> ">") (extractRequiredArguments as))
 
     argumentsHeading as = if length as > 0 then hardline <> "Required arguments:" <> hardline else emptyDoc
 
@@ -911,11 +911,11 @@ buildUsage config mode = case config of
                 Empty ->
                     fillBreak 16 (s <> l <> " ") <+> align (reflow d) <> hardline <> acc
                 Value label ->
-                    fillBreak 16 (s <> l <> "=" <> pretty label <> " ") <+> align (reflow d) <> hardline <> acc
+                    fillBreak 16 (s <> l <> "=<" <> pretty label <> "> ") <+> align (reflow d) <> hardline <> acc
     g acc (Argument longname description) =
         let l = pretty longname
             d = fromRope description
-         in fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
+         in fillBreak 16 ("  <" <> l <> "> ") <+> align (reflow d) <> hardline <> acc
     g acc (Remaining description) =
         let d = fromRope description
          in fillBreak 16 ("  " <> "... ") <+> align (reflow d) <> hardline <> acc
