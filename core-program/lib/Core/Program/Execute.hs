@@ -61,6 +61,7 @@ module Core.Program.Execute (
 
     -- * Accessing program context
     getCommandLine,
+    queryCommandName,
     queryOptionFlag,
     queryOptionValue,
     queryArgument,
@@ -929,6 +930,22 @@ lookupEnvironmentValue name params =
             Empty -> Nothing
             Value str -> Just str
 {-# DEPRECATED lookupEnvironmentValue "Use queryEnvironment instead" #-}
+
+{- |
+Retreive the sub-command mode selected by the user. This assumes your program
+was set up to take sub-commands via 'complexConfig'.
+
+@
+    mode <- queryCommandName
+@
+-}
+queryCommandName :: Program τ Rope
+queryCommandName = do
+    context <- ask
+    let params = commandLineFrom context
+    case commandNameFrom params of
+        Just (LongName name) -> pure (intoRope name)
+        Nothing -> error "Attempted lookup of command but not a Complex Config"
 
 {- |
 Illegal internal state resulting from what should be unreachable code or

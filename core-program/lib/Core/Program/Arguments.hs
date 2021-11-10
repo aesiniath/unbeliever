@@ -172,14 +172,14 @@ with @--help@, would result in:
 \$ __./snippet --help__
 Usage:
 
-    snippet [OPTIONS] filename
+    snippet [OPTIONS] <filename>
 
 Available options:
 
   -h, --host     Specify an alternate host to connect to when performing the
                  frobnication. The default is \"localhost\".
   -p, --port     Specify an alternate port to connect to when frobnicating.
-      --dry-run=TIME
+      --dry-run=<TIME>
                  Perform a trial run at the specified time but don't
                  actually do anything.
   -q, --quiet    Supress normal output.
@@ -189,7 +189,7 @@ Available options:
 
 Required arguments:
 
-  filename       The file you want to frobnicate.
+  <filename>     The file you want to frobnicate.
 \$ __|__
 @
 
@@ -870,7 +870,7 @@ buildUsage config mode = case config of
         Nothing -> "COMMAND..."
 
     argumentsSummary :: [Options] -> Doc ann
-    argumentsSummary as = " " <> fillSep (fmap pretty (extractRequiredArguments as))
+    argumentsSummary as = " " <> fillSep (fmap (\x -> "<" <> pretty x <> ">") (extractRequiredArguments as))
 
     argumentsHeading as = if length as > 0 then hardline <> "Required arguments:" <> hardline else emptyDoc
 
@@ -911,11 +911,11 @@ buildUsage config mode = case config of
                 Empty ->
                     fillBreak 16 (s <> l <> " ") <+> align (reflow d) <> hardline <> acc
                 Value label ->
-                    fillBreak 16 (s <> l <> "=" <> pretty label <> " ") <+> align (reflow d) <> hardline <> acc
+                    fillBreak 16 (s <> l <> "=<" <> pretty label <> "> ") <+> align (reflow d) <> hardline <> acc
     g acc (Argument longname description) =
         let l = pretty longname
             d = fromRope description
-         in fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
+         in fillBreak 16 ("  <" <> l <> "> ") <+> align (reflow d) <> hardline <> acc
     g acc (Remaining description) =
         let d = fromRope description
          in fillBreak 16 ("  " <> "... ") <+> align (reflow d) <> hardline <> acc
