@@ -172,14 +172,14 @@ with @--help@, would result in:
 \$ __./snippet --help__
 Usage:
 
-    snippet [OPTIONS] filename
+    snippet [OPTIONS] <filename>
 
 Available options:
 
   -h, --host     Specify an alternate host to connect to when performing the
                  frobnication. The default is \"localhost\".
   -p, --port     Specify an alternate port to connect to when frobnicating.
-      --dry-run=TIME
+      --dry-run=<TIME>
                  Perform a trial run at the specified time but don't
                  actually do anything.
   -q, --quiet    Supress normal output.
@@ -189,7 +189,7 @@ Available options:
 
 Required arguments:
 
-  filename       The file you want to frobnicate.
+  <filename>     The file you want to frobnicate.
 \$ __|__
 @
 
