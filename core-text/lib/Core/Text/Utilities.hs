@@ -291,7 +291,7 @@ indefinite text =
 
 {- |
 Given a list of items (one word per Rope in the list) enumerate them with commas and
-an oxford comma before the last item. As you'd expect:
+an Oxford comma before the last item. As you'd expect:
 
 @
 λ> __oxford ["one", "two", "three"]__
