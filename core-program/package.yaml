@@ -1,5 +1,5 @@
 name: core-program
-version: 0.3.5.1
+version: 0.3.5.2
 synopsis: Opinionated Haskell Interoperability
 description: |
   A library to help build command-line programs, both tools and

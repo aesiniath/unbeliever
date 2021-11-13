@@ -87,6 +87,7 @@ module Core.Program.Execute (
     resetTimer,
     waitThread,
     waitThread_,
+    raceThreads_,
     trap_,
 
     -- * Internals
@@ -771,6 +772,17 @@ value.
 -}
 waitThread_ :: Thread α -> Program τ ()
 waitThread_ = void . waitThread
+
+{- |
+Fork two threads and race them against each other.
+-}
+raceThreads_ :: Program τ α -> Program τ β -> Program τ ()
+raceThreads_ one two = do
+    context <- ask
+    liftIO $ do
+        Async.race_
+            (subProgram context one)
+            (subProgram context two)
 
 {- |
 Retrieve the values of parameters parsed from options and arguments supplied
