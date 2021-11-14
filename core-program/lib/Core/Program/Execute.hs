@@ -87,6 +87,7 @@ module Core.Program.Execute (
     resetTimer,
     waitThread,
     waitThread_,
+    raceThreads,
     raceThreads_,
     trap_,
 
@@ -673,8 +674,8 @@ unThread (Thread a) = a
 Fork a thread. The child thread will run in the same @Context@ as the calling
 @Program@, including sharing the user-defined application state type.
 
-(this wraps __async__'s 'async' which in turn wraps __base__'s
-'Control.Concurrent.forkIO')
+(this wraps __async__'s 'Control.Concurrent.Async.async' which in turn wraps
+__base__'s 'Control.Concurrent.forkIO')
 -}
 forkThread :: Program τ α -> Program τ (Thread α)
 forkThread program = do
@@ -774,7 +775,50 @@ waitThread_ :: Thread α -> Program τ ()
 waitThread_ = void . waitThread
 
 {- |
-Fork two threads and race them against each other.
+Fork two threads and race them against each other. This blocks until one or
+the other of the threads finishes. The return value will be 'Left' @α@ if the
+first program (@one@) completes first, and 'Right' @β@ if it is the second
+program (@two@) which finishes first. The sub program which is still running
+will be cancelled with an exception.
+
+@
+    result <- 'race' one two
+    case result of
+        Left a -> do
+            -- one finished first
+        Right b -> do
+            -- two finished first
+@
+
+
+For a variant that ingores the return value and just races the threads see
+'raceThreads_' below.
+
+(this wraps __async__'s 'Control.Concurrent.Async.race')
+-}
+raceThreads :: Program τ α -> Program τ β -> Program τ (Either α β)
+raceThreads one two = do
+    context <- ask
+    liftIO $ do
+        Async.race
+            (subProgram context one)
+            (subProgram context two)
+
+{- |
+Fork two threads and race them against each other. When one action completes
+the other will be cancelled with an exception. This is useful for enforcing
+timeouts:
+
+@
+    'raceThreads_'
+        ('sleepThread' 300)
+        (do
+            -- We expect this to complete within 5 minutes.
+            performAction
+        )
+@
+
+(this wraps __async__'s 'Control.Concurrent.Async.race_')
 -}
 raceThreads_ :: Program τ α -> Program τ β -> Program τ ()
 raceThreads_ one two = do
