@@ -87,6 +87,8 @@ module Core.Program.Execute (
     resetTimer,
     waitThread,
     waitThread_,
+    concurrentThreads,
+    concurrentThreads_,
     raceThreads,
     raceThreads_,
     trap_,
@@ -115,6 +117,8 @@ import Control.Concurrent.Async (
 import qualified Control.Concurrent.Async as Async (
     async,
     cancel,
+    concurrently,
+    concurrently_,
     link,
     race,
     race_,
@@ -674,7 +678,7 @@ unThread (Thread a) = a
 Fork a thread. The child thread will run in the same @Context@ as the calling
 @Program@, including sharing the user-defined application state type.
 
-(this wraps __async__'s 'Control.Concurrent.Async.async' which in turn wraps
+(this wraps __async__\'s 'Control.Concurrent.Async.async' which in turn wraps
 __base__'s 'Control.Concurrent.forkIO')
 -}
 forkThread :: Program τ α -> Program τ (Thread α)
@@ -744,7 +748,7 @@ sleepThread seconds =
 Wait for the completion of a thread, returning the result. This is a blocking
 operation.
 
-(this wraps __async__'s 'wait')
+(this wraps __async__\'s 'wait')
 -}
 waitThread :: Thread α -> Program τ α
 waitThread (Thread a) = liftIO $ Async.wait a
@@ -775,6 +779,50 @@ waitThread_ :: Thread α -> Program τ ()
 waitThread_ = void . waitThread
 
 {- |
+Fork two threads and wait for both to finish. The return value is the pair of
+each action's return types.
+
+This is the same as calling 'forkThread' and 'waitThread' twice, except that
+if either sub-program fails with an exception the other program which is still
+running will be cancelled and the original exception is then re-thrown.
+
+@
+    (a,b) <- 'concurrentThreads' one two
+
+    -- continue, doing something with both results.
+@
+
+For a variant that ingores the return values and just waits for both see
+'concurrentThreads_' below.
+
+(this wraps __async__\'s 'Control.Concurrent.Async.concurrently')
+-}
+concurrentThreads :: Program τ α -> Program τ β -> Program τ (α, β)
+concurrentThreads one two = do
+    context <- ask
+    liftIO $ do
+        Async.concurrently
+            (subProgram context one)
+            (subProgram context two)
+
+{- |
+Fork two threads and wait for both to finish.
+
+This is the same as calling 'forkThread' and 'waitThread_' twice, except that
+if either sub-program fails with an exception the other program which is still
+running will be cancelled and the original exception is then re-thrown.
+
+(this wraps __async__\'s 'Control.Concurrent.Async.concurrently_')
+-}
+concurrentThreads_ :: Program τ α -> Program τ β -> Program τ ()
+concurrentThreads_ one two = do
+    context <- ask
+    liftIO $ do
+        Async.concurrently_
+            (subProgram context one)
+            (subProgram context two)
+
+{- |
 Fork two threads and race them against each other. This blocks until one or
 the other of the threads finishes. The return value will be 'Left' @α@ if the
 first program (@one@) completes first, and 'Right' @β@ if it is the second
@@ -782,7 +830,7 @@ program (@two@) which finishes first. The sub program which is still running
 will be cancelled with an exception.
 
 @
-    result <- 'race' one two
+    result <- 'raceThreads' one two
     case result of
         Left a -> do
             -- one finished first
@@ -790,11 +838,10 @@ will be cancelled with an exception.
             -- two finished first
 @
 
-
 For a variant that ingores the return value and just races the threads see
 'raceThreads_' below.
 
-(this wraps __async__'s 'Control.Concurrent.Async.race')
+(this wraps __async__\'s 'Control.Concurrent.Async.race')
 -}
 raceThreads :: Program τ α -> Program τ β -> Program τ (Either α β)
 raceThreads one two = do
@@ -818,7 +865,7 @@ timeouts:
         )
 @
 
-(this wraps __async__'s 'Control.Concurrent.Async.race_')
+(this wraps __async__\'s 'Control.Concurrent.Async.race_')
 -}
 raceThreads_ :: Program τ α -> Program τ β -> Program τ ()
 raceThreads_ one two = do
