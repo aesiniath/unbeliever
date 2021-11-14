@@ -12,16 +12,18 @@ Utility functions for running 'Program' actions concurrently.
 -}
 module Core.Program.Threads (
     -- * Concurrency
+    Thread,
     forkThread,
     waitThread,
     waitThread_,
+
+    -- * Helper functions
     concurrentThreads,
     concurrentThreads_,
     raceThreads,
     raceThreads_,
 
     -- * Internals
-    Thread,
     unThread,
 ) where
 
