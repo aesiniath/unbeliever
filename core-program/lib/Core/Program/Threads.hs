@@ -9,10 +9,21 @@
 
 {- |
 Utility functions for running 'Program' actions concurrently.
+
+Haskell uses green threads: small lines of work that are scheduled down onto
+actual execution contexts (set by default by this library to be one per core).
+Haskell threads are incredibly lightweight, and you are encouraged to use them
+freely. Haskell provides a rich ecosystem of tools to do work concurrently and
+to communicate safely between threads.
+
+This module provides wrappers around some of these primatives so you can use
+them easily from the 'Program' monad.
+
+Note that when you fire off a new thread the top-level application state is
+/shared/; it's the same @τ@ inherited from the parent 'Program'.
 -}
 module Core.Program.Threads (
     -- * Concurrency
-    Thread,
     forkThread,
     waitThread,
     waitThread_,
@@ -24,6 +35,7 @@ module Core.Program.Threads (
     raceThreads_,
 
     -- * Internals
+    Thread,
     unThread,
 ) where
 
@@ -49,11 +61,7 @@ import Core.Program.Context
 import Core.System.Base
 
 {- |
-A thread for concurrent computation. Haskell uses green threads: small lines
-of work that are scheduled down onto actual execution contexts, set by default
-by this library to be one per core. They are incredibly lightweight, and you
-are encouraged to use them freely. Haskell provides a rich ecosystem of tools
-to do work concurrently and to communicate safely between threads
+A thread for concurrent computation.
 
 (this wraps __async__'s 'Async')
 -}
@@ -64,7 +72,7 @@ unThread (Thread a) = a
 
 {- |
 Fork a thread. The child thread will run in the same @Context@ as the calling
-@Program@, including sharing the user-defined application state type.
+@Program@, including sharing the user-defined application state value.
 
 (this wraps __async__\'s 'Control.Concurrent.Async.async' which in turn wraps
 __base__'s 'Control.Concurrent.forkIO')
