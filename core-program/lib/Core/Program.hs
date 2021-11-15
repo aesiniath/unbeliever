@@ -21,6 +21,7 @@ module Core.Program
     -- and more.
     module Core.Program.Context,
     module Core.Program.Execute,
+    module Core.Program.Threads,
     module Core.Program.Unlift,
     module Core.Program.Metadata,
 
@@ -52,4 +53,5 @@ import Core.Program.Logging
 import Core.Program.Context
 import Core.Program.Metadata
 import Core.Program.Notify
+import Core.Program.Threads
 import Core.Program.Unlift
