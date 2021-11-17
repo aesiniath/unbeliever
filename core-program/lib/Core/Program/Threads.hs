@@ -83,12 +83,28 @@ forkThread :: Program τ α -> Program τ (Thread α)
 forkThread program = do
     context <- ask
     let i = startTimeFrom context
+    let v = currentDatumFrom context
 
     liftIO $ do
         start <- readMVar i
         i' <- newMVar start
 
-        let context' = context{startTimeFrom = i'}
+        -- we also need to fork the current Datum, in the same way that we do
+        -- when we create a nested span. We do this simply by creatinga new
+        -- MVar so that when the new thread updates the attached metadata
+        -- it'll be evolving a different object.
+
+        datum <- readMVar v
+        let datum' = datum
+        v2 <- newMVar datum'
+
+        let context' =
+                context
+                    { startTimeFrom = i'
+                    , currentDatumFrom = v2
+                    }
+
+        -- fork, and run nested program
 
         a <- Async.async $ do
             subProgram context' program
