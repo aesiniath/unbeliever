@@ -216,6 +216,8 @@ released resources with 'bracket' or 'finally' as shown above.
 An info level message will be sent to the log channel indicating that an
 uncaught exception was trapped along with a debug level message showing the
 exception text, if any.
+
+@since 0.2.11
 -}
 trap_ :: Program τ α -> Program τ ()
 trap_ action =
@@ -644,7 +646,6 @@ execProcess (cmd : args) =
 
                     pure (exit, intoRope out, intoRope err)
 
-
 {- |
 Reset the start time (used to calculate durations shown in event- and
 debug-level logging) held in the @Context@ to zero. This is useful if you want
@@ -663,6 +664,8 @@ reset the timer there.
 
 then times output in the log messages will be relative to that call to
 'resetTimer', not the program start.
+
+@since 0.2.7
 -}
 resetTimer :: Program τ ()
 resetTimer = do
@@ -734,6 +737,8 @@ program = do
     file <- 'queryArgument' \"filename\"
     ...
 @
+
+@since 0.2.7
 -}
 queryArgument :: LongName -> Program τ Rope
 queryArgument name = do
@@ -763,6 +768,8 @@ program = do
     files \<- 'queryRemaining'
     ...
 @
+
+@since 0.3.5
 -}
 queryRemaining :: Program τ [Rope]
 queryRemaining = do
@@ -783,6 +790,8 @@ program = do
         'Just' value -> 'pure' value
     ...
 @
+
+@since 0.3.5
 -}
 queryOptionValue :: LongName -> Program τ (Maybe Rope)
 queryOptionValue name = do
@@ -811,6 +820,8 @@ program = do
     overwrite \<- 'queryOptionValue' \"overwrite\"
     ...
 @
+
+@since 0.3.5
 -}
 queryOptionFlag :: LongName -> Program τ Bool
 queryOptionFlag name = do
@@ -831,6 +842,8 @@ lookupOptionFlag name params =
 {- |
 Look to see if the user supplied the named environment variable and if so,
 return what its value was.
+
+@since 0.3.5
 -}
 queryEnvironmentValue :: LongName -> Program τ (Maybe Rope)
 queryEnvironmentValue name = do
@@ -858,6 +871,8 @@ was set up to take sub-commands via 'complexConfig'.
 @
     mode <- queryCommandName
 @
+
+@since 0.3.5
 -}
 queryCommandName :: Program τ Rope
 queryCommandName = do

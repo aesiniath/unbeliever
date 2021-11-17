@@ -520,6 +520,8 @@ handleTelemetryChoice context = do
 
 {- |
 A utility exception for those occasions when you just need to go "boom".
+
+@since 0.3.2
 -}
 data Boom = Boom
     deriving (Show)

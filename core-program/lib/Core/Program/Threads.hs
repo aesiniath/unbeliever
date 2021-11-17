@@ -76,6 +76,8 @@ Fork a thread. The child thread will run in the same @Context@ as the calling
 
 (this wraps __async__\'s 'Control.Concurrent.Async.async' which in turn wraps
 __base__'s 'Control.Concurrent.forkIO')
+
+@since 0.2.7
 -}
 forkThread :: Program τ α -> Program τ (Thread α)
 forkThread program = do
@@ -98,6 +100,8 @@ Wait for the completion of a thread, returning the result. This is a blocking
 operation.
 
 (this wraps __async__\'s 'wait')
+
+@since 0.2.7
 -}
 waitThread :: Thread α -> Program τ α
 waitThread (Thread a) = liftIO $ Async.wait a
@@ -123,6 +127,8 @@ The trailing underscore in the name of this function follows the same
 convetion as found in "Control.Monad", which has 'Control.Monad.mapM_' which
 does the same as 'Control.Monad.mapM' but which likewise discards the return
 value.
+
+@since 0.2.7
 -}
 waitThread_ :: Thread α -> Program τ ()
 waitThread_ = void . waitThread
@@ -145,6 +151,8 @@ For a variant that ingores the return values and just waits for both see
 'concurrentThreads_' below.
 
 (this wraps __async__\'s 'Control.Concurrent.Async.concurrently')
+
+@since 4.0.0
 -}
 concurrentThreads :: Program τ α -> Program τ β -> Program τ (α, β)
 concurrentThreads one two = do
@@ -162,6 +170,8 @@ if either sub-program fails with an exception the other program which is still
 running will be cancelled and the original exception is then re-thrown.
 
 (this wraps __async__\'s 'Control.Concurrent.Async.concurrently_')
+
+@since 4.0.0
 -}
 concurrentThreads_ :: Program τ α -> Program τ β -> Program τ ()
 concurrentThreads_ one two = do
@@ -191,6 +201,8 @@ For a variant that ingores the return value and just races the threads see
 'raceThreads_' below.
 
 (this wraps __async__\'s 'Control.Concurrent.Async.race')
+
+@since 4.0.0
 -}
 raceThreads :: Program τ α -> Program τ β -> Program τ (Either α β)
 raceThreads one two = do
@@ -215,6 +227,8 @@ timeouts:
 @
 
 (this wraps __async__\'s 'Control.Concurrent.Async.race_')
+
+@since 4.0.0
 -}
 raceThreads_ :: Program τ α -> Program τ β -> Program τ ()
 raceThreads_ one two = do
