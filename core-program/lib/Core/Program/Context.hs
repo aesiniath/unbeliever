@@ -288,7 +288,14 @@ to another package's entry point, just use 'liftIO'. It's re-exported by
 unlifting back to Program; see "Core.Program.Unlift".
 -}
 newtype Program τ α = Program (ReaderT (Context τ) IO α)
-    deriving (Functor, Applicative, Monad, MonadIO, MonadReader (Context τ))
+    deriving
+        ( Functor
+        , Applicative
+        , Monad
+        , MonadIO
+        , MonadReader (Context τ)
+        , MonadFail
+        )
 
 unProgram :: Program τ α -> ReaderT (Context τ) IO α
 unProgram (Program r) = r
