@@ -206,7 +206,7 @@ For a variant that ingores the return values and just waits for both see
 
 (this wraps __async__\'s 'Control.Concurrent.Async.concurrently')
 
-@since 4.0.0
+@since 0.4.0
 -}
 concurrentThreads :: Program τ α -> Program τ β -> Program τ (α, β)
 concurrentThreads one two = do
@@ -225,7 +225,7 @@ running will be cancelled and the original exception is then re-thrown.
 
 (this wraps __async__\'s 'Control.Concurrent.Async.concurrently_')
 
-@since 4.0.0
+@since 0.4.0
 -}
 concurrentThreads_ :: Program τ α -> Program τ β -> Program τ ()
 concurrentThreads_ one two = do
@@ -256,7 +256,7 @@ For a variant that ingores the return value and just races the threads see
 
 (this wraps __async__\'s 'Control.Concurrent.Async.race')
 
-@since 4.0.0
+@since 0.4.0
 -}
 raceThreads :: Program τ α -> Program τ β -> Program τ (Either α β)
 raceThreads one two = do
@@ -282,7 +282,7 @@ timeouts:
 
 (this wraps __async__\'s 'Control.Concurrent.Async.race_')
 
-@since 4.0.0
+@since 0.4.0
 -}
 raceThreads_ :: Program τ α -> Program τ β -> Program τ ()
 raceThreads_ one two = do
