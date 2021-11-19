@@ -86,22 +86,25 @@ forkThread program = do
     let v = currentDatumFrom context
 
     liftIO $ do
+        -- if someone calls resetTimer in the thread it should just be that
+        -- thread's local duration that is affected, not the parent. We simply
+        -- make a new MVar and copy the current start time into it.
+
         start <- readMVar i
         i' <- newMVar start
 
         -- we also need to fork the current Datum, in the same way that we do
-        -- when we create a nested span. We do this simply by creatinga new
+        -- when we create a nested span. We do this simply by creating a new
         -- MVar so that when the new thread updates the attached metadata
         -- it'll be evolving a different object.
 
         datum <- readMVar v
-        let datum' = datum
-        v2 <- newMVar datum'
+        v' <- newMVar datum
 
         let context' =
                 context
                     { startTimeFrom = i'
-                    , currentDatumFrom = v2
+                    , currentDatumFrom = v'
                     }
 
         -- fork, and run nested program
