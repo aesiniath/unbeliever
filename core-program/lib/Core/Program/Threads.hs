@@ -78,6 +78,14 @@ unThread (Thread a) = a
 Fork a thread. The child thread will run in the same @Context@ as the calling
 @Program@, including sharing the user-defined application state value.
 
+If the code in the child thread throws an exception that is /not/ caught
+within that thread, the exception will kill the thread. Threads dying without
+telling anyone is a bit of an anti-pattern, so this library logs a
+warning-level log message if this happens. If you additionally want the
+exception to propegate back to the parent thread (say, for example, you want
+your whole program to die if any of its worker threads fail), then call
+'linkThread' after forking.
+
 (this wraps __async__\'s 'Control.Concurrent.Async.async' which in turn wraps
 __base__'s 'Control.Concurrent.forkIO')
 
@@ -167,10 +175,10 @@ waitThread_ = void . waitThread
 
 {- |
 Ordinarily if an exception is thrown in a forked thread that exception is
-silently swollowed (well, almost silently; we log a warning-level message if
-an uncaught exception kills a thread). If you instead need the exception to
-propegate back to the parent thread, you can link the two together using this
-function.
+silently swollowed. If you instead need the exception to propegate back to the
+parent thread, you can \"link\" the two together using this function.
+
+(this wraps __async__\'s 'link')
 
 @since 0.4.2
 -}
