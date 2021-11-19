@@ -79,10 +79,11 @@ program = do
 
     info "Clock..."
 
-    forkThread $ do
-        sleepThread 1.5
-        warn "Wakey wakey"
-        throw Boom
+    t <- forkThread $ do
+            sleepThread 1.5
+            warn "Wakey wakey"
+            throw Boom
+    linkThread t
 
     replicateM_ 5 $ do
         sleepThread 0.5

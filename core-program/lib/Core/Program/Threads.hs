@@ -27,6 +27,7 @@ module Core.Program.Threads (
     forkThread,
     waitThread,
     waitThread_,
+    linkThread,
 
     -- * Helper functions
     concurrentThreads,
@@ -53,12 +54,15 @@ import Control.Concurrent.MVar (
     newMVar,
     readMVar,
  )
+import qualified Control.Exception.Safe as Safe (catch)
 import Control.Monad (
     void,
  )
 import Control.Monad.Reader.Class (MonadReader (ask))
 import Core.Program.Context
+import Core.Program.Logging
 import Core.System.Base
+import Core.Text.Rope
 
 {- |
 A thread for concurrent computation.
@@ -74,6 +78,14 @@ unThread (Thread a) = a
 Fork a thread. The child thread will run in the same @Context@ as the calling
 @Program@, including sharing the user-defined application state value.
 
+If the code in the child thread throws an exception that is /not/ caught
+within that thread, the exception will kill the thread. Threads dying without
+telling anyone is a bit of an anti-pattern, so this library logs a
+warning-level log message if this happens. If you additionally want the
+exception to propegate back to the parent thread (say, for example, you want
+your whole program to die if any of its worker threads fail), then call
+'linkThread' after forking.
+
 (this wraps __async__\'s 'Control.Concurrent.Async.async' which in turn wraps
 __base__'s 'Control.Concurrent.forkIO')
 
@@ -86,29 +98,41 @@ forkThread program = do
     let v = currentDatumFrom context
 
     liftIO $ do
+        -- if someone calls resetTimer in the thread it should just be that
+        -- thread's local duration that is affected, not the parent. We simply
+        -- make a new MVar and copy the current start time into it.
+
         start <- readMVar i
         i' <- newMVar start
 
         -- we also need to fork the current Datum, in the same way that we do
-        -- when we create a nested span. We do this simply by creatinga new
+        -- when we create a nested span. We do this simply by creating a new
         -- MVar so that when the new thread updates the attached metadata
         -- it'll be evolving a different object.
 
         datum <- readMVar v
-        let datum' = datum
-        v2 <- newMVar datum'
+        v' <- newMVar datum
 
         let context' =
                 context
                     { startTimeFrom = i'
-                    , currentDatumFrom = v2
+                    , currentDatumFrom = v'
                     }
 
         -- fork, and run nested program
 
         a <- Async.async $ do
-            subProgram context' program
-        Async.link a
+            Safe.catch
+                (subProgram context' program)
+                ( \(e :: SomeException) ->
+                    let text = intoRope (displayException e)
+                     in do
+                            subProgram context' $ do
+                                warn "Uncaught exception in thread"
+                                debug "e" text
+                            throw e
+                )
+
         return (Thread a)
 
 {- |
@@ -148,6 +172,20 @@ value.
 -}
 waitThread_ :: Thread α -> Program τ ()
 waitThread_ = void . waitThread
+
+{- |
+Ordinarily if an exception is thrown in a forked thread that exception is
+silently swollowed. If you instead need the exception to propegate back to the
+parent thread, you can \"link\" the two together using this function.
+
+(this wraps __async__\'s 'link')
+
+@since 0.4.2
+-}
+linkThread :: Thread α -> Program τ ()
+linkThread (Thread a) = do
+    liftIO $ do
+        Async.link a
 
 {- |
 Fork two threads and wait for both to finish. The return value is the pair of
