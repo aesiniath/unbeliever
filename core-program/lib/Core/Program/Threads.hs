@@ -27,6 +27,7 @@ module Core.Program.Threads (
     forkThread,
     waitThread,
     waitThread_,
+    linkThread,
 
     -- * Helper functions
     concurrentThreads,
@@ -53,12 +54,15 @@ import Control.Concurrent.MVar (
     newMVar,
     readMVar,
  )
+import qualified Control.Exception.Safe as Safe (catch)
 import Control.Monad (
     void,
  )
 import Control.Monad.Reader.Class (MonadReader (ask))
 import Core.Program.Context
+import Core.Program.Logging
 import Core.System.Base
+import Core.Text.Rope
 
 {- |
 A thread for concurrent computation.
@@ -110,8 +114,17 @@ forkThread program = do
         -- fork, and run nested program
 
         a <- Async.async $ do
-            subProgram context' program
-        Async.link a
+            Safe.catch
+                (subProgram context' program)
+                ( \(e :: SomeException) ->
+                    let text = intoRope (displayException e)
+                     in do
+                            subProgram context' $ do
+                                warn "Uncaught exception in thread"
+                                debug "e" text
+                            throw e
+                )
+
         return (Thread a)
 
 {- |
@@ -151,6 +164,20 @@ value.
 -}
 waitThread_ :: Thread α -> Program τ ()
 waitThread_ = void . waitThread
+
+{- |
+Ordinarily if an exception is thrown in a forked thread that exception is
+silently swollowed (well, almost silently; we log a warning-level message if
+an uncaught exception kills a thread). If you instead need the exception to
+propegate back to the parent thread, you can link the two together using this
+function.
+
+@since 0.4.2
+-}
+linkThread :: Thread α -> Program τ ()
+linkThread (Thread a) = do
+    liftIO $ do
+        Async.link a
 
 {- |
 Fork two threads and wait for both to finish. The return value is the pair of
