@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -38,6 +39,7 @@ module Core.Data.Structures (
 
 import Core.Text.Bytes (Bytes)
 import Core.Text.Rope (Rope)
+import Data.Bifoldable (Bifoldable)
 import qualified Data.ByteString as B (ByteString)
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.HashSet as HashSet
@@ -71,7 +73,7 @@ extract the key/value pairs in a list the list will be ordered according to
 the keys' 'Ord' instance)
 -}
 newtype Map κ ν = Map (HashMap.HashMap κ ν)
-    deriving (Show, Eq)
+    deriving (Show, Eq, Bifoldable)
 
 unMap :: Map κ ν -> HashMap.HashMap κ ν
 unMap (Map u) = u
