@@ -19,6 +19,7 @@ module Core.Program.Metadata (
     versionNumberFrom,
     projectNameFrom,
     projectSynopsisFrom,
+    __LOCATION__,
 ) where
 
 import Core.Data
@@ -28,6 +29,7 @@ import Data.List (intersperse)
 import qualified Data.List as List (find, isSuffixOf)
 import Data.Maybe (fromMaybe)
 import Data.String
+import GHC.Stack (HasCallStack, SrcLoc (..), callStack, getCallStack)
 import Language.Haskell.TH (Q, runIO)
 import Language.Haskell.TH.Syntax (Exp (..), Lift)
 import System.Directory (listDirectory)
@@ -165,3 +167,50 @@ breakRope predicate text =
 -- knock off the whitespace in "name:      hello"
 trimRope :: Rope -> Rope
 trimRope = mconcat . intersperse " " . breakWords
+
+{- |
+Access the source location of the call site.
+
+This is insanely cool, and does /not/ require you to turn on the@CPP@ language
+extension! Nevertheless we named it with underscores to compliment the symbols
+that @CPP@ gives you; the double underscore convention holds across many
+languages and stands out as a very meta thing, even if it is a proper Haskell
+value.
+
+You can have the output formatted like the stack traces like you sometimes see
+from Haskell exceptions via the 'Show' instance. We also have a 'Render'
+instance that prints a lighter weight version of the stack trace information.
+
+@
+    writeR __LOCATION__
+@
+
+This isn't the full stack trace, just information about the current line. If
+you want more comprehensive stack trace you need to add 'HasCallStack'
+constraints everywhere, and then...
+-}
+
+-- This works because the call stack has the most recent frame at the head of
+-- the list. Huge credit to Matt Parsons for having pointed out this technique
+-- at <https://twitter.com/mattoflambda/status/1460769133923028995>
+
+__LOCATION__ :: HasCallStack => SrcLoc
+__LOCATION__ =
+    case getCallStack callStack of
+        (_, srcLoc) : _ -> srcLoc
+        _ -> emptySrcLoc
+  where
+    -- we construct a dud SrcLoc rather than using error "unreachable!"
+    -- because often the only time you need a source location is an exception
+    -- pathway already. If something goes wrong with this gimick we don't want
+    -- to submerge the actual problem.
+    emptySrcLoc =
+        SrcLoc
+            { srcLocPackage = ""
+            , srcLocModule = ""
+            , srcLocFile = ""
+            , srcLocStartLine = 0
+            , srcLocStartCol = 0
+            , srcLocEndLine = 0
+            , srcLocEndCol = 0
+            }
