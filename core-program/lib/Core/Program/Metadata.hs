@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveLift #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 {- |
 Dig metadata out of the description of your project.
@@ -24,6 +26,7 @@ module Core.Program.Metadata (
 
 import Core.Data
 import Core.System (IOMode (..), withFile)
+import Core.System.Pretty
 import Core.Text
 import Data.List (intersperse)
 import qualified Data.List as List (find, isSuffixOf)
@@ -214,3 +217,15 @@ __LOCATION__ =
             , srcLocEndLine = 0
             , srcLocEndCol = 0
             }
+
+instance Render SrcLoc where
+    type Token SrcLoc = ()
+    colourize = const pureWhite
+    highlight loc =
+        pretty (srcLocPackage loc)
+            <> "."
+            <> pretty (srcLocModule loc)
+            <> " "
+            <> pretty (srcLocFile loc)
+            <> ":"
+            <> pretty (show (srcLocStartLine loc))
