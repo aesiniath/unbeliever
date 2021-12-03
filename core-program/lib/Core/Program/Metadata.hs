@@ -1,33 +1,35 @@
 {-# LANGUAGE DeriveLift #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 {- |
-Dig metadata out of the description of your project.
-
-This uses the evil /Template Haskell/ to run code at compile time that
-parses the /.cabal/ file for your Haskell project and extracts various
-meaningful fields.
+Digging metadata out of the description of your project, and other useful
+helpers.
 -}
 module Core.Program.Metadata (
     Version,
+    versionNumberFrom,
+    projectNameFrom,
+    projectSynopsisFrom,
 
     -- * Splice
     fromPackage,
 
-    -- * Internals
-    versionNumberFrom,
-    projectNameFrom,
-    projectSynopsisFrom,
+    -- * Source code
+    __LOCATION__,
 ) where
 
 import Core.Data
-import Core.System (IOMode (..), withFile)
+import Core.System.Base (IOMode (..), withFile)
+import Core.System.Pretty
 import Core.Text
 import Data.List (intersperse)
 import qualified Data.List as List (find, isSuffixOf)
 import Data.Maybe (fromMaybe)
 import Data.String
+import GHC.Stack (HasCallStack, SrcLoc (..), callStack, getCallStack)
 import Language.Haskell.TH (Q, runIO)
 import Language.Haskell.TH.Syntax (Exp (..), Lift)
 import System.Directory (listDirectory)
@@ -68,36 +70,34 @@ instance IsString Version where
     fromString x = emptyVersion{versionNumberFrom = x}
 
 {- |
-This is a splice which includes key built-time metadata, including the
-number from the version field from your project's /.cabal/ file (as written
-by hand or generated from /package.yaml/).
+This is a splice which includes key built-time metadata, including the number
+from the version field from your project's /.cabal/ file (as written by hand
+or generated from /package.yaml/). This uses the evil @TemplateHaskell@
+extension.
 
-While we generally discourage the use of Template Haskell by beginners
-(there are more important things to learn first) it is a way to execute
-code at compile time and that is what what we need in order to have the
-version number extracted from the /.cabal/ file rather than requiring the
-user to specify (and synchronize) it in multiple places.
+While we generally discourage the use of Template Haskell by beginners (there
+are more important things to learn first) it is a way to execute code at
+compile time and that is what what we need in order to have the version number
+extracted from the /.cabal/ file rather than requiring the user to specify
+(and synchronize) it in multiple places.
 
-To use this, enable the Template Haskell language extension in your
-/Main.hs/ file. Then use the special @$( ... )@ \"insert splice here\"
-syntax that extension provides to get a 'Version' object with the desired
-metadata about your project:
+To use this, enable the Template Haskell language extension in your /Main.hs/
+file. Then use the special @$( ... )@ \"insert splice here\" syntax that
+extension provides to get a 'Version' object with the desired metadata about
+your project:
 
 @
 \{\-\# LANGUAGE TemplateHaskell \#\-\}
 
-version :: 'Version'
-version = $('fromPackage')
+version :: 'Version' version = $('fromPackage')
 
-main :: 'IO' ()
-main = do
-    context <- 'Core.Program.Execute.configure' version 'Core.Program.Execute.None' ('Core.Program.Arguments.simple' ...
+main :: 'IO' () main = do context <- 'Core.Program.Execute.configure' version
+'Core.Program.Execute.None' ('Core.Program.Arguments.simple' ...
 @
 
-(Using Template Haskell slows down compilation of this file, but the upside
-of this technique is that it avoids linking the Haskell build machinery
-into your executable, saving you about 10 MB in the size of the resultant
-binary)
+(Using Template Haskell slows down compilation of this file, but the upside of
+this technique is that it avoids linking the Haskell build machinery into your
+executable, saving you about 10 MB in the size of the resultant binary)
 -}
 fromPackage :: Q Exp
 fromPackage = do
@@ -165,3 +165,65 @@ breakRope predicate text =
 -- knock off the whitespace in "name:      hello"
 trimRope :: Rope -> Rope
 trimRope = mconcat . intersperse " " . breakWords
+
+{- |
+Access the source location of the call site.
+
+This is insanely cool, and does /not/ require you to turn on the @CPP@ or
+@TemplateHaskell@ language extensions! Nevertheless we named it with
+underscores to compliment the symbols that @CPP@ gives you; the double
+underscore convention holds across many languages and stands out as a very
+meta thing, even if it is a proper Haskell value.
+
+We have a 'Render' instance that simply prints the filename and line number.
+Doing:
+
+@
+main :: 'IO' ()
+main = 'Core.Program.Execute.execute' $ do
+    'Core.Program.Logging.writeR' '__LOCATION__'
+@
+
+will give you:
+
+@
+tests/Snipppet.hs:32
+@
+
+This isn't the full stack trace, just information about the current line. If
+you want more comprehensive stack trace you need to add 'HasCallStack'
+constraints everywhere, and then...
+-}
+
+-- This works because the call stack has the most recent frame at the head of
+-- the list. Huge credit to Matt Parsons for having pointed out this technique
+-- at <https://twitter.com/mattoflambda/status/1460769133923028995>
+
+__LOCATION__ :: HasCallStack => SrcLoc
+__LOCATION__ =
+    case getCallStack callStack of
+        (_, srcLoc) : _ -> srcLoc
+        _ -> emptySrcLoc
+  where
+    -- we construct a dud SrcLoc rather than using error "unreachable!"
+    -- because often the only time you need a source location is an exception
+    -- pathway already. If something goes wrong with this gimick we don't want
+    -- to submerge the actual problem.
+    emptySrcLoc =
+        SrcLoc
+            { srcLocPackage = ""
+            , srcLocModule = ""
+            , srcLocFile = ""
+            , srcLocStartLine = 0
+            , srcLocStartCol = 0
+            , srcLocEndLine = 0
+            , srcLocEndCol = 0
+            }
+
+instance Render SrcLoc where
+    type Token SrcLoc = ()
+    colourize = const pureWhite
+    highlight loc =
+        pretty (srcLocFile loc)
+            <> ":"
+            <> pretty (show (srcLocStartLine loc))
