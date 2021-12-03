@@ -5,27 +5,24 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 {- |
-Dig metadata out of the description of your project.
-
-This uses the evil /Template Haskell/ to run code at compile time that
-parses the /.cabal/ file for your Haskell project and extracts various
-meaningful fields.
+Digging metadata out of the description of your project, and other useful
+helpers.
 -}
 module Core.Program.Metadata (
     Version,
+    versionNumberFrom,
+    projectNameFrom,
+    projectSynopsisFrom,
 
     -- * Splice
     fromPackage,
 
-    -- * Internals
-    versionNumberFrom,
-    projectNameFrom,
-    projectSynopsisFrom,
+    -- * Source code
     __LOCATION__,
 ) where
 
 import Core.Data
-import Core.System (IOMode (..), withFile)
+import Core.System.Base (IOMode (..), withFile)
 import Core.System.Pretty
 import Core.Text
 import Data.List (intersperse)
@@ -73,36 +70,34 @@ instance IsString Version where
     fromString x = emptyVersion{versionNumberFrom = x}
 
 {- |
-This is a splice which includes key built-time metadata, including the
-number from the version field from your project's /.cabal/ file (as written
-by hand or generated from /package.yaml/).
+This is a splice which includes key built-time metadata, including the number
+from the version field from your project's /.cabal/ file (as written by hand
+or generated from /package.yaml/). This uses the evil @TemplateHaskell@
+extension.
 
-While we generally discourage the use of Template Haskell by beginners
-(there are more important things to learn first) it is a way to execute
-code at compile time and that is what what we need in order to have the
-version number extracted from the /.cabal/ file rather than requiring the
-user to specify (and synchronize) it in multiple places.
+While we generally discourage the use of Template Haskell by beginners (there
+are more important things to learn first) it is a way to execute code at
+compile time and that is what what we need in order to have the version number
+extracted from the /.cabal/ file rather than requiring the user to specify
+(and synchronize) it in multiple places.
 
-To use this, enable the Template Haskell language extension in your
-/Main.hs/ file. Then use the special @$( ... )@ \"insert splice here\"
-syntax that extension provides to get a 'Version' object with the desired
-metadata about your project:
+To use this, enable the Template Haskell language extension in your /Main.hs/
+file. Then use the special @$( ... )@ \"insert splice here\" syntax that
+extension provides to get a 'Version' object with the desired metadata about
+your project:
 
 @
 \{\-\# LANGUAGE TemplateHaskell \#\-\}
 
-version :: 'Version'
-version = $('fromPackage')
+version :: 'Version' version = $('fromPackage')
 
-main :: 'IO' ()
-main = do
-    context <- 'Core.Program.Execute.configure' version 'Core.Program.Execute.None' ('Core.Program.Arguments.simple' ...
+main :: 'IO' () main = do context <- 'Core.Program.Execute.configure' version
+'Core.Program.Execute.None' ('Core.Program.Arguments.simple' ...
 @
 
-(Using Template Haskell slows down compilation of this file, but the upside
-of this technique is that it avoids linking the Haskell build machinery
-into your executable, saving you about 10 MB in the size of the resultant
-binary)
+(Using Template Haskell slows down compilation of this file, but the upside of
+this technique is that it avoids linking the Haskell build machinery into your
+executable, saving you about 10 MB in the size of the resultant binary)
 -}
 fromPackage :: Q Exp
 fromPackage = do
@@ -174,17 +169,19 @@ trimRope = mconcat . intersperse " " . breakWords
 {- |
 Access the source location of the call site.
 
-This is insanely cool, and does /not/ require you to turn on the@CPP@ language
-extension! Nevertheless we named it with underscores to compliment the symbols
-that @CPP@ gives you; the double underscore convention holds across many
-languages and stands out as a very meta thing, even if it is a proper Haskell
-value.
+This is insanely cool, and does /not/ require you to turn on the @CPP@ or
+@TemplateHaskell@ language extensions! Nevertheless we named it with
+underscores to compliment the symbols that @CPP@ gives you; the double
+underscore convention holds across many languages and stands out as a very
+meta thing, even if it is a proper Haskell value.
 
 We have a 'Render' instance that simply prints the filename and line number.
 Doing:
 
 @
-    writeR __LOCATION__
+main :: 'IO' ()
+main = 'Core.Program.Execute.execute' $ do
+    'Core.Program.Logging.writeR' '__LOCATION__'
 @
 
 will give you:
