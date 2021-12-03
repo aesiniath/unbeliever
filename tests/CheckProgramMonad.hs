@@ -8,8 +8,10 @@ import qualified Control.Exception.Safe as Safe
 import Core.Data.Structures
 import Core.Program.Arguments
 import Core.Program.Execute
+import Core.Program.Metadata
 import Core.Program.Unlift
 import Core.System.Base
+import Core.Text.Utilities (render)
 import Test.Hspec hiding (context)
 
 options :: [Options]
@@ -82,3 +84,7 @@ checkProgramMonad = do
             context <- configure "0.1" None blankConfig
             subProgram context $ do
                 Safe.catch (Safe.throw Boom) (\(_ :: Boom) -> return ())
+
+    describe "Package metadata" $ do
+        it "The source location is accessible" $ do
+            render 80 __LOCATION__ `shouldBe` "tests/CheckProgramMonad.hs:90"

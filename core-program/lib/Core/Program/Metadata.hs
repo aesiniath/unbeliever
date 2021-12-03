@@ -180,12 +180,17 @@ that @CPP@ gives you; the double underscore convention holds across many
 languages and stands out as a very meta thing, even if it is a proper Haskell
 value.
 
-You can have the output formatted like the stack traces like you sometimes see
-from Haskell exceptions via the 'Show' instance. We also have a 'Render'
-instance that prints a lighter weight version of the stack trace information.
+We have a 'Render' instance that simply prints the filename and line number.
+Doing:
 
 @
     writeR __LOCATION__
+@
+
+will give you:
+
+@
+tests/Snipppet.hs:32
 @
 
 This isn't the full stack trace, just information about the current line. If
@@ -222,10 +227,6 @@ instance Render SrcLoc where
     type Token SrcLoc = ()
     colourize = const pureWhite
     highlight loc =
-        pretty (srcLocPackage loc)
-            <> "."
-            <> pretty (srcLocModule loc)
-            <> " "
-            <> pretty (srcLocFile loc)
+        pretty (srcLocFile loc)
             <> ":"
             <> pretty (show (srcLocStartLine loc))
