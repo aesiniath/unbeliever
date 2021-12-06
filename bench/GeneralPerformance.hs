@@ -16,7 +16,7 @@ import Core.Text.Rope
 
 main :: IO ()
 main = do
-    b' <- B.readFile "LICENCE"
+    b' <- B.readFile "LICENSE"
     let bodyText = T.decodeUtf8 b'
     let bodyRope = intoRope b'
 
