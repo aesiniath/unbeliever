@@ -76,6 +76,7 @@ test-suite check
     , core-program >=0.4.0.0
     , core-telemetry >=0.1.7.3
     , core-text >=0.3.4.0
+    , core-webserver-warp >=0.0.1.0
     , fingertree
     , hashable
     , hspec
@@ -100,6 +101,7 @@ benchmark performance
     , core-program >=0.4.0.0
     , core-telemetry >=0.1.7.3
     , core-text >=0.3.4.0
+    , core-webserver-warp >=0.0.1.0
     , gauge
     , text
   default-language: Haskell2010
