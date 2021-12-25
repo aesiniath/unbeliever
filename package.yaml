@@ -50,6 +50,7 @@ dependencies:
  - core-data >= 0.3.0.2
  - core-program >= 0.4.0.0
  - core-telemetry >= 0.1.7.3
+ - core-webserver-warp >= 0.0.1.0
 
 tests:
   check:
