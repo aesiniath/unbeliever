@@ -31,7 +31,7 @@ dependencies:
  - warp
 
 library:
-  dependencies:
+  dependencies: []
   source-dirs: lib
   exposed-modules:
    - Core.Webserver.Wai

@@ -4,6 +4,7 @@ packages:
  - ./core-text
  - ./core-program
  - ./core-telemetry
+ - ./core-webserver-warp
  - .
 extra-deps:
  - aeson-2.0.1.0
