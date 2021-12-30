@@ -60,12 +60,13 @@ tests:
      - fingertree
      - hashable
      - hspec
+     - prettyprinter
      - safe-exceptions
      - stm
      - text
      - text-short
      - unordered-containers
-     - prettyprinter
+     - wai
     ghc-options: -threaded
     source-dirs:
      - tests
@@ -78,6 +79,7 @@ tests:
      - CheckProgramMonad
      - CheckRopeBehaviour
      - CheckTelemetryMachinery
+     - CheckWebserverIntegration
 
 benchmarks:
   performance:
