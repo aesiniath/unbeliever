@@ -13,7 +13,7 @@ description: |
   
   See "Core.Telemetry.Observability" to get started.
 
-stability: experimental
+stability: provisional
 license: MIT
 license-file: LICENSE
 author: Andrew Cowie <istathar@gmail.com>

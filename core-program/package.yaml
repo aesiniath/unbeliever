@@ -12,7 +12,7 @@ description: |
   
   See "Core.Program.Execute" to get started.
 
-stability: experimental
+stability: stable
 license: MIT
 license-file: LICENSE
 author: Andrew Cowie <istathar@gmail.com>

@@ -11,7 +11,7 @@ description: |
   <https://github.com/aesiniath/unbeliever/blob/master/README.markdown README>
   on GitHub.
 
-stability: experimental
+stability: stable
 license: MIT
 license-file: LICENSE
 author: Andrew Cowie <istathar@gmail.com>
