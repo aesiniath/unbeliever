@@ -12,20 +12,16 @@ import qualified Data.ByteString.Char8 as C
 
 b = intoBytes (C.pack "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
 
-data Boom = Boom deriving (Show)
-
-instance Exception Boom
-
 main :: IO ()
 main = execute $ do
-  info "Processing..."
-  debugR "b" b
+    info "Processing..."
+    debugR "b" b
 
-  let x = error "No!"
+    let x = error "No!"
 
-  write $ case x of
-    Nothing -> "Nothing!"
+    write $ case x of
+        Nothing -> "Nothing!"
 
-  sleepThread 0.2
+    sleepThread 0.2
 
-  write "Done"
+    write "Done"

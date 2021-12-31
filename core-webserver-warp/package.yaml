@@ -28,6 +28,7 @@ dependencies:
  - core-data
  - core-program
  - wai
+ - wai-extra
  - warp
 
 library:
