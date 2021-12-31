@@ -52,6 +52,20 @@ dependencies:
  - core-telemetry >= 0.1.7.3
  - core-webserver-warp >= 0.0.1.0
 
+executables:
+  snippet:
+    dependencies:
+     - core-webserver-warp
+     - http-types
+     - wai
+     - warp
+    ghc-options:
+     - -threaded
+    source-dirs:
+     - tests
+    main: WarpSnippet.hs
+    other-modules: []
+
 tests:
   check:
     dependencies:
