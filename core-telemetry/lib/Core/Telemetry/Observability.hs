@@ -180,6 +180,7 @@ import qualified Data.Text as T (Text)
 import qualified Data.Text.Lazy as U (Text)
 import Data.UUID (UUID, toWords)
 import Data.UUID.V1 (nextUUID)
+import Data.Word (Word32, Word64)
 
 {- |
 A telemetry value that can be sent over the wire. This is a wrapper around
@@ -234,6 +235,12 @@ instance Telemetry Int32 where
     metric k v = MetricValue (JsonKey k) (JsonNumber (fromIntegral v))
 
 instance Telemetry Int64 where
+    metric k v = MetricValue (JsonKey k) (JsonNumber (fromIntegral v))
+
+instance Telemetry Word32 where
+    metric k v = MetricValue (JsonKey k) (JsonNumber (fromIntegral v))
+
+instance Telemetry Word64 where
     metric k v = MetricValue (JsonKey k) (JsonNumber (fromIntegral v))
 
 instance Telemetry Integer where
