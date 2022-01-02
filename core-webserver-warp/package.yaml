@@ -27,6 +27,8 @@ dependencies:
  - core-text
  - core-data
  - core-program
+ - core-telemetry
+ - http-types
  - wai
  - wai-extra
  - warp

@@ -43,7 +43,9 @@ library
     , bytestring
     , core-data
     , core-program
+    , core-telemetry
     , core-text
+    , http-types
     , wai
     , wai-extra
     , warp

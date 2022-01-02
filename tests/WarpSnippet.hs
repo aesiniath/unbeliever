@@ -9,10 +9,14 @@ import Control.Exception (bracket_)
 import Core.Program
 import Core.System
 import Core.Text
+import Core.Telemetry
 import Core.Webserver.Warp
 import Network.HTTP.Types
 import Network.Wai
 import qualified Network.Wai.Handler.Warp as Warp
+
+-- type Application =
+-- Request -> (Response -> IO ResponseReceived) -> IO ResponseReceived
 
 -- type Application =
 --     Request ->
@@ -33,15 +37,17 @@ exampleApplication req respond =
 -}
 
 exampleApplication :: Application
-exampleApplication request respond =
-  let
-    path = intoRope (rawPathInfo request)
-    query = intoRope (rawQueryString request)
-    path' = fromRope (path <> query)
-   in do
-    respond (responseLBS status200 [] path')
+exampleApplication request sendResponse =
+    let path = intoRope (rawPathInfo request)
+        query = intoRope (rawQueryString request)
+        path' = fromRope (path <> query)
+     in do
+            sendResponse (responseLBS status200 [] path')
 
 main :: IO ()
-main = execute $ do
-    info "Starting..."
-    launchWebserver 48080 exampleApplication
+main = do
+    context <- configure "1" None (simpleConfig [])
+    context' <- initializeTelemetry [consoleExporter, structuredExporter] context
+    executeWith context' $ do
+        info "Starting..."
+        launchWebserver 48080 exampleApplication
