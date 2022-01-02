@@ -186,7 +186,7 @@ convertDatumToJson datum =
 
         meta5 = case serviceNameFrom datum of
             Nothing -> meta4
-            Just service -> insertKeyValue "service_name" (JsonString service) meta4
+            Just service -> insertKeyValue "service.name" (JsonString service) meta4
 
         meta6 = case durationFrom datum of
             Nothing -> meta5
