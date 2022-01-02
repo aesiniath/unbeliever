@@ -1,4 +1,5 @@
--- |
+{-# LANGUAGE OverloadedStrings #-}
+
 module Core.Webserver.Warp where
 
 --
@@ -10,7 +11,6 @@ module Core.Webserver.Warp where
 --
 
 import Core.Program.Context
-import Core.Program.Logging
 import Core.System.Base
 import Core.Telemetry.Observability
 import Core.Text.Rope
