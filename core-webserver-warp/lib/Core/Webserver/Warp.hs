@@ -14,6 +14,7 @@ import Core.Program.Context
 import Core.System.Base
 import Core.Telemetry.Observability
 import Core.Text.Rope
+import Network.HTTP.Types (statusCode)
 import Network.Wai
 import qualified Network.Wai.Handler.Warp as Warp
 
@@ -33,20 +34,28 @@ launchWebserver port application =
 
 -- which is IO
 loggingMiddleware :: Context τ -> Application -> Application
-loggingMiddleware context application request sendResponse = do
-    subProgram context $ do
+loggingMiddleware context0 application request sendResponse = do
+    subProgram context0 $ do
         beginTrace $ do
             encloseSpan "Handle request" $ do
+                context <- getContext
                 let path = intoRope (rawPathInfo request)
                     query = intoRope (rawQueryString request)
                     method = intoRope (requestMethod request)
                 telemetry
-                    [ metric "http_request_method" method
-                    , metric "http_request_path" path
-                    , metric "http_request_query" query
+                    [ metric "request.method" method
+                    , metric "request.path" path
+                    , metric "request.query" query
                     ]
                 liftIO $ do
-                    application request sendResponse
+                    application request $ \response -> do
+                        result <- sendResponse response
+                        subProgram context $ do
+                            let status = intoRope (show (statusCode (responseStatus response)))
+                            telemetry
+                                [ metric "response.status_code" status
+                                ]
+                        pure result
 
 {-
 innerMiddleware :: Context τ -> Application -> Application
