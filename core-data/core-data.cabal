@@ -16,12 +16,12 @@ description:    Wrappers around common data structures and encodings.
                 <https://github.com/aesiniath/unbeliever/blob/master/README.markdown README>
                 on GitHub.
 category:       System
-stability:      experimental
+stability:      stable
 homepage:       https://github.com/aesiniath/unbeliever#readme
 bug-reports:    https://github.com/aesiniath/unbeliever/issues
 author:         Andrew Cowie <istathar@gmail.com>
 maintainer:     Andrew Cowie <istathar@gmail.com>
-copyright:      © 2018-2021 Athae Eredh Siniath and Others
+copyright:      © 2018-2022 Athae Eredh Siniath and Others
 license:        MIT
 license-file:   LICENSE
 build-type:     Simple
