@@ -76,6 +76,7 @@ module Core.Webserver.Warp (
 --
 
 import Core.Program.Context
+import Core.Program.Logging
 import Core.System.Base
 import Core.Telemetry.Observability
 import Core.Text.Rope
@@ -90,16 +91,15 @@ Given a WAI 'Application', run a Warp webserver on the specified port from
 within the 'Program' monad.
 -}
 launchWebserver :: Port -> Application -> Program τ ()
-launchWebserver port application =
+launchWebserver port application = do
+    context <- getContext
     let settings =
             Warp.setOnException
-                onExceptionHandler
+                (onExceptionHandler context)
                 . Warp.setPort port
                 $ Warp.defaultSettings
-     in do
-            context <- getContext
-            liftIO $ do
-                Warp.runSettings settings (loggingMiddleware context application)
+    liftIO $ do
+        Warp.runSettings settings (loggingMiddleware context application)
 
 -- which is IO
 loggingMiddleware :: Context τ -> Application -> Application
@@ -138,6 +138,14 @@ innerMiddleware context application request sendResponse = do
         liftIO $ do
             application request sendResponse
 -}
-onExceptionHandler :: Maybe Request -> SomeException -> IO ()
-onExceptionHandler possibleRequest e = do
-    Warp.defaultOnException possibleRequest e
+
+onExceptionHandler :: Context τ -> Maybe Request -> SomeException -> IO ()
+onExceptionHandler context possibleRequest e = do
+    subProgram context $ do
+        critical "Exception escaped webserver"
+        debugS "e" e
+        case possibleRequest of
+            Nothing -> pure ()
+            Just request ->
+                let line = "\"" <> intoRope (requestMethod request) <> " " <> intoRope (rawPathInfo request) <> intoRope (rawQueryString request) <>  "\""
+                 in debug "request" line
