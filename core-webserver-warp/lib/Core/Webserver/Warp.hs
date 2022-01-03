@@ -24,10 +24,11 @@ import "Core.Webservice.Warp"
 
 main :: 'IO' ()
 main = do
-    context <- 'Core.Program.Execute.configure' \"1.0\" 'Core.Program.Execute.None' ('simpleConfig' [])
-    context' <- 'initializeTelemetry' ['Core.Telemetry.Console.consoleExporter', 'Core.Telemetry.Honeycomb.honeycombExporter'] context
+    context <- 'Core.Program.Execute.configure' \"1.0\" 'Core.Program.Execute.None' ('Core.Program.Arguments.simpleConfig' [])
+    context' <- 'initializeTelemetry' ['Core.Telemetry.Console.consoleExporter', 'Core.Telemetry.Structured.structuredExporter', 'Core.Telemetry.Honeycomb.honeycombExporter'] context
     'Core.Program.Execute.executeWith' context' \$ do
-        'launchWebserver' 80 application
+        'Core.Program.Logging.info' \"Starting...\"
+        'launchWebserver' 8080 application
 @
 
 You can then describe your webservice 'Application', for example
@@ -35,14 +36,31 @@ You can then describe your webservice 'Application', for example
 @
 application :: 'Application'
 application = request sendResponse =
-    sendResponse (responseLBS status200 [] "Hello World")
+    sendResponse ('Network.WAI.responseLBS' 'Network.HTTP.Types.status200' [] \"Hello World\")
 @
-
 
 performs the heroic duty of replying to you with the given string. In
 practice, if you're using something like __servant__ to define the shape of
 your webservice its 'Servant.serve' function will give you the 'Application'
 you're trying to run.
+
+Logging output is sent to the telemtry channel. If you run your program with
+the console exporter, and hit something like
+<http://localhost:8080/hello?question=answer> will see something like this:
+
+@
+\$ __hello-service --telemetry=console__
+03:16:01Z (00.002) Starting...
+03:16:04Z (00.259)                                             <-- this is the request duration, 259 ms
+/hello:                                                        <-- the base of the context path aka \"endpoint\"
+  request.method = \"GET\"
+  request.path = "/hello?question=answer"                      <-- the full context path with query string
+  response.status_code = "200"
+@
+
+This is useful for debugging during development but for production you are
+recommended to use the structured logging output or to send the traces to an
+observability service; this will be the root span of a trace.
 -}
 module Core.Webserver.Warp (
     Port,
