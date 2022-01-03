@@ -47,7 +47,7 @@ exampleApplication request sendResponse =
 main :: IO ()
 main = do
     context <- configure "1" None (simpleConfig [])
-    context' <- initializeTelemetry [consoleExporter, structuredExporter] context
+    context' <- initializeTelemetry [consoleExporter, structuredExporter, honeycombExporter] context
     executeWith context' $ do
         info "Starting..."
         launchWebserver 48080 exampleApplication

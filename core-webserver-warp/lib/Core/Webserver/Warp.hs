@@ -35,14 +35,16 @@ launchWebserver port application =
 -- which is IO
 loggingMiddleware :: Context τ -> Application -> Application
 loggingMiddleware context0 application request sendResponse = do
+    let path = intoRope (rawPathInfo request)
+
     subProgram context0 $ do
         beginTrace $ do
-            encloseSpan "Handle request" $ do
+            encloseSpan path $ do
                 context1 <- getContext
                 liftIO $ do
                     application request $ \response -> do
-                        let path = intoRope (rawPathInfo request)
-                            query = intoRope (rawQueryString request)
+                        let query = intoRope (rawQueryString request)
+                            path' = path <> query
                             method = intoRope (requestMethod request)
                             status = intoRope (show (statusCode (responseStatus response)))
 
@@ -53,8 +55,7 @@ loggingMiddleware context0 application request sendResponse = do
                         subProgram context1 $ do
                             telemetry
                                 [ metric "request.method" method
-                                , metric "request.path" path
-                                , metric "request.query" query
+                                , metric "request.path" path'
                                 , metric "response.status_code" status
                                 ]
 
