@@ -12,6 +12,37 @@ Given an 'Network.Wai.Application' type (the definition of your web service) and
 'Network.Wai.Middleware' (which is just @Application -> Application@), run a the
 "Core.Program"'s 'Core.Program.Execute.Program' monad. Metrics values (aka web
 server logs) will be sent as key/value pairs via "Core.Telemetry".
+
+= Usage
+
+First set up your program and initialize the telemetry subsystem.
+
+@
+import "Core.Program"
+import "Core.Telemetry"
+import "Core.Webservice.Warp"
+
+main :: 'IO' ()
+main = do
+    context <- 'Core.Program.Execute.configure' \"1.0\" 'Core.Program.Execute.None' ('simpleConfig' [])
+    context' <- 'initializeTelemetry' ['Core.Telemetry.Console.consoleExporter', 'Core.Telemetry.Honeycomb.honeycombExporter'] context
+    'Core.Program.Execute.executeWith' context' \$ do
+        'launchWebserver' 80 application
+@
+
+You can then describe your webservice 'Application', for example
+
+@
+application :: 'Application'
+application = request sendResponse =
+    sendResponse (responseLBS status200 [] "Hello World")
+@
+
+
+performs the heroic duty of replying to you with the given string. In
+practice, if you're using something like __servant__ to define the shape of
+your webservice its 'Servant.serve' function will give you the 'Application'
+you're trying to run.
 -}
 module Core.Webserver.Warp (
     Port,
