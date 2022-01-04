@@ -46,6 +46,8 @@ library
     , core-telemetry
     , core-text
     , http-types
+    , http2
+    , safe-exceptions
     , wai
     , wai-extra
     , warp

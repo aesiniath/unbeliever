@@ -8,8 +8,8 @@
 import Control.Exception (bracket_)
 import Core.Program
 import Core.System
-import Core.Text
 import Core.Telemetry
+import Core.Text
 import Core.Webserver.Warp
 import Network.HTTP.Types
 import Network.Wai

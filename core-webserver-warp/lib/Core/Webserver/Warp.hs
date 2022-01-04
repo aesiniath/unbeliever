@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 {- |
 Many programs present their interface in the form of a webservice, be it
@@ -75,13 +76,27 @@ module Core.Webserver.Warp (
 -- webserver frameworks.
 --
 
+import qualified Control.Exception.Safe as Safe (catch)
 import Core.Program.Context
 import Core.Program.Logging
 import Core.System.Base
 import Core.Telemetry.Observability
 import Core.Text.Rope
-import Network.HTTP.Types (statusCode)
+import qualified Data.ByteString.Lazy as L
+import Network.HTTP.Types (
+    hContentType,
+    status400,
+    status413,
+    status431,
+    status500,
+    statusCode,
+ )
+import Network.HTTP2.Frame (
+    ErrorCodeId (UnknownErrorCode),
+    HTTP2Error (ConnectionError),
+ )
 import Network.Wai
+import Network.Wai.Handler.Warp (InvalidRequest)
 import qualified Network.Wai.Handler.Warp as Warp
 
 type Port = Int
@@ -99,7 +114,12 @@ launchWebserver port application = do
                 . Warp.setPort port
                 $ Warp.defaultSettings
     liftIO $ do
-        Warp.runSettings settings (loggingMiddleware context application)
+        Warp.runSettings
+            settings
+            ( loggingMiddleware
+                context
+                application
+            )
 
 -- which is IO
 loggingMiddleware :: Context τ -> Application -> Application
@@ -110,42 +130,87 @@ loggingMiddleware context0 application request sendResponse = do
         beginTrace $ do
             encloseSpan path $ do
                 context1 <- getContext
+
+                let query = intoRope (rawQueryString request)
+                    path' = path <> query
+                    method = intoRope (requestMethod request)
+
+                telemetry
+                    [ metric "request.method" method
+                    , metric "request.path" path'
+                    ]
+
                 liftIO $ do
-                    application request $ \response -> do
-                        let query = intoRope (rawQueryString request)
-                            path' = path <> query
-                            method = intoRope (requestMethod request)
-                            status = intoRope (show (statusCode (responseStatus response)))
+                    Safe.catch
+                        ( application request $ \response -> do
+                            -- accumulate the details for logging
+                            let status = intoRope (show (statusCode (responseStatus response)))
 
-                        -- actually handle the request
-                        result <- sendResponse response
+                            subProgram context1 $ do
+                                telemetry
+                                    [ metric "response.status_code" status
+                                    ]
 
-                        -- accumulate the details for logging
-                        subProgram context1 $ do
-                            telemetry
-                                [ metric "request.method" method
-                                , metric "request.path" path'
-                                , metric "response.status_code" status
-                                ]
+                            -- actually handle the request
+                            sendResponse response
+                        )
+                        ( \(e :: SomeException) -> do
+                            -- set the magic `error` field with the exception text.
+                            let text = intoRope (displayException e)
+                            subProgram context1 $ do
+                                warn "Trapped internal exception"
+                                debug "e" text
+                                telemetry
+                                    [ metric "error" text
+                                    ]
 
-                        pure result
+                            sendResponse (onExceptionResponse e)
+                        )
 
-{-
-innerMiddleware :: Context τ -> Application -> Application
-innerMiddleware context application request sendResponse = do
-    subProgram context $ do
-        info "inner"
-        liftIO $ do
-            application request sendResponse
--}
+onExceptionResponse :: SomeException -> Response
+onExceptionResponse e
+    | Just (_ :: InvalidRequest) <-
+        fromException e =
+        responseLBS
+            status400
+            [(hContentType, "text/plain; charset=utf-8")]
+            (fromRope ("Bad Request\n" <> intoRope (displayException e)))
+    | Just (ConnectionError (UnknownErrorCode 413) t) <-
+        fromException e =
+        responseLBS
+            status413
+            [(hContentType, "text/plain; charset=utf-8")]
+            (L.fromStrict t)
+    | Just (ConnectionError (UnknownErrorCode 431) t) <-
+        fromException e =
+        responseLBS
+            status431
+            [(hContentType, "text/plain; charset=utf-8")]
+            (L.fromStrict t)
+    | otherwise =
+        responseLBS
+            status500
+            [(hContentType, "text/plain; charset=utf-8")]
+            "Internal Server Error"
 
+--
+-- Ideally this would be a catch-all and not be hit; our application wrapper
+-- should have caught this beforehand. However, it turns out "Bad Request"
+-- type protocol problems that don't even result in a coherent request -
+-- which, sadly, are somewhat to be expected on the wild and wooly internet.
+-- So we note them briefly and move on.
+--
+-- Much more interesting are exceptions which occur within the request path,
+-- which means that we can annotate the current span with an `error` field and
+-- send it down the telemetry channel.
+--
 onExceptionHandler :: Context τ -> Maybe Request -> SomeException -> IO ()
 onExceptionHandler context possibleRequest e = do
     subProgram context $ do
-        critical "Exception escaped webserver"
+        warn "Exception escaped webserver"
         debugS "e" e
         case possibleRequest of
             Nothing -> pure ()
             Just request ->
-                let line = "\"" <> intoRope (requestMethod request) <> " " <> intoRope (rawPathInfo request) <> intoRope (rawQueryString request) <>  "\""
+                let line = intoRope (requestMethod request) <> " " <> intoRope (rawPathInfo request) <> intoRope (rawQueryString request)
                  in debug "request" line
