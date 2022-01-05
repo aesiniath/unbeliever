@@ -32,13 +32,11 @@ dependencies:
  - http2
  - safe-exceptions
  - wai
- - wai-extra
  - warp
 
 library:
   dependencies: []
   source-dirs: lib
   exposed-modules:
-   - Core.Webserver.Wai
    - Core.Webserver.Warp
   other-modules: []
