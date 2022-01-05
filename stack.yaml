@@ -1,9 +1,10 @@
-resolver: lts-18.16
+resolver: lts-18.21
 packages:
  - ./core-data
  - ./core-text
  - ./core-program
  - ./core-telemetry
+ - ./core-webserver-warp
  - .
 extra-deps:
  - aeson-2.0.1.0

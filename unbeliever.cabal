@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           unbeliever
-version:        0.11.0.3
+version:        0.11.1.0
 synopsis:       Opinionated Haskell Interoperability
 description:    A library to help build command-line programs, both tools and
                 longer-running daemons. Its @Program@ type provides unified ouptut &
@@ -54,6 +54,23 @@ source-repository head
   type: git
   location: https://github.com/aesiniath/unbeliever
 
+executable snippet
+  main-is: WarpSnippet.hs
+  hs-source-dirs:
+      tests
+  ghc-options: -Wall -Wwarn -fwarn-tabs -threaded
+  build-depends:
+      base >=4.11 && <5
+    , core-data >=0.3.0.2
+    , core-program >=0.4.0.0
+    , core-telemetry >=0.1.7.3
+    , core-text >=0.3.4.0
+    , core-webserver-warp
+    , http-types
+    , wai
+    , warp
+  default-language: Haskell2010
+
 test-suite check
   type: exitcode-stdio-1.0
   main-is: TestSuite.hs
@@ -65,6 +82,7 @@ test-suite check
       CheckProgramMonad
       CheckRopeBehaviour
       CheckTelemetryMachinery
+      CheckWebserverIntegration
   hs-source-dirs:
       tests
   ghc-options: -Wall -Wwarn -fwarn-tabs -threaded
@@ -76,6 +94,7 @@ test-suite check
     , core-program >=0.4.0.0
     , core-telemetry >=0.1.7.3
     , core-text >=0.3.4.0
+    , core-webserver-warp >=0.0.1.0
     , fingertree
     , hashable
     , hspec
@@ -85,6 +104,7 @@ test-suite check
     , text
     , text-short
     , unordered-containers
+    , wai
   default-language: Haskell2010
 
 benchmark performance
@@ -100,6 +120,7 @@ benchmark performance
     , core-program >=0.4.0.0
     , core-telemetry >=0.1.7.3
     , core-text >=0.3.4.0
+    , core-webserver-warp >=0.0.1.0
     , gauge
     , text
   default-language: Haskell2010

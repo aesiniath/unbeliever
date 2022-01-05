@@ -1,5 +1,11 @@
-:set -icore-text/lib:core-data/lib:core-program/lib:core-telemetry/lib:tests:bench
-:set -XOverloadedStrings
+:seti -icore-text/lib
+:seti -icore-data/lib
+:seti -icore-program/lib
+:seti -icore-telemetry/lib
+:seti -icore-webserver-warp/lib
+:seti -itests
+:seti -ibench
+:seti -XOverloadedStrings
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
