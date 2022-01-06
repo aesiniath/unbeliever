@@ -24,13 +24,17 @@ dependencies:
  - async
  - base >= 4.11 && < 5
  - bytestring
- - core-text
  - core-data
  - core-program
  - core-telemetry
+ - core-text
  - http-types
  - http2
+ - mtl
  - safe-exceptions
+ - servant
+ - servant-server
+ - vault
  - wai
  - warp
 
@@ -39,4 +43,5 @@ library:
   source-dirs: lib
   exposed-modules:
    - Core.Webserver.Warp
+   - Core.Webserver.Servant
   other-modules: []

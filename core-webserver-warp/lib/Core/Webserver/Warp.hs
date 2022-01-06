@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 {- |
 Many programs present their interface in the form of a webservice, be it
@@ -66,6 +67,8 @@ observability service; this will be the root span of a trace.
 module Core.Webserver.Warp (
     Port,
     launchWebserver,
+    requestContextKey,
+    contextFromRequest,
 ) where
 
 --
@@ -83,6 +86,7 @@ import Core.System.Base
 import Core.Telemetry.Observability
 import Core.Text.Rope
 import qualified Data.ByteString.Lazy as L
+import qualified Data.Vault.Lazy as Vault
 import Network.HTTP.Types (
     hContentType,
     status400,
@@ -121,9 +125,16 @@ launchWebserver port application = do
                 application
             )
 
+requestContextKey :: forall t. Vault.Key (Context t)
+requestContextKey = unsafePerformIO Vault.newKey
+{-# NOINLINE requestContextKey #-}
+
+contextFromRequest :: forall t. Request -> Maybe (Context t)
+contextFromRequest request = Vault.lookup requestContextKey (vault request)
+
 -- which is IO
 loggingMiddleware :: Context τ -> Application -> Application
-loggingMiddleware context0 application request sendResponse = do
+loggingMiddleware (context0 ::  Context τ) application request sendResponse = do
     let path = intoRope (rawPathInfo request)
 
     subProgram context0 $ do
@@ -141,8 +152,18 @@ loggingMiddleware context0 application request sendResponse = do
                     ]
 
                 liftIO $ do
+                    -- The below wires the context in the request's `vault`. As the type of
+                    -- `Context` is polymorphic to support user data, we have to use a type
+                    -- application to make sure that consumers can later fetch the appropriate
+                    -- `Context t`
+                    --
+                    -- Possible bug: The code might not support multiple types of `Context`
+                    -- types within a single application. I am kind of hoping that this use
+                    -- case will not present itself.
+                    let vault' = Vault.insert (requestContextKey @τ) context1 (vault request)
+                    let request' = request{vault = vault'}
                     Safe.catch
-                        ( application request $ \response -> do
+                        ( application request' $ \response -> do
                             -- accumulate the details for logging
                             let status = intoRope (show (statusCode (responseStatus response)))
 
@@ -207,7 +228,7 @@ onExceptionResponse e
 onExceptionHandler :: Context τ -> Maybe Request -> SomeException -> IO ()
 onExceptionHandler context possibleRequest e = do
     subProgram context $ do
-        warn "Exception escaped webserver"
+        critical "Exception escaped webserver"
         debugS "e" e
         case possibleRequest of
             Nothing -> pure ()
