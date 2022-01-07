@@ -6,10 +6,24 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
-{-|
+{- |
 Support integrating web services created by __servant__ with handlers defined
 in the 'Program' monad. This is a thin wrapper which creates an 'Application'
 which can be used with 'Core.Webserver.Warp.launchWebserver'.
+
+@
+import "Core.Program"
+import "Core.Webserver.Servant"
+import "Core.Webserver.Warp"
+
+import MyServer (api, routes)
+
+main :: 'IO' ()
+main = do
+    'Core.Program.Execute.execute' $ do
+        application <- 'prepareRoutes' api routes
+        'launchWebserver' 8080 application
+@
 -}
 module Core.Webserver.Servant (
     prepareRoutes,
@@ -39,8 +53,21 @@ transformProgram context program =
      in Handler (ExceptT output)
 
 {-|
+Convert a __servant__ API and set of handlers into a __warp__ 'Application'.
+
 This 'Application' must be used with 'Core.Webserver.Warp.launchWebserver' so
 that the necessary internal connections are made.
+
+Usage is straight forward:
+
+@
+        application <- 'prepareRoutes' api routes
+        'launchWebserver' 8080 application
+@
+
+This code creates an Application which has sufficient information to unlift
+back to the 'Program' monad so that your handlers can be take advantage of the
+logging and telemetry facilities of __core-program__ and __core-telemetry__.
 -}
 prepareRoutes ::
     forall τ (api :: Type).
