@@ -4,6 +4,7 @@ packages:
  - ./core-text
  - ./core-program
  - ./core-telemetry
+ - ./core-webserver-servant
  - ./core-webserver-warp
  - .
 extra-deps:

@@ -1,18 +1,18 @@
-name: core-webserver-warp
-version: 0.1.0.0
-synopsis: Interoperability with Wai/Warp
+name: core-webserver-servant
+version: 0.0.1.0
+synopsis: Interoperability with Servant
 description: |
   This is part of a library to help build command-line programs, both tools and
   longer-running daemons.
   
-  This package in particular adds wrappers around the __wai__ (Web Application
-  Interface) and __warp__ (Web Server to facilitate integrating this commonly
-  used webserver combination with the Program monad from __core-program__.
+  This package in particular adds wrappers around the __servant__ library
+  commonly used for exposing web services APIs and allows your handlers to
+  be written in the Program monad from __core-program__.
 
 stability: experimental
 license: MIT
 license-file: LICENSE
-author: Andrew Cowie <istathar@gmail.com>
+author: Carlos D'Agostino <carlos.dagostino@gmail.com>
 maintainer: Andrew Cowie <istathar@gmail.com>
 copyright: © 2021-2022 Athae Eredh Siniath and Others
 tested-with: GHC == 8.10.7
@@ -21,24 +21,19 @@ ghc-options: -Wall -Wwarn -fwarn-tabs
 github: aesiniath/unbeliever
   
 dependencies:
- - async
  - base >= 4.11 && < 5
- - bytestring
- - core-data
  - core-program
- - core-telemetry
- - core-text
- - http-types
- - http2
+ - core-webserver-warp
  - mtl
  - safe-exceptions
+ - servant
+ - servant-server
  - vault
  - wai
- - warp
 
 library:
   dependencies: []
   source-dirs: lib
   exposed-modules:
-   - Core.Webserver.Warp
+   - Core.Webserver.Servant
   other-modules: []
