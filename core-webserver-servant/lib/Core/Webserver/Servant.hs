@@ -45,14 +45,7 @@ data ContextNotFoundInRequest = ContextNotFoundInRequest deriving (Show)
 instance Exception ContextNotFoundInRequest where
     displayException _ = "Context was not found in request. This is a serious error."
 
-transformProgram :: Context τ -> Program τ α -> Handler α
-transformProgram context program =
-    let output =
-            try $
-                subProgram context program
-     in Handler (ExceptT output)
-
-{-|
+{- |
 Convert a __servant__ API and set of handlers into a __warp__ 'Application'.
 
 This 'Application' must be used with 'Core.Webserver.Warp.launchWebserver' so
@@ -76,21 +69,30 @@ prepareRoutes ::
     ServerT api (Program τ) ->
     Program τ Application
 prepareRoutes proxy (routes :: ServerT api (Program τ)) =
-    let application :: Application
-        application = \request sendResponse -> do
-            -- The type application in `contextFromRequest` is important, as otherwise
-            -- the compiler cannot infer that the type of `natTransform` is of the same
-            -- `τ` as the one in `Program τ`
-            context <- case contextFromRequest @τ request of
-                Just context' -> pure context'
-                -- This will happen in the case where the wiring has not been done
-                -- appropriately. This code depends on what `launchWebserver` does,
-                -- if it were to stop introducing the context in the `request`
-                -- appropriately, then we'll get this error.
-                Nothing -> throw ContextNotFoundInRequest
-            serve
-                proxy
-                (hoistServer proxy (transformProgram context) routes)
-                request
-                sendResponse
-     in pure application
+    pure application
+  where
+    application :: Application
+    application = \request sendResponse -> do
+        -- The type application in `contextFromRequest` is important, as
+        -- otherwise the compiler cannot infer that the type of
+        -- `transformProgram` is of the same `τ` as the one in `Program τ`
+
+        -- This exception will happen in the case where this is not being run
+        -- by `launchWebserver`, since we need the Context to be stashed in
+        -- the request by the Middleware there.
+
+        context <- case contextFromRequest @τ request of
+            Just context' -> pure context'
+            Nothing -> throw ContextNotFoundInRequest
+        serve
+            proxy
+            (hoistServer proxy (transformProgram context) routes)
+            request
+            sendResponse
+
+    transformProgram :: Context τ -> Program τ α -> Handler α
+    transformProgram context program =
+        let output =
+                try $
+                    subProgram context program
+         in Handler (ExceptT output)
