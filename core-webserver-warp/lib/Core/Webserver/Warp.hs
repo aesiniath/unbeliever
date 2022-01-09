@@ -134,7 +134,7 @@ contextFromRequest request = Vault.lookup requestContextKey (vault request)
 
 -- which is IO
 loggingMiddleware :: Context τ -> Application -> Application
-loggingMiddleware (context0 ::  Context τ) application request sendResponse = do
+loggingMiddleware (context0 :: Context τ) application request sendResponse = do
     let path = intoRope (rawPathInfo request)
 
     subProgram context0 $ do
@@ -142,26 +142,22 @@ loggingMiddleware (context0 ::  Context τ) application request sendResponse = d
             encloseSpan path $ do
                 context1 <- getContext
 
+                -- we could call `telemetry` here with these values, but since
+                -- we call into nested actions which could clear the state
+                -- without starting a new span, we duplicate adding them below
+                -- to ensure they get passed through.
+
                 let query = intoRope (rawQueryString request)
                     path' = path <> query
                     method = intoRope (requestMethod request)
-
-                telemetry
-                    [ metric "request.method" method
-                    , metric "request.path" path'
-                    ]
 
                 liftIO $ do
                     -- The below wires the context in the request's `vault`. As the type of
                     -- `Context` is polymorphic to support user data, we have to use a type
                     -- application to make sure that consumers can later fetch the appropriate
-                    -- `Context t`
-                    --
-                    -- Possible bug: The code might not support multiple types of `Context`
-                    -- types within a single application. I am kind of hoping that this use
-                    -- case will not present itself.
+                    -- `Context t`.
                     let vault' = Vault.insert (requestContextKey @τ) context1 (vault request)
-                    let request' = request{vault = vault'}
+                        request' = request{vault = vault'}
                     Safe.catch
                         ( application request' $ \response -> do
                             -- accumulate the details for logging
@@ -169,7 +165,9 @@ loggingMiddleware (context0 ::  Context τ) application request sendResponse = d
 
                             subProgram context1 $ do
                                 telemetry
-                                    [ metric "response.status_code" status
+                                    [ metric "request.method" method
+                                    , metric "request.path" path'
+                                    , metric "response.status_code" status
                                     ]
 
                             -- actually handle the request
@@ -182,7 +180,9 @@ loggingMiddleware (context0 ::  Context τ) application request sendResponse = d
                                 warn "Trapped internal exception"
                                 debug "e" text
                                 telemetry
-                                    [ metric "error" text
+                                    [ metric "request.method" method
+                                    , metric "request.path" path'
+                                    , metric "error" text
                                     ]
 
                             sendResponse (onExceptionResponse e)
