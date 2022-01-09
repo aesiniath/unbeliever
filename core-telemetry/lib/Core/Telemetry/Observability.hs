@@ -684,7 +684,7 @@ This isn't something you'd need in normal circumstances, as inheriting
 contextual metrics from surrounding code is usually what you want. But if you
 have a significant change of setting then clearing the attached metadata may
 be appropriate; after all, observability tools visualizing a trace will show
-you the context and event was encountered in.
+you the context an event was encountered in.
 -}
 clearMetrics :: Program τ ()
 clearMetrics = do

@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# OPTIONS_HADDOCK prune #-}
 
 {- |
 Many programs present their interface in the form of a webservice, be it
@@ -100,10 +101,8 @@ import Network.HTTP2.Frame (
     HTTP2Error (ConnectionError),
  )
 import Network.Wai
-import Network.Wai.Handler.Warp (InvalidRequest)
+import Network.Wai.Handler.Warp (InvalidRequest, Port)
 import qualified Network.Wai.Handler.Warp as Warp
-
-type Port = Int
 
 {- |
 Given a WAI 'Application', run a Warp webserver on the specified port from

@@ -5,7 +5,6 @@
 module CheckWebserverIntegration where
 
 import Core.Program
-import Core.System
 import Network.Wai
 import Core.Webserver.Warp
 

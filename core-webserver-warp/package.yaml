@@ -1,5 +1,5 @@
 name: core-webserver-warp
-version: 0.1.0.0
+version: 0.1.1.0
 synopsis: Interoperability with Wai/Warp
 description: |
   This is part of a library to help build command-line programs, both tools and
@@ -26,7 +26,7 @@ dependencies:
  - bytestring
  - core-data
  - core-program
- - core-telemetry
+ - core-telemetry >= 0.1.8
  - core-text
  - http-types
  - http2
