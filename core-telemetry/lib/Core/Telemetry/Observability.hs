@@ -155,12 +155,13 @@ module Core.Telemetry.Observability (
 
     -- * Events
     sendEvent,
+    clearMetrics,
 ) where
 
 import Control.Concurrent.MVar (modifyMVar_, newMVar, readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (writeTQueue)
-import Core.Data.Structures (Map, insertKeyValue)
+import Core.Data.Structures (Map, emptyMap, insertKeyValue)
 import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Context
@@ -675,3 +676,23 @@ setStartTime time = do
         modifyMVar_
             v
             (\datum -> pure datum{spanTimeFrom = time})
+
+{- |
+Reset the accumulated metadata metrics to the emtpy set.
+
+This isn't something you'd need in normal circumstances, as inheriting
+contextual metrics from surrounding code is usually what you want. But if you
+have a significant change of setting then clearing the attached metadata may
+be appropriate; after all, observability tools visualizing a trace will show
+you the context and event was encountered in.
+-}
+clearMetrics :: Program τ ()
+clearMetrics = do
+    context <- getContext
+
+    liftIO $ do
+        -- get the map out
+        let v = currentDatumFrom context
+        modifyMVar_
+            v
+            (\datum -> pure datum{attachedMetadataFrom = emptyMap})

@@ -39,6 +39,7 @@ import GHC.Base (Type)
 import Network.Wai (Application)
 import Servant (Handler (..), ServerT)
 import Servant.Server (HasServer, hoistServer, serve)
+import Core.Telemetry.Observability (clearMetrics)
 
 data ContextNotFoundInRequest = ContextNotFoundInRequest deriving (Show)
 
@@ -94,5 +95,7 @@ prepareRoutes proxy (routes :: ServerT api (Program τ)) =
     transformProgram context program =
         let output =
                 try $
-                    subProgram context program
+                    subProgram context $ do
+                        clearMetrics
+                        program
          in Handler (ExceptT output)
