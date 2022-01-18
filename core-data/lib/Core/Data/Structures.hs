@@ -200,7 +200,7 @@ class Dictionary α where
     fromMap :: Map (K α) (V α) -> α
     intoMap :: α -> Map (K α) (V α)
 
-instance Dictionary (Map κ ν) where
+instance Key κ => Dictionary (Map κ ν) where
     type K (Map κ ν) = κ
     type V (Map κ ν) = ν
     fromMap = id
