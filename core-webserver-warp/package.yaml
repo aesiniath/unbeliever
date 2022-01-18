@@ -6,7 +6,7 @@ description: |
   longer-running daemons.
   
   This package in particular adds wrappers around the __wai__ (Web Application
-  Interface) and __warp__ (Web Server to facilitate integrating this commonly
+  Interface) and __warp__ (Web Server) to facilitate integrating this commonly
   used webserver combination with the Program monad from __core-program__.
 
 stability: experimental

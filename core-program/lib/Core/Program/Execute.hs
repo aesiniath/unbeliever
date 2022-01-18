@@ -488,7 +488,7 @@ getVerbosityLevel = do
 
 {- |
 Change the verbosity level of the program's logging output. This changes
-whether 'event' and the 'debug' family of functions emit to the logging
+whether 'info' and the 'debug' family of functions emit to the logging
 stream; they do /not/ affect 'write'ing to the terminal on the standard
 output stream.
 -}
