@@ -54,6 +54,7 @@ import Data.Bits (Bits (..))
 import qualified Data.ByteString as B (ByteString, length, splitAt, unpack)
 import Data.Char (intToDigit)
 import qualified Data.FingerTree as F (ViewL (..), viewl, (<|))
+import Data.Kind (Type)
 import qualified Data.List as List (dropWhileEnd, foldl', splitAt)
 import qualified Data.Text as T
 import qualified Data.Text.Short as S (
@@ -98,7 +99,7 @@ writeR> if you're writing directly to console now.
 -}
 class Render α where
     -- | Which type are the annotations of your Doc going to be expressed in?
-    type Token α :: *
+    type Token α :: Type
 
     -- | Convert semantic tokens to specific ANSI escape tokens
     colourize :: Token α -> AnsiColour
