@@ -81,6 +81,7 @@ tests:
      - text
      - text-short
      - unordered-containers
+     - uuid
      - wai
     ghc-options: -threaded
     source-dirs:

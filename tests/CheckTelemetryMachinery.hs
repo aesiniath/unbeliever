@@ -10,12 +10,15 @@ import Control.Concurrent.MVar (MVar, modifyMVar_, newMVar, readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (newTQueueIO, writeTQueue)
 import Data.Int (Int32)
+import Data.Maybe (fromMaybe)
+import Data.UUID (fromString, fromWords, nil)
 import Data.Word (Word32)
 import Test.Hspec hiding (context)
 
 import Core.Program
 import Core.System
 import Core.Telemetry
+import Core.Text
 
 countingAction :: Int -> [Int] -> IO ()
 countingAction target ints = sum ints `shouldBe` target
@@ -63,6 +66,13 @@ checkTelemetryMachinery = do
             convertToSpan32 (TimeStamp (fromIntegral (maxBound :: Word32)) + 1) `shouldBe` "0000000010000000"
             convertToSpan32 (TimeStamp 1642770757512438606) `shouldBe` "e43ade8dc4b4cc61"
             convertToSpan32 (TimeStamp 1642770757512438607) `shouldBe` "f43ade8dc4b4cc61"
+
+        it "formats UUID as trace identifier" $ do
+            convertToTrace64 nil `shouldBe` "00000000000000000000000000000000"
+            let uuid1 = fromWords 2 0 0 1
+            convertToTrace64 uuid1 `shouldBe` "20000000000000000000000000000001"
+            let uuid2 = fromMaybe nil (fromString "3f648e86-9642-4af6-b8ff-bd2c64c6eedd")
+            convertToTrace64 uuid2 `shouldBe` packRope ("68e846f3" ++ "6fa42469" ++ "b8ff" ++ "bd2c64c6eedd")
 
     describe "Queue processing" $ do
         it "processes an item put on queue" $ do
