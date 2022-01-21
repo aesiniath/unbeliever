@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -171,17 +172,18 @@ import Core.System.Base (liftIO)
 import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
 import Core.Text.Rope
 import Core.Text.Utilities (oxford, quote)
+import Data.Bits (shiftR, (.&.))
 import qualified Data.ByteString as B (ByteString)
 import qualified Data.ByteString.Lazy as L (ByteString)
-import Data.Int (Int32, Int64)
 import qualified Data.List as List (foldl')
-import Data.Locator (padWithZeros, toBase62, toLatin25)
 import Data.Scientific (Scientific)
 import qualified Data.Text as T (Text)
+import Data.Text.Internal.Unsafe.Char (unsafeChr8)
 import qualified Data.Text.Lazy as U (Text)
 import Data.UUID (UUID, toWords)
 import Data.UUID.V1 (nextUUID)
-import Data.Word (Word32, Word64)
+import GHC.Int
+import GHC.Word
 
 {- |
 A telemetry value that can be sent over the wire. This is a wrapper around
@@ -388,13 +390,15 @@ encloseSpan :: Label -> Program z a -> Program z a
 encloseSpan label action = do
     context <- getContext
 
-    unique <- generateIdentifierBase62
+    start <- liftIO getCurrentTimeNanoseconds
+
+    unique <- generateIdentifierSpan32 start
+
     internal label emptyRope
     internal "span = " unique
 
     liftIO $ do
         -- prepare new span
-        start <- getCurrentTimeNanoseconds
 
         -- slightly tricky: create a new Context with a new MVar with an
         -- forked copy of the current Datum, creating the nested span.
@@ -447,14 +451,15 @@ getUniqueId = do
             getUniqueId
 
 {- |
-Generate a UUID but expressed in Latin 25, with least significant bits (the
-time stamp) ordered to the left so that visual distinctiveness is on the left.
-The MAC address in the lower 48 bits is /not/ reversed, leaving the most
+Generate a UUID. Trace identifiers are 16 bytes, so we could just use the UUID
+in hexidecimal. Unusually, however, we render the least significant bits of
+the time stamp ordered to the left so that visual distinctiveness is on the
+left. The MAC address in the lower 48 bits is /not/ reversed, leaving the most
 distinctiveness [the actual host as opposed to manufacturer] hanging on the
 right hand edge of the identifier.
 -}
-generateIdentifierLatin25 :: Program τ Rope
-generateIdentifierLatin25 = do
+generateIdentifierTrace64 :: Program τ Rope
+generateIdentifierTrace64 = do
     uuid <- getUniqueId
     let (w1, w2, w3, w4) = toWords uuid
         l1 = convertL w1
@@ -464,25 +469,71 @@ generateIdentifierLatin25 = do
         result = l1 <> l2 <> l3 <> l4
     pure result
   where
-    convertL = intoRope . padWithZeros 7 . reverse . toLatin25 . fromIntegral
-    convertB = intoRope . padWithZeros 7 . toLatin25 . fromIntegral
+    convertL = intoRope . toHexReversed
+    convertB = intoRope . toHexNormal
+
+--
+-- Convert a 32-bit word to eight characters, but reversed so the least
+-- significant bits are first.
+--
+toHexReversed :: Word32 -> [Char]
+toHexReversed w =
+    nibbleToHex 00 :
+    nibbleToHex 04 :
+    nibbleToHex 08 :
+    nibbleToHex 12 :
+    nibbleToHex 16 :
+    nibbleToHex 20 :
+    nibbleToHex 24 :
+    nibbleToHex 28 :
+    []
+  where
+    nibbleToHex = unsafeToDigit . fromIntegral . (.&.) 0x0f . shiftR w
+
+toHexNormal :: Word32 -> [Char]
+toHexNormal w =
+    nibbleToHex 28 :
+    nibbleToHex 24 :
+    nibbleToHex 20 :
+    nibbleToHex 16 :
+    nibbleToHex 12 :
+    nibbleToHex 08 :
+    nibbleToHex 04 :
+    nibbleToHex 00 :
+    []
+  where
+    nibbleToHex = unsafeToDigit . fromIntegral . (.&.) 0x0f . shiftR w
+
+{-
+byteToHex :: Word8 -> [Char]
+byteToHex c =
+    let !low = unsafeToDigit (c .&. 0x0f)
+        !hi = unsafeToDigit ((c .&. 0xf0) `shiftR` 4)
+     in hi : low : []
+-}
+
+-- convert a nibble to its hexidecimal character equivalent
+unsafeToDigit :: Word8 -> Char
+unsafeToDigit w =
+    if w < 10
+        then unsafeChr8 (48 + w)
+        else unsafeChr8 (97 + w - 10)
 
 {- |
-Generate a UUID but expressed in Base 62.
+Generate an identifier for a span. We only have 8 bytes to work with. We use the
+nanosecond prescision timestamp with the nibbles reversed.
 -}
-generateIdentifierBase62 :: Program τ Rope
-generateIdentifierBase62 = do
-    uuid <- getUniqueId
-    let (w1, w2, w3, w4) = toWords uuid
+generateIdentifierSpan32 :: TimeStamp -> Program τ Rope
+generateIdentifierSpan32 start = do
+    let w = fromIntegral (unTimeStamp start) :: Word64
+        w1 = fromIntegral ((.&.) 0xffffffff (shiftR w 32))
+        w2 = fromIntegral ((.&.) 0xffffffff w)
         b1 = convertL w1
         b2 = convertL w2
-        b3 = convertB w3
-        b4 = convertB w4
-        result = b1 <> b2 <> b3 <> b4
+        result = b2 <> b1
     pure result
   where
-    convertL = intoRope . padWithZeros 6 . reverse . toBase62 . fromIntegral
-    convertB = intoRope . padWithZeros 6 . toBase62 . fromIntegral
+    convertL = intoRope . toHexReversed
 
 {- |
 Start a new trace. A random identifier will be generated.
@@ -499,7 +550,7 @@ program = do
 -}
 beginTrace :: Program τ α -> Program τ α
 beginTrace action = do
-    trace <- generateIdentifierLatin25
+    trace <- generateIdentifierTrace64
     usingTrace (Trace trace) Nothing action
 
 {- |
