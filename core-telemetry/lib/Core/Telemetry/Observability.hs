@@ -145,6 +145,7 @@ module Core.Telemetry.Observability (
     setServiceName,
     -- for testing
     convertToTrace64,
+    convertToSpan32,
     toHexNormal,
     toHexReversed,
 
@@ -465,13 +466,16 @@ right hand edge of the identifier.
 generateIdentifierTrace64 :: Program τ Rope
 generateIdentifierTrace64 = do
     uuid <- getUniqueId
+    pure (convertToTrace64 uuid)
+
+convertToTrace64 :: UUID -> Rope
+convertToTrace64 uuid =
     let (w1, w2, w3, w4) = toWords uuid
         l1 = convertL w1
         l2 = convertL w2
         l3 = convertB w3
         l4 = convertB w4
-        result = l1 <> l2 <> l3 <> l4
-    pure result
+     in l1 <> l2 <> l3 <> l4
   where
     convertL = intoRope . toHexReversed
     convertB = intoRope . toHexNormal
@@ -528,14 +532,17 @@ Generate an identifier for a span. We only have 8 bytes to work with. We use the
 nanosecond prescision timestamp with the nibbles reversed.
 -}
 generateIdentifierSpan32 :: TimeStamp -> Program τ Rope
-generateIdentifierSpan32 start = do
-    let w = fromIntegral (unTimeStamp start) :: Word64
+generateIdentifierSpan32 t = do
+    pure (convertToSpan32 t)
+
+convertToSpan32 :: TimeStamp -> Rope
+convertToSpan32 t =
+    let w = fromIntegral (unTimeStamp t) :: Word64
         w1 = fromIntegral ((.&.) 0xffffffff (shiftR w 32))
         w2 = fromIntegral ((.&.) 0xffffffff w)
         b1 = convertL w1
         b2 = convertL w2
-        result = b2 <> b1
-    pure result
+     in b2 <> b1
   where
     convertL = intoRope . toHexReversed
 

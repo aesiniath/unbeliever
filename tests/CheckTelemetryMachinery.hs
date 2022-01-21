@@ -9,11 +9,13 @@ import qualified Control.Concurrent.Async as Async (async, wait)
 import Control.Concurrent.MVar (MVar, modifyMVar_, newMVar, readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (newTQueueIO, writeTQueue)
+import Data.Int (Int32)
+import Data.Word (Word32)
 import Test.Hspec hiding (context)
 
 import Core.Program
 import Core.System
-import Core.Telemetry.Observability (toHexNormal, toHexReversed)
+import Core.Telemetry
 
 countingAction :: Int -> [Int] -> IO ()
 countingAction target ints = sum ints `shouldBe` target
@@ -55,7 +57,12 @@ checkTelemetryMachinery = do
             toHexReversed maxBound `shouldBe` "ffffffff"
 
         it "formats timestamp as span identifier" $ do
-            True `shouldBe` True
+            convertToSpan32 (TimeStamp 1) `shouldBe` "1000000000000000"
+            convertToSpan32 (TimeStamp (fromIntegral (maxBound :: Int32))) `shouldBe` "fffffff700000000"
+            convertToSpan32 (TimeStamp (fromIntegral (maxBound :: Word32))) `shouldBe` "ffffffff00000000"
+            convertToSpan32 (TimeStamp (fromIntegral (maxBound :: Word32)) + 1) `shouldBe` "0000000010000000"
+            convertToSpan32 (TimeStamp 1642770757512438606) `shouldBe` "e43ade8dc4b4cc61"
+            convertToSpan32 (TimeStamp 1642770757512438607) `shouldBe` "f43ade8dc4b4cc61"
 
     describe "Queue processing" $ do
         it "processes an item put on queue" $ do
