@@ -86,5 +86,5 @@ checkProgramMonad = do
                 Safe.catch (Safe.throw Boom) (\(_ :: Boom) -> return ())
 
     describe "Package metadata" $ do
-        it "The source location is accessible" $ do
+        it "the source location is accessible" $ do
             render 80 __LOCATION__ `shouldBe` "tests/CheckProgramMonad.hs:90"

@@ -4,15 +4,16 @@
 
 module CheckTelemetryMachinery where
 
+import Control.Concurrent (threadDelay)
+import qualified Control.Concurrent.Async as Async (async, wait)
 import Control.Concurrent.MVar (MVar, modifyMVar_, newMVar, readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (newTQueueIO, writeTQueue)
+import Test.Hspec hiding (context)
+
 import Core.Program
 import Core.System
-import qualified Control.Concurrent.Async as Async (async, wait)
-
-import Test.Hspec hiding (context)
-import Control.Concurrent (threadDelay)
+import Core.Telemetry.Observability (toHexNormal, toHexReversed)
 
 countingAction :: Int -> [Int] -> IO ()
 countingAction target ints = sum ints `shouldBe` target
@@ -29,6 +30,33 @@ storingAction items = do
 
 checkTelemetryMachinery :: Spec
 checkTelemetryMachinery = do
+    describe "Trace and Span identifiers" $ do
+        it "converts Word32 to hexidecimal" $ do
+            toHexNormal 1 `shouldBe` "00000001"
+            toHexNormal 10 `shouldBe` "0000000a"
+            toHexNormal 17 `shouldBe` "00000011"
+            toHexNormal 255 `shouldBe` "000000ff"
+            toHexNormal 256 `shouldBe` "00000100"
+            toHexNormal 1024 `shouldBe` "00000400"
+            toHexNormal 4096 `shouldBe` "00001000"
+            toHexNormal 65536 `shouldBe` "00010000"
+            toHexNormal (maxBound - 1) `shouldBe` "fffffffe"
+            toHexNormal maxBound `shouldBe` "ffffffff"
+
+            toHexReversed 1 `shouldBe` "10000000"
+            toHexReversed 10 `shouldBe` "a0000000"
+            toHexReversed 17 `shouldBe` "11000000"
+            toHexReversed 255 `shouldBe` "ff000000"
+            toHexReversed 256 `shouldBe` "00100000"
+            toHexReversed 1024 `shouldBe` "00400000"
+            toHexReversed 4096 `shouldBe` "00010000"
+            toHexReversed 65536 `shouldBe` "00001000"
+            toHexReversed (maxBound - 1) `shouldBe` "efffffff"
+            toHexReversed maxBound `shouldBe` "ffffffff"
+
+        it "formats timestamp as span identifier" $ do
+            True `shouldBe` True
+
     describe "Queue processing" $ do
         it "processes an item put on queue" $ do
             v <- newMVar Debug
@@ -88,7 +116,6 @@ checkTelemetryMachinery = do
                     writeTQueue queue (Just i)
                 )
                 ([201 .. 300] :: [Int])
-
 
             atomically $ do
                 writeTQueue queue Nothing

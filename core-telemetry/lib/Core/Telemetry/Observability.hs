@@ -143,6 +143,10 @@ module Core.Telemetry.Observability (
     beginTrace,
     usingTrace,
     setServiceName,
+    -- for testing
+    convertToTrace64,
+    toHexNormal,
+    toHexReversed,
 
     -- * Spans
     Label,
