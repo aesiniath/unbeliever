@@ -72,7 +72,16 @@ checkTelemetryMachinery = do
             let uuid1 = fromWords 2 0 0 1
             convertToTrace64 uuid1 `shouldBe` "20000000000000000000000000000001"
             let uuid2 = fromMaybe nil (fromString "3f648e86-9642-4af6-b8ff-bd2c64c6eedd")
-            convertToTrace64 uuid2 `shouldBe` packRope ("68e846f3" ++ "6fa42469" ++ "b8ff" ++ "bd2c64c6eedd")
+            convertToTrace64 uuid2
+                `shouldBe` mconcat
+                    ( fmap
+                        packRope
+                        [ reverse "3f648e86"
+                        , reverse ("9642" ++ "4af6")
+                        , "b8ff"
+                        , "bd2c64c6eedd"
+                        ]
+                    )
 
     describe "Queue processing" $ do
         it "processes an item put on queue" $ do
