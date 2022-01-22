@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
+{-# OPTIONS_HADDOCK prune #-}
 
 {- |
 Traditional \"monitoring\" systems were concerned with gathering together obscene
@@ -167,7 +168,7 @@ module Core.Telemetry.Observability (
     toHexReversed64,
     toHexNormal32,
     toHexReversed32,
-    getMachineIdentity,
+    knownMachineIdentity,
 ) where
 
 import Control.Concurrent.MVar (modifyMVar_, newMVar, readMVar)
@@ -178,6 +179,7 @@ import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Context
 import Core.Program.Logging
+import Core.System (unsafePerformIO)
 import Core.System.Base (liftIO)
 import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
 import Core.Text.Rope
@@ -400,7 +402,8 @@ encloseSpan :: Label -> Program z a -> Program z a
 encloseSpan label action = do
     context <- getContext
 
-    start <- liftIO getCurrentTimeNanoseconds
+    start <- liftIO $ do
+        getCurrentTimeNanoseconds
 
     unique <- generateIdentifierSpan start
 
@@ -456,8 +459,8 @@ Get the MAC address of the first interface that's not the loopback device. If
 something goes weird then we return a valid but bogus address (in the locally
 administered addresses block).
 -}
-getMachineIdentity :: IO MAC
-getMachineIdentity = do
+knownMachineIdentity :: MAC
+knownMachineIdentity = unsafePerformIO $ do
     interfaces <- getNetworkInterfaces
     pure (go interfaces)
   where
@@ -471,6 +474,7 @@ getMachineIdentity = do
 
     loopbackAddress = MAC 00 00 00 00 00 00
     bogusAddress = MAC 0xfe 0xff 0xff 0xff 0xff 0xff
+{-# NOINLINE knownMachineIdentity #-}
 
 {- |
 Generate an identifier suitable for use in a trace context. Trace identifiers
@@ -480,7 +484,7 @@ UUID, but we render the least significant bits of the time stamp ordered first
 so that visual distinctiveness is on the left. The MAC address in the lower 48
 bits is /not/ reversed, leaving the most distinctiveness [the actual host as
 opposed to manufacturer OIN] hanging on the right hand edge of the identifier.
-The two bytes of randomness is in the middle.
+The two bytes of randomness are in the middle.
 -}
 generateIdentifierTrace :: Program τ Trace
 generateIdentifierTrace = do
@@ -490,12 +494,10 @@ generateIdentifierTrace = do
     rand <-
         liftIO $
             randomRIO (0, 65535)
-    address <-
-        liftIO $
-            getMachineIdentity
+
     pure
         ( Trace
-            (convertToTrace64 now rand address)
+            (convertToTrace64 now rand knownMachineIdentity)
         )
 
 convertToTrace64 :: TimeStamp -> Word16 -> MAC -> Rope
