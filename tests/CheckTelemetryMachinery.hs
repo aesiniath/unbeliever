@@ -10,9 +10,8 @@ import Control.Concurrent.MVar (MVar, modifyMVar_, newMVar, readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (newTQueueIO, writeTQueue)
 import Data.Int (Int32)
-import Data.Maybe (fromMaybe)
-import Data.UUID (fromString, fromWords, nil)
 import Data.Word (Word32)
+import Network.Info (MAC (..))
 import Test.Hspec hiding (context)
 
 import Core.Program
@@ -37,27 +36,54 @@ checkTelemetryMachinery :: Spec
 checkTelemetryMachinery = do
     describe "Trace and Span identifiers" $ do
         it "converts Word32 to hexidecimal" $ do
-            toHexNormal 1 `shouldBe` "00000001"
-            toHexNormal 10 `shouldBe` "0000000a"
-            toHexNormal 17 `shouldBe` "00000011"
-            toHexNormal 255 `shouldBe` "000000ff"
-            toHexNormal 256 `shouldBe` "00000100"
-            toHexNormal 1024 `shouldBe` "00000400"
-            toHexNormal 4096 `shouldBe` "00001000"
-            toHexNormal 65536 `shouldBe` "00010000"
-            toHexNormal (maxBound - 1) `shouldBe` "fffffffe"
-            toHexNormal maxBound `shouldBe` "ffffffff"
+            toHexNormal32 1 `shouldBe` "00000001"
+            toHexNormal32 10 `shouldBe` "0000000a"
+            toHexNormal32 17 `shouldBe` "00000011"
+            toHexNormal32 255 `shouldBe` "000000ff"
+            toHexNormal32 256 `shouldBe` "00000100"
+            toHexNormal32 1024 `shouldBe` "00000400"
+            toHexNormal32 4096 `shouldBe` "00001000"
+            toHexNormal32 65536 `shouldBe` "00010000"
+            toHexNormal32 0xdcba0000 `shouldBe` "dcba0000"
+            toHexNormal32 (maxBound - 1) `shouldBe` "fffffffe"
+            toHexNormal32 maxBound `shouldBe` "ffffffff"
 
-            toHexReversed 1 `shouldBe` "10000000"
-            toHexReversed 10 `shouldBe` "a0000000"
-            toHexReversed 17 `shouldBe` "11000000"
-            toHexReversed 255 `shouldBe` "ff000000"
-            toHexReversed 256 `shouldBe` "00100000"
-            toHexReversed 1024 `shouldBe` "00400000"
-            toHexReversed 4096 `shouldBe` "00010000"
-            toHexReversed 65536 `shouldBe` "00001000"
-            toHexReversed (maxBound - 1) `shouldBe` "efffffff"
-            toHexReversed maxBound `shouldBe` "ffffffff"
+            toHexReversed32 1 `shouldBe` "10000000"
+            toHexReversed32 10 `shouldBe` "a0000000"
+            toHexReversed32 17 `shouldBe` "11000000"
+            toHexReversed32 255 `shouldBe` "ff000000"
+            toHexReversed32 256 `shouldBe` "00100000"
+            toHexReversed32 1024 `shouldBe` "00400000"
+            toHexReversed32 4096 `shouldBe` "00010000"
+            toHexReversed32 65536 `shouldBe` "00001000"
+            toHexReversed32 0xdcba0000 `shouldBe` "0000abcd"
+            toHexReversed32 (maxBound - 1) `shouldBe` "efffffff"
+            toHexReversed32 maxBound `shouldBe` "ffffffff"
+
+        it "converts Word64 to hexidecimal" $ do
+            toHexNormal64 1 `shouldBe` "0000000000000001"
+            toHexNormal64 10 `shouldBe` "000000000000000a"
+            toHexNormal64 17 `shouldBe` "0000000000000011"
+            toHexNormal64 255 `shouldBe` "00000000000000ff"
+            toHexNormal64 256 `shouldBe` "0000000000000100"
+            toHexNormal64 1024 `shouldBe` "0000000000000400"
+            toHexNormal64 4096 `shouldBe` "0000000000001000"
+            toHexNormal64 65536 `shouldBe` "0000000000010000"
+            toHexNormal64 0xdcba000042000000 `shouldBe` "dcba000042000000"
+            toHexNormal64 (maxBound - 1) `shouldBe` "fffffffffffffffe"
+            toHexNormal64 maxBound `shouldBe` "ffffffffffffffff"
+
+            toHexReversed64 1 `shouldBe` "1000000000000000"
+            toHexReversed64 10 `shouldBe` "a000000000000000"
+            toHexReversed64 17 `shouldBe` "1100000000000000"
+            toHexReversed64 255 `shouldBe` "ff00000000000000"
+            toHexReversed64 256 `shouldBe` "0010000000000000"
+            toHexReversed64 1024 `shouldBe` "0040000000000000"
+            toHexReversed64 4096 `shouldBe` "0001000000000000"
+            toHexReversed64 65536 `shouldBe` "0000100000000000"
+            toHexReversed64 0xdcba000042000000 `shouldBe` "000000240000abcd"
+            toHexReversed64 (maxBound - 1) `shouldBe` "efffffffffffffff"
+            toHexReversed64 maxBound `shouldBe` "ffffffffffffffff"
 
         it "formats timestamp as span identifier" $ do
             convertToSpan32 (TimeStamp 1) `shouldBe` "1000000000000000"
@@ -67,19 +93,15 @@ checkTelemetryMachinery = do
             convertToSpan32 (TimeStamp 1642770757512438606) `shouldBe` "e43ade8dc4b4cc61"
             convertToSpan32 (TimeStamp 1642770757512438607) `shouldBe` "f43ade8dc4b4cc61"
 
-        it "formats UUID as trace identifier" $ do
-            convertToTrace64 nil `shouldBe` "00000000000000000000000000000000"
-            let uuid1 = fromWords 2 0 0 1
-            convertToTrace64 uuid1 `shouldBe` "20000000000000000000000000000001"
-            let uuid2 = fromMaybe nil (fromString "3f648e86-9642-4af6-b8ff-bd2c64c6eedd")
-            convertToTrace64 uuid2
+        it "formats timestamp and address as trace identifier" $ do
+            convertToTrace64 (TimeStamp 0) 0 (MAC 0 0 0 0 0 0) `shouldBe` "00000000000000000000000000000000"
+            convertToTrace64 (TimeStamp 0x0fedcba987654321) 0x2468 (MAC 0x1a 0x2b 0x3c 0x4d 0x5e 0x6f)
                 `shouldBe` mconcat
                     ( fmap
                         packRope
-                        [ reverse "3f648e86"
-                        , reverse ("9642" ++ "4af6")
-                        , "b8ff"
-                        , "bd2c64c6eedd"
+                        [ reverse "0fedcba987654321"
+                        , "2468"
+                        , "1a2b3c4d5e6f"
                         ]
                     )
 

@@ -143,11 +143,6 @@ module Core.Telemetry.Observability (
     beginTrace,
     usingTrace,
     setServiceName,
-    -- for testing
-    convertToTrace64,
-    convertToSpan32,
-    toHexNormal,
-    toHexReversed,
 
     -- * Spans
     Label,
@@ -162,6 +157,17 @@ module Core.Telemetry.Observability (
     -- * Events
     sendEvent,
     clearMetrics,
+
+    -- * Internals
+    generateIdentifierTrace,
+    generateIdentifierSpan,
+    convertToTrace64,
+    convertToSpan32,
+    toHexNormal64,
+    toHexReversed64,
+    toHexNormal32,
+    toHexReversed32,
+    getMachineIdentity,
 ) where
 
 import Control.Concurrent.MVar (modifyMVar_, newMVar, readMVar)
@@ -171,7 +177,6 @@ import Core.Data.Structures (Map, emptyMap, insertKeyValue)
 import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Context
-import Core.Program.Execute (sleepThread)
 import Core.Program.Logging
 import Core.System.Base (liftIO)
 import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
@@ -185,10 +190,10 @@ import Data.Scientific (Scientific)
 import qualified Data.Text as T (Text)
 import Data.Text.Internal.Unsafe.Char (unsafeChr8)
 import qualified Data.Text.Lazy as U (Text)
-import Data.UUID (UUID, toWords)
-import Data.UUID.V1 (nextUUID)
 import GHC.Int
 import GHC.Word
+import Network.Info (MAC (..), NetworkInterface, getNetworkInterfaces, mac)
+import System.Random (randomRIO)
 
 {- |
 A telemetry value that can be sent over the wire. This is a wrapper around
@@ -397,10 +402,10 @@ encloseSpan label action = do
 
     start <- liftIO getCurrentTimeNanoseconds
 
-    unique <- generateIdentifierSpan32 start
+    unique <- generateIdentifierSpan start
 
     internal label emptyRope
-    internal "span = " unique
+    internal "span = " (unSpan unique)
 
     liftIO $ do
         -- prepare new span
@@ -412,7 +417,7 @@ encloseSpan label action = do
 
         let datum' =
                 datum
-                    { spanIdentifierFrom = Just (Span unique)
+                    { spanIdentifierFrom = Just unique
                     , spanNameFrom = label
                     , spanTimeFrom = start
                     , parentIdentifierFrom = spanIdentifierFrom datum
@@ -446,46 +451,128 @@ encloseSpan label action = do
         -- now back to your regularly scheduled Haskell program
         pure result
 
-getUniqueId :: Program τ UUID
-getUniqueId = do
-    next <- liftIO nextUUID
-    case next of
-        Just uuid -> pure uuid
-        Nothing -> do
-            sleepThread 0.000001
-            getUniqueId
+{-
+Get the MAC address of the first interface that's not the loopback device. If
+something goes weird then we return a valid but bogus address (in the locally
+administered addresses block).
+-}
+getMachineIdentity :: IO MAC
+getMachineIdentity = do
+    interfaces <- getNetworkInterfaces
+    pure (go interfaces)
+  where
+    go :: [NetworkInterface] -> MAC
+    go [] = bogusAddress
+    go (interface : remainder) =
+        let address = mac interface
+         in if address /= loopbackAddress
+                then address
+                else go remainder
+
+    loopbackAddress = MAC 00 00 00 00 00 00
+    bogusAddress = MAC 0xfe 0xff 0xff 0xff 0xff 0xff
 
 {- |
-Generate a UUID. Trace identifiers are 16 bytes, so we could just use the UUID
-in hexidecimal. Unusually, however, we render the least significant bits of
-the time stamp ordered to the left so that visual distinctiveness is on the
-left. The MAC address in the lower 48 bits is /not/ reversed, leaving the most
-distinctiveness [the actual host as opposed to manufacturer] hanging on the
-right hand edge of the identifier.
+Generate an identifier suitable for use in a trace context. Trace identifiers
+are 16 bytes. We incorporate the time to nanosecond precision, the host
+system's MAC address, and a random element. This is similar to a version 1
+UUID, but we render the least significant bits of the time stamp ordered first
+so that visual distinctiveness is on the left. The MAC address in the lower 48
+bits is /not/ reversed, leaving the most distinctiveness [the actual host as
+opposed to manufacturer OIN] hanging on the right hand edge of the identifier.
+The two bytes of randomness is in the middle.
 -}
-generateIdentifierTrace64 :: Program τ Rope
-generateIdentifierTrace64 = do
-    uuid <- getUniqueId
-    pure (convertToTrace64 uuid)
+generateIdentifierTrace :: Program τ Trace
+generateIdentifierTrace = do
+    now <-
+        liftIO $
+            getCurrentTimeNanoseconds
+    rand <-
+        liftIO $
+            randomRIO (0, 65535)
+    address <-
+        liftIO $
+            getMachineIdentity
+    pure
+        ( Trace
+            (convertToTrace64 now rand address)
+        )
 
-convertToTrace64 :: UUID -> Rope
-convertToTrace64 uuid =
-    let (w1, w2, w3, w4) = toWords uuid
-        l1 = convertL w1
-        l2 = convertL w2
-        l3 = convertB w3
-        l4 = convertB w4
-     in l1 <> l2 <> l3 <> l4
+convertToTrace64 :: TimeStamp -> Word16 -> MAC -> Rope
+convertToTrace64 time rand address =
+    let p1 = packRope (toHexReversed64 (fromIntegral time))
+        p2 = packRope (toHexNormal16 rand)
+        p3 = packRope (convertMACToHex address)
+     in p1 <> p2 <> p3
+
+convertMACToHex :: MAC -> [Char]
+convertMACToHex (MAC b1 b2 b3 b4 b5 b6) =
+    nibbleToHex b1 4 :
+    nibbleToHex b1 0 :
+    nibbleToHex b2 4 :
+    nibbleToHex b2 0 :
+    nibbleToHex b3 4 :
+    nibbleToHex b3 0 :
+    nibbleToHex b4 4 :
+    nibbleToHex b4 0 :
+    nibbleToHex b5 4 :
+    nibbleToHex b5 0 :
+    nibbleToHex b6 4 :
+    nibbleToHex b6 0 :
+    []
   where
-    convertL = intoRope . toHexReversed
-    convertB = intoRope . toHexNormal
+    nibbleToHex w = unsafeToDigit . fromIntegral . (.&.) 0x0f . shiftR w
+
+toHexReversed64 :: Word64 -> [Char]
+toHexReversed64 w =
+    nibbleToHex 00 :
+    nibbleToHex 04 :
+    nibbleToHex 08 :
+    nibbleToHex 12 :
+    nibbleToHex 16 :
+    nibbleToHex 20 :
+    nibbleToHex 24 :
+    nibbleToHex 28 : -- Word32
+    nibbleToHex 32 :
+    nibbleToHex 36 :
+    nibbleToHex 40 :
+    nibbleToHex 44 :
+    nibbleToHex 48 :
+    nibbleToHex 52 :
+    nibbleToHex 56 :
+    nibbleToHex 60 :
+    []
+  where
+    nibbleToHex = unsafeToDigit . fromIntegral . (.&.) 0x0f . shiftR w
+
+toHexNormal64 :: Word64 -> [Char]
+toHexNormal64 w =
+    nibbleToHex 60 :
+    nibbleToHex 56 :
+    nibbleToHex 52 :
+    nibbleToHex 48 :
+    nibbleToHex 44 :
+    nibbleToHex 40 :
+    nibbleToHex 36 :
+    nibbleToHex 32 :
+    nibbleToHex 28 : -- Word32
+    nibbleToHex 24 :
+    nibbleToHex 20 :
+    nibbleToHex 16 :
+    nibbleToHex 12 :
+    nibbleToHex 08 :
+    nibbleToHex 04 :
+    nibbleToHex 00 :
+    []
+  where
+    nibbleToHex = unsafeToDigit . fromIntegral . (.&.) 0x0f . shiftR w
 
 --
 -- Convert a 32-bit word to eight characters, but reversed so the least
 -- significant bits are first.
 --
-toHexReversed :: Word32 -> [Char]
-toHexReversed w =
+toHexReversed32 :: Word32 -> [Char]
+toHexReversed32 w =
     nibbleToHex 00 :
     nibbleToHex 04 :
     nibbleToHex 08 :
@@ -498,12 +585,22 @@ toHexReversed w =
   where
     nibbleToHex = unsafeToDigit . fromIntegral . (.&.) 0x0f . shiftR w
 
-toHexNormal :: Word32 -> [Char]
-toHexNormal w =
+toHexNormal32 :: Word32 -> [Char]
+toHexNormal32 w =
     nibbleToHex 28 :
     nibbleToHex 24 :
     nibbleToHex 20 :
     nibbleToHex 16 :
+    nibbleToHex 12 :
+    nibbleToHex 08 :
+    nibbleToHex 04 :
+    nibbleToHex 00 :
+    []
+  where
+    nibbleToHex = unsafeToDigit . fromIntegral . (.&.) 0x0f . shiftR w
+
+toHexNormal16 :: Word16 -> [Char]
+toHexNormal16 w =
     nibbleToHex 12 :
     nibbleToHex 08 :
     nibbleToHex 04 :
@@ -531,20 +628,17 @@ unsafeToDigit w =
 Generate an identifier for a span. We only have 8 bytes to work with. We use the
 nanosecond prescision timestamp with the nibbles reversed.
 -}
-generateIdentifierSpan32 :: TimeStamp -> Program τ Rope
-generateIdentifierSpan32 t = do
-    pure (convertToSpan32 t)
+generateIdentifierSpan :: TimeStamp -> Program τ Span
+generateIdentifierSpan t = do
+    pure
+        ( Span
+            (convertToSpan32 t)
+        )
 
 convertToSpan32 :: TimeStamp -> Rope
 convertToSpan32 t =
     let w = fromIntegral (unTimeStamp t) :: Word64
-        w1 = fromIntegral ((.&.) 0xffffffff (shiftR w 32))
-        w2 = fromIntegral ((.&.) 0xffffffff w)
-        b1 = convertL w1
-        b2 = convertL w2
-     in b2 <> b1
-  where
-    convertL = intoRope . toHexReversed
+     in packRope (toHexReversed64 w)
 
 {- |
 Start a new trace. A random identifier will be generated.
@@ -561,8 +655,8 @@ program = do
 -}
 beginTrace :: Program τ α -> Program τ α
 beginTrace action = do
-    trace <- generateIdentifierTrace64
-    usingTrace (Trace trace) Nothing action
+    trace <- generateIdentifierTrace
+    usingTrace trace Nothing action
 
 {- |
 Begin a new trace, but using a trace identifier provided externally. This is

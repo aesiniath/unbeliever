@@ -75,13 +75,13 @@ tests:
      - fingertree
      - hashable
      - hspec
+     - network-info
      - prettyprinter
      - safe-exceptions
      - stm
      - text
      - text-short
      - unordered-containers
-     - uuid
      - wai
     ghc-options: -threaded
     source-dirs:
