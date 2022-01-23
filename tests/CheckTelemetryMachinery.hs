@@ -17,6 +17,7 @@ import Test.Hspec hiding (context)
 import Core.Program
 import Core.System
 import Core.Telemetry
+import Core.Telemetry.Identifiers
 import Core.Text
 
 countingAction :: Int -> [Int] -> IO ()
@@ -86,23 +87,25 @@ checkTelemetryMachinery = do
             toHexReversed64 maxBound `shouldBe` "ffffffffffffffff"
 
         it "formats timestamp as span identifier" $ do
-            convertToSpan32 (TimeStamp 1) `shouldBe` "1000000000000000"
-            convertToSpan32 (TimeStamp (fromIntegral (maxBound :: Int32))) `shouldBe` "fffffff700000000"
-            convertToSpan32 (TimeStamp (fromIntegral (maxBound :: Word32))) `shouldBe` "ffffffff00000000"
-            convertToSpan32 (TimeStamp (fromIntegral (maxBound :: Word32)) + 1) `shouldBe` "0000000010000000"
-            convertToSpan32 (TimeStamp 1642770757512438606) `shouldBe` "e43ade8dc4b4cc61"
-            convertToSpan32 (TimeStamp 1642770757512438607) `shouldBe` "f43ade8dc4b4cc61"
+            createIdentifierSpan (TimeStamp 1) 0 `shouldBe` Span "1000000000000000"
+            createIdentifierSpan (TimeStamp (fromIntegral (maxBound :: Int32))) 0 `shouldBe` Span "fffffff700000000"
+            createIdentifierSpan (TimeStamp (fromIntegral (maxBound :: Word32))) 0 `shouldBe` Span "ffffffff00000000"
+            createIdentifierSpan (TimeStamp (fromIntegral (maxBound :: Word32)) + 1) 0 `shouldBe` Span "0000000010000000"
+            createIdentifierSpan (TimeStamp 1642770757512438606) 0 `shouldBe` Span "e43ade8dc4b4cc61"
+            createIdentifierSpan (TimeStamp 1642770757512438607) 0 `shouldBe` Span "f43ade8dc4b4cc61"
 
         it "formats timestamp and address as trace identifier" $ do
-            convertToTrace64 (TimeStamp 0) 0 (MAC 0 0 0 0 0 0) `shouldBe` "00000000000000000000000000000000"
-            convertToTrace64 (TimeStamp 0x0fedcba987654321) 0x2468 (MAC 0x1a 0x2b 0x3c 0x4d 0x5e 0x6f)
-                `shouldBe` mconcat
-                    ( fmap
-                        packRope
-                        [ reverse "0fedcba987654321"
-                        , "2468"
-                        , "1a2b3c4d5e6f"
-                        ]
+            createIdentifierTrace (TimeStamp 0) 0 (MAC 0 0 0 0 0 0) `shouldBe` Trace "00000000000000000000000000000000"
+            createIdentifierTrace (TimeStamp 0x0fedcba987654321) 0x2468 (MAC 0x1a 0x2b 0x3c 0x4d 0x5e 0x6f)
+                `shouldBe` Trace
+                    ( mconcat
+                        ( fmap
+                            packRope
+                            [ reverse "0fedcba987654321"
+                            , "2468"
+                            , "1a2b3c4d5e6f"
+                            ]
+                        )
                     )
 
     describe "Queue processing" $ do
