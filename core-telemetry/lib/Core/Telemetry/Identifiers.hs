@@ -31,7 +31,7 @@ import Core.System (unsafePerformIO)
 import Core.System.Base (liftIO)
 import Core.System.External (TimeStamp (unTimeStamp))
 import Core.Text.Rope
-import Data.Bits (shiftR, (.&.))
+import Data.Bits (shiftL, shiftR, (.&.), (.|.))
 import Data.Text.Internal.Unsafe.Char (unsafeChr8)
 import GHC.Word
 import Network.Info (MAC (..), NetworkInterface, getNetworkInterfaces, mac)
@@ -202,7 +202,9 @@ overwrite the last two bytes with a random value.
 -}
 createIdentifierSpan :: TimeStamp -> Word16 -> Span
 createIdentifierSpan time rand =
-    let w = fromIntegral (unTimeStamp time) :: Word64
+    let t = fromIntegral (unTimeStamp time) :: Word64
+        r = fromIntegral rand :: Word64
+        w = (t .&. 0x0000ffffffffffff) .|. (shiftL r 48)
      in Span
             ( packRope
                 ( toHexReversed64 w
