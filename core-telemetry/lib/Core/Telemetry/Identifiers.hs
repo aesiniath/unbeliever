@@ -4,16 +4,26 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
-{-# OPTIONS_HADDOCK hide #-}
+{-# OPTIONS_HADDOCK prune #-}
 
+{- |
+Machinery for generating identifiers to be used in traces and spans. Meets the
+requirements of the [W3C Trace
+Context](https://www.w3.org/TR/trace-context/#traceparent-header)
+specification, specifically as relates to forming trace identifiers and span
+identifiers into @traceparent@ headers. The key requirements are that traces
+be globally unique and that spans be unique within a trace.
+-}
 module Core.Telemetry.Identifiers (
+    -- * Internals
     createIdentifierTrace,
     createIdentifierSpan,
+    hostMachineIdentity,
+    -- for testing
     toHexNormal64,
     toHexReversed64,
     toHexNormal32,
     toHexReversed32,
-    knownMachineIdentity,
 ) where
 
 import Core.Program.Context
@@ -26,13 +36,13 @@ import Data.Text.Internal.Unsafe.Char (unsafeChr8)
 import GHC.Word
 import Network.Info (MAC (..), NetworkInterface, getNetworkInterfaces, mac)
 
-{-
+{- |
 Get the MAC address of the first interface that's not the loopback device. If
 something goes weird then we return a valid but bogus address (in the locally
 administered addresses block).
 -}
-knownMachineIdentity :: MAC
-knownMachineIdentity = unsafePerformIO $ do
+hostMachineIdentity :: MAC
+hostMachineIdentity = unsafePerformIO $ do
     interfaces <- getNetworkInterfaces
     pure (go interfaces)
   where
@@ -46,7 +56,7 @@ knownMachineIdentity = unsafePerformIO $ do
 
     loopbackAddress = MAC 00 00 00 00 00 00
     bogusAddress = MAC 0xfe 0xff 0xff 0xff 0xff 0xff
-{-# NOINLINE knownMachineIdentity #-}
+{-# NOINLINE hostMachineIdentity #-}
 
 {- |
 Generate an identifier suitable for use in a trace context. Trace identifiers
@@ -188,7 +198,7 @@ unsafeToDigit w =
 {- |
 Generate an identifier for a span. We only have 8 bytes to work with. We use
 the nanosecond prescision timestamp with the nibbles reversed, and then
-overwrite the bottom two bytes with a random value.
+overwrite the last two bytes with a random value.
 -}
 createIdentifierSpan :: TimeStamp -> Word16 -> Span
 createIdentifierSpan time rand =

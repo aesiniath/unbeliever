@@ -158,10 +158,6 @@ module Core.Telemetry.Observability (
     -- * Events
     sendEvent,
     clearMetrics,
-
-    -- * Internals
-    createIdentifierTrace,
-    createIdentifierSpan,
 ) where
 
 import Control.Concurrent.MVar (modifyMVar_, newMVar, readMVar)
@@ -469,7 +465,7 @@ beginTrace action = do
     rand <- liftIO $ do
         (randomIO :: IO Word16)
 
-    let trace = createIdentifierTrace now rand knownMachineIdentity
+    let trace = createIdentifierTrace now rand hostMachineIdentity
 
     usingTrace trace Nothing action
 
