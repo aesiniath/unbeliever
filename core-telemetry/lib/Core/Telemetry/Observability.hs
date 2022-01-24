@@ -181,8 +181,7 @@ import qualified Data.Text as T (Text)
 import qualified Data.Text.Lazy as U (Text)
 import GHC.Int
 import GHC.Word
-import Network.Info (MAC (..))
-import System.Random (randomIO, randomRIO)
+import System.Random (randomIO)
 
 {- |
 A telemetry value that can be sent over the wire. This is a wrapper around
