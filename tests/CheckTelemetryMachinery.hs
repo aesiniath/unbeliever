@@ -16,7 +16,6 @@ import Test.Hspec hiding (context)
 
 import Core.Program
 import Core.System
-import Core.Telemetry
 import Core.Telemetry.Identifiers
 import Core.Text
 
@@ -91,8 +90,9 @@ checkTelemetryMachinery = do
             createIdentifierSpan (TimeStamp (fromIntegral (maxBound :: Int32))) 0 `shouldBe` Span "fffffff700000000"
             createIdentifierSpan (TimeStamp (fromIntegral (maxBound :: Word32))) 0 `shouldBe` Span "ffffffff00000000"
             createIdentifierSpan (TimeStamp (fromIntegral (maxBound :: Word32)) + 1) 0 `shouldBe` Span "0000000010000000"
-            createIdentifierSpan (TimeStamp 1642770757512438606) 0 `shouldBe` Span "e43ade8dc4b4cc61"
-            createIdentifierSpan (TimeStamp 1642770757512438607) 0 `shouldBe` Span "f43ade8dc4b4cc61"
+            createIdentifierSpan (TimeStamp 1642770757512438606) 0 `shouldBe` Span "e43ade8dc4b40000"
+            createIdentifierSpan (TimeStamp 1642770757512438607) 0 `shouldBe` Span "f43ade8dc4b40000"
+            createIdentifierSpan (TimeStamp 1642770757512438607) 0x1a2b `shouldBe` Span "f43ade8dc4b4b2a1"
 
         it "formats timestamp and address as trace identifier" $ do
             createIdentifierTrace (TimeStamp 0) 0 (MAC 0 0 0 0 0 0) `shouldBe` Trace "00000000000000000000000000000000"
