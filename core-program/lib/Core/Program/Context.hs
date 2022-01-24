@@ -102,7 +102,7 @@ continuing an inherited trace and passed the identifier of the parent span you
 can specify it using this constructor.
 -}
 newtype Span = Span Rope
-    deriving (Show, IsString)
+    deriving (Show, Eq, IsString)
 
 unSpan :: Span -> Rope
 unSpan (Span text) = text
@@ -116,7 +116,7 @@ this program or request handler, and you can specify it by using
 'Core.Telemetry.Observability.usingTrace'.
 -}
 newtype Trace = Trace Rope
-    deriving (Show, IsString)
+    deriving (Show, Eq, IsString)
 
 unTrace :: Trace -> Rope
 unTrace (Trace text) = text

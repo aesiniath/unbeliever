@@ -1,8 +1,10 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
+{-# OPTIONS_HADDOCK prune #-}
 
 {- |
 Traditional \"monitoring\" systems were concerned with gathering together obscene
@@ -165,23 +167,22 @@ import Core.Data.Structures (Map, emptyMap, insertKeyValue)
 import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Context
-import Core.Program.Execute (sleepThread)
 import Core.Program.Logging
 import Core.System.Base (liftIO)
 import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
+import Core.Telemetry.Identifiers
 import Core.Text.Rope
 import Core.Text.Utilities (oxford, quote)
 import qualified Data.ByteString as B (ByteString)
 import qualified Data.ByteString.Lazy as L (ByteString)
-import Data.Int (Int32, Int64)
 import qualified Data.List as List (foldl')
-import Data.Locator (padWithZeros, toBase62, toLatin25)
 import Data.Scientific (Scientific)
 import qualified Data.Text as T (Text)
 import qualified Data.Text.Lazy as U (Text)
-import Data.UUID (UUID, toWords)
-import Data.UUID.V1 (nextUUID)
-import Data.Word (Word32, Word64)
+import GHC.Int
+import GHC.Word
+import Network.Info (MAC (..))
+import System.Random (randomIO, randomRIO)
 
 {- |
 A telemetry value that can be sent over the wire. This is a wrapper around
@@ -388,13 +389,19 @@ encloseSpan :: Label -> Program z a -> Program z a
 encloseSpan label action = do
     context <- getContext
 
-    unique <- generateIdentifierBase62
+    start <- liftIO $ do
+        getCurrentTimeNanoseconds
+
+    rand <- liftIO $ do
+        (randomIO :: IO Word16)
+
+    let unique = createIdentifierSpan start rand
+
     internal label emptyRope
-    internal "span = " unique
+    internal "span = " (unSpan unique)
 
     liftIO $ do
         -- prepare new span
-        start <- getCurrentTimeNanoseconds
 
         -- slightly tricky: create a new Context with a new MVar with an
         -- forked copy of the current Datum, creating the nested span.
@@ -403,7 +410,7 @@ encloseSpan label action = do
 
         let datum' =
                 datum
-                    { spanIdentifierFrom = Just (Span unique)
+                    { spanIdentifierFrom = Just unique
                     , spanNameFrom = label
                     , spanTimeFrom = start
                     , parentIdentifierFrom = spanIdentifierFrom datum
@@ -437,53 +444,6 @@ encloseSpan label action = do
         -- now back to your regularly scheduled Haskell program
         pure result
 
-getUniqueId :: Program τ UUID
-getUniqueId = do
-    next <- liftIO nextUUID
-    case next of
-        Just uuid -> pure uuid
-        Nothing -> do
-            sleepThread 0.000001
-            getUniqueId
-
-{- |
-Generate a UUID but expressed in Latin 25, with least significant bits (the
-time stamp) ordered to the left so that visual distinctiveness is on the left.
-The MAC address in the lower 48 bits is /not/ reversed, leaving the most
-distinctiveness [the actual host as opposed to manufacturer] hanging on the
-right hand edge of the identifier.
--}
-generateIdentifierLatin25 :: Program τ Rope
-generateIdentifierLatin25 = do
-    uuid <- getUniqueId
-    let (w1, w2, w3, w4) = toWords uuid
-        l1 = convertL w1
-        l2 = convertL w2
-        l3 = convertB w3
-        l4 = convertB w4
-        result = l1 <> l2 <> l3 <> l4
-    pure result
-  where
-    convertL = intoRope . padWithZeros 7 . reverse . toLatin25 . fromIntegral
-    convertB = intoRope . padWithZeros 7 . toLatin25 . fromIntegral
-
-{- |
-Generate a UUID but expressed in Base 62.
--}
-generateIdentifierBase62 :: Program τ Rope
-generateIdentifierBase62 = do
-    uuid <- getUniqueId
-    let (w1, w2, w3, w4) = toWords uuid
-        b1 = convertL w1
-        b2 = convertL w2
-        b3 = convertB w3
-        b4 = convertB w4
-        result = b1 <> b2 <> b3 <> b4
-    pure result
-  where
-    convertL = intoRope . padWithZeros 6 . reverse . toBase62 . fromIntegral
-    convertB = intoRope . padWithZeros 6 . toBase62 . fromIntegral
-
 {- |
 Start a new trace. A random identifier will be generated.
 
@@ -499,8 +459,15 @@ program = do
 -}
 beginTrace :: Program τ α -> Program τ α
 beginTrace action = do
-    trace <- generateIdentifierLatin25
-    usingTrace (Trace trace) Nothing action
+    now <- liftIO $ do
+        getCurrentTimeNanoseconds
+
+    rand <- liftIO $ do
+        (randomIO :: IO Word16)
+
+    let trace = createIdentifierTrace now rand hostMachineIdentity
+
+    usingTrace trace Nothing action
 
 {- |
 Begin a new trace, but using a trace identifier provided externally. This is

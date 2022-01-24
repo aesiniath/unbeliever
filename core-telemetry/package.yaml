@@ -1,5 +1,5 @@
 name: core-telemetry
-version: 0.1.8.1
+version: 0.1.8.4
 synopsis: Advanced telemetry
 description: |
   This is part of a library to help build command-line programs, both tools and
@@ -40,14 +40,13 @@ library:
    - exceptions
    - http-streams
    - io-streams
-   - locators
    - mtl
+   - network-info
    - random
    - safe-exceptions
    - scientific
    - stm
    - unix
-   - uuid
   source-dirs:
   - lib
   exposed-modules:
@@ -55,6 +54,7 @@ library:
    - Core.Telemetry.Console
    - Core.Telemetry.General
    - Core.Telemetry.Honeycomb
+   - Core.Telemetry.Identifiers
    - Core.Telemetry.Observability
    - Core.Telemetry.Structured
   other-modules: []
