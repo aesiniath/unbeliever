@@ -1,5 +1,5 @@
 name: core-telemetry
-version: 0.1.8.4
+version: 0.1.8.5
 synopsis: Advanced telemetry
 description: |
   This is part of a library to help build command-line programs, both tools and

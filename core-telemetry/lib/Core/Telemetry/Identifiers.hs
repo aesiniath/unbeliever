@@ -15,6 +15,10 @@ identifiers into @traceparent@ headers. The key requirements are that traces
 be globally unique and that spans be unique within a trace.
 -}
 module Core.Telemetry.Identifiers (
+    -- * Traces and Spans
+    getIdentifierTrace,
+    getIdentifierSpan,
+
     -- * Internals
     createIdentifierTrace,
     createIdentifierSpan,
@@ -26,6 +30,7 @@ module Core.Telemetry.Identifiers (
     toHexReversed32,
 ) where
 
+import Control.Concurrent.MVar (readMVar)
 import Core.Program.Context
 import Core.System (unsafePerformIO)
 import Core.System.Base (liftIO)
@@ -210,3 +215,36 @@ createIdentifierSpan time rand =
                 ( toHexReversed64 w
                 )
             )
+
+
+{- |
+Get the identifier of the current trace, if you are ithin a trace started by
+'beginTrace' or 'usingTrace'.
+
+@since 0.1.8
+-}
+getIdentifierTrace :: Program τ (Maybe Trace)
+getIdentifierTrace = do
+    context <- getContext
+
+    liftIO $ do
+        let v = currentDatumFrom context
+        datum <- readMVar v
+
+        pure (traceIdentifierFrom datum)
+
+{- |
+Get the identifier of the current span, if you are currently within a span
+created by 'encloseSpan'.
+
+@since 0.1.8
+-}
+getIdentifierSpan :: Program τ (Maybe Span)
+getIdentifierSpan = do
+    context <- getContext
+
+    liftIO $ do
+        let v = currentDatumFrom context
+        datum <- readMVar v
+
+        pure (spanIdentifierFrom datum)
