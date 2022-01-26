@@ -513,7 +513,7 @@ usingTrace trace possibleParent action = do
         let datum2 =
                 datum
                     { traceIdentifierFrom = Just trace
-                    , parentIdentifierFrom = possibleParent
+                    , spanIdentifierFrom = possibleParent
                     }
 
         -- fork the Context
