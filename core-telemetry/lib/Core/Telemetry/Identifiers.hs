@@ -23,7 +23,7 @@ module Core.Telemetry.Identifiers (
     createIdentifierTrace,
     createIdentifierSpan,
     hostMachineIdentity,
-    createTranceParentHeader,
+    createTraceParentHeader,
     -- for testing
     toHexNormal64,
     toHexReversed64,
@@ -235,8 +235,8 @@ traceparent: 00-fd533dbf96ecdc610156482ae36c24f7-1d1e9dbf96ec4649-00
 
 @since 0.1.9
 -}
-createTranceParentHeader :: Trace -> Span -> Rope
-createTranceParentHeader trace unique =
+createTraceParentHeader :: Trace -> Span -> Rope
+createTraceParentHeader trace unique =
     let version = "00"
         flags = "00"
      in version <> "-" <> unTrace trace <> "-" <> unSpan unique <> "-" <> flags

@@ -109,7 +109,7 @@ checkTelemetryMachinery = do
                     )
 
         it "formats trace and span as W3C Trace Context" $ do
-            createTraceContext (Trace "fd533dbf96ecdc610156482ae36c24f7") (Span "1d1e9dbf96ec4649")
+            createTraceParentHeader (Trace "fd533dbf96ecdc610156482ae36c24f7") (Span "1d1e9dbf96ec4649")
                 `shouldBe` "00-fd533dbf96ecdc610156482ae36c24f7-1d1e9dbf96ec4649-00"
 
     describe "Queue processing" $ do
