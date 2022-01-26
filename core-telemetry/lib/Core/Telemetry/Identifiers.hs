@@ -23,6 +23,7 @@ module Core.Telemetry.Identifiers (
     createIdentifierTrace,
     createIdentifierSpan,
     hostMachineIdentity,
+    createTranceParentHeader,
     -- for testing
     toHexNormal64,
     toHexReversed64,
@@ -45,6 +46,8 @@ import Network.Info (MAC (..), NetworkInterface, getNetworkInterfaces, mac)
 Get the MAC address of the first interface that's not the loopback device. If
 something goes weird then we return a valid but bogus address (in the locally
 administered addresses block).
+
+@since 0.1.9
 -}
 hostMachineIdentity :: MAC
 hostMachineIdentity = unsafePerformIO $ do
@@ -72,6 +75,8 @@ so that visual distinctiveness is on the left. The MAC address in the lower 48
 bits is /not/ reversed, leaving the most distinctiveness [the actual host as
 opposed to manufacturer OIN] hanging on the right hand edge of the identifier.
 The two bytes of randomness are in the middle.
+
+@since 0.1.9
 -}
 createIdentifierTrace :: TimeStamp -> Word16 -> MAC -> Trace
 createIdentifierTrace time rand address =
@@ -204,6 +209,8 @@ unsafeToDigit w =
 Generate an identifier for a span. We only have 8 bytes to work with. We use
 the nanosecond prescision timestamp with the nibbles reversed, and then
 overwrite the last two bytes with a random value.
+
+@since 0.1.9
 -}
 createIdentifierSpan :: TimeStamp -> Word16 -> Span
 createIdentifierSpan time rand =
@@ -216,12 +223,29 @@ createIdentifierSpan time rand =
                 )
             )
 
+{- |
+Render the 'Trace' and 'Span' identifiers representing a span calling onward
+to another component in a distributed system. The W3C Trace Context
+recommendation specifies the HTTP header @traceparent@ with the 16 byte trace
+identifier and the 8 byte span identifier formatted as follows:
+
+@
+traceparent: 00-fd533dbf96ecdc610156482ae36c24f7-1d1e9dbf96ec4649-00
+@
+
+@since 0.1.9
+-}
+createTranceParentHeader :: Trace -> Span -> Rope
+createTranceParentHeader trace unique =
+    let version = "00"
+        flags = "00"
+     in version <> "-" <> unTrace trace <> "-" <> unSpan unique <> "-" <> flags
 
 {- |
 Get the identifier of the current trace, if you are ithin a trace started by
 'beginTrace' or 'usingTrace'.
 
-@since 0.1.8
+@since 0.1.9
 -}
 getIdentifierTrace :: Program τ (Maybe Trace)
 getIdentifierTrace = do
@@ -237,7 +261,7 @@ getIdentifierTrace = do
 Get the identifier of the current span, if you are currently within a span
 created by 'encloseSpan'.
 
-@since 0.1.8
+@since 0.1.9
 -}
 getIdentifierSpan :: Program τ (Maybe Span)
 getIdentifierSpan = do
