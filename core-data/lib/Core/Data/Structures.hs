@@ -43,6 +43,7 @@ import qualified Data.ByteString as B (ByteString)
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.HashSet as HashSet
 import Data.Hashable (Hashable)
+import Data.Kind (Type)
 import qualified Data.Map.Strict as OrdMap
 import qualified Data.Set as OrdSet
 import qualified Data.Text as T (Text)
@@ -193,8 +194,8 @@ instance for @[(κ,ν)]@ lists shown above.
 -- Many thanks for an elegant solution to the problem.
 --
 class Dictionary α where
-    type K α :: *
-    type V α :: *
+    type K α :: Type
+    type V α :: Type
     fromMap :: Map (K α) (V α) -> α
     intoMap :: α -> Map (K α) (V α)
 
@@ -302,7 +303,7 @@ __unordered-containers__'s 'Data.HashSet.HashSet' in addition to the
 instance for @[ε]@ lists described above.
 -}
 class Collection α where
-    type E α :: *
+    type E α :: Type
     fromSet :: Set (E α) -> α
     intoSet :: α -> Set (E α)
 
