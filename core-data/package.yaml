@@ -1,5 +1,5 @@
 name: core-data
-version: 0.3.1.0
+version: 0.3.1.1
 synopsis: Convenience wrappers around common data structures and encodings
 description: |
   Wrappers around common data structures and encodings.
