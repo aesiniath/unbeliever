@@ -83,6 +83,13 @@ module Core.Program.Execute (
     resetTimer,
     trap_,
 
+    -- * Re-exports from safe-exports
+    Safe.catch,
+    Safe.catchesAsync,
+    Safe.throw,
+    Safe.try,
+    Safe.tryAsync,
+
     -- * Internals
     Context,
     None (..),
@@ -126,7 +133,7 @@ import Control.Concurrent.STM.TQueue (
     writeTQueue,
  )
 import qualified Control.Exception as Base (throwIO)
-import qualified Control.Exception.Safe as Safe (catch, catchesAsync, throw)
+import qualified Control.Exception.Safe as Safe (catch, catchesAsync, throw, try, tryAsync)
 import Control.Monad (
     void,
     when,
