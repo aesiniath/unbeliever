@@ -30,10 +30,9 @@ module Core.Webserver.Servant (
     prepareRoutes,
 ) where
 
-import Control.Exception.Safe (try)
 import Control.Monad.Except (ExceptT (..))
 import Core.Program
-import Core.System (Exception (..), throw)
+import Core.System (Exception (..))
 import Core.Webserver.Warp
 import Data.Proxy (Proxy)
 import GHC.Base (Type)
