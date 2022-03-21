@@ -93,6 +93,7 @@ module Core.Program.Execute (
     -- * Internals
     Context,
     None (..),
+    executeActual,
     isNone,
     unProgram,
     invalid,
@@ -171,21 +172,21 @@ import Prelude hiding (log)
 -- strip out ExceptionInLinkedThread (which is asynchronous and otherwise
 -- reasonably special) from the final output message.
 --
-escapeHandlers :: Context c -> [Handler IO ExitCode]
+escapeHandlers :: Context c -> [Handler IO (Either ExitCode a)]
 escapeHandlers context =
-    [ Handler (\(code :: ExitCode) -> pure code)
+    [ Handler (\(code :: ExitCode) -> pure (Left code))
     , Handler (\(ExceptionInLinkedThread _ e) -> bail e)
     , Handler (\(e :: SomeException) -> bail e)
     ]
   where
-    bail :: Exception e => e -> IO ExitCode
+    bail :: Exception e => e -> IO (Either ExitCode a)
     bail e =
         let text = intoRope (displayException e)
          in do
                 subProgram context $ do
                     setVerbosityLevel Debug
                     critical text
-                pure (ExitFailure 127)
+                pure (Left (ExitFailure 127))
 
 --
 -- If an exception occurs in one of the output handlers, its failure causes
@@ -245,7 +246,8 @@ calls 'configure' with an appropriate default when initializing.
 execute :: Program None α -> IO ()
 execute program = do
     context <- configure "" None (simpleConfig [])
-    executeActual context program
+    _ <- executeActual context program
+    pure ()
 
 {- |
 Embelish a program with useful behaviours, supplying a configuration
@@ -253,9 +255,11 @@ for command-line options & argument parsing and an initial value for
 the top-level application state, if appropriate.
 -}
 executeWith :: Context τ -> Program τ α -> IO ()
-executeWith = executeActual
+executeWith context program = do
+    _ <- executeActual context program
+    pure ()
 
-executeActual :: Context τ -> Program τ α -> IO ()
+executeActual :: Context τ -> Program τ α -> IO α
 executeActual context0 program = do
     -- command line +RTS -Nn -RTS value
     when (numCapabilities == 1) (getNumProcessors >>= setNumCapabilities)
@@ -289,24 +293,19 @@ executeActual context0 program = do
             processTelemetryMessages forwarder level out tel
 
     -- run actual program, ensuring to grab any otherwise uncaught exceptions.
-    code <-
+    outcome <-
         Safe.catchesAsync
             ( do
-                result <-
-                    Async.race
-                        ( do
-                            code <- readMVar quit
-                            pure code
-                        )
-                        ( do
-                            -- execute actual "main"
-                            _ <- subProgram context program
-                            pure ()
-                        )
-
-                case result of
-                    Left code' -> pure code'
-                    Right () -> pure ExitSuccess
+                Async.race
+                    ( do
+                        code <- readMVar quit
+                        pure code
+                    )
+                    ( do
+                        -- execute actual "main"
+                        result <- subProgram context program
+                        pure result
+                    )
             )
             (escapeHandlers context)
 
@@ -336,9 +335,9 @@ executeActual context0 program = do
     hFlush stdout
 
     -- exiting this way avoids "Exception: ExitSuccess" noise in GHCi
-    if code == ExitSuccess
-        then return ()
-        else (Base.throwIO code)
+    case outcome of
+        Left code -> Base.throwIO code
+        Right result -> pure result
 
 processStandardOutput :: TQueue (Maybe Rope) -> IO ()
 processStandardOutput out =
