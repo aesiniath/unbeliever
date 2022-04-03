@@ -256,7 +256,7 @@ postEventToHoneycombAPI r apikey dataset json = attempt False
             )
 
     q = buildRequest1 $ do
-        http POST (C.append "/1/batch/" (fromRope dataset))
+        http POST (fromRope ("/1/batch/" <> dataset))
         setContentType "application/json"
         setHeader "X-Honeycomb-Team" (fromRope (apikey))
 
