@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           core-program
-version:        0.4.4.0
+version:        0.4.5.0
 synopsis:       Opinionated Haskell Interoperability
 description:    A library to help build command-line programs, both tools and
                 longer-running daemons.

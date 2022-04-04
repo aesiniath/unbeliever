@@ -28,6 +28,7 @@ module Core.Program.Threads (
     waitThread,
     waitThread_,
     linkThread,
+    cancelThread,
 
     -- * Helper functions
     concurrentThreads,
@@ -40,7 +41,7 @@ module Core.Program.Threads (
     unThread,
 ) where
 
-import Control.Concurrent.Async (Async)
+import Control.Concurrent.Async (Async, cancel, AsyncCancelled)
 import qualified Control.Concurrent.Async as Async (
     async,
     concurrently,
@@ -48,13 +49,13 @@ import qualified Control.Concurrent.Async as Async (
     link,
     race,
     race_,
-    wait,
+    wait, cancel
  )
 import Control.Concurrent.MVar (
     newMVar,
     readMVar,
  )
-import qualified Control.Exception.Safe as Safe (catch)
+import qualified Control.Exception.Safe as Safe (catch, catchAsync)
 import Control.Monad (
     void,
  )
@@ -78,13 +79,18 @@ unThread (Thread a) = a
 Fork a thread. The child thread will run in the same @Context@ as the calling
 @Program@, including sharing the user-defined application state value.
 
-If the code in the child thread throws an exception that is /not/ caught
-within that thread, the exception will kill the thread. Threads dying without
-telling anyone is a bit of an anti-pattern, so this library logs a
-warning-level log message if this happens. If you additionally want the
-exception to propegate back to the parent thread (say, for example, you want
-your whole program to die if any of its worker threads fail), then call
-'linkThread' after forking.
+
+Threads that are launched off as children are on their own! If the code in the
+child thread throws an exception that is /not/ caught within that thread, the
+exception will kill the thread. Threads dying without telling anyone is a bit
+of an anti-pattern, so this library logs a warning-level log message if this
+happens.
+
+If you additionally want the exception to propagate back to the parent thread
+(say, for example, you want your whole program to die if any of its worker
+threads fail), then call 'linkThread' after forking. If you want the other
+direction, that is, if you want the forked thread to be cancelled when its
+parent is cancelled, then you need to be waiting on it using 'waitThread'.
 
 (this wraps __async__\'s 'Control.Concurrent.Async.async' which in turn wraps
 __base__'s 'Control.Concurrent.forkIO')
@@ -139,12 +145,28 @@ forkThread program = do
 Wait for the completion of a thread, returning the result. This is a blocking
 operation.
 
-(this wraps __async__\'s 'wait')
+If the thread you are waiting on throws an exception it will be rethrown by
+'waitThread'.
+
+If the current thread making this call is cancelled (as a result of being on
+the losing side of 'concurrentThreads' or 'raceThreads' for example, or due to
+an explicit call to 'cancelThread'), then the thread you are waiting on will
+be cancelled. This is necessary to ensure that child threads are not leaked if
+you nest `forkThread`s.
+
+(this wraps __async__\'s 'Control.Concurrent.Async.wait', taking care to
+ensure the behaviour described above)
 
 @since 0.2.7
 -}
 waitThread :: Thread α -> Program τ α
-waitThread (Thread a) = liftIO $ Async.wait a
+waitThread (Thread a) = liftIO $ do
+    Safe.catchAsync
+        (Async.wait a)
+        ( \(e :: AsyncCancelled) -> do
+            cancel a
+            throw e
+        )
 
 {- |
 Wait for the completion of a thread, discarding its result. This is
@@ -178,7 +200,7 @@ Ordinarily if an exception is thrown in a forked thread that exception is
 silently swollowed. If you instead need the exception to propegate back to the
 parent thread, you can \"link\" the two together using this function.
 
-(this wraps __async__\'s 'link')
+(this wraps __async__\'s 'Control.Concurrent.Async.link')
 
 @since 0.4.2
 -}
@@ -186,6 +208,18 @@ linkThread :: Thread α -> Program τ ()
 linkThread (Thread a) = do
     liftIO $ do
         Async.link a
+
+{- |
+Cancel a thread.
+
+(this wraps __async__\'s 'Control.Concurrent.Async.cancel')
+
+@since 0.4.5
+-}
+cancelThread :: Thread α -> Program τ ()
+cancelThread (Thread a) = do
+    liftIO $ do
+        Async.cancel a
 
 {- |
 Fork two threads and wait for both to finish. The return value is the pair of
