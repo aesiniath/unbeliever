@@ -27,7 +27,10 @@ module Core.Program.Threads (
     forkThread,
     waitThread,
     waitThread_,
+    waitThread',
+    waitThreads',
     linkThread,
+    cancelThread,
 
     -- * Helper functions
     concurrentThreads,
@@ -40,21 +43,23 @@ module Core.Program.Threads (
     unThread,
 ) where
 
-import Control.Concurrent.Async (Async)
+import Control.Concurrent.Async (Async, AsyncCancelled, cancel)
 import qualified Control.Concurrent.Async as Async (
     async,
+    cancel,
     concurrently,
     concurrently_,
     link,
     race,
     race_,
     wait,
+    waitCatch,
  )
 import Control.Concurrent.MVar (
     newMVar,
     readMVar,
  )
-import qualified Control.Exception.Safe as Safe (catch)
+import qualified Control.Exception.Safe as Safe (catch, catchAsync)
 import Control.Monad (
     void,
  )
@@ -78,13 +83,17 @@ unThread (Thread a) = a
 Fork a thread. The child thread will run in the same @Context@ as the calling
 @Program@, including sharing the user-defined application state value.
 
-If the code in the child thread throws an exception that is /not/ caught
-within that thread, the exception will kill the thread. Threads dying without
-telling anyone is a bit of an anti-pattern, so this library logs a
-warning-level log message if this happens. If you additionally want the
-exception to propegate back to the parent thread (say, for example, you want
-your whole program to die if any of its worker threads fail), then call
-'linkThread' after forking.
+Threads that are launched off as children are on their own! If the code in the
+child thread throws an exception that is /not/ caught within that thread, the
+exception will kill the thread. Threads dying without telling anyone is a bit
+of an anti-pattern, so this library logs a warning-level log message if this
+happens.
+
+If you additionally want the exception to propagate back to the parent thread
+(say, for example, you want your whole program to die if any of its worker
+threads fail), then call 'linkThread' after forking. If you want the other
+direction, that is, if you want the forked thread to be cancelled when its
+parent is cancelled, then you need to be waiting on it using 'waitThread'.
 
 (this wraps __async__\'s 'Control.Concurrent.Async.async' which in turn wraps
 __base__'s 'Control.Concurrent.forkIO')
@@ -139,12 +148,28 @@ forkThread program = do
 Wait for the completion of a thread, returning the result. This is a blocking
 operation.
 
-(this wraps __async__\'s 'wait')
+If the thread you are waiting on throws an exception it will be rethrown by
+'waitThread'.
+
+If the current thread making this call is cancelled (as a result of being on
+the losing side of 'concurrentThreads' or 'raceThreads' for example, or due to
+an explicit call to 'cancelThread'), then the thread you are waiting on will
+be cancelled. This is necessary to ensure that child threads are not leaked if
+you nest `forkThread`s.
+
+(this wraps __async__\'s 'Control.Concurrent.Async.wait', taking care to
+ensure the behaviour described above)
 
 @since 0.2.7
 -}
 waitThread :: Thread α -> Program τ α
-waitThread (Thread a) = liftIO $ Async.wait a
+waitThread (Thread a) = liftIO $ do
+    Safe.catchAsync
+        (Async.wait a)
+        ( \(e :: AsyncCancelled) -> do
+            cancel a
+            throw e
+        )
 
 {- |
 Wait for the completion of a thread, discarding its result. This is
@@ -174,11 +199,90 @@ waitThread_ :: Thread α -> Program τ ()
 waitThread_ = void . waitThread
 
 {- |
+Wait for a thread to complete, returning the result if the computation was
+successful or the exception if one was thrown by the child thread.
+
+This basically is convenience for calling `waitThread` and putting `catch`
+around it, but as with all the other @wait*@ functions this ensures that if
+the thread waiting is cancelled the cancellation is propagated to the thread
+being watched as well.
+
+(this wraps __async__\'s 'Control.Concurrent.Async.waitCatch')
+
+@since 0.4.5
+-}
+waitThread' :: Thread α -> Program τ (Either SomeException α)
+waitThread' (Thread a) = liftIO $ do
+    Safe.catchAsync
+        ( do
+            result <- Async.waitCatch a
+            pure result
+        )
+        ( \(e :: AsyncCancelled) -> do
+            cancel a
+            throw e
+        )
+
+{- |
+Wait for many threads to complete. This function is intended for the scenario
+where you fire off a number of worker threads with `forkThread` but rather
+than leaving them to run independantly, you need to wait for them all to
+complete.
+
+The results of the threads that complete successfully will be returned as
+'Right' values. Should any of the threads being waited upon throw an
+exception, those exceptions will be returned as 'Left' values.
+
+If you don't need to analyse the failures individually, then you can just
+collect the successes using "Data.Either"'s 'Data.Either.rights':
+
+@
+    responses <- 'waitThreads''
+
+    'info' "Aggregating results..."
+    combineResults ('Data.Either.rights' responses)
+@
+
+Likewise, if you /do/ want to do something with all the failures, you might
+find 'Data.Either.lefts' useful:
+
+@
+    'mapM_' ('warn' . 'intoRope' . 'displayException') ('Data.Either.lefts' responses)
+@
+
+If the thread calling 'waitThreads'' is cancelled, then all the threads being
+waited upon will also be cancelled. This often occurs within a timeout or
+similar control measure implemented using 'raceThreads_'. Should the thread
+that spawned all the workers and is waiting for their results be told to
+cancel because it lost the "race", the child threads need to be told in turn
+to cancel so as to avoid those threads being leaked and continuing to run as
+zombies. This function takes care of that.
+
+(this extends __async__\'s 'Control.Concurrent.Async.waitCatch' to work
+across a list of Threads, taking care to ensure the cancellation behaviour
+described throughout this module)
+
+@since 0.4.5
+-}
+waitThreads' :: [Thread α] -> Program τ [Either SomeException α]
+waitThreads' ts = liftIO $ do
+    let as = fmap unThread ts
+    Safe.catchAsync
+        ( do
+            results <- mapM Async.waitCatch as
+            pure results
+        )
+        ( \(e :: AsyncCancelled) -> do
+            mapM_ cancel as
+            throw e
+        )
+
+{- |
 Ordinarily if an exception is thrown in a forked thread that exception is
 silently swollowed. If you instead need the exception to propegate back to the
 parent thread, you can \"link\" the two together using this function.
 
-(this wraps __async__\'s 'link')
+(this wraps __async__\'s 'Control.Concurrent.Async.link')
 
 @since 0.4.2
 -}
@@ -186,6 +290,21 @@ linkThread :: Thread α -> Program τ ()
 linkThread (Thread a) = do
     liftIO $ do
         Async.link a
+
+{- |
+Cancel a thread.
+
+(this wraps __async__\'s 'Control.Concurrent.Async.cancel'. The underlying
+mechanism used is to throw the 'AsyncCancelled' to the other thread. That
+exception is asynchronous, so will not be trapped by a 'catch' block and will
+indeed cause the thread receiving the exception to come to an end)
+
+@since 0.4.5
+-}
+cancelThread :: Thread α -> Program τ ()
+cancelThread (Thread a) = do
+    liftIO $ do
+        Async.cancel a
 
 {- |
 Fork two threads and wait for both to finish. The return value is the pair of
