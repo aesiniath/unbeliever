@@ -207,9 +207,7 @@ around it, but as with all the other @wait*@ functions this ensures that if
 the thread waiting is cancelled the cancellation is propagated to the thread
 being watched as well.
 
-(this wraps __async__\'s 'Control.Concurrent.Async.waitCatch', ensuring that
-the child being waited on is cancelled if the thread waiting is cancelled as
-described throughout this module)
+(this wraps __async__\'s 'Control.Concurrent.Async.waitCatch')
 
 @since 0.4.5
 -}
@@ -258,7 +256,7 @@ similar control measure implemented using 'raceThreads_'. Should the thread
 that spawned all the workers and is waiting for their results be told to
 cancel because it lost the "race", the child threads need to be told in turn
 to cancel so as to avoid those threads being leaked and continuing to run as
-zombies.
+zombies. This function takes care of that.
 
 (this extends __async__\'s 'Control.Concurrent.Async.waitCatch' to work
 across a list of Threads, taking care to ensure the cancellation behaviour
@@ -296,7 +294,10 @@ linkThread (Thread a) = do
 {- |
 Cancel a thread.
 
-(this wraps __async__\'s 'Control.Concurrent.Async.cancel')
+(this wraps __async__\'s 'Control.Concurrent.Async.cancel'. The underlying
+mechanism used is to throw the 'AsyncCancelled' to the other thread. That
+exception is asynchronous, so will not be trapped by a 'catch' block and will
+indeed cause the thread receiving the exception to come to an end)
 
 @since 0.4.5
 -}
