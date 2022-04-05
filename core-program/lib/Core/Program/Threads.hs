@@ -41,15 +41,16 @@ module Core.Program.Threads (
     unThread,
 ) where
 
-import Control.Concurrent.Async (Async, cancel, AsyncCancelled)
+import Control.Concurrent.Async (Async, AsyncCancelled, cancel)
 import qualified Control.Concurrent.Async as Async (
     async,
+    cancel,
     concurrently,
     concurrently_,
     link,
     race,
     race_,
-    wait, cancel
+    wait,
  )
 import Control.Concurrent.MVar (
     newMVar,
@@ -78,7 +79,6 @@ unThread (Thread a) = a
 {- |
 Fork a thread. The child thread will run in the same @Context@ as the calling
 @Program@, including sharing the user-defined application state value.
-
 
 Threads that are launched off as children are on their own! If the code in the
 child thread throws an exception that is /not/ caught within that thread, the
