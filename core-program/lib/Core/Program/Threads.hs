@@ -27,6 +27,8 @@ module Core.Program.Threads (
     forkThread,
     waitThread,
     waitThread_,
+    waitThread',
+    waitThreads',
     linkThread,
     cancelThread,
 
@@ -51,6 +53,7 @@ import qualified Control.Concurrent.Async as Async (
     race,
     race_,
     wait,
+    waitCatch,
  )
 import Control.Concurrent.MVar (
     newMVar,
@@ -194,6 +197,87 @@ value.
 -}
 waitThread_ :: Thread α -> Program τ ()
 waitThread_ = void . waitThread
+
+{- |
+Wait for a thread to complete, returning the result if the computation was
+successful or the exception if one was thrown by the child thread.
+
+This basically is convenience for calling `waitThread` and putting `catch`
+around it, but as with all the other @wait*@ functions this ensures that if
+the thread waiting is cancelled the cancellation is propagated to the thread
+being watched as well.
+
+(this wraps __async__\'s 'Control.Concurrent.Async.waitCatch', ensuring that
+the child being waited on is cancelled if the thread waiting is cancelled as
+described throughout this module)
+
+@since 0.4.5
+-}
+waitThread' :: Thread α -> Program τ (Either SomeException α)
+waitThread' (Thread a) = liftIO $ do
+    Safe.catchAsync
+        ( do
+            result <- Async.waitCatch a
+            pure result
+        )
+        ( \(e :: AsyncCancelled) -> do
+            cancel a
+            throw e
+        )
+
+{- |
+Wait for many threads to complete. This function is intended for the scenario
+where you fire off a number of worker threads with `forkThread` but rather
+than leaving them to run independantly, you need to wait for them all to
+complete.
+
+The results of the threads that complete successfully will be returned as
+'Right' values. Should any of the threads being waited upon throw an
+exception, those exceptions will be returned as 'Left' values.
+
+If you don't need to analyse the failures individually, then you can just
+collect the successes using "Data.Either"'s 'Data.Either.rights':
+
+@
+    responses <- 'waitThreads''
+
+    'info' "Aggregating results..."
+    combineResults ('Data.Either.rights' responses)
+@
+
+Likewise, if you /do/ want to do something with all the failures, you might
+find 'Data.Either.lefts' useful:
+
+@
+    'mapM_' ('warn' . 'intoRope' . 'displayException') ('Data.Either.lefts' responses)
+@
+
+If the thread calling 'waitThreads'' is cancelled, then all the threads being
+waited upon will also be cancelled. This often occurs within a timeout or
+similar control measure implemented using 'raceThreads_'. Should the thread
+that spawned all the workers and is waiting for their results be told to
+cancel because it lost the "race", the child threads need to be told in turn
+to cancel so as to avoid those threads being leaked and continuing to run as
+zombies.
+
+(this extends __async__\'s 'Control.Concurrent.Async.waitCatch' to work
+across a list of Threads, taking care to ensure the cancellation behaviour
+described throughout this module)
+
+@since 0.4.5
+-}
+waitThreads' :: [Thread α] -> Program τ [Either SomeException α]
+waitThreads' ts = liftIO $ do
+    let as = fmap unThread ts
+    Safe.catchAsync
+        ( do
+            results <- mapM Async.waitCatch as
+            pure results
+        )
+        ( \(e :: AsyncCancelled) -> do
+            mapM_ cancel as
+            throw e
+        )
 
 {- |
 Ordinarily if an exception is thrown in a forked thread that exception is
