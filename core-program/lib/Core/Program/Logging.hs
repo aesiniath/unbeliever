@@ -179,6 +179,7 @@ putMessage context (Message now level text possiblelValue) = do
     let i = startTimeFrom context
     start <- readMVar i
     let output = outputChannelFrom context
+        coloured = terminalColouredFrom context
 
     let display = case possiblelValue of
             Just value ->
@@ -187,13 +188,13 @@ putMessage context (Message now level text possiblelValue) = do
                     else text <> " = " <> value
             Nothing -> text
 
-    let !result = formatLogMessage start now level display
+    let !result = formatLogMessage start now coloured level display
 
     atomically $ do
         writeTQueue output (Just result)
 
-formatLogMessage :: TimeStamp -> TimeStamp -> Severity -> Rope -> Rope
-formatLogMessage start now severity message =
+formatLogMessage :: TimeStamp -> TimeStamp -> Bool -> Severity -> Rope -> Rope
+formatLogMessage start now coloured severity message =
     let !start' = unTimeStamp start
         !now' = unTimeStamp now
         !stampZ =
@@ -219,16 +220,26 @@ formatLogMessage start now severity message =
             SeverityInternal -> intoEscapes dullBlue
 
         !reset = intoEscapes resetColour
-     in mconcat
-            [ intoEscapes dullWhite
-            , intoRope stampZ
-            , " ("
-            , padWithZeros 6 (show elapsed)
-            , ") "
-            , colour
-            , message
-            , reset
-            ]
+     in case coloured of
+            True ->
+                mconcat
+                    [ intoEscapes dullWhite
+                    , intoRope stampZ
+                    , " ("
+                    , padWithZeros 6 (show elapsed)
+                    , ") "
+                    , colour
+                    , message
+                    , reset
+                    ]
+            False ->
+                mconcat
+                    [ intoRope stampZ
+                    , " ("
+                    , padWithZeros 6 (show elapsed)
+                    , ") "
+                    , message
+                    ]
 
 {- |
 Utility function to prepend \'0\' characters to a string representing a

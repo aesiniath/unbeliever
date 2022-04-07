@@ -81,6 +81,7 @@ processConsoleOutput out datums = do
                 formatLogMessage
                     start
                     now
+                    True
                     SeverityInternal
                     text
         atomically $ do

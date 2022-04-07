@@ -54,6 +54,24 @@ source-repository head
   type: git
   location: https://github.com/aesiniath/unbeliever
 
+executable experiment
+  main-is: SimpleExperiment.hs
+  hs-source-dirs:
+      tests
+  ghc-options: -Wall -Wwarn -fwarn-tabs -threaded
+  build-depends:
+      base >=4.11 && <5
+    , bytestring
+    , core-data >=0.3.0.2
+    , core-program >=0.4.0.0
+    , core-telemetry >=0.1.7.3
+    , core-text >=0.3.4.0
+    , core-webserver-servant >=0.0.1.0
+    , core-webserver-warp >=0.1.0.0
+    , prettyprinter
+    , unordered-containers
+  default-language: Haskell2010
+
 executable snippet
   main-is: WarpSnippet.hs
   hs-source-dirs:
@@ -70,6 +88,7 @@ executable snippet
     , http-types
     , wai
     , warp
+  buildable: False
   default-language: Haskell2010
 
 test-suite check
