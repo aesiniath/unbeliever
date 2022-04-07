@@ -99,6 +99,8 @@ import qualified Data.Aeson.KeyMap as Aeson
 #else
 import qualified Data.HashMap.Strict as HashMap
 #endif
+
+import Data.Aeson (FromJSON, Value (String))
 import Data.Coerce
 import Data.Hashable (Hashable)
 import qualified Data.List as List
@@ -413,3 +415,12 @@ escapeText text =
         ds = fmap pretty ts
      in hcat (punctuate (annotate EscapeToken "\\\"") ds)
 {-# INLINEABLE escapeText #-}
+
+--
+-- Orphan instance; ideally we wouldn't need this anywhere but people are
+-- asking for it and the relevant symbols are imported here.
+--
+
+instance FromJSON Rope where
+    parseJSON (String text) = pure (intoRope text)
+    parseJSON _ = fail "Can't parse this non-textual field as a Rope"
