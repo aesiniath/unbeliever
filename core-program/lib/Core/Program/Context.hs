@@ -51,6 +51,7 @@ import Core.Program.Metadata
 import Core.System.Base hiding (catch, throw)
 import Core.Text.Rope
 import Data.Foldable (foldrM)
+import System.IO (hIsTerminalDevice)
 import Data.Int (Int64)
 import Data.String (IsString)
 import Prettyprinter (LayoutOptions (..), PageWidth (..), layoutPretty)
@@ -164,6 +165,7 @@ data Context τ = Context
     { -- runtime properties
       programNameFrom :: MVar Rope
     , terminalWidthFrom :: Int
+    , terminalColouredFrom :: Bool
     , versionFrom :: Version
     , -- only used during initial setup
       initialConfigFrom :: Config
@@ -353,6 +355,7 @@ configure version t config = do
     q <- newEmptyMVar
     i <- newMVar start
     columns <- getConsoleWidth
+    coloured <- getConsoleColoured
     level <- newEmptyMVar
     out <- newTQueueIO
     tel <- newTQueueIO
@@ -364,6 +367,7 @@ configure version t config = do
         $! Context
             { programNameFrom = n
             , terminalWidthFrom = columns
+            , terminalColouredFrom = coloured
             , versionFrom = version
             , initialConfigFrom = config
             , initialExportersFrom = []
@@ -392,7 +396,12 @@ getConsoleWidth = do
             Nothing -> 80
     return columns
 
---
+
+getConsoleColoured :: IO Bool
+getConsoleColoured = do
+    terminal <- hIsTerminalDevice stdout
+    pure terminal
+
 
 {- |
 Process the command line options and arguments. If an invalid option is

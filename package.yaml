@@ -55,6 +55,7 @@ dependencies:
 
 executables:
   snippet:
+    buildable: false
     dependencies:
      - core-webserver-warp
      - http-types
@@ -65,6 +66,18 @@ executables:
     source-dirs:
      - tests
     main: WarpSnippet.hs
+    other-modules: []
+
+  experiment:
+    dependencies:
+     - bytestring
+     - prettyprinter
+     - unordered-containers
+    ghc-options:
+     - -threaded
+    source-dirs:
+     - tests
+    main: SimpleExperiment.hs
     other-modules: []
 
 tests:

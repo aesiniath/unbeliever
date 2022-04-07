@@ -447,6 +447,7 @@ loopForever action v out queue = do
                     formatLogMessage
                         start
                         now
+                        True
                         SeverityInternal
                         ("telemetry: sent " <> desc)
             atomically $ do
@@ -460,6 +461,7 @@ loopForever action v out queue = do
                     formatLogMessage
                         start
                         now
+                        True
                         SeverityWarn
                         ("sending telemetry failed (Exception: " <> intoRope (show e) <> "); Restarting exporter.")
             atomically $ do
