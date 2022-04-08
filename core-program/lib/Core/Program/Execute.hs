@@ -826,7 +826,7 @@ Returns @True@ if the option is present, and @False@ if it is not.
 
 @
 program = do
-    overwrite \<- 'queryOptionValue' \"overwrite\"
+    overwrite \<- 'queryOptionFlag' \"overwrite\"
     ...
 @
 
