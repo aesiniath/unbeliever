@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_HADDOCK prune #-}
 
 {- |
@@ -163,12 +164,13 @@ module Core.Telemetry.Observability (
 import Control.Concurrent.MVar (modifyMVar_, newMVar, readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (writeTQueue)
+import qualified Control.Exception.Safe as Safe
 import Core.Data.Structures (Map, emptyMap, insertKeyValue)
 import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Context
 import Core.Program.Logging
-import Core.System.Base (liftIO)
+import Core.System.Base (SomeException, liftIO)
 import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
 import Core.Telemetry.Identifiers
 import Core.Text.Rope
@@ -422,9 +424,12 @@ encloseSpan label action = do
                     { currentDatumFrom = v2
                     }
 
-        -- execute nested program
-
-        result <- subProgram context2 action
+        -- execute nested program. We have to use try (c.f. catch) so that if
+        -- an exception has occurred we still enqueue the telemetry datum
+        -- before bailing out.
+        result :: Either SomeException a <-
+            Safe.try
+                (subProgram context2 action)
 
         -- extract the Datum as it stands after running the action, finalize
         -- with its duration, and send it
@@ -441,7 +446,9 @@ encloseSpan label action = do
             writeTQueue tel (Just datum2')
 
         -- now back to your regularly scheduled Haskell program
-        pure result
+        case result of
+            Left e -> Safe.throw e
+            Right value -> pure value
 
 {- |
 Start a new trace. A random identifier will be generated.
