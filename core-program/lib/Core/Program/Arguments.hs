@@ -706,11 +706,11 @@ extractGlobalOptions commands =
 
 extractValidModes :: [Commands] -> Map LongName [Options]
 extractValidModes commands =
-    foldr k emptyMap commands
+    List.foldl' k emptyMap commands
   where
-    k :: Commands -> Map LongName [Options] -> Map LongName [Options]
-    k (Command longname _ options) modes = insertKeyValue longname options modes
-    k _ modes = modes
+    k :: Map LongName [Options] -> Commands -> Map LongName [Options]
+    k modes (Command longname _ options)  = insertKeyValue longname options modes
+    k modes _  = modes
 
 {- |
 Break the command-line apart in two steps. The first peels off the global
@@ -850,8 +850,8 @@ buildUsage config mode = case config of
                             <> variablesHeading vL
                             <> formatParameters vL
   where
-    partitionParameters :: [Options] -> ([Options], [Options])
-    partitionParameters options = foldr f ([], []) options
+    partitionParameters :: [Options] -> ([Options], [Options], [Options])
+    partitionParameters options = List.foldl' f ([], [], []) options
 
     optionsSummary :: [Options] -> Doc ann
     optionsSummary os = if length os > 0 then softline <> "[OPTIONS]" else emptyDoc
@@ -889,11 +889,11 @@ buildUsage config mode = case config of
     commandSummary modes = if length modes > 0 then softline <> commandName else emptyDoc
     commandHeading modes = if length modes > 0 then hardline <> "Available commands:" <> hardline else emptyDoc
 
-    f :: Options -> ([Options], [Options]) -> ([Options], [Options])
-    f o@(Option _ _ _ _) (opts, args) = (o : opts, args)
-    f a@(Argument _ _) (opts, args) = (opts, a : args)
-    f a@(Remaining _) (opts, args) = (opts, a : args)
-    f (Variable _ _) (opts, args) = (opts, args)
+    f :: ([Options], [Options], [Options]) -> Options -> ([Options], [Options], [Options])
+    f (opts, args, vars) o@(Option _ _ _ _) = (o : opts, args, vars)
+    f (opts, args, vars) a@(Argument _ _) = (opts, a : args, vars)
+    f (opts, args, vars) a@(Remaining _) = (opts, a : args, vars)
+    f (opts, args, vars) v@(Variable _ _) = (opts, args, v : vars)
 
     formatParameters :: [Options] -> Doc ann
     formatParameters [] = emptyDoc
@@ -939,7 +939,7 @@ buildUsage config mode = case config of
     h acc (Command longname description _) =
         let l = pretty longname
             d = fromRope description
-         in fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
+         in acc <> fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline
     h acc _ = acc
 
 buildVersion :: Version -> Doc ann
