@@ -771,14 +771,14 @@ extractVariableNames options =
 -- The code from here on is formatting code. It's fairly repetative
 -- and crafted to achieve a specific aesthetic output. Rather messy.
 -- I'm sure it could be done "better" but no matter; this is on the
--- path to an exit and return to user's command line.
+-- path to an exit and return to user's shell prompt.
 --
 
 buildUsage :: Config -> Maybe LongName -> Doc ann
 buildUsage config mode = case config of
     Blank -> emptyDoc
     Simple options ->
-        let (o, a) = partitionParameters options
+        let (o, a, v) = partitionParameters options
          in "Usage:" <> hardline <> hardline
                 <> indent
                     4
@@ -797,11 +797,13 @@ buildUsage config mode = case config of
                 <> formatParameters o
                 <> argumentsHeading a
                 <> formatParameters a
+                <> variablesHeading v
+                <> formatParameters v
     Complex commands ->
         let globalOptions = extractGlobalOptions commands
             modes = extractValidModes commands
 
-            (oG, _) = partitionParameters globalOptions
+            (oG, _, vG) = partitionParameters globalOptions
          in "Usage:" <> hardline <> hardline <> case mode of
                 Nothing ->
                     indent
@@ -820,8 +822,10 @@ buildUsage config mode = case config of
                         <> formatParameters oG
                         <> commandHeading modes
                         <> formatCommands commands
+                        <> variablesHeading vG
+                        <> formatParameters vG
                 Just longname ->
-                    let (oL, aL) = case lookupKeyValue longname modes of
+                    let (oL, aL, vL) = case lookupKeyValue longname modes of
                             Just localOptions -> partitionParameters localOptions
                             Nothing -> error "Illegal State"
                      in indent
@@ -843,6 +847,8 @@ buildUsage config mode = case config of
                             <> formatParameters oL
                             <> argumentsHeading aL
                             <> formatParameters aL
+                            <> variablesHeading vL
+                            <> formatParameters vL
   where
     partitionParameters :: [Options] -> ([Options], [Options])
     partitionParameters options = foldr f ([], []) options
@@ -873,6 +879,8 @@ buildUsage config mode = case config of
     argumentsSummary as = " " <> fillSep (fmap (\x -> "<" <> pretty x <> ">") (extractRequiredArguments as))
 
     argumentsHeading as = if length as > 0 then hardline <> "Required arguments:" <> hardline else emptyDoc
+
+    variablesHeading vs = if length vs > 0 then hardline <> "Known environment variables:" <> hardline else emptyDoc
 
     remainingSummary :: [Options] -> Doc ann
     remainingSummary as = if hasRemaining as then " ..." else emptyDoc
