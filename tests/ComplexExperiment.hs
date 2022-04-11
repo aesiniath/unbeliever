@@ -12,12 +12,12 @@ import Core.Text
 
 program :: Program None ()
 program = do
-  event "Starting..."
+  info "Starting..."
 
   params <- getCommandLine
   debugS "params" params
 
-  event "Done."
+  info "Done."
   terminate 0
 
 main :: IO ()
