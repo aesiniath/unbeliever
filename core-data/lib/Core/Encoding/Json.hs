@@ -178,13 +178,26 @@ encodeToRope value = case value of
     closebracket = singletonRope ']'
 
 {- |
--- Escape any quotes in a JsonString.
+Escape any quotes or backslashes in a JsonString.
 -}
 escapeString :: Rope -> Rope
 escapeString text =
+    let text1 = escapeBackslashes text
+        text2 = escapeQuotes text1
+      in text2
+{-# INLINEABLE escapeString #-}
+
+escapeBackslashes :: Rope -> Rope
+escapeBackslashes text =
+     let pieces = breakPieces (== '\\') text
+     in mconcat (List.intersperse "\\\\" pieces)
+{-# INLINEABLE escapeBackslashes #-}
+
+escapeQuotes :: Rope -> Rope
+escapeQuotes text =
     let pieces = breakPieces (== '"') text
      in mconcat (List.intersperse "\\\"" pieces)
-{-# INLINEABLE escapeString #-}
+{-# INLINEABLE escapeQuotes #-}
 
 {- |
 Given an array of bytes, attempt to decode it as a JSON value.
