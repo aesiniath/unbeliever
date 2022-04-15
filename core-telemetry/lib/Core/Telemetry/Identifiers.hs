@@ -246,9 +246,9 @@ createTraceParentHeader trace unique =
 {- |
 Parse a @traceparent@ header into a 'Trace' and 'Span', assuming it was a
 valid pair according to the W3C Trace Context recommendation. The expectation
-is that if present in an HTTP request these values would be passed to
-'usingTrace' to allow the program to contribute spans to an existing trace
-started by another program or service.
+is that, if present in an HTTP request, these values would be passed to
+'Core.Telemetry.Observability.usingTrace' to allow the program to contribute
+spans to an existing trace started by another program or service.
 
 @since 0.1.10
 -}
@@ -261,7 +261,8 @@ parseTraceParentHeader header =
 
 {- |
 Get the identifier of the current trace, if you are ithin a trace started by
-'beginTrace' or 'usingTrace'.
+'Core.Telemetry.Observability.beginTrace' or
+'Core.Telemetry.Observability.usingTrace'.
 
 @since 0.1.9
 -}
@@ -277,7 +278,7 @@ getIdentifierTrace = do
 
 {- |
 Get the identifier of the current span, if you are currently within a span
-created by 'encloseSpan'.
+created by 'Core.Telemetry.Observability.encloseSpan'.
 
 @since 0.1.9
 -}
