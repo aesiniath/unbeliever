@@ -152,7 +152,7 @@ module Core.Telemetry.Observability (
     setStartTime,
 
     -- * Creating telemetry
-    MetricValue,
+    MetricValue (MetricValue),
     Telemetry (metric),
     telemetry,
 
