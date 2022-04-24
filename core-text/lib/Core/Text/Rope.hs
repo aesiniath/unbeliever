@@ -79,6 +79,7 @@ module Core.Text.Rope (
     replicateRope,
     replicateChar,
     widthRope,
+    unconsRope,
     splitRope,
     takeRope,
     insertRope,
@@ -154,7 +155,7 @@ import qualified Data.Text.Short as S (
     splitAt,
     toBuilder,
     toText,
-    unpack,
+    unpack, uncons
  )
 import qualified Data.Text.Short.Unsafe as S (fromByteStringUnsafe)
 import GHC.Generics (Generic)
@@ -331,6 +332,24 @@ nullRope :: Rope -> Bool
 nullRope (Rope x) = case F.viewl x of
     F.EmptyL -> True
     (F.:<) piece _ -> S.null piece
+
+{- |
+Read the first character from a 'Rope', assuming it's length 1 or greater,
+returning 'Just' that character and the remainder of the text. Returns
+'Nothing' if the input is 0 length.
+
+@since 0.3.7
+-}
+unconsRope :: Rope -> Maybe (Char, Rope)
+unconsRope text =
+    let x = unRope text
+     in case F.viewl x of
+            F.EmptyL -> Nothing
+            (F.:<) piece x' ->
+                case S.uncons piece of
+                    Nothing -> Nothing
+                    Just (c, piece') -> Just (c, Rope ((F.<|) piece' x'))
+
 
 {- |
 Break the text into two pieces at the specified offset.
