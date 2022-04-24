@@ -242,7 +242,7 @@ createTraceParentHeader trace unique =
      in version <> "-" <> unTrace trace <> "-" <> unSpan unique <> "-" <> flags
 
 {- |
-Get the identifier of the current trace, if you are ithin a trace started by
+Get the identifier of the current trace, if you are within a trace started by
 'beginTrace' or 'usingTrace'.
 
 @since 0.1.9
