@@ -1,5 +1,5 @@
 name: core-data
-version: 0.3.2.1
+version: 0.3.2.2
 synopsis: Convenience wrappers around common data structures and encodings
 description: |
   Wrappers around common data structures and encodings.
@@ -33,7 +33,7 @@ dependencies:
  - text
  - unordered-containers
  - vector
- - core-text >= 0.3.4
+ - core-text >= 0.3.7
 
 library:
   source-dirs: lib
