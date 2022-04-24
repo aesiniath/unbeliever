@@ -150,12 +150,12 @@ readCabalFile = runIO $ do
 
 parseCabalFile :: Bytes -> Map Rope Rope
 parseCabalFile contents =
-    let breakup = intoMap . fmap (breakRope (== ':')) . breakLines . fromBytes
+    let breakup = intoMap . fmap (breakRope' (== ':')) . breakLines . fromBytes
      in breakup contents
 
 -- this should probably be a function in Core.Text.Rope
-breakRope :: (Char -> Bool) -> Rope -> (Rope, Rope)
-breakRope predicate text =
+breakRope' :: (Char -> Bool) -> Rope -> (Rope, Rope)
+breakRope' predicate text =
     let pieces = take 2 (breakPieces predicate text)
      in case pieces of
             [] -> ("", "")

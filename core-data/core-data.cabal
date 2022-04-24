@@ -46,7 +46,7 @@ library
     , base >=4.11 && <5
     , bytestring
     , containers
-    , core-text >=0.3.4
+    , core-text >=0.3.7
     , hashable >=1.2
     , prettyprinter >=1.6.2
     , scientific
