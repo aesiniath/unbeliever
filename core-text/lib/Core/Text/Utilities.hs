@@ -21,6 +21,7 @@ module Core.Text.Utilities (
     -- * Helpers
     indefinite,
     oxford,
+    breakRope,
     breakWords,
     breakLines,
     breakPieces,
