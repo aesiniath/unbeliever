@@ -25,7 +25,6 @@ import Core.Data
 import Core.System.Base (IOMode (..), withFile)
 import Core.System.Pretty
 import Core.Text
-import Data.List (intersperse)
 import qualified Data.List as List (find, isSuffixOf)
 import Data.Maybe (fromMaybe)
 import Data.String
@@ -148,23 +147,21 @@ readCabalFile = runIO $ do
     -- pass to calling program
     return pairs
 
+-- TODO this could be improved; we really only need the data from the first
+-- block of lines, with colons in them! We're probably reached the point where
+-- a proper parser would be good, but whatever.
 parseCabalFile :: Bytes -> Map Rope Rope
 parseCabalFile contents =
-    let breakup = intoMap . fmap (breakRope' (== ':')) . breakLines . fromBytes
+    let breakup = intoMap . fmap (\(a, b) -> (a, trimValue b)) . fmap (breakRope (== ':')) . breakLines . fromBytes
      in breakup contents
 
--- this should probably be a function in Core.Text.Rope
-breakRope' :: (Char -> Bool) -> Rope -> (Rope, Rope)
-breakRope' predicate text =
-    let pieces = take 2 (breakPieces predicate text)
-     in case pieces of
-            [] -> ("", "")
-            [one] -> (one, "")
-            (one : two : _) -> (one, trimRope two)
-
--- knock off the whitespace in "name:      hello"
-trimRope :: Rope -> Rope
-trimRope = mconcat . intersperse " " . breakWords
+-- knock off the colon and whitespace in ":      hello"
+trimValue :: Rope -> Rope
+trimValue value = case unconsRope value of
+    Nothing -> emptyRope
+    Just (_, remainder) -> case findIndexRope (/= ' ') remainder of
+        Nothing -> emptyRope
+        Just i -> snd (splitRope i remainder)
 
 {- |
 Access the source location of the call site.
