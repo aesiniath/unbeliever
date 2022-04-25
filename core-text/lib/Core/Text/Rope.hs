@@ -124,7 +124,7 @@ import qualified Data.FingerTree as F (
     (><),
     (|>),
  )
-import Data.Foldable (foldl', foldr', toList)
+import Data.Foldable (foldl', toList)
 import Data.Hashable (Hashable, hashWithSalt)
 import Data.String (IsString (..))
 import qualified Data.Text as T (Text)
@@ -148,14 +148,14 @@ import qualified Data.Text.Short as S (
     fromByteString,
     fromText,
     length,
-    null,
     pack,
     replicate,
     singleton,
     splitAt,
     toBuilder,
     toText,
-    unpack, uncons
+    uncons,
+    unpack,
  )
 import qualified Data.Text.Short.Unsafe as S (fromByteStringUnsafe)
 import GHC.Generics (Generic)
@@ -324,14 +324,13 @@ replicateChar count = Rope . F.singleton . S.replicate count . S.singleton
 Get the length of this text, in characters.
 -}
 widthRope :: Rope -> Int
-widthRope = foldr' f 0 . unRope
-  where
-    f piece count = S.length piece + count
+widthRope text =
+    let x = unRope text
+        (Width w) = F.measure x
+     in w
 
 nullRope :: Rope -> Bool
-nullRope (Rope x) = case F.viewl x of
-    F.EmptyL -> True
-    (F.:<) piece _ -> S.null piece
+nullRope text = widthRope text == 0
 
 {- |
 Read the first character from a 'Rope', assuming it's length 1 or greater,
@@ -349,7 +348,6 @@ unconsRope text =
                 case S.uncons piece of
                     Nothing -> Nothing
                     Just (c, piece') -> Just (c, Rope ((F.<|) piece' x'))
-
 
 {- |
 Break the text into two pieces at the specified offset.
