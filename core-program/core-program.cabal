@@ -58,8 +58,8 @@ library
     , base >=4.11 && <5
     , bytestring
     , chronologique
-    , core-data >=0.2.1.11
-    , core-text >=0.3.4.0
+    , core-data >=0.3.2.2
+    , core-text >=0.3.7.0
     , directory
     , exceptions
     , filepath
