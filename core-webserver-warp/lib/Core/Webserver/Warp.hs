@@ -84,9 +84,11 @@ import qualified Control.Exception.Safe as Safe (catch)
 import Core.Program.Context
 import Core.Program.Logging
 import Core.System.Base
+import Core.Telemetry.Identifiers
 import Core.Telemetry.Observability
 import Core.Text.Rope
 import qualified Data.ByteString.Lazy as L
+import qualified Data.List as List
 import qualified Data.Vault.Lazy as Vault
 import Network.HTTP.Types (
     hContentType,
@@ -137,7 +139,7 @@ loggingMiddleware (context0 :: Context τ) application request sendResponse = do
     let path = intoRope (rawPathInfo request)
 
     subProgram context0 $ do
-        beginTrace $ do
+        resumeTraceIf request $ do
             encloseSpan path $ do
                 context1 <- getContext
 
@@ -234,3 +236,27 @@ onExceptionHandler context possibleRequest e = do
             Just request ->
                 let line = intoRope (requestMethod request) <> " " <> intoRope (rawPathInfo request) <> intoRope (rawQueryString request)
                  in debug "request" line
+
+{- |
+Pull the Trace identifier and parent Span identifier out of the request
+headers, if present. Resume using those values, otherwise start a new trace.
+-}
+resumeTraceIf :: Request -> Program z a -> Program z a
+resumeTraceIf request program =
+    case extractTraceParent request of
+        Nothing -> do
+            beginTrace program
+        Just (trace, unique) -> do
+            usingTrace trace (Just unique) program
+
+--
+-- This is wildly inefficient. Surely warp must provide a better way to search
+-- header values?!?
+--
+extractTraceParent :: Request -> Maybe (Trace, Span)
+extractTraceParent request =
+    let headers = requestHeaders request
+        possibleValue = List.lookup "traceparent" headers
+     in case possibleValue of
+            Nothing -> Nothing
+            Just value -> parseTraceParentHeader (intoRope value)
