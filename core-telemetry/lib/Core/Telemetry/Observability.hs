@@ -472,8 +472,9 @@ beginTrace action = do
         (randomIO :: IO Word16)
 
     let trace = createIdentifierTrace now rand hostMachineIdentity
+    internal "trace = " (unTrace trace)
 
-    usingTrace trace Nothing action
+    encloseTrace trace Nothing action
 
 {- |
 Begin a new trace, but using a trace identifier provided externally. This is
@@ -496,21 +497,21 @@ program = do
     -- and something to get the parent span ID
     parent <- ...
 
-    'usingTrace' ('Trace' trace) ('Just' ('Span' span)) $ do
+    'usingTrace' ('Trace' trace) ('Span' parent) $ do
         'encloseSpan' \"Internal processing\" $ do
             ...
 @
 -}
-usingTrace :: Trace -> Maybe Span -> Program τ α -> Program τ α
-usingTrace trace possibleParent action = do
-    context <- getContext
+usingTrace :: Trace -> Span -> Program τ α -> Program τ α
+usingTrace trace parent action = do
+    internal "trace = " (unTrace trace)
+    internal "parent = " (unSpan parent)
 
-    case possibleParent of
-        Nothing -> do
-            internal "trace = " (unTrace trace)
-        Just parent -> do
-            internal "trace = " (unTrace trace)
-            internal "parent = " (unSpan parent)
+    encloseTrace trace (Just parent) action
+
+encloseTrace :: Trace -> Maybe Span -> Program τ α -> Program τ α
+encloseTrace trace possibleParent action = do
+    context <- getContext
 
     liftIO $ do
         -- prepare new span

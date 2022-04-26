@@ -228,12 +228,12 @@ createIdentifierSpan time rand =
 {- |
 Render the 'Trace' and 'Span' identifiers representing a span calling onward
 to another component in a distributed system. The W3C Trace Context
-recommendation specifies the HTTP header @traceparent@ with the 16 byte trace
-identifier and the 8 byte span identifier formatted as follows:
+recommendation specifies the HTTP header @traceparent@ with a version sequence
+(currently hard coded at @00@), the 16 byte trace identifier, the 8 byte span
+identifier, and a flag sequence (currently quite ignored), all formatted as
+follows:
 
-@
-traceparent: 00-fd533dbf96ecdc610156482ae36c24f7-1d1e9dbf96ec4649-00
-@
+@ traceparent: 00-fd533dbf96ecdc610156482ae36c24f7-1d1e9dbf96ec4649-00 @
 
 @since 0.1.9
 -}

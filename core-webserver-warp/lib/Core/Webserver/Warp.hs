@@ -242,12 +242,12 @@ Pull the Trace identifier and parent Span identifier out of the request
 headers, if present. Resume using those values, otherwise start a new trace.
 -}
 resumeTraceIf :: Request -> Program z a -> Program z a
-resumeTraceIf request program =
+resumeTraceIf request action =
     case extractTraceParent request of
         Nothing -> do
-            beginTrace program
+            beginTrace action
         Just (trace, unique) -> do
-            usingTrace trace (Just unique) program
+            usingTrace trace unique action
 
 --
 -- This is wildly inefficient. Surely warp must provide a better way to search
