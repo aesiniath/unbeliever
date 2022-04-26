@@ -53,9 +53,9 @@ library
     , base >=4.11 && <5
     , bytestring
     , chronologique
-    , core-data >=0.2.1.11
-    , core-program >=0.4.4
-    , core-text >=0.3.5
+    , core-data >=0.3.2.2
+    , core-program >=0.4.5.3
+    , core-text >=0.3.6.0
     , exceptions
     , http-streams
     , io-streams

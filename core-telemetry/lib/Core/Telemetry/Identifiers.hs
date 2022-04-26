@@ -260,7 +260,7 @@ parseTraceParentHeader header =
             _ -> Nothing
 
 {- |
-Get the identifier of the current trace, if you are ithin a trace started by
+Get the identifier of the current trace, if you are within a trace started by
 'Core.Telemetry.Observability.beginTrace' or
 'Core.Telemetry.Observability.usingTrace'.
 
