@@ -207,7 +207,7 @@ or program complimenting the @label@ set when calling 'encloseSpan', which by
 contrast descibes the name of the current phase, step, or even function name
 within the overall scope of the \"service\".
 
-This will end up as the @service_name@ parameter when exported.
+This will end up as the @service.name@ parameter when exported.
 -}
 
 -- This field name appears to be very Honeycomb specific, but looking around
@@ -472,19 +472,16 @@ beginTrace action = do
         (randomIO :: IO Word16)
 
     let trace = createIdentifierTrace now rand hostMachineIdentity
+    internal "trace = " (unTrace trace)
 
-    usingTrace trace Nothing action
+    encloseTrace trace Nothing action
 
 {- |
-Begin a new trace, but using a trace identifier provided externally. This is
-the most common case. Internal services that are play a part of a larger
-request will inherit a job identifier, sequence number, or other externally
-supplied unique code. Even an internet facing web service might have a
-correlation ID provided by the outside load balancers.
-
-If you are continuting an existing trace within the execution path of another,
-larger, enclosing service then you need to specify what the parent span's
-identifier is in the second argument.
+Continue an existing trace using a 'Trace' identifier and parent 'Span'
+identifier sourced externally. This is the most common case. Internal services
+that play a part of a larger request will inherit a job identifier, sequence
+number, or other externally supplied unique code. Even an internet-facing web
+service might have a correlation ID provided by the outside load balancers.
 
 @
 program :: 'Core.Program.Execute.Program' 'Core.Program.Execute.None' ()
@@ -496,21 +493,23 @@ program = do
     -- and something to get the parent span ID
     parent <- ...
 
-    'usingTrace' ('Trace' trace) ('Just' ('Span' span)) $ do
+    'usingTrace' ('Trace' trace) ('Span' parent) $ do
         'encloseSpan' \"Internal processing\" $ do
             ...
 @
--}
-usingTrace :: Trace -> Maybe Span -> Program τ α -> Program τ α
-usingTrace trace possibleParent action = do
-    context <- getContext
 
-    case possibleParent of
-        Nothing -> do
-            internal "trace = " (unTrace trace)
-        Just parent -> do
-            internal "trace = " (unTrace trace)
-            internal "parent = " (unSpan parent)
+@since 0.2.0
+-}
+usingTrace :: Trace -> Span -> Program τ α -> Program τ α
+usingTrace trace parent action = do
+    internal "trace = " (unTrace trace)
+    internal "parent = " (unSpan parent)
+
+    encloseTrace trace (Just parent) action
+
+encloseTrace :: Trace -> Maybe Span -> Program τ α -> Program τ α
+encloseTrace trace possibleParent action = do
+    context <- getContext
 
     liftIO $ do
         -- prepare new span

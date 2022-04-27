@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           core-webserver-warp
-version:        0.1.1.0
+version:        0.1.1.3
 synopsis:       Interoperability with Wai/Warp
 description:    This is part of a library to help build command-line programs, both tools and
                 longer-running daemons.
@@ -42,7 +42,7 @@ library
     , bytestring
     , core-data
     , core-program
-    , core-telemetry >=0.1.8
+    , core-telemetry >=0.2.0
     , core-text
     , http-types
     , http2
