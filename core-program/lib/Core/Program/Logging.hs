@@ -144,6 +144,7 @@ module Core.Program.Logging (
     internal,
     isEvent,
     isDebug,
+    isInternal,
 ) where
 
 import Chrono.TimeStamp (TimeStamp (..), getCurrentTimeNanoseconds)
@@ -162,7 +163,6 @@ import Core.System.Base
 import Core.Text.Colour
 import Core.Text.Rope
 import Core.Text.Utilities
-import Data.Maybe (isJust)
 
 data Message = Message TimeStamp Severity Rope (Maybe Rope)
 
@@ -401,12 +401,21 @@ isEvent level = case level of
     Output -> False
     Verbose -> True
     Debug -> True
+    Internal -> True
 
 isDebug :: Verbosity -> Bool
 isDebug level = case level of
     Output -> False
     Verbose -> False
     Debug -> True
+    Internal -> True
+
+isInternal :: Verbosity -> Bool
+isInternal level = case level of
+    Output -> False
+    Verbose -> False
+    Debug -> False
+    Internal -> True
 
 {- |
 Output a debugging message formed from a label and a value. This is like
@@ -467,18 +476,12 @@ debugR label thing = do
             !value' <- evaluate value
             putMessage context (Message now SeverityDebug label (Just value'))
 
-isTelemetry :: Context t -> Bool
-isTelemetry context =
-    let forwarder = telemetryForwarderFrom context
-     in isJust forwarder
-
-internal :: Rope -> Rope -> Program τ ()
-internal label value = do
+internal :: Rope -> Program τ ()
+internal label = do
     context <- ask
     liftIO $ do
         level <- readMVar (verbosityLevelFrom context)
 
-        when ((isDebug level) && (isTelemetry context)) $ do
+        when (isInternal level) $ do
             now <- getCurrentTimeNanoseconds
-            !value' <- evaluate value
-            putMessage context (Message now SeverityInternal (label <> value') Nothing)
+            putMessage context (Message now SeverityInternal label Nothing)

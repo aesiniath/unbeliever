@@ -390,19 +390,17 @@ encloseSpan :: Label -> Program z a -> Program z a
 encloseSpan label action = do
     context <- getContext
 
-    start <- liftIO $ do
-        getCurrentTimeNanoseconds
-
-    rand <- liftIO $ do
-        (randomIO :: IO Word16)
-
-    let unique = createIdentifierSpan start rand
-
-    internal label emptyRope
-    internal "span = " (unSpan unique)
-
     liftIO $ do
         -- prepare new span
+        start <- getCurrentTimeNanoseconds
+
+        rand <- randomIO :: IO Word16
+
+        let unique = createIdentifierSpan start rand
+
+        subProgram context $ do
+            internal ("Enter " <> label)
+            internal ("span = " <> unSpan unique)
 
         -- slightly tricky: create a new Context with a new MVar with an
         -- forked copy of the current Datum, creating the nested span.
@@ -430,6 +428,9 @@ encloseSpan label action = do
         result :: Either SomeException a <-
             Safe.try
                 (subProgram context2 action)
+
+        subProgram context $ do
+            internal ("Leave " <> label)
 
         -- extract the Datum as it stands after running the action, finalize
         -- with its duration, and send it
@@ -472,7 +473,9 @@ beginTrace action = do
         (randomIO :: IO Word16)
 
     let trace = createIdentifierTrace now rand hostMachineIdentity
-    internal "trace = " (unTrace trace)
+
+    internal "Begin trace"
+    internal ("trace = " <> unTrace trace)
 
     encloseTrace trace Nothing action
 
@@ -502,8 +505,9 @@ program = do
 -}
 usingTrace :: Trace -> Span -> Program τ α -> Program τ α
 usingTrace trace parent action = do
-    internal "trace = " (unTrace trace)
-    internal "parent = " (unSpan parent)
+    internal "Using trace"
+    internal ("trace = " <> unTrace trace)
+    internal ("parent = " <> unSpan parent)
 
     encloseTrace trace (Just parent) action
 
