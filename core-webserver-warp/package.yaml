@@ -25,7 +25,7 @@ dependencies:
  - base >= 4.11 && < 5
  - bytestring
  - core-data
- - core-program
+ - core-program >= 0.4.6
  - core-telemetry >= 0.2.0
  - core-text
  - http-types
