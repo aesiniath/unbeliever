@@ -44,10 +44,14 @@ exampleApplication request sendResponse =
      in do
             sendResponse (responseLBS status200 [] path')
 
+port :: Port
+port = 48080
+
 main :: IO ()
 main = do
     context <- configure "1" None (simpleConfig [])
     context' <- initializeTelemetry [consoleExporter, structuredExporter, honeycombExporter] context
     executeWith context' $ do
         info "Starting..."
-        launchWebserver 48080 exampleApplication
+        debugS "port" port
+        launchWebserver port exampleApplication

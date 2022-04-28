@@ -438,7 +438,7 @@ loopForever action v out queue = do
 
     reportStatus start num = do
         level <- readMVar v
-        when (isDebug level) $ do
+        when (isInternal level) $ do
             now <- getCurrentTimeNanoseconds
             let desc = case num of
                     1 -> "1 event"
@@ -449,7 +449,7 @@ loopForever action v out queue = do
                         now
                         True
                         SeverityInternal
-                        ("telemetry: sent " <> desc)
+                        ("Sent " <> desc)
             atomically $ do
                 writeTQueue out (Just message)
 
@@ -463,7 +463,7 @@ loopForever action v out queue = do
                         now
                         True
                         SeverityWarn
-                        ("sending telemetry failed (Exception: " <> intoRope (show e) <> "); Restarting exporter.")
+                        ("Sending telemetry failed (Exception: " <> intoRope (show e) <> "); Restarting exporter.")
             atomically $ do
                 writeTQueue out (Just message)
 
