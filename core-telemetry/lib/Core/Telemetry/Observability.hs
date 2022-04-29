@@ -578,7 +578,10 @@ telemetry values = do
             )
   where
     f :: Map JsonKey JsonValue -> MetricValue -> Map JsonKey JsonValue
-    f acc (MetricValue k v) = insertKeyValue k v acc
+    f acc (MetricValue k@(JsonKey text) v) =
+        if nullRope text
+            then error "Empty metric field name not allowed"
+            else insertKeyValue k v acc
 
 {- |
 Record telemetry about an event. Specify a label for the event and then
@@ -629,7 +632,10 @@ sendEvent label values = do
             writeTQueue tel (Just datum')
   where
     f :: Map JsonKey JsonValue -> MetricValue -> Map JsonKey JsonValue
-    f acc (MetricValue k v) = insertKeyValue k v acc
+    f acc (MetricValue k@(JsonKey text) v) =
+        if nullRope text
+            then error "Empty metric field name not allowed"
+            else insertKeyValue k v acc
 
 -- get current time after digging out datum and override spanTimeFrom before
 -- sending Datum
