@@ -353,17 +353,18 @@ data Options
     | Argument LongName Description
     | Remaining Description
     | Variable LongName Description
+    deriving (Show)
 
 appendOption :: Options -> Config -> Config
 appendOption option config =
     case config of
         Blank -> Blank
-        Simple options -> Simple (List.reverse (option : options))
+        Simple options -> Simple (options ++ [option])
         Complex commands -> Complex (List.foldl' f [] commands)
   where
     f :: [Commands] -> Commands -> [Commands]
     f acc command = case command of
-        Global options -> Global (List.reverse (option : options)) : acc
+        Global options -> Global (options ++ [option]) : acc
         c@(Command _ _ _) -> c : acc
 
 {- |
@@ -709,8 +710,8 @@ extractValidModes commands =
     List.foldl' k emptyMap commands
   where
     k :: Map LongName [Options] -> Commands -> Map LongName [Options]
-    k modes (Command longname _ options)  = insertKeyValue longname options modes
-    k modes _  = modes
+    k modes (Command longname _ options) = insertKeyValue longname options modes
+    k modes _ = modes
 
 {- |
 Break the command-line apart in two steps. The first peels off the global
