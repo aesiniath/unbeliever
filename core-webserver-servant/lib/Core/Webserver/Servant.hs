@@ -28,18 +28,20 @@ main = do
 -}
 module Core.Webserver.Servant (
     prepareRoutes,
+    prepareRoutesWithContext,
 ) where
 
-import Control.Monad.Except (ExceptT (..))
 import Core.Program
 import Core.System (Exception (..))
+import Core.Telemetry.Observability (clearMetrics)
+
+import Control.Monad.Except (ExceptT (..))
 import Core.Webserver.Warp
 import Data.Proxy (Proxy)
 import GHC.Base (Type)
 import Network.Wai (Application)
 import Servant (Handler (..), ServerT)
-import Servant.Server (HasServer, hoistServer, serve)
-import Core.Telemetry.Observability (clearMetrics)
+import Servant.Server (Context (..), HasServer, ServerContext, serveWithContextT)
 
 data ContextNotFoundInRequest = ContextNotFoundInRequest deriving (Show)
 
@@ -69,7 +71,16 @@ prepareRoutes ::
     Proxy api ->
     ServerT api (Program τ) ->
     Program τ Application
-prepareRoutes proxy (routes :: ServerT api (Program τ)) =
+prepareRoutes proxy = prepareRoutesWithContext proxy EmptyContext
+
+prepareRoutesWithContext ::
+    forall τ (api :: Type) context.
+    (HasServer api context, ServerContext context) =>
+    Proxy api ->
+    Servant.Server.Context context ->
+    ServerT api (Program τ) ->
+    Program τ Application
+prepareRoutesWithContext proxy sContext (routes :: ServerT api (Program τ)) =
     pure application
   where
     application :: Application
@@ -85,13 +96,15 @@ prepareRoutes proxy (routes :: ServerT api (Program τ)) =
         context <- case contextFromRequest @τ request of
             Just context' -> pure context'
             Nothing -> throw ContextNotFoundInRequest
-        serve
+        serveWithContextT
             proxy
-            (hoistServer proxy (transformProgram context) routes)
+            sContext
+            (transformProgram context)
+            routes
             request
             sendResponse
 
-    transformProgram :: Context τ -> Program τ α -> Handler α
+    transformProgram :: Core.Program.Context τ -> Program τ α -> Handler α
     transformProgram context program =
         let output =
                 try $
