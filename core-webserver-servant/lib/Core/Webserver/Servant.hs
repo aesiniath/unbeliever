@@ -81,7 +81,8 @@ prepareRoutes ::
 prepareRoutes proxy = prepareRoutesWithContext proxy Servant.EmptyContext
 
 {- |
-Prepare routes as with 'prepareRoutes' above, but providing a __servant__ 'Context'.
+Prepare routes as with 'prepareRoutes' above, but providing a __servant__
+'Servant.Server.Context' in order to give detailed control of the setup.
 
 @since 0.1.1
 -}
