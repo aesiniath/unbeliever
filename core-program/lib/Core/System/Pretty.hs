@@ -1,6 +1,6 @@
 {-# OPTIONS_HADDOCK not-home #-}
 
--- | Re-exports of combinators for use when building 'Render' instances.
+-- | Re-exports of combinators for use when building 'Core.Text.Utilities.Render' instances.
 module Core.System.Pretty (
     -- * Pretty Printing
 

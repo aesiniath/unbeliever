@@ -109,7 +109,7 @@ instance Textual LongName where
 
 {- |
 The setup for parsing the command-line arguments of your program. You build
-a @Config@ with 'simple' or 'complex', and pass it to
+a @Config@ with 'simpleConfig' or 'complexConfig', and pass it to
 'Core.Program.Context.configure'.
 -}
 data Config
@@ -128,7 +128,7 @@ data Config
 {- |
 A completely empty configuration, without the default debugging and logging
 options. Your program won't process any command-line options or arguments,
-which would be weird in most cases. Prefer 'simple'.
+which would be weird in most cases. Prefer 'simpleConfig'.
 
 @since 0.2.9
 -}
@@ -214,7 +214,7 @@ program = ...
 
 main :: 'IO' ()
 main = do
-    context <- 'Core.Program.Execute.configure' ('Core.Program.Execute.fromPackage' version) 'mempty' ('complex'
+    context <- 'Core.Program.Execute.configure' ('Core.Program.Execute.fromPackage' version) 'mempty' ('complexConfig'
         [ 'Global'
             [ 'Option' "station-name" 'Nothing' ('Value' \"NAME\") ['quote'|
                 Specify an alternate radio station to connect to when performing
@@ -537,18 +537,19 @@ programName :: String
 programName = unsafePerformIO getProgName
 
 {- |
-Given a program configuration schema and the command-line arguments,
-process them into key/value pairs in a Parameters object.
+Given a program configuration schema and the command-line arguments, process
+them into key/value pairs in a Parameters object.
 
-This results in 'InvalidCommandLine' on the left side if one of the passed
-in options is unrecognized or if there is some other problem handling
-options or arguments (because at that point, we want to rabbit right back
-to the top and bail out; there's no recovering).
+This results in 'InvalidCommandLine' on the left side if one of the passed in
+options is unrecognized or if there is some other problem handling options or
+arguments (because at that point, we want to rabbit right back to the top and
+bail out; there's no recovering).
 
 This isn't something you'll ever need to call directly; it's exposed for
 testing convenience. This function is invoked when you call
 'Core.Program.Context.configure' or 'Core.Program.Execute.execute' (which
-calls 'configure' with a default @Config@ when initializing).
+calls 'Core.Program.Context.configure' with a default 'Config' when
+initializing).
 -}
 parseCommandLine :: Config -> [String] -> Either InvalidCommandLine Parameters
 parseCommandLine config argv = case config of
@@ -713,7 +714,7 @@ extractValidModes commands =
     k modes (Command longname _ options) = insertKeyValue longname options modes
     k modes _ = modes
 
-{- |
+{-
 Break the command-line apart in two steps. The first peels off the global
 options, the second below looks to see if there is a command (of fails) and
 if so, whether it has any parameters.

@@ -98,7 +98,7 @@ all output to terminal down a single thread-safe channel. Output will be
 written in the order it was executed, and (so long as you don't use the
 @stdout@ Handle directly yourself) your terminal output will be sound.
 
-Passing @--verbose@ on the command-line of your program will cause 'event' to
+Passing @--verbose@ on the command-line of your program will cause 'info' to
 write its tracing messages to the terminal. This shares the same output
 channel as the 'write'@*@ functions and will /not/ cause corruption of your
 program's normal output.
@@ -419,12 +419,12 @@ isInternal level = case level of
 
 {- |
 Output a debugging message formed from a label and a value. This is like
-'event' above but for the (rather common) case of needing to inspect or record
+'info' above but for the (rather common) case of needing to inspect or record
 the value of a variable when debugging code. This:
 
 @
-    'setProgramName' \"hello\"
-    name <- 'getProgramName'
+    'Core.Program.Execute.setProgramName' \"hello\"
+    name <- 'Core.Program.Execute.getProgramName'
     'debug' \"programName\" name
 @
 
