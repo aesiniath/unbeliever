@@ -72,9 +72,9 @@ main = 'execute' $ do
 
         runProgram $ do
             -- now \"unlifted\" back to Program monad!
-            'event' \"Starting compile...\"
-            'event' \"Nah. Changed our minds\"
-            'event' \"Ok, fine, compile the thing\"
+            'info' \"Starting compile...\"
+            'info' \"Nah. Changed our minds\"
+            'info' \"Ok, fine, compile the thing\"
 
         -- more IO
         result <- compileSourceCode source

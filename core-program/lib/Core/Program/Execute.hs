@@ -207,9 +207,9 @@ Trap any exceptions coming out of the given Program action, and discard them.
 The one and only time you want this is inside an endless loop:
 
 @
-    forever $ do
-        trap_
-            ( bracket
+    'Conrol.Monad.forever' $ do
+        'trap_'
+            ( 'bracket'
                 obtainResource
                 releaseResource
                 useResource
@@ -534,7 +534,7 @@ getProgramName = do
 Retreive the current terminal's width, in characters.
 
 If you are outputting an object with a 'Core.Text.Untilities.Render'
-instance then you may not need this; you can instead use 'wrteR' which is
+instance then you may not need this; you can instead use 'writeR' which is
 aware of the width of your terminal and will reflow (in as much as the
 underlying type's @Render@ instance lets it).
 -}
@@ -580,11 +580,11 @@ Write the supplied @Bytes@ to the given @Handle@. Note that in contrast to
 'write' we don't output a trailing newline.
 
 @
-    'output' h b
+    'outputEntire' h b
 @
 
 Do /not/ use this to output to @stdout@ as that would bypass the mechanism
-used by the 'write'*, 'event', and 'debug'* functions to sequence output
+used by the 'write'*, 'info', and 'debug'* functions to sequence output
 correctly. If you wish to write to the terminal use:
 
 @
@@ -666,7 +666,7 @@ of the total elapsed program time, then fork a new thread for your worker and
 reset the timer there.
 
 @
-    'forkThread' $ do
+    'Core.Program.Threads.forkThread' $ do
         'resetTimer'
         ...
 @

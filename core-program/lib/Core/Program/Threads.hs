@@ -392,7 +392,7 @@ timeouts:
 
 @
     'raceThreads_'
-        ('sleepThread' 300)
+        ('Core.Program.Execute.sleepThread' 300)
         (do
             -- We expect this to complete within 5 minutes.
             performAction

@@ -48,7 +48,7 @@ will give you a 'Version' with that value:
 
 main :: 'IO' ()
 main = do
-    context <- 'Core.Program.Execute.configure' \"1.0\" 'Core.Program.Execute.None' ('Core.Program.Arguments.simple' ...
+    context <- 'Core.Program.Execute.configure' \"1.0\" 'Core.Program.Execute.None' ('Core.Program.Arguments.simpleConfig' ...
 @
 
 For more complex usage you can populate a 'Version' object using the
@@ -90,8 +90,9 @@ your project:
 
 version :: 'Version' version = $('fromPackage')
 
-main :: 'IO' () main = do context <- 'Core.Program.Execute.configure' version
-'Core.Program.Execute.None' ('Core.Program.Arguments.simple' ...
+main :: 'IO' ()
+main = do
+    context <- 'Core.Program.Execute.configure' version 'Core.Program.Execute.None' ('Core.Program.Arguments.simpleConfig' ...
 @
 
 (Using Template Haskell slows down compilation of this file, but the upside of
