@@ -87,10 +87,10 @@ import Core.System.Base
 import Core.Telemetry.Identifiers
 import Core.Telemetry.Observability
 import Core.Text.Rope
-import qualified Data.ByteString.Lazy as L
 import qualified Data.List as List
 import qualified Data.Vault.Lazy as Vault
 import Network.HTTP.Types (
+    Status,
     hContentType,
     status400,
     status413,
@@ -162,13 +162,13 @@ loggingMiddleware (context0 :: Context τ) application request sendResponse = do
                     Safe.catch
                         ( application request' $ \response -> do
                             -- accumulate the details for logging
-                            let status = intoRope (show (statusCode (responseStatus response)))
+                            let code = statusCode (responseStatus response)
 
                             subProgram context1 $ do
                                 telemetry
                                     [ metric "request.method" method
                                     , metric "request.path" path'
-                                    , metric "response.status_code" status
+                                    , metric "response.status_code" code
                                     ]
 
                             -- actually handle the request
@@ -177,43 +177,40 @@ loggingMiddleware (context0 :: Context τ) application request sendResponse = do
                         ( \(e :: SomeException) -> do
                             -- set the magic `error` field with the exception text.
                             let text = intoRope (displayException e)
+                                (status, detail) = assignException e
+                                code = statusCode status
+
                             subProgram context1 $ do
                                 warn "Trapped internal exception"
                                 debug "e" text
                                 telemetry
                                     [ metric "request.method" method
                                     , metric "request.path" path'
+                                    , metric "response.status_code" code
                                     , metric "error" text
                                     ]
 
-                            sendResponse (onExceptionResponse e)
+                            sendResponse
+                                ( responseLBS
+                                    status
+                                    [(hContentType, "text/plain; charset=utf-8")]
+                                    (fromRope detail)
+                                )
                         )
 
-onExceptionResponse :: SomeException -> Response
-onExceptionResponse e
+assignException :: SomeException -> (Status, Rope)
+assignException e
     | Just (_ :: InvalidRequest) <-
         fromException e =
-        responseLBS
-            status400
-            [(hContentType, "text/plain; charset=utf-8")]
-            (fromRope ("Bad Request\n" <> intoRope (displayException e)))
+        (status400, intoRope (displayException e))
     | Just (ConnectionError (UnknownErrorCode 413) t) <-
         fromException e =
-        responseLBS
-            status413
-            [(hContentType, "text/plain; charset=utf-8")]
-            (L.fromStrict t)
+        (status413, intoRope t)
     | Just (ConnectionError (UnknownErrorCode 431) t) <-
         fromException e =
-        responseLBS
-            status431
-            [(hContentType, "text/plain; charset=utf-8")]
-            (L.fromStrict t)
+        (status431, intoRope t)
     | otherwise =
-        responseLBS
-            status500
-            [(hContentType, "text/plain; charset=utf-8")]
-            "Internal Server Error"
+        (status500, "Internal Server Error")
 
 --
 -- Ideally this would be a catch-all and not be hit; our application wrapper
