@@ -364,9 +364,9 @@ will be cancelled with an exception.
 @
     result <- 'raceThreads' one two
     case result of
-        Left a -> do
+        'Left' a -> do
             -- one finished first
-        Right b -> do
+        'Right' b -> do
             -- two finished first
 @
 

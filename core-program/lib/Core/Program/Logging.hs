@@ -334,7 +334,7 @@ used for unexpected conditions or places where defaults are being applied
 (potentially detrimentally).
 
 @
-     warn "You left the lights on again"
+     'warn' "You left the lights on again"
 @
 
 Warnings are worthy of note if you are looking into the behaviour of the
@@ -367,7 +367,7 @@ warn text = do
 Report an anomoly or condition critical to the ongoing health of the program.
 
 @
-     critical "Unable to do hostname lookups"      -- Yup, it was DNS. It's always DNS.
+     'critical' "Unable to do hostname lookups"      -- Yup, it was DNS. It's always DNS.
 @
 
 The term \"critical\" generally means the program is now in an unexpected or

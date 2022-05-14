@@ -550,7 +550,7 @@ Get the user supplied application state as originally supplied to
 'setApplicationState'.
 
 @
-    state <- getApplicationState
+    settings <- 'getApplicationState'
 @
 -}
 getApplicationState :: Program τ τ
@@ -564,8 +564,8 @@ getApplicationState = do
 Update the user supplied top-level application state.
 
 @
-    let state' = state { answer = 42 }
-    setApplicationState state'
+    let settings' = settings { answer = 42 }
+    'setApplicationState' settings'
 @
 -}
 setApplicationState :: τ -> Program τ ()

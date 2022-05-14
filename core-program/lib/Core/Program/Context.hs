@@ -542,9 +542,9 @@ A utility exception for those occasions when you just need to go "boom".
 
 @
     case 'Core.Data.Structures.containsKey' \"James Bond\" agents of
-        False -> do
+        'False' -> do
             evilPlan
-        True ->  do
+        'True' ->  do
             'Core.Program.Logging.write' \"No Mr Bond, I expect you to die!\"
             'Core.System.Base.throw' 'Boom'
 @
