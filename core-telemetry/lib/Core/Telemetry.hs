@@ -33,7 +33,7 @@ module Core.Telemetry (
     -- * Internals
 
     -- |
-    -- Various elper functions.
+    -- Various helper functions.
     module Core.Telemetry.Identifiers
 ) where
 
