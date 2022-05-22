@@ -150,6 +150,7 @@ module Core.Telemetry.Observability (
     Label,
     encloseSpan,
     setStartTime,
+    sendSpan,
 
     -- * Creating telemetry
     MetricValue,
@@ -450,6 +451,64 @@ encloseSpan label action = do
         case result of
             Left e -> Safe.throw e
             Right value -> pure value
+
+{- |
+Send a span value up by hand.
+
+Most times, you don't need this. You're much better off using
+
+@
+'beginTrace' $ do
+    'encloseSpan' "Launch Missiles" launchMissiles
+@
+
+This handles a number of convenient things for you, and takes care of a few edge
+cases.
+
+However, life is not kind, and sometimes bad things happen to good
+abstractions.  Maybe you're tracing your build system, which isn't obliging
+enough to be all contained in one Haskell process, but is a half-dozen steps
+shotgunned across several different processes. In situations like this, it's
+useful to be able to generate a Trace identifier and Span identifier, use that
+as the parent across several different process executions, hanging children
+spans off of this as you go, then manually send up the root span at the end of
+it all.
+
+This gets you nice graphs and charts in your telemetry, even in somewhat hostile
+environments.
+
+Note that this function _deliberately_ does not pay attention to values in your
+Program monad. The assumption here is that you're doing something non-standard,
+so you need to break convention a bit.
+
+@since 0.2.1
+-}
+sendSpan :: Label -> Trace -> Span -> Maybe Rope -> Maybe Span -> TimeStamp -> [MetricValue] -> Program τ ()
+sendSpan label traceId spanId serviceName parentId start meta = do
+    context <- getContext
+    liftIO $ do
+        finish <- getCurrentTimeNanoseconds
+        let meta' = List.foldl' f emptyMap meta
+            tel = telemetryChannelFrom context
+            datum' =
+                emptyDatum
+                    { spanIdentifierFrom = Just spanId
+                    , spanNameFrom = label
+                    , serviceNameFrom = serviceName
+                    , spanTimeFrom = start
+                    , traceIdentifierFrom = Just traceId
+                    , parentIdentifierFrom = parentId
+                    , durationFrom = Just (unTimeStamp finish - unTimeStamp start)
+                    , attachedMetadataFrom = meta'
+                    }
+         in atomically $ do
+                writeTQueue tel (Just datum')
+  where
+    f :: Map JsonKey JsonValue -> MetricValue -> Map JsonKey JsonValue
+    f acc (MetricValue k@(JsonKey text) v) =
+        if nullRope text
+            then error "Empty metric field name not allowed"
+            else insertKeyValue k v acc
 
 {- |
 Start a new trace. A random identifier will be generated.
