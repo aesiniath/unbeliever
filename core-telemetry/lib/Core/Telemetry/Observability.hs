@@ -144,6 +144,7 @@ module Core.Telemetry.Observability (
     Span (..),
     beginTrace,
     usingTrace,
+    usingTrace',
     setServiceName,
 
     -- * Spans
@@ -569,6 +570,24 @@ usingTrace trace parent action = do
     internal ("parent = " <> unSpan parent)
 
     encloseTrace trace (Just parent) action
+
+{- |
+Create a new trace with the specified 'Trace' identifier. Unlike 'usingTrace'
+this does /not/ set the parent 'Span' identifier, thereby marking this as a
+new trace and causing the first span enclosed within this trace to be
+considered the \"root\" span of the trace. This is unusual and should only
+expected to be used in concert with 'sendSpan' to create a root spans in
+asynchronous processes after all the child spans have already been composed
+and sent.
+
+@since 0.2.1
+-}
+usingTrace' :: Trace -> Program τ α -> Program τ α
+usingTrace' trace action = do
+    internal "Using trace"
+    internal ("trace = " <> unTrace trace)
+
+    encloseTrace trace Nothing action
 
 encloseTrace :: Trace -> Maybe Span -> Program τ α -> Program τ α
 encloseTrace trace possibleParent action = do

@@ -18,6 +18,7 @@ module Core.Telemetry.Identifiers (
     -- * Traces and Spans
     getIdentifierTrace,
     getIdentifierSpan,
+    setIdentifierSpan,
 
     -- * Internals
     createIdentifierTrace,
@@ -32,8 +33,9 @@ module Core.Telemetry.Identifiers (
     toHexReversed32,
 ) where
 
-import Control.Concurrent.MVar (readMVar)
+import Control.Concurrent.MVar (modifyMVar_, readMVar)
 import Core.Program.Context
+import Core.Program.Logging
 import Core.System (unsafePerformIO)
 import Core.System.Base (liftIO)
 import Core.System.External (TimeStamp (unTimeStamp))
@@ -291,3 +293,27 @@ getIdentifierSpan = do
         datum <- readMVar v
 
         pure (spanIdentifierFrom datum)
+
+{- |
+Override the identifier of the current span, if you are currently within a
+span created by 'Core.Telemetry.Observability.encloseSpan'. This is an unsafe
+action, specifically and only for the situation where you need create a parent
+span for an asynchronous process whose unique identifier has already been
+nominated. In this scenario all child spans would already have been created
+with this span identifier as their parent, leaving you with the final task of
+creating a "root" span within the trace with that parent identifier.
+
+@since 0.2.1
+-}
+setIdentifierSpan :: Span -> Program t ()
+setIdentifierSpan unique = do
+    context <- getContext
+
+    internal ("span = " <> unSpan unique)
+
+    liftIO $ do
+        -- get the map out
+        let v = currentDatumFrom context
+        modifyMVar_
+            v
+            (\datum -> pure datum{spanIdentifierFrom = Just unique})
