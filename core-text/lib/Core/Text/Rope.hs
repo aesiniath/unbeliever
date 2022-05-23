@@ -39,11 +39,13 @@ sequence requires.
 
 The second way is through the opaque @Text@ type of "Data.Text" from the
 __text__ package, which is well tuned and high-performing but suffers from the
-same design; it is likewise backed by arrays. Rather surprisingly, the storage
-backing Text objects are encoded in UTF-16, meaning every time you want to
+same design; it is likewise backed by arrays. (Historically, the storage
+backing Text objects was encoded in UTF-16, meaning every time you wanted to
 work with unicode characters that came in from /anywhere/ else and which
-inevitably are UTF-8 encoded you have to convert to UTF-16 and copy into a new
-array, wasting time and memory.
+inevitably were UTF-8 encoded they had to be converted to UTF-16 and copied
+into a further new array! Fortunately Haskell has recently adopted a UTF-8
+backed @Text@ type, reducing this overhead. The challenge of appending pinned
+allocations remains, however.)
 
 In this package we introduce 'Rope', a text type backed by the 2-3
 'Data.FingerTree.FingerTree' data structure from the __fingertree__ package.
