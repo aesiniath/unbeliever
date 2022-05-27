@@ -137,19 +137,18 @@ contextFromRequest request = Vault.lookup requestContextKey (vault request)
 loggingMiddleware :: Context τ -> Application -> Application
 loggingMiddleware (context0 :: Context τ) application request sendResponse = do
     let path = intoRope (rawPathInfo request)
+        query = intoRope (rawQueryString request)
+        method = intoRope (requestMethod request)
 
     subProgram context0 $ do
         resumeTraceIf request $ do
             encloseSpan path $ do
                 context1 <- getContext
 
-                -- we could call `telemetry` here with these values, but since
-                -- we call into nested actions which could clear the state
-                -- without starting a new span, we duplicate adding them below
-                -- to ensure they get passed through.
-
-                let query = intoRope (rawQueryString request)
-                    method = intoRope (requestMethod request)
+                -- we could call `telemetry` here with the request values, but
+                -- since we call into nested actions which could clear the
+                -- state without starting a new span, we duplicate adding them
+                -- below to ensure they get passed through.
 
                 liftIO $ do
                     -- The below wires the context in the request's `vault`. As the type of
