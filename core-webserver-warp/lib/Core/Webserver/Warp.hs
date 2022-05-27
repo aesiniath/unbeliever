@@ -149,7 +149,6 @@ loggingMiddleware (context0 :: Context τ) application request sendResponse = do
                 -- to ensure they get passed through.
 
                 let query = intoRope (rawQueryString request)
-                    path' = path <> query
                     method = intoRope (requestMethod request)
 
                 liftIO $ do
@@ -167,7 +166,8 @@ loggingMiddleware (context0 :: Context τ) application request sendResponse = do
                             subProgram context1 $ do
                                 telemetry
                                     [ metric "request.method" method
-                                    , metric "request.path" path'
+                                    , metric "request.path" path
+                                    , metric "request.query" query
                                     , metric "response.status_code" code
                                     ]
 
@@ -185,7 +185,8 @@ loggingMiddleware (context0 :: Context τ) application request sendResponse = do
                                 debug "e" text
                                 telemetry
                                     [ metric "request.method" method
-                                    , metric "request.path" path'
+                                    , metric "request.path" path
+                                    , metric "request.query" query
                                     , metric "response.status_code" code
                                     , metric "error" text
                                     ]
@@ -243,8 +244,8 @@ resumeTraceIf request action =
     case extractTraceParent request of
         Nothing -> do
             beginTrace action
-        Just (trace, unique) -> do
-            usingTrace trace unique action
+        Just (trace, parent) -> do
+            usingTrace trace parent action
 
 --
 -- This is wildly inefficient. Surely warp must provide a better way to search
