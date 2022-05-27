@@ -233,6 +233,8 @@ data Verbosity
     | -- | @since 0.2.12
       Verbose
     | Debug
+    | -- | @since 0.4.6
+      Internal
     deriving (Show)
 
 {- |
@@ -491,6 +493,7 @@ queryVerbosityLevel params =
      in case debug of
             Just value -> case value of
                 Empty -> Right Debug
+                Value "internal" -> Right Internal
                 Value _ -> Left (ExitFailure 2)
             Nothing -> case verbose of
                 Just value -> case value of
@@ -539,9 +542,9 @@ A utility exception for those occasions when you just need to go "boom".
 
 @
     case 'Core.Data.Structures.containsKey' \"James Bond\" agents of
-        False -> do
+        'False' -> do
             evilPlan
-        True ->  do
+        'True' ->  do
             'Core.Program.Logging.write' \"No Mr Bond, I expect you to die!\"
             'Core.System.Base.throw' 'Boom'
 @

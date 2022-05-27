@@ -98,7 +98,7 @@ all output to terminal down a single thread-safe channel. Output will be
 written in the order it was executed, and (so long as you don't use the
 @stdout@ Handle directly yourself) your terminal output will be sound.
 
-Passing @--verbose@ on the command-line of your program will cause 'event' to
+Passing @--verbose@ on the command-line of your program will cause 'info' to
 write its tracing messages to the terminal. This shares the same output
 channel as the 'write'@*@ functions and will /not/ cause corruption of your
 program's normal output.
@@ -144,6 +144,7 @@ module Core.Program.Logging (
     internal,
     isEvent,
     isDebug,
+    isInternal,
 ) where
 
 import Chrono.TimeStamp (TimeStamp (..), getCurrentTimeNanoseconds)
@@ -162,7 +163,6 @@ import Core.System.Base
 import Core.Text.Colour
 import Core.Text.Rope
 import Core.Text.Utilities
-import Data.Maybe (isJust)
 
 data Message = Message TimeStamp Severity Rope (Maybe Rope)
 
@@ -334,7 +334,7 @@ used for unexpected conditions or places where defaults are being applied
 (potentially detrimentally).
 
 @
-     warn "You left the lights on again"
+     'warn' "You left the lights on again"
 @
 
 Warnings are worthy of note if you are looking into the behaviour of the
@@ -367,7 +367,7 @@ warn text = do
 Report an anomoly or condition critical to the ongoing health of the program.
 
 @
-     critical "Unable to do hostname lookups"      -- Yup, it was DNS. It's always DNS.
+     'critical' "Unable to do hostname lookups"      -- Yup, it was DNS. It's always DNS.
 @
 
 The term \"critical\" generally means the program is now in an unexpected or
@@ -401,21 +401,30 @@ isEvent level = case level of
     Output -> False
     Verbose -> True
     Debug -> True
+    Internal -> True
 
 isDebug :: Verbosity -> Bool
 isDebug level = case level of
     Output -> False
     Verbose -> False
     Debug -> True
+    Internal -> True
+
+isInternal :: Verbosity -> Bool
+isInternal level = case level of
+    Output -> False
+    Verbose -> False
+    Debug -> False
+    Internal -> True
 
 {- |
 Output a debugging message formed from a label and a value. This is like
-'event' above but for the (rather common) case of needing to inspect or record
+'info' above but for the (rather common) case of needing to inspect or record
 the value of a variable when debugging code. This:
 
 @
-    'setProgramName' \"hello\"
-    name <- 'getProgramName'
+    'Core.Program.Execute.setProgramName' \"hello\"
+    name <- 'Core.Program.Execute.getProgramName'
     'debug' \"programName\" name
 @
 
@@ -467,18 +476,12 @@ debugR label thing = do
             !value' <- evaluate value
             putMessage context (Message now SeverityDebug label (Just value'))
 
-isTelemetry :: Context t -> Bool
-isTelemetry context =
-    let forwarder = telemetryForwarderFrom context
-     in isJust forwarder
-
-internal :: Rope -> Rope -> Program τ ()
-internal label value = do
+internal :: Rope -> Program τ ()
+internal label = do
     context <- ask
     liftIO $ do
         level <- readMVar (verbosityLevelFrom context)
 
-        when ((isDebug level) && (isTelemetry context)) $ do
+        when (isInternal level) $ do
             now <- getCurrentTimeNanoseconds
-            !value' <- evaluate value
-            putMessage context (Message now SeverityInternal (label <> value') Nothing)
+            putMessage context (Message now SeverityInternal label Nothing)

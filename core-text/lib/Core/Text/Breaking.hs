@@ -3,6 +3,7 @@
 
 -- This is an Internal module, hidden from Haddock
 module Core.Text.Breaking (
+    breakRope,
     breakWords,
     breakLines,
     breakPieces,
@@ -142,3 +143,24 @@ intoChunks predicate piece =
      in if trailing
             then intoRope chunk : emptyRope : []
             else intoRope chunk : intoChunks predicate remainder'
+
+{-
+The utilities breakPieces and its helpers above were written long before this
+code. The special purpose functions above might have been written more easily
+if this below had been written first, but they _are_ special cases and they're
+done, so {shrug} if someone wants to unify these go right head, otherwise this
+can stand as almost but not-quite repetition.
+-}
+
+{- |
+Given a piece of 'Rope' and a predicate, break the text into two pieces at the first
+site where that predicate returns 'True'.
+
+@since 0.3.7
+-}
+breakRope :: (Char -> Bool) -> Rope -> (Rope, Rope)
+breakRope predicate text =
+    let possibleIndex = findIndexRope predicate text
+     in case possibleIndex of
+            Nothing -> (text, emptyRope)
+            Just i -> splitRope i text

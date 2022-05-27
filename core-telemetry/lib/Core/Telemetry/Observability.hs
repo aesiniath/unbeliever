@@ -144,6 +144,7 @@ module Core.Telemetry.Observability (
     Span (..),
     beginTrace,
     usingTrace,
+    usingTrace',
     setServiceName,
 
     -- * Spans
@@ -207,7 +208,7 @@ or program complimenting the @label@ set when calling 'encloseSpan', which by
 contrast descibes the name of the current phase, step, or even function name
 within the overall scope of the \"service\".
 
-This will end up as the @service_name@ parameter when exported.
+This will end up as the @service.name@ parameter when exported.
 -}
 
 -- This field name appears to be very Honeycomb specific, but looking around
@@ -390,19 +391,17 @@ encloseSpan :: Label -> Program z a -> Program z a
 encloseSpan label action = do
     context <- getContext
 
-    start <- liftIO $ do
-        getCurrentTimeNanoseconds
-
-    rand <- liftIO $ do
-        (randomIO :: IO Word16)
-
-    let unique = createIdentifierSpan start rand
-
-    internal label emptyRope
-    internal "span = " (unSpan unique)
-
     liftIO $ do
         -- prepare new span
+        start <- getCurrentTimeNanoseconds
+
+        rand <- randomIO :: IO Word16
+
+        let unique = createIdentifierSpan start rand
+
+        subProgram context $ do
+            internal ("Enter " <> label)
+            internal ("span = " <> unSpan unique)
 
         -- slightly tricky: create a new Context with a new MVar with an
         -- forked copy of the current Datum, creating the nested span.
@@ -431,6 +430,9 @@ encloseSpan label action = do
             Safe.try
                 (subProgram context2 action)
 
+        subProgram context $ do
+            internal ("Leave " <> label)
+
         -- extract the Datum as it stands after running the action, finalize
         -- with its duration, and send it
         finish <- getCurrentTimeNanoseconds
@@ -449,6 +451,16 @@ encloseSpan label action = do
         case result of
             Left e -> Safe.throw e
             Right value -> pure value
+
+{- |
+Send a span value up by hand.
+
+This handles a number of convenient things for you, and takes care of a few edge
+cases.
+
+
+@since 0.2.1
+-}
 
 {- |
 Start a new trace. A random identifier will be generated.
@@ -473,18 +485,17 @@ beginTrace action = do
 
     let trace = createIdentifierTrace now rand hostMachineIdentity
 
-    usingTrace trace Nothing action
+    internal "Begin trace"
+    internal ("trace = " <> unTrace trace)
+
+    encloseTrace trace Nothing action
 
 {- |
-Begin a new trace, but using a trace identifier provided externally. This is
-the most common case. Internal services that are play a part of a larger
-request will inherit a job identifier, sequence number, or other externally
-supplied unique code. Even an internet facing web service might have a
-correlation ID provided by the outside load balancers.
-
-If you are continuting an existing trace within the execution path of another,
-larger, enclosing service then you need to specify what the parent span's
-identifier is in the second argument.
+Continue an existing trace using a 'Trace' identifier and parent 'Span'
+identifier sourced externally. This is the most common case. Internal services
+that play a part of a larger request will inherit a job identifier, sequence
+number, or other externally supplied unique code. Even an internet-facing web
+service might have a correlation ID provided by the outside load balancers.
 
 @
 program :: 'Core.Program.Execute.Program' 'Core.Program.Execute.None' ()
@@ -496,21 +507,69 @@ program = do
     -- and something to get the parent span ID
     parent <- ...
 
-    'usingTrace' ('Trace' trace) ('Just' ('Span' span)) $ do
+    'usingTrace' ('Trace' trace) ('Span' parent) $ do
         'encloseSpan' \"Internal processing\" $ do
             ...
 @
--}
-usingTrace :: Trace -> Maybe Span -> Program τ α -> Program τ α
-usingTrace trace possibleParent action = do
-    context <- getContext
 
-    case possibleParent of
-        Nothing -> do
-            internal "trace = " (unTrace trace)
-        Just parent -> do
-            internal "trace = " (unTrace trace)
-            internal "parent = " (unSpan parent)
+@since 0.2.0
+-}
+usingTrace :: Trace -> Span -> Program τ α -> Program τ α
+usingTrace trace parent action = do
+    internal "Using trace"
+    internal ("trace = " <> unTrace trace)
+    internal ("parent = " <> unSpan parent)
+
+    encloseTrace trace (Just parent) action
+
+{- |
+Create a new trace with the specified 'Trace' identifier. Unlike 'usingTrace'
+this does /not/ set the parent 'Span' identifier, thereby marking this as a
+new trace and causing the first span enclosed within this trace to be
+considered the \"root\" span of the trace. This is unusual and should only
+expected to be used in concert with the 'setIdentifierSpan' override to create
+a root spans in asynchronous processes /after/ all the child spans have
+already been composed and sent.
+
+Most times, you don't need this. You're much better off using 'beginTrace' to
+create a root span. However, life is not kind, and sometimes bad things happen
+to good abstractions. Maybe you're tracing your build system, which isn't
+obliging enough to be all contained in one Haskell process, but is a
+half-dozen steps shotgunned across several different processes. In situations
+like this, it's useful to be able to generate a 'Trace' identifier and 'Span'
+identifier, use that as the parent across several different process
+executions, hanging children spans off of this as you go, then manually send
+up the root span at the end of it all.
+
+@
+    trace <- ...
+    unique <- ...
+
+    -- many child spans in other processes have used these as trace
+    -- identifiers and parent span identifier. Now form the root span thereby
+    -- finishing the trace.
+
+    'usingTrace'' trace $ do
+        'encloseSpan' \"Launch Missiles\" $ do
+            'setStartTime' start
+            'setIdentifierSpan' unique
+            'telemetry'
+                [ 'metric' ...
+                ]
+@
+
+@since 0.2.1
+-}
+usingTrace' :: Trace -> Program τ α -> Program τ α
+usingTrace' trace action = do
+    internal "Using trace"
+    internal ("trace = " <> unTrace trace)
+
+    encloseTrace trace Nothing action
+
+encloseTrace :: Trace -> Maybe Span -> Program τ α -> Program τ α
+encloseTrace trace possibleParent action = do
+    context <- getContext
 
     liftIO $ do
         -- prepare new span
@@ -575,7 +634,10 @@ telemetry values = do
             )
   where
     f :: Map JsonKey JsonValue -> MetricValue -> Map JsonKey JsonValue
-    f acc (MetricValue k v) = insertKeyValue k v acc
+    f acc (MetricValue k@(JsonKey text) v) =
+        if nullRope text
+            then error "Empty metric field name not allowed"
+            else insertKeyValue k v acc
 
 {- |
 Record telemetry about an event. Specify a label for the event and then
@@ -626,7 +688,10 @@ sendEvent label values = do
             writeTQueue tel (Just datum')
   where
     f :: Map JsonKey JsonValue -> MetricValue -> Map JsonKey JsonValue
-    f acc (MetricValue k v) = insertKeyValue k v acc
+    f acc (MetricValue k@(JsonKey text) v) =
+        if nullRope text
+            then error "Empty metric field name not allowed"
+            else insertKeyValue k v acc
 
 -- get current time after digging out datum and override spanTimeFrom before
 -- sending Datum

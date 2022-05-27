@@ -1,5 +1,5 @@
 name: core-program
-version: 0.4.5.1
+version: 0.4.6.4
 synopsis: Opinionated Haskell Interoperability
 description: |
   A library to help build command-line programs, both tools and
@@ -36,8 +36,8 @@ dependencies:
 library:
   dependencies:
    - async
-   - core-text >= 0.3.4.0
-   - core-data >= 0.2.1.11
+   - core-text >= 0.3.7.0
+   - core-data >= 0.3.2.2
    - chronologique
    - directory
    - exceptions

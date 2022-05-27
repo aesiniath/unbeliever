@@ -28,18 +28,27 @@ main = do
 -}
 module Core.Webserver.Servant (
     prepareRoutes,
+    prepareRoutesWithContext,
 ) where
 
 import Control.Monad.Except (ExceptT (..))
 import Core.Program
 import Core.System (Exception (..))
+import Core.Telemetry.Observability (clearMetrics)
 import Core.Webserver.Warp
 import Data.Proxy (Proxy)
 import GHC.Base (Type)
 import Network.Wai (Application)
-import Servant (Handler (..), ServerT)
-import Servant.Server (HasServer, hoistServer, serve)
-import Core.Telemetry.Observability (clearMetrics)
+import qualified Servant as Servant (
+    Handler (..),
+    ServerT,
+ )
+import qualified Servant.Server as Servant (
+    Context (..),
+    HasServer,
+    ServerContext,
+    serveWithContextT,
+ )
 
 data ContextNotFoundInRequest = ContextNotFoundInRequest deriving (Show)
 
@@ -65,11 +74,26 @@ logging and telemetry facilities of __core-program__ and __core-telemetry__.
 -}
 prepareRoutes ::
     forall τ (api :: Type).
-    HasServer api '[] =>
+    Servant.HasServer api '[] =>
     Proxy api ->
-    ServerT api (Program τ) ->
+    Servant.ServerT api (Program τ) ->
     Program τ Application
-prepareRoutes proxy (routes :: ServerT api (Program τ)) =
+prepareRoutes proxy = prepareRoutesWithContext proxy Servant.EmptyContext
+
+{- |
+Prepare routes as with 'prepareRoutes' above, but providing a __servant__
+'Servant.Server.Context' in order to give detailed control of the setup.
+
+@since 0.1.1
+-}
+prepareRoutesWithContext ::
+    forall τ (api :: Type) context.
+    (Servant.HasServer api context, Servant.ServerContext context) =>
+    Proxy api ->
+    Servant.Context context ->
+    Servant.ServerT api (Program τ) ->
+    Program τ Application
+prepareRoutesWithContext proxy sContext (routes :: Servant.ServerT api (Program τ)) =
     pure application
   where
     application :: Application
@@ -85,17 +109,19 @@ prepareRoutes proxy (routes :: ServerT api (Program τ)) =
         context <- case contextFromRequest @τ request of
             Just context' -> pure context'
             Nothing -> throw ContextNotFoundInRequest
-        serve
+        Servant.serveWithContextT
             proxy
-            (hoistServer proxy (transformProgram context) routes)
+            sContext
+            (transformProgram context)
+            routes
             request
             sendResponse
 
-    transformProgram :: Context τ -> Program τ α -> Handler α
+    transformProgram :: Context τ -> Program τ α -> Servant.Handler α
     transformProgram context program =
         let output =
                 try $
                     subProgram context $ do
                         clearMetrics
                         program
-         in Handler (ExceptT output)
+         in Servant.Handler (ExceptT output)

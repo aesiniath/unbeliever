@@ -54,6 +54,7 @@ logLevelHandler v = Catch $ do
             Output -> pure Debug
             Verbose -> pure Debug
             Debug -> pure Output
+            Internal -> pure Output
         )
 
 --

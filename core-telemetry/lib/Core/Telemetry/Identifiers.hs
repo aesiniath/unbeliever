@@ -18,12 +18,14 @@ module Core.Telemetry.Identifiers (
     -- * Traces and Spans
     getIdentifierTrace,
     getIdentifierSpan,
+    setIdentifierSpan,
 
     -- * Internals
     createIdentifierTrace,
     createIdentifierSpan,
     hostMachineIdentity,
     createTraceParentHeader,
+    parseTraceParentHeader,
     -- for testing
     toHexNormal64,
     toHexReversed64,
@@ -31,12 +33,14 @@ module Core.Telemetry.Identifiers (
     toHexReversed32,
 ) where
 
-import Control.Concurrent.MVar (readMVar)
+import Control.Concurrent.MVar (modifyMVar_, readMVar)
 import Core.Program.Context
+import Core.Program.Logging
 import Core.System (unsafePerformIO)
 import Core.System.Base (liftIO)
 import Core.System.External (TimeStamp (unTimeStamp))
 import Core.Text.Rope
+import Core.Text.Utilities (breakPieces)
 import Data.Bits (shiftL, shiftR, (.&.), (.|.))
 import Data.Text.Internal.Unsafe.Char (unsafeChr8)
 import GHC.Word
@@ -74,7 +78,7 @@ UUID, but we render the least significant bits of the time stamp ordered first
 so that visual distinctiveness is on the left. The MAC address in the lower 48
 bits is /not/ reversed, leaving the most distinctiveness [the actual host as
 opposed to manufacturer OIN] hanging on the right hand edge of the identifier.
-The two bytes of randomness are in the middle.
+The two bytes of supplied randomness are put in the middle.
 
 @since 0.1.9
 -}
@@ -208,7 +212,7 @@ unsafeToDigit w =
 {- |
 Generate an identifier for a span. We only have 8 bytes to work with. We use
 the nanosecond prescision timestamp with the nibbles reversed, and then
-overwrite the last two bytes with a random value.
+overwrite the last two bytes with the supplied random value.
 
 @since 0.1.9
 -}
@@ -226,12 +230,12 @@ createIdentifierSpan time rand =
 {- |
 Render the 'Trace' and 'Span' identifiers representing a span calling onward
 to another component in a distributed system. The W3C Trace Context
-recommendation specifies the HTTP header @traceparent@ with the 16 byte trace
-identifier and the 8 byte span identifier formatted as follows:
+recommendation specifies the HTTP header @traceparent@ with a version sequence
+(currently hard coded at @00@), the 16 byte trace identifier, the 8 byte span
+identifier, and a flag sequence (currently quite ignored), all formatted as
+follows:
 
-@
-traceparent: 00-fd533dbf96ecdc610156482ae36c24f7-1d1e9dbf96ec4649-00
-@
+@ traceparent: 00-fd533dbf96ecdc610156482ae36c24f7-1d1e9dbf96ec4649-00 @
 
 @since 0.1.9
 -}
@@ -242,8 +246,25 @@ createTraceParentHeader trace unique =
      in version <> "-" <> unTrace trace <> "-" <> unSpan unique <> "-" <> flags
 
 {- |
-Get the identifier of the current trace, if you are ithin a trace started by
-'beginTrace' or 'usingTrace'.
+Parse a @traceparent@ header into a 'Trace' and 'Span', assuming it was a
+valid pair according to the W3C Trace Context recommendation. The expectation
+is that, if present in an HTTP request, these values would be passed to
+'Core.Telemetry.Observability.usingTrace' to allow the program to contribute
+spans to an existing trace started by another program or service.
+
+@since 0.1.10
+-}
+parseTraceParentHeader :: Rope -> Maybe (Trace, Span)
+parseTraceParentHeader header =
+    let pieces = breakPieces (== '-') header
+     in case pieces of
+            ("00" : trace : unique : _ : []) -> Just (Trace trace, Span unique)
+            _ -> Nothing
+
+{- |
+Get the identifier of the current trace, if you are within a trace started by
+'Core.Telemetry.Observability.beginTrace' or
+'Core.Telemetry.Observability.usingTrace'.
 
 @since 0.1.9
 -}
@@ -259,7 +280,7 @@ getIdentifierTrace = do
 
 {- |
 Get the identifier of the current span, if you are currently within a span
-created by 'encloseSpan'.
+created by 'Core.Telemetry.Observability.encloseSpan'.
 
 @since 0.1.9
 -}
@@ -272,3 +293,27 @@ getIdentifierSpan = do
         datum <- readMVar v
 
         pure (spanIdentifierFrom datum)
+
+{- |
+Override the identifier of the current span, if you are currently within a
+span created by 'Core.Telemetry.Observability.encloseSpan'. This is an unsafe
+action, specifically and only for the situation where you need create a parent
+span for an asynchronous process whose unique identifier has already been
+nominated. In this scenario all child spans would already have been created
+with this span identifier as their parent, leaving you with the final task of
+creating a "root" span within the trace with that parent identifier.
+
+@since 0.2.1
+-}
+setIdentifierSpan :: Span -> Program t ()
+setIdentifierSpan unique = do
+    context <- getContext
+
+    internal ("span = " <> unSpan unique)
+
+    liftIO $ do
+        -- get the map out
+        let v = currentDatumFrom context
+        modifyMVar_
+            v
+            (\datum -> pure datum{spanIdentifierFrom = Just unique})

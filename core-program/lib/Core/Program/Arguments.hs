@@ -109,7 +109,7 @@ instance Textual LongName where
 
 {- |
 The setup for parsing the command-line arguments of your program. You build
-a @Config@ with 'simple' or 'complex', and pass it to
+a @Config@ with 'simpleConfig' or 'complexConfig', and pass it to
 'Core.Program.Context.configure'.
 -}
 data Config
@@ -128,7 +128,7 @@ data Config
 {- |
 A completely empty configuration, without the default debugging and logging
 options. Your program won't process any command-line options or arguments,
-which would be weird in most cases. Prefer 'simple'.
+which would be weird in most cases. Prefer 'simpleConfig'.
 
 @since 0.2.9
 -}
@@ -214,7 +214,7 @@ program = ...
 
 main :: 'IO' ()
 main = do
-    context <- 'Core.Program.Execute.configure' ('Core.Program.Execute.fromPackage' version) 'mempty' ('complex'
+    context <- 'Core.Program.Execute.configure' ('Core.Program.Execute.fromPackage' version) 'mempty' ('complexConfig'
         [ 'Global'
             [ 'Option' "station-name" 'Nothing' ('Value' \"NAME\") ['quote'|
                 Specify an alternate radio station to connect to when performing
@@ -353,17 +353,18 @@ data Options
     | Argument LongName Description
     | Remaining Description
     | Variable LongName Description
+    deriving (Show)
 
 appendOption :: Options -> Config -> Config
 appendOption option config =
     case config of
         Blank -> Blank
-        Simple options -> Simple (List.reverse (option : options))
+        Simple options -> Simple (options ++ [option])
         Complex commands -> Complex (List.foldl' f [] commands)
   where
     f :: [Commands] -> Commands -> [Commands]
     f acc command = case command of
-        Global options -> Global (List.reverse (option : options)) : acc
+        Global options -> Global (options ++ [option]) : acc
         c@(Command _ _ _) -> c : acc
 
 {- |
@@ -536,18 +537,19 @@ programName :: String
 programName = unsafePerformIO getProgName
 
 {- |
-Given a program configuration schema and the command-line arguments,
-process them into key/value pairs in a Parameters object.
+Given a program configuration schema and the command-line arguments, process
+them into key/value pairs in a Parameters object.
 
-This results in 'InvalidCommandLine' on the left side if one of the passed
-in options is unrecognized or if there is some other problem handling
-options or arguments (because at that point, we want to rabbit right back
-to the top and bail out; there's no recovering).
+This results in 'InvalidCommandLine' on the left side if one of the passed in
+options is unrecognized or if there is some other problem handling options or
+arguments (because at that point, we want to rabbit right back to the top and
+bail out; there's no recovering).
 
 This isn't something you'll ever need to call directly; it's exposed for
 testing convenience. This function is invoked when you call
 'Core.Program.Context.configure' or 'Core.Program.Execute.execute' (which
-calls 'configure' with a default @Config@ when initializing).
+calls 'Core.Program.Context.configure' with a default 'Config' when
+initializing).
 -}
 parseCommandLine :: Config -> [String] -> Either InvalidCommandLine Parameters
 parseCommandLine config argv = case config of
@@ -706,13 +708,13 @@ extractGlobalOptions commands =
 
 extractValidModes :: [Commands] -> Map LongName [Options]
 extractValidModes commands =
-    foldr k emptyMap commands
+    List.foldl' k emptyMap commands
   where
-    k :: Commands -> Map LongName [Options] -> Map LongName [Options]
-    k (Command longname _ options) modes = insertKeyValue longname options modes
-    k _ modes = modes
+    k :: Map LongName [Options] -> Commands -> Map LongName [Options]
+    k modes (Command longname _ options) = insertKeyValue longname options modes
+    k modes _ = modes
 
-{- |
+{-
 Break the command-line apart in two steps. The first peels off the global
 options, the second below looks to see if there is a command (of fails) and
 if so, whether it has any parameters.
@@ -771,14 +773,14 @@ extractVariableNames options =
 -- The code from here on is formatting code. It's fairly repetative
 -- and crafted to achieve a specific aesthetic output. Rather messy.
 -- I'm sure it could be done "better" but no matter; this is on the
--- path to an exit and return to user's command line.
+-- path to an exit and return to user's shell prompt.
 --
 
 buildUsage :: Config -> Maybe LongName -> Doc ann
 buildUsage config mode = case config of
     Blank -> emptyDoc
     Simple options ->
-        let (o, a) = partitionParameters options
+        let (o, a, v) = partitionParameters options
          in "Usage:" <> hardline <> hardline
                 <> indent
                     4
@@ -797,11 +799,13 @@ buildUsage config mode = case config of
                 <> formatParameters o
                 <> argumentsHeading a
                 <> formatParameters a
+                <> variablesHeading v
+                <> formatParameters v
     Complex commands ->
         let globalOptions = extractGlobalOptions commands
             modes = extractValidModes commands
 
-            (oG, _) = partitionParameters globalOptions
+            (oG, _, vG) = partitionParameters globalOptions
          in "Usage:" <> hardline <> hardline <> case mode of
                 Nothing ->
                     indent
@@ -820,8 +824,10 @@ buildUsage config mode = case config of
                         <> formatParameters oG
                         <> commandHeading modes
                         <> formatCommands commands
+                        <> variablesHeading vG
+                        <> formatParameters vG
                 Just longname ->
-                    let (oL, aL) = case lookupKeyValue longname modes of
+                    let (oL, aL, vL) = case lookupKeyValue longname modes of
                             Just localOptions -> partitionParameters localOptions
                             Nothing -> error "Illegal State"
                      in indent
@@ -843,9 +849,11 @@ buildUsage config mode = case config of
                             <> formatParameters oL
                             <> argumentsHeading aL
                             <> formatParameters aL
+                            <> variablesHeading vL
+                            <> formatParameters vL
   where
-    partitionParameters :: [Options] -> ([Options], [Options])
-    partitionParameters options = foldr f ([], []) options
+    partitionParameters :: [Options] -> ([Options], [Options], [Options])
+    partitionParameters options = List.foldl' f ([], [], []) options
 
     optionsSummary :: [Options] -> Doc ann
     optionsSummary os = if length os > 0 then softline <> "[OPTIONS]" else emptyDoc
@@ -874,6 +882,8 @@ buildUsage config mode = case config of
 
     argumentsHeading as = if length as > 0 then hardline <> "Required arguments:" <> hardline else emptyDoc
 
+    variablesHeading vs = if length vs > 0 then hardline <> "Known environment variables:" <> hardline else emptyDoc
+
     remainingSummary :: [Options] -> Doc ann
     remainingSummary as = if hasRemaining as then " ..." else emptyDoc
 
@@ -881,11 +891,11 @@ buildUsage config mode = case config of
     commandSummary modes = if length modes > 0 then softline <> commandName else emptyDoc
     commandHeading modes = if length modes > 0 then hardline <> "Available commands:" <> hardline else emptyDoc
 
-    f :: Options -> ([Options], [Options]) -> ([Options], [Options])
-    f o@(Option _ _ _ _) (opts, args) = (o : opts, args)
-    f a@(Argument _ _) (opts, args) = (opts, a : args)
-    f a@(Remaining _) (opts, args) = (opts, a : args)
-    f (Variable _ _) (opts, args) = (opts, args)
+    f :: ([Options], [Options], [Options]) -> Options -> ([Options], [Options], [Options])
+    f (opts, args, vars) o@(Option _ _ _ _) = (o : opts, args, vars)
+    f (opts, args, vars) a@(Argument _ _) = (opts, a : args, vars)
+    f (opts, args, vars) a@(Remaining _) = (opts, a : args, vars)
+    f (opts, args, vars) v@(Variable _ _) = (opts, args, v : vars)
 
     formatParameters :: [Options] -> Doc ann
     formatParameters [] = emptyDoc
@@ -931,7 +941,7 @@ buildUsage config mode = case config of
     h acc (Command longname description _) =
         let l = pretty longname
             d = fromRope description
-         in fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
+         in acc <> fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline
     h acc _ = acc
 
 buildVersion :: Version -> Doc ann

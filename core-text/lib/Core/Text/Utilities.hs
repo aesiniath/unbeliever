@@ -21,6 +21,7 @@ module Core.Text.Utilities (
     -- * Helpers
     indefinite,
     oxford,
+    breakRope,
     breakWords,
     breakLines,
     breakPieces,
@@ -364,7 +365,7 @@ underline level text =
      in intoRope line
 
 {- |
-Pad a pieve of text on the left with a specified character to the desired
+Pad a piece of text on the left with a specified character to the desired
 width. This function is named in homage to the famous result from Computer
 Science known as @leftPad@ which has a glorious place in the history of the
 world-wide web.

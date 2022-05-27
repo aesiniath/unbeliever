@@ -84,11 +84,13 @@ import qualified Control.Exception.Safe as Safe (catch)
 import Core.Program.Context
 import Core.Program.Logging
 import Core.System.Base
+import Core.Telemetry.Identifiers
 import Core.Telemetry.Observability
 import Core.Text.Rope
-import qualified Data.ByteString.Lazy as L
+import qualified Data.List as List
 import qualified Data.Vault.Lazy as Vault
 import Network.HTTP.Types (
+    Status,
     hContentType,
     status400,
     status413,
@@ -135,20 +137,18 @@ contextFromRequest request = Vault.lookup requestContextKey (vault request)
 loggingMiddleware :: Context τ -> Application -> Application
 loggingMiddleware (context0 :: Context τ) application request sendResponse = do
     let path = intoRope (rawPathInfo request)
+        query = intoRope (rawQueryString request)
+        method = intoRope (requestMethod request)
 
     subProgram context0 $ do
-        beginTrace $ do
+        resumeTraceIf request $ do
             encloseSpan path $ do
                 context1 <- getContext
 
-                -- we could call `telemetry` here with these values, but since
-                -- we call into nested actions which could clear the state
-                -- without starting a new span, we duplicate adding them below
-                -- to ensure they get passed through.
-
-                let query = intoRope (rawQueryString request)
-                    path' = path <> query
-                    method = intoRope (requestMethod request)
+                -- we could call `telemetry` here with the request values, but
+                -- since we call into nested actions which could clear the
+                -- state without starting a new span, we duplicate adding them
+                -- below to ensure they get passed through.
 
                 liftIO $ do
                     -- The below wires the context in the request's `vault`. As the type of
@@ -160,13 +160,14 @@ loggingMiddleware (context0 :: Context τ) application request sendResponse = do
                     Safe.catch
                         ( application request' $ \response -> do
                             -- accumulate the details for logging
-                            let status = intoRope (show (statusCode (responseStatus response)))
+                            let code = statusCode (responseStatus response)
 
                             subProgram context1 $ do
                                 telemetry
                                     [ metric "request.method" method
-                                    , metric "request.path" path'
-                                    , metric "response.status_code" status
+                                    , metric "request.path" path
+                                    , metric "request.query" query
+                                    , metric "response.status_code" code
                                     ]
 
                             -- actually handle the request
@@ -175,43 +176,41 @@ loggingMiddleware (context0 :: Context τ) application request sendResponse = do
                         ( \(e :: SomeException) -> do
                             -- set the magic `error` field with the exception text.
                             let text = intoRope (displayException e)
+                                (status, detail) = assignException e
+                                code = statusCode status
+
                             subProgram context1 $ do
                                 warn "Trapped internal exception"
                                 debug "e" text
                                 telemetry
                                     [ metric "request.method" method
-                                    , metric "request.path" path'
+                                    , metric "request.path" path
+                                    , metric "request.query" query
+                                    , metric "response.status_code" code
                                     , metric "error" text
                                     ]
 
-                            sendResponse (onExceptionResponse e)
+                            sendResponse
+                                ( responseLBS
+                                    status
+                                    [(hContentType, "text/plain; charset=utf-8")]
+                                    (fromRope detail)
+                                )
                         )
 
-onExceptionResponse :: SomeException -> Response
-onExceptionResponse e
+assignException :: SomeException -> (Status, Rope)
+assignException e
     | Just (_ :: InvalidRequest) <-
         fromException e =
-        responseLBS
-            status400
-            [(hContentType, "text/plain; charset=utf-8")]
-            (fromRope ("Bad Request\n" <> intoRope (displayException e)))
+        (status400, intoRope (displayException e))
     | Just (ConnectionError (UnknownErrorCode 413) t) <-
         fromException e =
-        responseLBS
-            status413
-            [(hContentType, "text/plain; charset=utf-8")]
-            (L.fromStrict t)
+        (status413, intoRope t)
     | Just (ConnectionError (UnknownErrorCode 431) t) <-
         fromException e =
-        responseLBS
-            status431
-            [(hContentType, "text/plain; charset=utf-8")]
-            (L.fromStrict t)
+        (status431, intoRope t)
     | otherwise =
-        responseLBS
-            status500
-            [(hContentType, "text/plain; charset=utf-8")]
-            "Internal Server Error"
+        (status500, "Internal Server Error")
 
 --
 -- Ideally this would be a catch-all and not be hit; our application wrapper
@@ -234,3 +233,27 @@ onExceptionHandler context possibleRequest e = do
             Just request ->
                 let line = intoRope (requestMethod request) <> " " <> intoRope (rawPathInfo request) <> intoRope (rawQueryString request)
                  in debug "request" line
+
+{- |
+Pull the Trace identifier and parent Span identifier out of the request
+headers, if present. Resume using those values, otherwise start a new trace.
+-}
+resumeTraceIf :: Request -> Program z a -> Program z a
+resumeTraceIf request action =
+    case extractTraceParent request of
+        Nothing -> do
+            beginTrace action
+        Just (trace, parent) -> do
+            usingTrace trace parent action
+
+--
+-- This is wildly inefficient. Surely warp must provide a better way to search
+-- header values?!?
+--
+extractTraceParent :: Request -> Maybe (Trace, Span)
+extractTraceParent request =
+    let headers = requestHeaders request
+        possibleValue = List.lookup "traceparent" headers
+     in case possibleValue of
+            Nothing -> Nothing
+            Just value -> parseTraceParentHeader (intoRope value)

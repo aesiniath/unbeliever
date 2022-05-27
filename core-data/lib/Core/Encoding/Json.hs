@@ -67,6 +67,13 @@ module Core.Encoding.Json (
     prettyValue,
 ) where
 
+#if MIN_VERSION_aeson(2,0,1)
+import qualified Data.Aeson.Key as Aeson
+import qualified Data.Aeson.KeyMap as Aeson
+#else
+import qualified Data.HashMap.Strict as HashMap
+#endif
+
 import Core.Data.Structures (Key, Map, fromMap, intoMap)
 import Core.Text.Bytes (Bytes, fromBytes, intoBytes)
 import Core.Text.Colour (
@@ -86,21 +93,15 @@ import Core.Text.Rope (
     fromRope,
     intoRope,
     singletonRope,
+    unconsRope,
  )
 import Core.Text.Utilities (
     Render (Token, colourize, highlight),
-    breakPieces,
+    breakRope,
  )
-import qualified Data.Aeson as Aeson
-
-#if MIN_VERSION_aeson(2,0,1)
-import qualified Data.Aeson.Key as Aeson
-import qualified Data.Aeson.KeyMap as Aeson
-#else
-import qualified Data.HashMap.Strict as HashMap
-#endif
-
 import Data.Aeson (FromJSON, Value (String))
+import qualified Data.Aeson as Aeson
+import Data.Char (intToDigit)
 import Data.Coerce
 import Data.Hashable (Hashable)
 import qualified Data.List as List
@@ -178,13 +179,34 @@ encodeToRope value = case value of
     closebracket = singletonRope ']'
 
 {- |
--- Escape any quotes in a JsonString.
+Escape any quotes, backslashes, or other possible rubbish in a 'JsonString'.
 -}
 escapeString :: Rope -> Rope
 escapeString text =
-    let pieces = breakPieces (== '"') text
-     in mconcat (List.intersperse "\\\"" pieces)
+    let (before, after) = breakRope needsEscaping text
+     in case unconsRope after of
+            Nothing ->
+                text
+            Just (c, after') ->
+                before <> escapeCharacter c <> escapeString after'
+  where
+    needsEscaping c =
+        c == '\"' || c == '\\' || c < '\x20'
 {-# INLINEABLE escapeString #-}
+
+escapeCharacter :: Char -> Rope
+escapeCharacter c =
+    case c of
+        '\"' -> "\\\""
+        '\\' -> "\\\\"
+        '\n' -> "\\n"
+        '\r' -> "\\r"
+        '\t' -> "\\t"
+        _ ->
+            if c < '\x10'
+                then "\\u000" <> singletonRope (intToDigit (fromEnum c))
+                else "\\u001" <> singletonRope (intToDigit ((fromEnum c) - 16))
+{-# INLINEABLE escapeCharacter #-}
 
 {- |
 Given an array of bytes, attempt to decode it as a JSON value.
