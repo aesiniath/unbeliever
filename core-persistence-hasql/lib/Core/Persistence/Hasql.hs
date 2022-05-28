@@ -15,16 +15,25 @@ module Core.Persistence.Hasql (
 
 import Core.Program.Context
 import Core.Program.Execute
+import Core.Program.Logging
 import Core.System.Base
 import Core.Telemetry.Observability
 import Core.Text.Rope
 import Data.Vector (Vector, toList)
 import Hasql.Pool (Pool, UsageError (ConnectionError, SessionError), use)
-import Hasql.Session (statement)
+import Hasql.Session (QueryError (QueryError), statement)
 import Hasql.Statement (Statement)
 
-data DatabaseFailure = DatabaseFailure Rope
+{- |
+In the event of a problem connecting to the database or executing the query
+this exception will be thrown.
+-}
+data DatabaseFailure
+    = DatabaseConnectionFailed Rope
+    | DatabaseQueryFailed Rope
     deriving (Show)
+
+instance Exception DatabaseFailure
 
 {- |
 Indicate that the program's top-level application state type contains a
@@ -33,7 +42,6 @@ being made by this helper library.
 -}
 class Database δ where
     connectionPoolFrom :: δ -> Pool
-
 
 performQueryActual ::
     Database δ =>
@@ -54,9 +62,29 @@ performQueryActual label f g values query = do
 
         case result of
             Left problem -> do
-                throw problem
+                throwErrors label problem
             Right rows ->
                 pure $ g $ fmap f rows
+
+throwErrors :: Rope -> UsageError -> Program δ a
+throwErrors message result = do
+    case result of
+        ConnectionError connectionError -> do
+            warn message
+
+            telemetry
+                [ metric "error" ("Database connection problem: " <> intoRope (show connectionError))
+                ]
+            throw (DatabaseConnectionFailed message)
+        SessionError (QueryError template parameters commandError) -> do
+            warn message
+            debugS "template" template
+            debugS "parameters" parameters
+
+            telemetry
+                [ metric "error" ("Database transaction failed: " <> intoRope (show commandError))
+                ]
+            throw (DatabaseQueryFailed message)
 
 performQuerySingleton ::
     Database δ =>
@@ -123,4 +151,3 @@ performQueryVector label f values query = do
                         f
                         (toList rows)
                     )
-    
