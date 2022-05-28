@@ -9,30 +9,42 @@ __hasql__ library in concert with the rest of the packages in
 this collection.
 -}
 module Core.Persistence.Hasql (
-    ) where
+    performQuerySingleton,
+    performQueryVector,
+) where
 
 import Core.Program.Context
+import Core.Program.Execute
 import Core.System.Base
 import Core.Telemetry.Observability
 import Core.Text.Rope
 import Data.Vector (Vector, toList)
-import Hasql.Pool (UsageError (ConnectionError, SessionError), use)
+import Hasql.Pool (Pool, UsageError (ConnectionError, SessionError), use)
 import Hasql.Session (statement)
 import Hasql.Statement (Statement)
 
 data DatabaseFailure = DatabaseFailure Rope
     deriving (Show)
 
+{- |
+Indicate that the program's top-level application state type contains a
+connection pool. This is used (and shared) by all the database connections
+being made by this helper library.
+-}
+class Database δ where
+    connectionPoolFrom :: δ -> Pool
+
 performQuerySingleton ::
+    Database δ =>
     Rope ->
-    (result -> a) ->
+    (result -> α) ->
     params ->
     Statement params result ->
-    Program z a
+    Program δ α
 performQuerySingleton label f values query = do
     encloseSpan label $ do
-        settings <- getApplicationState
-        let pool = settingsConfigPool settings
+        state <- getApplicationState
+        let pool = connectionPoolFrom state
 
         result <- liftIO $ do
             use pool (statement values query)
@@ -40,29 +52,30 @@ performQuerySingleton label f values query = do
         case result of
             Left problem -> do
                 case problem of
-                    ConnectionError e1 -> do
+                    ConnectionError e -> do
                         telemetry
-                            [ metric "error" (packRope (show e1))
+                            [ metric "error" (packRope (show e))
                             ]
                         throw Boom
-                    SessionError e2 -> do
+                    SessionError e -> do
                         telemetry
                             [ metric "error" (packRope (show problem))
                             ]
-                        throw e2
+                        throw e
             Right row ->
                 pure (f row)
 
 performQueryVector ::
+    Database δ =>
     Rope ->
-    (result -> a) ->
+    (result -> α) ->
     params ->
     Statement params (Vector result) ->
-    Program z [a]
+    Program δ [α]
 performQueryVector label f values query = do
     encloseSpan label $ do
-        settings <- getApplicationState
-        let pool = settingsConfigPool settings
+        state <- getApplicationState
+        let pool = connectionPoolFrom state
 
         result <- liftIO $ do
             use pool (statement values query)
@@ -70,16 +83,16 @@ performQueryVector label f values query = do
         case result of
             Left problem -> do
                 case problem of
-                    ConnectionError e1 -> do
+                    ConnectionError e -> do
                         telemetry
-                            [ metric "error" (packRope (show e1))
+                            [ metric "error" (packRope (show e))
                             ]
                         throw Boom
-                    SessionError e2 -> do
+                    SessionError e -> do
                         telemetry
                             [ metric "error" (packRope (show problem))
                             ]
-                        throw e2
+                        throw e
             Right rows ->
                 pure
                     ( fmap
