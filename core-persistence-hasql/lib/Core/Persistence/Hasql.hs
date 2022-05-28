@@ -34,6 +34,30 @@ being made by this helper library.
 class Database δ where
     connectionPoolFrom :: δ -> Pool
 
+
+performQueryActual ::
+    Database δ =>
+    Functor f =>
+    Rope ->
+    (result -> α) ->
+    (f α -> g α) ->
+    params ->
+    Statement params (f result) ->
+    Program δ (g α)
+performQueryActual label f g values query = do
+    encloseSpan label $ do
+        state <- getApplicationState
+        let pool = connectionPoolFrom state
+
+        result <- liftIO $ do
+            use pool (statement values query)
+
+        case result of
+            Left problem -> do
+                throw problem
+            Right rows ->
+                pure $ g $ fmap f rows
+
 performQuerySingleton ::
     Database δ =>
     Rope ->
@@ -99,3 +123,4 @@ performQueryVector label f values query = do
                         f
                         (toList rows)
                     )
+    
