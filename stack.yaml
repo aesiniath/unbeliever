@@ -1,4 +1,4 @@
-resolver: lts-19.7
+resolver: nightly-2022-05-28
 packages:
  - ./core-data
  - ./core-text
@@ -9,3 +9,4 @@ packages:
  - ./core-webserver-warp
  - .
 extra-deps: []
+
