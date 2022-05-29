@@ -11,6 +11,7 @@ this collection.
 module Core.Persistence.Hasql (
     performQuerySingleton,
     performQueryVector,
+    performQueryMaybe,
 ) where
 
 import Core.Program.Context
@@ -20,6 +21,7 @@ import Core.System.Base
 import Core.Telemetry.Observability
 import Core.Text.Rope
 import Data.Vector (Vector, toList)
+import GHC.Tuple (Solo (Solo), getSolo)
 import Hasql.Pool (Pool, UsageError (ConnectionError, SessionError), use)
 import Hasql.Session (QueryError (QueryError), statement)
 import Hasql.Statement (Statement)
@@ -48,11 +50,10 @@ performQueryActual ::
     Functor f =>
     Rope ->
     (result -> α) ->
-    (f α -> g α) ->
     params ->
     Statement params (f result) ->
-    Program δ (g α)
-performQueryActual label f g values query = do
+    Program δ (f α)
+performQueryActual label f values query = do
     encloseSpan label $ do
         state <- getApplicationState
         let pool = connectionPoolFrom state
@@ -64,7 +65,7 @@ performQueryActual label f g values query = do
             Left problem -> do
                 throwErrors label problem
             Right rows ->
-                pure $ g $ fmap f rows
+                pure (fmap f rows)
 
 throwErrors :: Rope -> UsageError -> Program δ a
 throwErrors message result = do
@@ -93,29 +94,7 @@ performQuerySingleton ::
     params ->
     Statement params result ->
     Program δ α
-performQuerySingleton label f values query = do
-    encloseSpan label $ do
-        state <- getApplicationState
-        let pool = connectionPoolFrom state
-
-        result <- liftIO $ do
-            use pool (statement values query)
-
-        case result of
-            Left problem -> do
-                case problem of
-                    ConnectionError e -> do
-                        telemetry
-                            [ metric "error" (packRope (show e))
-                            ]
-                        throw Boom
-                    SessionError e -> do
-                        telemetry
-                            [ metric "error" (packRope (show problem))
-                            ]
-                        throw e
-            Right row ->
-                pure (f row)
+performQuerySingleton label f values query = performQueryActual label f values (fmap Solo query) >>= pure . getSolo
 
 performQueryVector ::
     Database δ =>
@@ -124,30 +103,13 @@ performQueryVector ::
     params ->
     Statement params (Vector result) ->
     Program δ [α]
-performQueryVector label f values query = do
-    encloseSpan label $ do
-        state <- getApplicationState
-        let pool = connectionPoolFrom state
+performQueryVector label f values query = performQueryActual label f values query >>= pure . toList
 
-        result <- liftIO $ do
-            use pool (statement values query)
-
-        case result of
-            Left problem -> do
-                case problem of
-                    ConnectionError e -> do
-                        telemetry
-                            [ metric "error" (packRope (show e))
-                            ]
-                        throw Boom
-                    SessionError e -> do
-                        telemetry
-                            [ metric "error" (packRope (show problem))
-                            ]
-                        throw e
-            Right rows ->
-                pure
-                    ( fmap
-                        f
-                        (toList rows)
-                    )
+performQueryMaybe ::
+    Database δ =>
+    Rope ->
+    (result -> α) ->
+    params ->
+    Statement params (Maybe result) ->
+    Program δ (Maybe α)
+performQueryMaybe label f values query = performQueryActual label f values query

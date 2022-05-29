@@ -43,6 +43,7 @@ library
     , core-program
     , core-telemetry
     , core-text
+    , ghc-prim
     , hasql
     , hasql-pool
     , vector

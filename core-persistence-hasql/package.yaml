@@ -27,6 +27,7 @@ dependencies:
  - core-data
  - core-program
  - core-telemetry
+ - ghc-prim
  - hasql
  - hasql-pool
  - vector
