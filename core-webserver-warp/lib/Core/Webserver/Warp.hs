@@ -166,7 +166,7 @@ loggingMiddleware (context0 :: Context τ) application request sendResponse = do
                                 telemetry
                                     [ metric "request.method" method
                                     , metric "request.path" path
-                                    , metric "request.query" query
+                                    , if nullRope query then metric "request.query" () else metric "request.query" query
                                     , metric "response.status_code" code
                                     ]
 
@@ -185,7 +185,7 @@ loggingMiddleware (context0 :: Context τ) application request sendResponse = do
                                 telemetry
                                     [ metric "request.method" method
                                     , metric "request.path" path
-                                    , metric "request.query" query
+                                    , if nullRope query then metric "request.query" () else metric "request.query" query
                                     , metric "response.status_code" code
                                     , metric "error" text
                                     ]

@@ -267,6 +267,9 @@ instance Telemetry Rope where
 instance Telemetry String where
     metric k v = MetricValue (JsonKey k) (JsonString (intoRope v))
 
+instance Telemetry () where
+    metric k _ = MetricValue (JsonKey k) JsonNull
+
 {- |
 The usual warning about assuming the @ByteString@ is ASCII or UTF-8 applies
 here. Don't use this to send binary mush.
