@@ -122,6 +122,5 @@ prepareRoutesWithContext proxy sContext (routes :: Servant.ServerT api (Program 
         let output =
                 try $
                     subProgram context $ do
-                        clearMetrics
                         program
          in Servant.Handler (ExceptT output)
