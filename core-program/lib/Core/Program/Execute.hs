@@ -83,12 +83,10 @@ module Core.Program.Execute (
     resetTimer,
     trap_,
 
-    -- * Re-exports from safe-exports
-    Safe.catch,
-    Safe.catchesAsync,
-    Safe.throw,
-    Safe.try,
-    Safe.tryAsync,
+    -- * Exception handling
+    catch,
+    throw,
+    try,
 
     -- * Internals
     Context,
@@ -109,7 +107,7 @@ import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (
     ExceptionInLinkedThread (..),
  )
-import qualified Control.Concurrent.Async as Async (
+import Control.Concurrent.Async qualified as Async (
     async,
     cancel,
     race,
@@ -132,8 +130,13 @@ import Control.Concurrent.STM.TQueue (
     unGetTQueue,
     writeTQueue,
  )
-import qualified Control.Exception as Base (throwIO)
-import qualified Control.Exception.Safe as Safe (catch, catchesAsync, throw, try, tryAsync)
+import Control.Exception qualified as Base (throwIO)
+import Control.Exception.Safe qualified as Safe (
+    catch,
+    catchesAsync,
+    throw,
+    try,
+ )
 import Control.Monad (
     void,
     when,
@@ -145,19 +148,27 @@ import Core.Program.Arguments
 import Core.Program.Context
 import Core.Program.Logging
 import Core.Program.Signal
-import Core.System.Base
+import Core.System.Base (
+    Exception,
+    Handle,
+    SomeException,
+    displayException,
+    hFlush,
+    liftIO,
+    stdout,
+ )
 import Core.Text.Bytes
 import Core.Text.Rope
-import qualified Data.ByteString as B (hPut)
-import qualified Data.ByteString.Char8 as C (singleton)
-import qualified Data.List as List (intersperse)
+import Data.ByteString qualified as B (hPut)
+import Data.ByteString.Char8 qualified as C (singleton)
+import Data.List qualified as List (intersperse)
 import GHC.Conc (getNumProcessors, numCapabilities, setNumCapabilities)
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import System.Directory (
     findExecutable,
  )
 import System.Exit (ExitCode (..))
-import qualified System.Posix.Process as Posix (exitImmediately)
+import System.Posix.Process qualified as Posix (exitImmediately)
 import System.Process.Typed (closed, proc, readProcess, setStdin)
 import Prelude hiding (log)
 
@@ -397,7 +408,7 @@ loopForever action v out queue = do
         -- handle it and loop
         Just items -> do
             start <- getCurrentTimeNanoseconds
-            catch
+            Safe.catch
                 ( do
                     action (reverse items)
                     reportStatus start (length items)
@@ -648,7 +659,7 @@ execProcess (cmd : args) =
                 findExecutable cmd'
             case probe of
                 Nothing -> do
-                    throw (CommandNotFound cmd)
+                    Safe.throw (CommandNotFound cmd)
                 Just _ -> do
                     (exit, out, err) <- liftIO $ do
                         readProcess task1
@@ -897,3 +908,47 @@ otherwise a programmer error.
 -}
 invalid :: Program τ α
 invalid = error "Invalid State"
+
+{- |
+Catch an exception.
+
+This will /not/ catch asynchonous exceptions. If you need to that, see the
+more comprehensive exception handling facilities offered by
+__safe-exceptions__, which in turn builds on __exceptions__ and __base__).
+Note that 'Program' implements 'MonadCatch' so you can use the full power
+available there if required.
+
+@since 0.4.7
+-}
+catch :: Exception ε => Program τ α -> (ε -> Program τ α) -> Program τ α
+catch = Safe.catch
+
+{- |
+Catch an exception. Instead of handling an exception in a supplied function,
+however, return from executing the sub-program with the outcome in an
+'Either', with the exception being on the 'Left' side if one is thrown. If the
+sub-program completes normally its result is in the 'Right' side.
+
+(this is a wrapper around calling __safe-exceptions__\'s
+'Control.Exceptions.Safe.try' function, which in turn wraps __exceptions__\'s
+'Control.Exceptions.try', which...)
+
+@since 0.4.7
+-}
+try :: Exception ε => Program τ α -> Program τ (Either ε α)
+try = Safe.try
+
+{- |
+Throw an exception.
+
+This will be thrown as a normal synchronous exception that can be caught with
+'catch' or 'try' above.
+
+(experienced users will note that 'Program' implements 'MonadThrow' and as
+such this is just a wrapper around calling __safe-exceptions__'s
+'Control.Exceptions.Safe.throw' function)
+
+@since 0.4.7
+-}
+throw :: Exception ε => ε -> Program τ α
+throw = Safe.throw
