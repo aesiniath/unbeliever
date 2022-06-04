@@ -1,5 +1,50 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 
+{- |
+Facilities for handling exceptions.
+
+The Haskell language itself doesn't treat exceptions specially, but the
+Haskell /runtime/ does. Any I/O action can result in exceptions being thrown
+and frequently do. Developers can define exceptions too, and use them to
+signal anomolies.
+
+In order to catch an exception you need to know the /type/ of that exception.
+The way this is typically done is with the `ScopedTypeVariables` extension
+turned on and then adding a type annotation around the @e@ variable in the
+lambda passed to 'catch'.
+
+@
+    'catch'
+        (do
+            performSong \"This is my party and I\'ll cry if I want to\"
+        )
+        (\\(e :: FirstWorldProblem) -> do
+            'Core.Program.Logging.critical' \"Someone is crying\"
+            'Core.Program.Logging.debug' "e" ('Control.Exception.displayException' e)
+            'Core.Program.Execute.terminate' 1
+        )
+@
+
+which would work on the assumption that somewhere you have defined:
+
+@
+data FirstWorldProblem
+    = PersonCrying
+    | MyToastIsBurnt
+    | SomeoneWrongOnInternet
+    deriving 'Show'
+
+instance 'Control.Exception.Exception' FirstWorldProblem
+@
+
+and that the @performSong@ function at some point does
+
+@
+    'throw' PersonCrying
+@
+
+Some care must be taken.
+-}
 module Core.Program.Exceptions where
 
 import Control.Exception qualified as Base (
@@ -61,21 +106,36 @@ such this is just a wrapper around calling __safe-exceptions__'s
 throw :: Base.Exception ε => ε -> Program τ α
 throw = Safe.throw
 
-
 {- |
 Acquire a resource, use it, then release it back.
 
 The bracket pattern is common in Haskell for getting a resource @ρ@ needed for
-a computation, preforming that computation, then releasing the resource back
+a computation, preforming that computation, then returning the resource back
 to the system. Common examples are when making database connections and doing
 file or network operations, where you need to make sure you "close" the
 connection afterward before continuing the program so that scare resources
 like file handles are released.
 
-Note that this does /not/ catch the exception if one is thrown! The finalizer
-will run, but then the exception will continue to propogate its way out of
-your program's call stack. Note also that the result of the cleanup action @γ@
-is ignored.
+Typically you have an open and close action that return and take a resource
+respectively, so you can use those directly, and use a lambda in the third
+action to actally get at the resource and do something with it when you need
+it:
+
+@
+    'bracket'
+        (openConnection)
+        (closeConnection)
+        (\c -> do
+            this
+            thatAndNow
+            theOtherThingThatNeeds c
+        )
+@
+
+Note that 'bracket' does /not/ catch the exception if one is thrown! The
+finalizer will run, but then the exception will continue to propogate its way
+out of your program's call stack. Note also that the result of the cleanup
+action @γ@ is ignored.
 
 @since 0.5.0
 -}
@@ -92,14 +152,14 @@ computation or the resources used to do it.
 
 @since 0.5.0
 -}
-finally :: Program τ α -> Program τ β -> Program τ α
+finally :: Program τ α -> Program τ γ -> Program τ α
 finally = Safe.finally
 
 {- |
-Run an action and the, if  an exception was raised (and only if), run the
-second action.
+Run an action and then, if an exception was raised (and only if an exception
+was raised), run the second action.
 
 @since 0.5.0
 -}
-onException :: Program τ α -> Program τ β -> Program τ α
+onException :: Program τ α -> Program τ γ -> Program τ α
 onException = Safe.onException
