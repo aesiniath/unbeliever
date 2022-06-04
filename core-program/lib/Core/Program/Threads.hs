@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -43,8 +44,8 @@ module Core.Program.Threads (
     unThread,
 ) where
 
-import Control.Concurrent.Async (Async, AsyncCancelled, cancel)
-import qualified Control.Concurrent.Async as Async (
+import Control.Concurrent.Async (Async, AsyncCancelled)
+import Control.Concurrent.Async qualified as Async (
     async,
     cancel,
     concurrently,
@@ -59,7 +60,7 @@ import Control.Concurrent.MVar (
     newMVar,
     readMVar,
  )
-import qualified Control.Exception.Safe as Safe (catch, catchAsync)
+import Control.Exception.Safe qualified as Safe (catch, catchAsync, throw)
 import Control.Monad (
     void,
  )
@@ -139,7 +140,7 @@ forkThread program = do
                             subProgram context' $ do
                                 warn "Uncaught exception in thread"
                                 debug "e" text
-                            throw e
+                            Safe.throw e
                 )
 
         return (Thread a)
@@ -167,8 +168,8 @@ waitThread (Thread a) = liftIO $ do
     Safe.catchAsync
         (Async.wait a)
         ( \(e :: AsyncCancelled) -> do
-            cancel a
-            throw e
+            Async.cancel a
+            Safe.throw e
         )
 
 {- |
@@ -219,8 +220,8 @@ waitThread' (Thread a) = liftIO $ do
             pure result
         )
         ( \(e :: AsyncCancelled) -> do
-            cancel a
-            throw e
+            Async.cancel a
+            Safe.throw e
         )
 
 {- |
@@ -273,8 +274,8 @@ waitThreads' ts = liftIO $ do
             pure results
         )
         ( \(e :: AsyncCancelled) -> do
-            mapM_ cancel as
-            throw e
+            mapM_ Async.cancel as
+            Safe.throw e
         )
 
 {- |

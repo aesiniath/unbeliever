@@ -1,5 +1,5 @@
 name: core-program
-version: 0.4.6.4
+version: 0.5.0.0
 synopsis: Opinionated Haskell Interoperability
 description: |
   A library to help build command-line programs, both tools and
@@ -56,6 +56,7 @@ library:
    - Core.Program.Arguments
    - Core.Program.Context
    - Core.Program.Execute
+   - Core.Program.Exceptions
    - Core.Program.Logging
    - Core.Program.Metadata
    - Core.Program.Notify

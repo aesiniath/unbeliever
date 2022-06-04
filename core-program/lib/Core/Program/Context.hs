@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -40,7 +41,7 @@ module Core.Program.Context (
 import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
 import Control.Concurrent.MVar (MVar, newEmptyMVar, newMVar, putMVar, readMVar)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
-import qualified Control.Exception.Safe as Safe (throw)
+import Control.Exception.Safe qualified as Safe (throw)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow (throwM))
 import Control.Monad.Reader.Class (MonadReader (..))
 import Control.Monad.Trans.Reader (ReaderT (..))
@@ -48,18 +49,18 @@ import Core.Data.Structures
 import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Metadata
-import Core.System.Base hiding (catch, throw)
+import Core.System.Base
 import Core.Text.Rope
 import Data.Foldable (foldrM)
-import System.IO (hIsTerminalDevice)
 import Data.Int (Int64)
 import Data.String (IsString)
 import Prettyprinter (LayoutOptions (..), PageWidth (..), layoutPretty)
 import Prettyprinter.Render.Text (renderIO)
-import qualified System.Console.Terminal.Size as Terminal (Window (..), size)
+import System.Console.Terminal.Size qualified as Terminal (Window (..), size)
 import System.Environment (getArgs, getProgName, lookupEnv)
 import System.Exit (ExitCode (..), exitWith)
-import qualified System.Posix.Process as Posix (exitImmediately)
+import System.IO (hIsTerminalDevice)
+import System.Posix.Process qualified as Posix (exitImmediately)
 import Prelude hiding (log)
 
 {- |
@@ -398,12 +399,10 @@ getConsoleWidth = do
             Nothing -> 80
     return columns
 
-
 getConsoleColoured :: IO Bool
 getConsoleColoured = do
     terminal <- hIsTerminalDevice stdout
     pure terminal
-
 
 {- |
 Process the command line options and arguments. If an invalid option is

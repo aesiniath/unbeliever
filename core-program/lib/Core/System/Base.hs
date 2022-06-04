@@ -33,21 +33,19 @@ module Core.System.Base (
     -- | Re-exported from "Control.Exception.Safe" in the __safe-exceptions__ package:
     Exception (..),
     SomeException,
-    throw,
     impureThrow,
     bracket,
-    catch,
     finally,
 ) where
 
-import Control.Exception.Safe (
+import Control.Exception (
     Exception (..),
     SomeException,
+ )
+import Control.Exception.Safe (
     bracket,
-    catch,
     finally,
     impureThrow,
-    throw,
  )
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.IO (Handle, IOMode (..), hFlush, stderr, stdin, stdout, withFile)
