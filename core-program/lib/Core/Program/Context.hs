@@ -163,25 +163,19 @@ application data of type @τ@ which can be retrieved with
 -- that field name as a local variable name.
 --
 data Context τ = Context
-    { -- runtime properties
-      programNameFrom :: MVar Rope
+    { programNameFrom :: MVar Rope
     , terminalWidthFrom :: Int
     , terminalColouredFrom :: Bool
     , versionFrom :: Version
-    , -- only used during initial setup
-      initialConfigFrom :: Config
+    , initialConfigFrom :: Config -- only used during initial setup
     , initialExportersFrom :: [Exporter]
-    , -- derived at startup
-      commandLineFrom :: Parameters
-    , -- operational state
-      exitSemaphoreFrom :: MVar ExitCode
+    , commandLineFrom :: Parameters -- derived at startup
+    , exitSemaphoreFrom :: MVar ExitCode
     , startTimeFrom :: MVar TimeStamp
     , verbosityLevelFrom :: MVar Verbosity
-    , -- communication channels
-      outputChannelFrom :: TQueue (Maybe Rope)
-    , telemetryChannelFrom :: TQueue (Maybe Datum)
-    , -- machinery for telemetry
-      telemetryForwarderFrom :: Maybe Forwarder
+    , outputChannelFrom :: TQueue (Maybe Rope) -- communication channels
+    , telemetryChannelFrom :: TQueue (Maybe Datum) -- machinery for telemetry
+    , telemetryForwarderFrom :: Maybe Forwarder
     , currentDatumFrom :: MVar Datum
     , applicationDataFrom :: MVar τ
     }
