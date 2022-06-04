@@ -65,16 +65,17 @@ throw = Safe.throw
 {- |
 Acquire a resource, use it, then release it back.
 
-The bracket pattern is common in Haskell for getting a resource needed for a
-computation, preforming that computation, then releasing the resource back to
-the system. Common examples are when making database connections and doing
+The bracket pattern is common in Haskell for getting a resource @ρ@ needed for
+a computation, preforming that computation, then releasing the resource back
+to the system. Common examples are when making database connections and doing
 file or network operations, where you need to make sure you "close" the
 connection afterward before continuing the program so that scare resources
 like file handles are released.
 
 Note that this does /not/ catch the exception if one is thrown! The finalizer
 will run, but then the exception will continue to propogate its way out of
-your program's call stack.
+your program's call stack. Note also that the result of the cleanup action @γ@
+is ignored.
 
 @since 0.5.0
 -}
