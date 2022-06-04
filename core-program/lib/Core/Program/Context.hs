@@ -35,7 +35,6 @@ module Core.Program.Context (
     getContext,
     fmapContext,
     subProgram,
-    Boom (..),
 ) where
 
 import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
@@ -529,22 +528,3 @@ handleTelemetryChoice context = do
         case target == codenameFrom exporter of
             False -> lookupExporter target exporters
             True -> Just exporter
-
-{- |
-A utility exception for those occasions when you just need to go "boom".
-
-@
-    case 'Core.Data.Structures.containsKey' \"James Bond\" agents of
-        'False' -> do
-            evilPlan
-        'True' ->  do
-            'Core.Program.Logging.write' \"No Mr Bond, I expect you to die!\"
-            'Core.System.Base.throw' 'Boom'
-@
-
-@since 0.3.2
--}
-data Boom = Boom
-    deriving (Show)
-
-instance Exception Boom

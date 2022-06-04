@@ -72,7 +72,15 @@ fail fast if something goes wrong and you can get an appropriate error message
 back to the surface (in our case the 'Program' @τ@ monad) and you can 'throw'
 from there.
 -}
-module Core.Program.Exceptions where
+module Core.Program.Exceptions (
+    catch,
+    try,
+    throw,
+    bracket,
+    finally,
+    onException,
+    Boom (..),
+) where
 
 import Control.Exception qualified as Base (
     Exception,
@@ -159,6 +167,38 @@ Throw an exception.
 This will be thrown as a normal synchronous exception that can be caught with
 'catch' or 'try' above.
 
+Don't try and use this from pure code! A common temptation is to be in the
+middle of a computation, hit a problem, and think \"oh, that's bad. I guess
+I'll throw an exception!\". You /can\'t/. Surface the problem back to the I/O
+level code that 'Program' @τ@ monad provides, and /then/ you can throw an
+exception if appropriate.
+
+When you /do/ throw an exception, we recommend you go to some trouble to make
+sure that the string or otherwise descriptive message is unique in your
+codebase. If you do so then when the problem arises you will be able to
+quickly search for that string and find the place where the exception arose
+from, even without the benefit of stack traces. For example,
+
+@
+    'throw' (SomeoneWrongOnInternet \"Ashley thinks there are more than three Star Wars movies\")
+@
+
+which will get you a nice crash message as your world falls down around you:
+
+@
+22:54:39Z (00.002) SomeoneWrongOnInternet \"Ashley thinks there are more than three Star Wars movies\"
+$
+@
+
+but if you're in a hurry and don't want to define a local exception type to
+use,
+
+@
+    'throw' 'Boom'
+@
+
+will work.
+
 (experienced users will note that 'Program' implements
 'Control.Monad.Catch.MonadThrow' and as such this is just a wrapper around
 calling __safe-exceptions__'s 'Control.Exceptions.Safe.throw' function)
@@ -227,3 +267,22 @@ action is is ignored.
 -}
 onException :: Program τ α -> Program τ γ -> Program τ α
 onException = Safe.onException
+
+{- |
+A utility exception for those occasions when you just need to go "boom".
+
+@
+    case 'Core.Data.Structures.containsKey' \"James Bond\" agents of
+        'False' -> do
+            evilPlan
+        'True' ->  do
+            'Core.Program.Logging.write' \"No Mr Bond, I expect you to die!\"
+            'throw' 'Boom'
+@
+
+@since 0.3.2
+-}
+data Boom = Boom
+    deriving (Show)
+
+instance Base.Exception Boom
