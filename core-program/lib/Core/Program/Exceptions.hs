@@ -68,8 +68,8 @@ Catch an exception.
 This will /not/ catch asynchonous exceptions. If you need to that, see the
 more comprehensive exception handling facilities offered by
 __safe-exceptions__, which in turn builds on __exceptions__ and __base__).
-Note that 'Program' implements 'MonadCatch' so you can use the full power
-available there if required.
+Note that 'Program' implements 'Control.Monad.Catch.MonadCatch' so you can use
+the full power available there if required.
 
 @since 0.5.0
 -}
@@ -97,9 +97,9 @@ Throw an exception.
 This will be thrown as a normal synchronous exception that can be caught with
 'catch' or 'try' above.
 
-(experienced users will note that 'Program' implements 'MonadThrow' and as
-such this is just a wrapper around calling __safe-exceptions__'s
-'Control.Exceptions.Safe.throw' function)
+(experienced users will note that 'Program' implements
+'Control.Monad.Catch.MonadThrow' and as such this is just a wrapper around
+calling __safe-exceptions__'s 'Control.Exceptions.Safe.throw' function)
 
 @since 0.5.0
 -}
@@ -135,7 +135,7 @@ it:
 Note that 'bracket' does /not/ catch the exception if one is thrown! The
 finalizer will run, but then the exception will continue to propogate its way
 out of your program's call stack. Note also that the result of the cleanup
-action @γ@ is ignored.
+action @γ@ is ignored (it can be @()@ or anythign else; it will be discarded).
 
 @since 0.5.0
 -}
@@ -148,7 +148,8 @@ whether or not an exception was raised by the first one. This is like
 'bracket' above, but can be used when you know you have cleanup steps to take
 after your computation which /do/ have to be run even if (especially if!) an
 exception is thrown but that that cleanup doesn't depend on the result of that
-computation or the resources used to do it.
+computation or the resources used to do it. The result @γ@ of the subsequent
+action is ignored.
 
 @since 0.5.0
 -}
@@ -157,7 +158,8 @@ finally = Safe.finally
 
 {- |
 Run an action and then, if an exception was raised (and only if an exception
-was raised), run the second action.
+was raised), run the second action. The result @γ@ of the subsequent action is
+is ignored.
 
 @since 0.5.0
 -}
