@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           core-webserver-servant
-version:        0.1.1.1
+version:        0.1.1.2
 synopsis:       Interoperability with Servant
 description:    This is part of a library to help build command-line programs, both tools and
                 longer-running daemons.
@@ -38,7 +38,7 @@ library
   ghc-options: -Wall -Wwarn -fwarn-tabs
   build-depends:
       base >=4.11 && <5
-    , core-program
+    , core-program >=0.5.0
     , core-telemetry
     , core-webserver-warp
     , mtl

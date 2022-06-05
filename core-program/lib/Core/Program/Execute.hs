@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -83,12 +84,10 @@ module Core.Program.Execute (
     resetTimer,
     trap_,
 
-    -- * Re-exports from safe-exports
-    Safe.catch,
-    Safe.catchesAsync,
-    Safe.throw,
-    Safe.try,
-    Safe.tryAsync,
+    -- * Exception handling
+    catch,
+    throw,
+    try,
 
     -- * Internals
     Context,
@@ -109,7 +108,7 @@ import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (
     ExceptionInLinkedThread (..),
  )
-import qualified Control.Concurrent.Async as Async (
+import Control.Concurrent.Async qualified as Async (
     async,
     cancel,
     race,
@@ -132,8 +131,12 @@ import Control.Concurrent.STM.TQueue (
     unGetTQueue,
     writeTQueue,
  )
-import qualified Control.Exception as Base (throwIO)
-import qualified Control.Exception.Safe as Safe (catch, catchesAsync, throw, try, tryAsync)
+import Control.Exception qualified as Base (throwIO)
+import Control.Exception.Safe qualified as Safe (
+    catch,
+    catchesAsync,
+    throw,
+ )
 import Control.Monad (
     void,
     when,
@@ -143,21 +146,30 @@ import Control.Monad.Reader.Class (MonadReader (ask))
 import Core.Data.Structures
 import Core.Program.Arguments
 import Core.Program.Context
+import Core.Program.Exceptions
 import Core.Program.Logging
 import Core.Program.Signal
-import Core.System.Base
+import Core.System.Base (
+    Exception,
+    Handle,
+    SomeException,
+    displayException,
+    hFlush,
+    liftIO,
+    stdout,
+ )
 import Core.Text.Bytes
 import Core.Text.Rope
-import qualified Data.ByteString as B (hPut)
-import qualified Data.ByteString.Char8 as C (singleton)
-import qualified Data.List as List (intersperse)
+import Data.ByteString qualified as B (hPut)
+import Data.ByteString.Char8 qualified as C (singleton)
+import Data.List qualified as List (intersperse)
 import GHC.Conc (getNumProcessors, numCapabilities, setNumCapabilities)
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import System.Directory (
     findExecutable,
  )
 import System.Exit (ExitCode (..))
-import qualified System.Posix.Process as Posix (exitImmediately)
+import System.Posix.Process qualified as Posix (exitImmediately)
 import System.Process.Typed (closed, proc, readProcess, setStdin)
 import Prelude hiding (log)
 
@@ -397,7 +409,7 @@ loopForever action v out queue = do
         -- handle it and loop
         Just items -> do
             start <- getCurrentTimeNanoseconds
-            catch
+            Safe.catch
                 ( do
                     action (reverse items)
                     reportStatus start (length items)
@@ -648,7 +660,7 @@ execProcess (cmd : args) =
                 findExecutable cmd'
             case probe of
                 Nothing -> do
-                    throw (CommandNotFound cmd)
+                    Safe.throw (CommandNotFound cmd)
                 Just _ -> do
                     (exit, out, err) <- liftIO $ do
                         readProcess task1

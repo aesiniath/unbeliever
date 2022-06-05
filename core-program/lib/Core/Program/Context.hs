@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -34,13 +35,12 @@ module Core.Program.Context (
     getContext,
     fmapContext,
     subProgram,
-    Boom (..),
 ) where
 
 import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
 import Control.Concurrent.MVar (MVar, newEmptyMVar, newMVar, putMVar, readMVar)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
-import qualified Control.Exception.Safe as Safe (throw)
+import Control.Exception.Safe qualified as Safe (throw)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow (throwM))
 import Control.Monad.Reader.Class (MonadReader (..))
 import Control.Monad.Trans.Reader (ReaderT (..))
@@ -48,18 +48,18 @@ import Core.Data.Structures
 import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Metadata
-import Core.System.Base hiding (catch, throw)
+import Core.System.Base
 import Core.Text.Rope
 import Data.Foldable (foldrM)
-import System.IO (hIsTerminalDevice)
 import Data.Int (Int64)
 import Data.String (IsString)
 import Prettyprinter (LayoutOptions (..), PageWidth (..), layoutPretty)
 import Prettyprinter.Render.Text (renderIO)
-import qualified System.Console.Terminal.Size as Terminal (Window (..), size)
+import System.Console.Terminal.Size qualified as Terminal (Window (..), size)
 import System.Environment (getArgs, getProgName, lookupEnv)
 import System.Exit (ExitCode (..), exitWith)
-import qualified System.Posix.Process as Posix (exitImmediately)
+import System.IO (hIsTerminalDevice)
+import System.Posix.Process qualified as Posix (exitImmediately)
 import Prelude hiding (log)
 
 {- |
@@ -162,25 +162,19 @@ application data of type @τ@ which can be retrieved with
 -- that field name as a local variable name.
 --
 data Context τ = Context
-    { -- runtime properties
-      programNameFrom :: MVar Rope
+    { programNameFrom :: MVar Rope
     , terminalWidthFrom :: Int
     , terminalColouredFrom :: Bool
     , versionFrom :: Version
-    , -- only used during initial setup
-      initialConfigFrom :: Config
+    , initialConfigFrom :: Config -- only used during initial setup
     , initialExportersFrom :: [Exporter]
-    , -- derived at startup
-      commandLineFrom :: Parameters
-    , -- operational state
-      exitSemaphoreFrom :: MVar ExitCode
+    , commandLineFrom :: Parameters -- derived at startup
+    , exitSemaphoreFrom :: MVar ExitCode
     , startTimeFrom :: MVar TimeStamp
     , verbosityLevelFrom :: MVar Verbosity
-    , -- communication channels
-      outputChannelFrom :: TQueue (Maybe Rope)
-    , telemetryChannelFrom :: TQueue (Maybe Datum)
-    , -- machinery for telemetry
-      telemetryForwarderFrom :: Maybe Forwarder
+    , outputChannelFrom :: TQueue (Maybe Rope) -- communication channels
+    , telemetryChannelFrom :: TQueue (Maybe Datum) -- machinery for telemetry
+    , telemetryForwarderFrom :: Maybe Forwarder
     , currentDatumFrom :: MVar Datum
     , applicationDataFrom :: MVar τ
     }
@@ -398,12 +392,10 @@ getConsoleWidth = do
             Nothing -> 80
     return columns
 
-
 getConsoleColoured :: IO Bool
 getConsoleColoured = do
     terminal <- hIsTerminalDevice stdout
     pure terminal
-
 
 {- |
 Process the command line options and arguments. If an invalid option is
@@ -536,22 +528,3 @@ handleTelemetryChoice context = do
         case target == codenameFrom exporter of
             False -> lookupExporter target exporters
             True -> Just exporter
-
-{- |
-A utility exception for those occasions when you just need to go "boom".
-
-@
-    case 'Core.Data.Structures.containsKey' \"James Bond\" agents of
-        'False' -> do
-            evilPlan
-        'True' ->  do
-            'Core.Program.Logging.write' \"No Mr Bond, I expect you to die!\"
-            'Core.System.Base.throw' 'Boom'
-@
-
-@since 0.3.2
--}
-data Boom = Boom
-    deriving (Show)
-
-instance Exception Boom
