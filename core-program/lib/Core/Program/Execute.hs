@@ -143,6 +143,7 @@ import Control.Monad (
  )
 import Control.Monad.Catch (Handler (..))
 import Control.Monad.Reader.Class (MonadReader (ask))
+import Core.Data.Clock
 import Core.Data.Structures
 import Core.Program.Arguments
 import Core.Program.Context

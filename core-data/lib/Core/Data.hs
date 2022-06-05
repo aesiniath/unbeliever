@@ -24,4 +24,5 @@ module Core.Data (
     module Core.Data.Clock,
 ) where
 
+import Core.Data.Clock
 import Core.Data.Structures

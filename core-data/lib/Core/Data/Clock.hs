@@ -1,10 +1,12 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 
 module Core.Data.Clock (
     -- * Time type
     TimeStamp,
+    getCurrentTimeNanoseconds,
 
     -- * Conversions
     Instant (fromTime, intoTime),
@@ -67,3 +69,14 @@ newtype TimeStamp = TimeStamp
 class Instant a where
     fromTime :: TimeStamp -> a
     intoTime :: a -> TimeStamp
+
+instance Instant Int64 where
+    fromTime = unTimeStamp
+    intoTime = TimeStamp
+
+instance Instant UTCTime where
+    fromTime = undefined
+    intoTime = undefined
+
+getCurrentTimeNanoseconds :: IO TimeStamp
+getCurrentTimeNanoseconds = undefined

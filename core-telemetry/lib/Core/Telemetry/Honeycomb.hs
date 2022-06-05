@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
@@ -35,14 +35,14 @@ module Core.Telemetry.Honeycomb (
     honeycombExporter,
 ) where
 
-import Control.Exception.Safe qualified as Safe (catch, throw, finally)
+import Control.Exception.Safe qualified as Safe (catch, finally, throw)
+import Core.Data.Clock (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
 import Core.Data.Structures (Map, fromMap, insertKeyValue, intoMap, lookupKeyValue)
 import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Context
 import Core.Program.Logging
-import Core.System.Base (liftIO, stdout, SomeException)
-import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
+import Core.System.Base (SomeException, liftIO, stdout)
 import Core.Text.Bytes
 import Core.Text.Colour
 import Core.Text.Rope
