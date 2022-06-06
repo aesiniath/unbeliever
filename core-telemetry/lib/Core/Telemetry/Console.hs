@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 {- |
@@ -23,16 +24,16 @@ module Core.Telemetry.Console (
 
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (TQueue, writeTQueue)
+import Core.Data.Clock
 import Core.Data.Structures (fromMap)
 import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Context
 import Core.Program.Logging
-import Core.System.External (getCurrentTimeNanoseconds)
 import Core.Text.Colour
 import Core.Text.Rope
 import Core.Text.Utilities
-import qualified Data.List as List
+import Data.List qualified as List
 
 {- |
 Output metrics to the terminal. This is mostly useful for debugging, but it

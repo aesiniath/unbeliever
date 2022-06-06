@@ -170,9 +170,9 @@ import Core.Data.Structures (Map, emptyMap, insertKeyValue)
 import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Context
+import Core.Data.Clock
 import Core.Program.Logging
 import Core.System.Base (SomeException, liftIO)
-import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
 import Core.Telemetry.Identifiers
 import Core.Text.Rope
 import Core.Text.Utilities (oxford, quote)

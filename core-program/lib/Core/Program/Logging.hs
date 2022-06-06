@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK prune #-}
@@ -147,7 +148,6 @@ module Core.Program.Logging (
     isInternal,
 ) where
 
-import Chrono.TimeStamp (TimeStamp (..), getCurrentTimeNanoseconds)
 import Control.Concurrent.MVar (readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (writeTQueue)
@@ -155,9 +155,10 @@ import Control.Exception (evaluate)
 import Control.Monad (when)
 import Control.Monad.Reader.Class (MonadReader (ask))
 import Data.Fixed
-import Data.Hourglass (TimeFormatElem (..), timePrint)
-import qualified Data.Text.Short as S (replicate)
+import Data.Hourglass qualified as H (TimeFormatElem (..), timePrint)
+import Data.Text.Short qualified as S (replicate)
 
+import Core.Data.Clock
 import Core.Program.Context
 import Core.System.Base
 import Core.Text.Colour
@@ -198,15 +199,15 @@ formatLogMessage start now coloured severity message =
     let !start' = unTimeStamp start
         !now' = unTimeStamp now
         !stampZ =
-            timePrint
-                [ Format_Hour
-                , Format_Text ':'
-                , Format_Minute
-                , Format_Text ':'
-                , Format_Second
-                , Format_Text 'Z'
+            H.timePrint
+                [ H.Format_Hour
+                , H.Format_Text ':'
+                , H.Format_Minute
+                , H.Format_Text ':'
+                , H.Format_Second
+                , H.Format_Text 'Z'
                 ]
-                now
+                (convertFromTimeStamp now)
 
         -- I hate doing math in Haskell
         !elapsed = fromRational (toRational (now' - start') / 1e9) :: Fixed E3

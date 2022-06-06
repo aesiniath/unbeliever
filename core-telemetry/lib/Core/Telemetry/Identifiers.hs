@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
@@ -34,11 +35,11 @@ module Core.Telemetry.Identifiers (
 ) where
 
 import Control.Concurrent.MVar (modifyMVar_, readMVar)
+import Core.Data.Clock
 import Core.Program.Context
 import Core.Program.Logging
 import Core.System (unsafePerformIO)
 import Core.System.Base (liftIO)
-import Core.System.External (TimeStamp (unTimeStamp))
 import Core.Text.Rope
 import Core.Text.Utilities (breakPieces)
 import Data.Bits (shiftL, shiftR, (.&.), (.|.))
