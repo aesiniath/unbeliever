@@ -3,7 +3,31 @@
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE TupleSections #-}
+{-# OPTIONS_HADDOCK prune #-}
 
+{-|
+The standard package for working with dates and times in Haskell, __time__, is
+/awkward/. That's a subjective judgment, but over the years there have been
+few areas more frustrating than trying to do pragmatic things with calendars
+and clocks. This module represents some opinionated approaches to working with
+times and dates, and a place to collect some hard-won idioms for converting
+between things.
+
+Our original use was wanting to conveniently measure things happening on
+distributed computer systems. Since machine clock cycles are in units of
+nanoseconds, this has the nice property that, assuming the system clock is not
+corrupted, two subsequent events from the same source process are likely to
+have monotonically increasing timestamps. And even if the system clock goes to
+hell, they're still decently likely to be unique per device. Make for good
+keys.
+
+So the timestamp type herein 'Time' is nanoseconds since the Unix epoch; which
+in (signed) 64 bits means that you can represent times between early in the
+morning of 21 September 1677 through just before midnight on 11 April 2262.
+The primary use isn't doing calendaring, though; it's just working with
+machine generated timestamps in distributed systems and for conveying start
+and end times around in your program.
+-}
 module Core.Data.Clock (
     -- * Time type
     Time,
