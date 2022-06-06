@@ -30,7 +30,7 @@ and end times around in your program.
 -}
 module Core.Data.Clock (
     -- * Time type
-    Time,
+    Time(..),
     getCurrentTimeNanoseconds,
 
     -- * Conversions
