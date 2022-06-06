@@ -5,7 +5,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_HADDOCK prune #-}
 
-{-|
+{- |
 The standard package for working with dates and times in Haskell, __time__, is
 /awkward/. That's a subjective judgment, but over the years there have been
 few areas more frustrating than trying to do pragmatic things with calendars
@@ -30,7 +30,7 @@ and end times around in your program.
 -}
 module Core.Data.Clock (
     -- * Time type
-    Time(..),
+    Time (..),
     getCurrentTimeNanoseconds,
 
     -- * Conversions
@@ -115,7 +115,6 @@ something else.
 -}
 newtype Time = Time Int64
     deriving (Eq, Ord, Enum, Num, Real, Integral, Bounded, Generic)
-
 
 {- |
 @since 0.3.3

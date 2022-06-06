@@ -314,7 +314,7 @@ will result in
 > 13:05:55Z (00.112) Starting...
 
 appearing on @stdout@. The output string is current time in UTC, and time
-elapsed since startup shown to the nearest millisecond (our Times are to
+elapsed since startup shown to the nearest millisecond (our timestamps are to
 nanosecond precision, but you don't need that kind of resolution in in
 ordinary debugging).
 
