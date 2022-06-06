@@ -26,7 +26,7 @@ license:        MIT
 license-file:   LICENSE
 build-type:     Simple
 tested-with:
-    GHC == 8.10.7
+    GHC == 8.10.7, GHC == 9.2.2
 
 source-repository head
   type: git
@@ -49,6 +49,7 @@ library
     , containers
     , core-text >=0.3.7
     , hashable >=1.2
+    , hourglass
     , prettyprinter >=1.6.2
     , scientific
     , text
