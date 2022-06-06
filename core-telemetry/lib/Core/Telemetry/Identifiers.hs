@@ -83,7 +83,7 @@ The two bytes of supplied randomness are put in the middle.
 
 @since 0.1.9
 -}
-createIdentifierTrace :: TimeStamp -> Word16 -> MAC -> Trace
+createIdentifierTrace :: Time -> Word16 -> MAC -> Trace
 createIdentifierTrace time rand address =
     let p1 = packRope (toHexReversed64 (fromIntegral time))
         p2 = packRope (toHexNormal16 rand)
@@ -212,14 +212,14 @@ unsafeToDigit w =
 
 {- |
 Generate an identifier for a span. We only have 8 bytes to work with. We use
-the nanosecond prescision timestamp with the nibbles reversed, and then
+the nanosecond prescision Time with the nibbles reversed, and then
 overwrite the last two bytes with the supplied random value.
 
 @since 0.1.9
 -}
-createIdentifierSpan :: TimeStamp -> Word16 -> Span
+createIdentifierSpan :: Time -> Word16 -> Span
 createIdentifierSpan time rand =
-    let t = fromIntegral (unTimeStamp time) :: Word64
+    let t = fromIntegral (unTime time) :: Word64
         r = fromIntegral rand :: Word64
         w = (t .&. 0x0000ffffffffffff) .|. (shiftL r 48)
      in Span

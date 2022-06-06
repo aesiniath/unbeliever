@@ -36,7 +36,7 @@ module Core.Telemetry.Honeycomb (
 ) where
 
 import Control.Exception.Safe qualified as Safe (catch, finally, throw)
-import Core.Data.Clock (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
+import Core.Data.Clock (Time, unTime, getCurrentTimeNanoseconds)
 import Core.Data.Structures (Map, fromMap, insertKeyValue, intoMap, lookupKeyValue)
 import Core.Encoding.Json
 import Core.Program.Arguments

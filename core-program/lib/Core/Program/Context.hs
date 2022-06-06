@@ -75,7 +75,7 @@ data Datum = Datum
     { spanIdentifierFrom :: Maybe Span
     , spanNameFrom :: Rope
     , serviceNameFrom :: Maybe Rope
-    , spanTimeFrom :: TimeStamp
+    , spanTimeFrom :: Time
     , traceIdentifierFrom :: Maybe Trace
     , parentIdentifierFrom :: Maybe Span
     , durationFrom :: Maybe Int64
@@ -170,7 +170,7 @@ data Context τ = Context
     , initialExportersFrom :: [Exporter]
     , commandLineFrom :: Parameters -- derived at startup
     , exitSemaphoreFrom :: MVar ExitCode
-    , startTimeFrom :: MVar TimeStamp
+    , startTimeFrom :: MVar Time
     , verbosityLevelFrom :: MVar Verbosity
     , outputChannelFrom :: TQueue (Maybe Rope) -- communication channels
     , telemetryChannelFrom :: TQueue (Maybe Datum) -- machinery for telemetry

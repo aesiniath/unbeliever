@@ -165,7 +165,7 @@ import Core.Text.Colour
 import Core.Text.Rope
 import Core.Text.Utilities
 
-data Message = Message TimeStamp Severity Rope (Maybe Rope)
+data Message = Message Time Severity Rope (Maybe Rope)
 
 data Severity
     = SeverityNone
@@ -194,10 +194,10 @@ putMessage context (Message now level text possiblelValue) = do
     atomically $ do
         writeTQueue output (Just result)
 
-formatLogMessage :: TimeStamp -> TimeStamp -> Bool -> Severity -> Rope -> Rope
+formatLogMessage :: Time -> Time -> Bool -> Severity -> Rope -> Rope
 formatLogMessage start now coloured severity message =
-    let !start' = unTimeStamp start
-        !now' = unTimeStamp now
+    let !start' = unTime start
+        !now' = unTime now
         !stampZ =
             H.timePrint
                 [ H.Format_Hour
@@ -207,7 +207,7 @@ formatLogMessage start now coloured severity message =
                 , H.Format_Second
                 , H.Format_Text 'Z'
                 ]
-                (convertFromTimeStamp now)
+                (convertFromTime now)
 
         -- I hate doing math in Haskell
         !elapsed = fromRational (toRational (now' - start') / 1e9) :: Fixed E3
@@ -314,7 +314,7 @@ will result in
 > 13:05:55Z (00.112) Starting...
 
 appearing on @stdout@. The output string is current time in UTC, and time
-elapsed since startup shown to the nearest millisecond (our timestamps are to
+elapsed since startup shown to the nearest millisecond (our Times are to
 nanosecond precision, but you don't need that kind of resolution in in
 ordinary debugging).
 
@@ -471,7 +471,7 @@ debugR label thing = do
 
             let columns = terminalWidthFrom context
 
-            -- TODO take into account 22 width already consumed by timestamp
+            -- TODO take into account 22 width already consumed by Time
             -- TODO move render to putMessage? putMessageR?
             let value = render columns thing
             !value' <- evaluate value

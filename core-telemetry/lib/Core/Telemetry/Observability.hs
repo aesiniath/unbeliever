@@ -442,7 +442,7 @@ encloseSpan label action = do
         datum2 <- readMVar v2
         let datum2' =
                 datum2
-                    { durationFrom = Just (unTimeStamp finish - unTimeStamp start)
+                    { durationFrom = Just (unTime finish - unTime start)
                     }
 
         let tel = telemetryChannelFrom context
@@ -707,7 +707,7 @@ span are recorded automatically when calling 'encloseSpan'. Observabilty tools
 are designed to be used live; traces and spans should be created in real time
 in your code.
 -}
-setStartTime :: TimeStamp -> Program τ ()
+setStartTime :: Time -> Program τ ()
 setStartTime time = do
     context <- getContext
 

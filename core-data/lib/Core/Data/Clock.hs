@@ -6,21 +6,18 @@
 
 module Core.Data.Clock (
     -- * Time type
-    TimeStamp,
+    Time,
     getCurrentTimeNanoseconds,
 
     -- * Conversions
     Instant (fromTime, intoTime),
-    unTimeStamp,
-    -- silent
-    convertFromTimeStamp,
+
+    -- * Internals
+    unTime,
+    convertFromTime,
 ) where
 
 import Control.Applicative ((<|>))
-import Core.Text.Bytes (Bytes)
-import Core.Text.Rope (Rope, Textual (..))
-import Data.Bifoldable (Bifoldable)
-import Data.ByteString qualified as B (ByteString)
 import Data.Hourglass qualified as H (
     DateTime (..),
     Elapsed (..),
@@ -52,7 +49,7 @@ import Time.System qualified as H (
 {- |
 Number of nanoseconds since the Unix epoch.
 
-The 'Show' instance displays the 'TimeStamp' as seconds with the nanosecond
+The 'Show' instance displays the 'Time' as seconds with the nanosecond
 precision expressed as a decimal amount after the interger, ie:
 
 >>> t <- getCurrentTimeNanoseconds
@@ -62,27 +59,27 @@ precision expressed as a decimal amount after the interger, ie:
 However this doesn't change the fact the underlying representation counts
 nanoseconds since epoch:
 
->>> show $ unTimeStamp t
+>>> show $ unTime t
 1406848175274387031
 
 There is a 'Read' instance that is reasonably accommodating:
 
->>> read "2014-07-31T13:05:04.942089001Z" :: TimeStamp
+>>> read "2014-07-31T13:05:04.942089001Z" :: Time
 2014-07-31T13:05:04.942089001Z
 
->>> read "1406811904.942089001" :: TimeStamp
+>>> read "1406811904.942089001" :: Time
 2014-07-31T13:05:04.942089001Z
 
->>> read "1406811904" :: TimeStamp
+>>> read "1406811904" :: Time
 2014-07-31T13:05:04.000000000Z
 
 In case you're wondering, the valid range of nanoseconds that fits into the
 underlying 'Int64' is:
 
->>> show $ minBound :: TimeStamp
+>>> show $ minBound :: Time
 1677-09-21T00:12:43.145224192Z
 
->>> show $ maxBound :: TimeStamp
+>>> show $ maxBound :: Time
 2262-04-11T23:47:16.854775807Z
 
 so in a quarter millenium's time, yes, you'll have the Y2262 Problem.
@@ -92,13 +89,19 @@ something else.
 
 @since 0.3.3
 -}
-newtype TimeStamp = TimeStamp
-    { unTimeStamp :: Int64
-    }
+newtype Time = Time Int64
     deriving (Eq, Ord, Enum, Num, Real, Integral, Bounded, Generic)
 
-instance Show TimeStamp where
-    show t = H.timePrint ISO8601_Precise (convertFromTimeStamp t)
+
+{- |
+@since 0.3.3
+-}
+unTime :: Time -> Int64
+unTime (Time ticks) = ticks
+{-# INLINE unTime #-}
+
+instance Show Time where
+    show t = H.timePrint ISO8601_Precise (convertFromTime t)
 
 {- |
 Format string describing full (nanosecond) precision ISO8601 time,
@@ -186,10 +189,10 @@ instance H.TimeFormat Posix_Seconds where
             [ H.Format_UnixSecond
             ]
 
-instance Read TimeStamp where
+instance Read Time where
     readsPrec _ s = maybeToList $ (,"") <$> parseInput s
 
-parseInput :: String -> Maybe TimeStamp
+parseInput :: String -> Maybe Time
 parseInput = fmap reduceDateTime . parse
   where
     parse :: String -> Maybe H.DateTime
@@ -203,8 +206,8 @@ parseInput = fmap reduceDateTime . parse
             <|> H.timeParse Posix_Milli x
             <|> H.timeParse Posix_Seconds x
 
-    reduceDateTime :: H.DateTime -> TimeStamp
-    reduceDateTime = convertToTimeStamp . H.timeGetElapsedP
+    reduceDateTime :: H.DateTime -> Time
+    reduceDateTime = convertToTime . H.timeGetElapsedP
 
 {- |
 Convert between different representations of time.
@@ -212,12 +215,12 @@ Convert between different representations of time.
 @since 0.3.3
 -}
 class Instant a where
-    fromTime :: TimeStamp -> a
-    intoTime :: a -> TimeStamp
+    fromTime :: Time -> a
+    intoTime :: a -> Time
 
 instance Instant Int64 where
-    fromTime = unTimeStamp
-    intoTime = TimeStamp
+    fromTime = unTime
+    intoTime = Time
 
 instance Instant UTCTime where
     fromTime = posixSecondsToUTCTime . convertToPosix
@@ -227,37 +230,37 @@ instance Instant POSIXTime where
     fromTime = convertToPosix
     intoTime = convertFromPosix
 
-convertFromPosix :: POSIXTime -> TimeStamp
+convertFromPosix :: POSIXTime -> Time
 convertFromPosix =
     let nano :: POSIXTime -> Int64
         nano = floor . (* 1000000000) . toRational
-     in TimeStamp . fromIntegral . nano
+     in Time . fromIntegral . nano
 
-convertToPosix :: TimeStamp -> POSIXTime
+convertToPosix :: Time -> POSIXTime
 convertToPosix = fromRational . (/ 1e9) . fromIntegral
 
 {- |
-Get the current system time, expressed as a 'TimeStamp' (which is to
+Get the current system time, expressed as a 'Time' (which is to
 say, number of nanoseconds since the Unix epoch).
 
 @since 0.3.3
 -}
-getCurrentTimeNanoseconds :: IO TimeStamp
+getCurrentTimeNanoseconds :: IO Time
 getCurrentTimeNanoseconds = do
     p <- H.timeCurrentP
-    return $! convertToTimeStamp p
+    return $! convertToTime p
 
 --
 -- We're not exposing this as an Instant instance because we want the
 -- dependency on **hourglass** to go away.
 --
-convertToTimeStamp :: H.ElapsedP -> TimeStamp
-convertToTimeStamp (H.ElapsedP (H.Elapsed (H.Seconds seconds)) (H.NanoSeconds nanoseconds)) =
+convertToTime :: H.ElapsedP -> Time
+convertToTime (H.ElapsedP (H.Elapsed (H.Seconds seconds)) (H.NanoSeconds nanoseconds)) =
     let s = fromIntegral seconds :: Int64
         ns = fromIntegral nanoseconds
-     in TimeStamp $! (s * 1000000000) + ns
+     in Time $! (s * 1000000000) + ns
 
-convertFromTimeStamp :: TimeStamp -> H.ElapsedP
-convertFromTimeStamp (TimeStamp ticks) =
+convertFromTime :: Time -> H.ElapsedP
+convertFromTime (Time ticks) =
     let (s, ns) = divMod ticks 1000000000
      in H.ElapsedP (H.Elapsed (H.Seconds (s))) (H.NanoSeconds (ns))
