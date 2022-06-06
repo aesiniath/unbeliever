@@ -18,6 +18,8 @@ import Core.Text.Rope (Rope)
 import Data.Bifoldable (Bifoldable)
 import Data.ByteString qualified as B (ByteString)
 import Data.Int (Int64)
+import Data.Time.Clock (UTCTime)
+import Data.Time.Clock.POSIX (POSIXTime, posixSecondsToUTCTime, utcTimeToPOSIXSeconds)
 import GHC.Generics
 
 {- |
@@ -60,12 +62,19 @@ so in a quarter millenium's time, yes, you'll have the Y2262 Problem.
 Haskell code from today will, of course, still be running, so in the mid
 Twenty-Third century you will need to replace this implementation with
 something else.
+
+@since 0.3.3
 -}
 newtype TimeStamp = TimeStamp
     { unTimeStamp :: Int64
     }
     deriving (Eq, Ord, Enum, Num, Real, Integral, Bounded, Generic)
 
+{- |
+Convert between different representations of time.
+
+@since 0.3.3
+-}
 class Instant a where
     fromTime :: TimeStamp -> a
     intoTime :: a -> TimeStamp
@@ -75,8 +84,27 @@ instance Instant Int64 where
     intoTime = TimeStamp
 
 instance Instant UTCTime where
-    fromTime = undefined
-    intoTime = undefined
+    fromTime = posixSecondsToUTCTime . convertToPosix
+    intoTime = convertFromPosix . utcTimeToPOSIXSeconds
 
+instance Instant POSIXTime where
+    fromTime = convertToPosix
+    intoTime = convertFromPosix
+
+convertFromPosix :: POSIXTime -> TimeStamp
+convertFromPosix =
+    let nano :: POSIXTime -> Int64
+        nano = floor . (* 1000000000) . toRational
+     in TimeStamp . fromIntegral . nano
+
+convertToPosix :: TimeStamp -> POSIXTime
+convertToPosix = fromRational . (/ 1e9) . fromIntegral
+
+{- |
+Get the current system time, expressed as a 'TimeStamp' (which is to
+say, number of nanoseconds since the Unix epoch).
+
+@since 0.3.3
+-}
 getCurrentTimeNanoseconds :: IO TimeStamp
 getCurrentTimeNanoseconds = undefined
