@@ -124,6 +124,12 @@ newtype Time = Time Int64
     deriving (Eq, Ord, Enum, Bounded, Generic)
 
 {- |
+If you need to manipulate the date or calculate elapsed time then you can
+dig out the underlying 'Int64' here. We have /not/ provided instances of
+'Num', 'Real', or 'Integral' for the timestamp type because adding two
+timestamps doesn't really make sense. You can use 'intoTime' to reconstruct a
+timestamp subsequently if necessary.
+
 @since 0.3.3
 -}
 unTime :: Time -> Int64
