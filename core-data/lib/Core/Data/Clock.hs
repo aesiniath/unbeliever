@@ -42,6 +42,10 @@ module Core.Data.Clock (
 ) where
 
 import Control.Applicative ((<|>))
+import Core.Text.Rope
+import Data.Aeson qualified as Aeson (FromJSON (..), ToJSON (..), Value (..))
+import Data.Aeson.Encoding qualified as Aeson (string)
+import Data.Aeson.Types qualified as Aeson (typeMismatch)
 import Data.Hourglass qualified as H (
     DateTime (..),
     Elapsed (..),
@@ -287,3 +291,15 @@ convertFromTime :: Time -> H.ElapsedP
 convertFromTime (Time ticks) =
     let (s, ns) = divMod ticks 1000000000
      in H.ElapsedP (H.Elapsed (H.Seconds (s))) (H.NanoSeconds (ns))
+
+instance Aeson.ToJSON Time where
+    toEncoding = Aeson.string . H.timePrint ISO8601_Precise . convertFromTime
+
+instance Aeson.FromJSON Time where
+    parseJSON (Aeson.String value) =
+        let str = (fromRope (intoRope value))
+            result = parseInput str
+         in case result of
+                Just t -> pure t
+                Nothing -> fail "Unable to parse input as a TimeStamp"
+    parseJSON (invalid) = Aeson.typeMismatch "TimeStamp" invalid
