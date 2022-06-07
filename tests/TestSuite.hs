@@ -8,8 +8,7 @@ import CheckProgramMonad
 import CheckRopeBehaviour (checkRopeBehaviour)
 import CheckTelemetryMachinery
 import CheckTimeStamp
-
-import Core.System
+import Control.Exception (finally)
 import Test.Hspec
 
 main :: IO ()

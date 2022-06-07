@@ -38,7 +38,6 @@ library:
    - async
    - core-text >= 0.3.7.0
    - core-data >= 0.3.2.2
-   - chronologique
    - directory
    - exceptions
    - filepath

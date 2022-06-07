@@ -3,17 +3,11 @@
 
 module CheckArgumentsParsing (
     checkArgumentsParsing,
-    main,
 ) where
 
 import Core.Data.Structures
 import Core.Program.Arguments
-import Core.System.Base
 import Test.Hspec
-
-main :: IO ()
-main = do
-    finally (hspec checkArgumentsParsing) (putStrLn ".")
 
 options1 :: [Options]
 options1 =

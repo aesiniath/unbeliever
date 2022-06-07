@@ -52,7 +52,6 @@ library
       async
     , base >=4.11 && <5
     , bytestring
-    , chronologique
     , core-data >=0.3.2.2
     , core-program >=0.5.0
     , core-text >=0.3.6.0

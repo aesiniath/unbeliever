@@ -36,7 +36,6 @@ library:
    - core-text >= 0.3.6.0
    - core-data >= 0.3.2.2
    - core-program >= 0.5.0
-   - chronologique
    - exceptions
    - http-streams
    - io-streams
