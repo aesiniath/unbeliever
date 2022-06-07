@@ -1,3 +1,4 @@
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -5,11 +6,11 @@
 module CheckTelemetryMachinery where
 
 import Control.Concurrent (threadDelay)
-import qualified Control.Concurrent.Async as Async (async, wait)
+import Control.Concurrent.Async qualified as Async (async, wait)
 import Control.Concurrent.MVar (MVar, modifyMVar_, newMVar, readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (newTQueueIO, writeTQueue)
-import Data.Int (Int32)
+import Data.Int (Int32, Int64)
 import Data.Word (Word32)
 import Network.Info (MAC (..))
 import Test.Hspec hiding (context)
@@ -87,17 +88,17 @@ checkTelemetryMachinery = do
             toHexReversed64 maxBound `shouldBe` "ffffffffffffffff"
 
         it "formats Time as span identifier" $ do
-            createIdentifierSpan (Time 1) 0 `shouldBe` Span "1000000000000000"
-            createIdentifierSpan (Time (fromIntegral (maxBound :: Int32))) 0 `shouldBe` Span "fffffff700000000"
-            createIdentifierSpan (Time (fromIntegral (maxBound :: Word32))) 0 `shouldBe` Span "ffffffff00000000"
-            createIdentifierSpan (Time (fromIntegral (maxBound :: Word32)) + 1) 0 `shouldBe` Span "0000000010000000"
-            createIdentifierSpan (Time 1642770757512438606) 0 `shouldBe` Span "e43ade8dc4b40000"
-            createIdentifierSpan (Time 1642770757512438607) 0 `shouldBe` Span "f43ade8dc4b40000"
-            createIdentifierSpan (Time 1642770757512438607) 0x1a2b `shouldBe` Span "f43ade8dc4b4b2a1"
+            createIdentifierSpan (intoTime (1 :: Int64)) 0 `shouldBe` Span "1000000000000000"
+            createIdentifierSpan (intoTime (fromIntegral (maxBound :: Int32) :: Int64)) 0 `shouldBe` Span "fffffff700000000"
+            createIdentifierSpan (intoTime (fromIntegral (maxBound :: Word32) :: Int64)) 0 `shouldBe` Span "ffffffff00000000"
+            createIdentifierSpan (intoTime (fromIntegral (maxBound :: Word32) :: Int64) + 1) 0 `shouldBe` Span "0000000010000000"
+            createIdentifierSpan (intoTime (1642770757512438606 :: Int64)) 0 `shouldBe` Span "e43ade8dc4b40000"
+            createIdentifierSpan (intoTime (1642770757512438607 :: Int64)) 0 `shouldBe` Span "f43ade8dc4b40000"
+            createIdentifierSpan (intoTime (1642770757512438607 :: Int64)) 0x1a2b `shouldBe` Span "f43ade8dc4b4b2a1"
 
         it "formats Time and address as trace identifier" $ do
-            createIdentifierTrace (Time 0) 0 (MAC 0 0 0 0 0 0) `shouldBe` Trace "00000000000000000000000000000000"
-            createIdentifierTrace (Time 0x0fedcba987654321) 0x2468 (MAC 0x1a 0x2b 0x3c 0x4d 0x5e 0x6f)
+            createIdentifierTrace (intoTime (0 :: Int64)) 0 (MAC 0 0 0 0 0 0) `shouldBe` Trace "00000000000000000000000000000000"
+            createIdentifierTrace (intoTime (0x0fedcba987654321 :: Int64)) 0x2468 (MAC 0x1a 0x2b 0x3c 0x4d 0x5e 0x6f)
                 `shouldBe` Trace
                     ( mconcat
                         ( fmap

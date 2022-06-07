@@ -27,10 +27,13 @@ morning of 21 September 1677 through just before midnight on 11 April 2262.
 The primary use isn't doing calendaring, though; it's just working with
 machine generated timestamps in distributed systems and for conveying start
 and end times around in your program.
+
+There are a few other time formats around the Haskell ecosystem. Use
+'fromTime' to get from here to there.
 -}
 module Core.Data.Clock (
     -- * Time type
-    Time (..),
+    Time,
     getCurrentTimeNanoseconds,
 
     -- * Conversions
@@ -127,7 +130,7 @@ unTime (Time ticks) = ticks
 {-# INLINE unTime #-}
 
 instance Show Time where
-    show t = H.timePrint ISO8601_Precise (convertFromTime t)
+    show t = H.timePrint ISO8601_Precise (convertToElapsed t)
 
 {- |
 Format string describing full (nanosecond) precision ISO8601 time,
@@ -233,7 +236,7 @@ parseInput = fmap reduceDateTime . parse
             <|> H.timeParse Posix_Seconds x
 
     reduceDateTime :: H.DateTime -> Time
-    reduceDateTime = convertToTime . H.timeGetElapsedP
+    reduceDateTime = convertFromElapsed . H.timeGetElapsedP
 
 {- |
 Convert between different representations of time.
@@ -266,22 +269,22 @@ convertToPosix :: Time -> POSIXTime
 convertToPosix = fromRational . (/ 1e9) . fromIntegral
 
 instance Instant H.ElapsedP where
-    fromTime = convertFromTime
-    intoTime = convertToTime
+    fromTime = convertToElapsed
+    intoTime = convertFromElapsed
 
-convertToTime :: H.ElapsedP -> Time
-convertToTime (H.ElapsedP (H.Elapsed (H.Seconds seconds)) (H.NanoSeconds nanoseconds)) =
+convertFromElapsed :: H.ElapsedP -> Time
+convertFromElapsed (H.ElapsedP (H.Elapsed (H.Seconds seconds)) (H.NanoSeconds nanoseconds)) =
     let s = fromIntegral seconds :: Int64
         ns = fromIntegral nanoseconds
      in Time $! (s * 1000000000) + ns
 
-convertFromTime :: Time -> H.ElapsedP
-convertFromTime (Time ticks) =
+convertToElapsed :: Time -> H.ElapsedP
+convertToElapsed (Time ticks) =
     let (s, ns) = divMod ticks 1000000000
      in H.ElapsedP (H.Elapsed (H.Seconds (s))) (H.NanoSeconds (ns))
 
 instance Aeson.ToJSON Time where
-    toEncoding = Aeson.string . H.timePrint ISO8601_Precise . convertFromTime
+    toEncoding = Aeson.string . H.timePrint ISO8601_Precise . convertToElapsed
 
 instance Aeson.FromJSON Time where
     parseJSON (Aeson.String value) =
@@ -301,4 +304,4 @@ say, number of nanoseconds since the Unix epoch).
 getCurrentTimeNanoseconds :: IO Time
 getCurrentTimeNanoseconds = do
     p <- H.timeCurrentP
-    return $! convertToTime p
+    return $! convertFromElapsed p

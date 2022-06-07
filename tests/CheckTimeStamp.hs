@@ -9,6 +9,7 @@ module CheckTimeStamp where
 import Core.Data.Clock
 import Data.Aeson
 import Data.ByteString.Lazy.Char8 qualified as L
+import Data.Int (Int64)
 import Data.Time.Clock
 import Data.Time.Clock.POSIX
 import Test.Hspec
@@ -17,7 +18,7 @@ import Test.QuickCheck
 checkTimeStamp :: Spec
 checkTimeStamp = do
     describe "Smallest valid Time" $
-        let t = Time (-9223372036854775808)
+        let t = intoTime (-9223372036854775808 :: Int64)
          in do
                 it "should be representable" $ do
                     t `shouldBe` (minBound :: Time)
@@ -29,7 +30,7 @@ checkTimeStamp = do
                     show t `shouldBe` "1677-09-21T00:12:43.145224192Z"
 
     describe "Largest valid Time" $
-        let t = Time 9223372036854775807
+        let t = intoTime (9223372036854775807 :: Int64)
          in do
                 it "should be representable" $ do
                     t `shouldBe` (maxBound :: Time)
@@ -42,21 +43,21 @@ checkTimeStamp = do
 
     describe "Printing and parsing with precise format" $ do
         it "formats a known date correctly" $ do
-            show (Time 1406849015948797001) `shouldBe` "2014-07-31T23:23:35.948797001Z"
+            show (intoTime (1406849015948797001 :: Int64)) `shouldBe` "2014-07-31T23:23:35.948797001Z"
 
     describe "Round trip through Read and Show instances" $ do
         it "outputs a correctly formated ISO 8601 timestamp when Shown" $ do
-            show (Time 1406849015948797001) `shouldBe` "2014-07-31T23:23:35.948797001Z"
-            show (Time 1406849015948797001) `shouldBe` "2014-07-31T23:23:35.948797001Z"
-            show (Time 0) `shouldBe` "1970-01-01T00:00:00.000000000Z"
+            show (intoTime (1406849015948797001 :: Int64)) `shouldBe` "2014-07-31T23:23:35.948797001Z"
+            show (intoTime (1406849015948797001 :: Int64)) `shouldBe` "2014-07-31T23:23:35.948797001Z"
+            show (intoTime (0 :: Int64)) `shouldBe` "1970-01-01T00:00:00.000000000Z"
 
         it "Reads ISO 8601 timestamps" $ do
-            read "2014-07-31T23:23:35.948797001Z" `shouldBe` Time 1406849015948797001
-            read "2014-07-31T23:23:35Z" `shouldBe` Time 1406849015000000000
-            read "2014-07-31" `shouldBe` Time 1406764800000000000
+            read "2014-07-31T23:23:35.948797001Z" `shouldBe` intoTime (1406849015948797001 :: Int64)
+            read "2014-07-31T23:23:35Z" `shouldBe` intoTime (1406849015000000000 :: Int64)
+            read "2014-07-31" `shouldBe` intoTime (1406764800000000000 :: Int64)
 
         it "reads the Unix epoch date" $
-            read "1970-01-01" `shouldBe` Time 0
+            read "1970-01-01" `shouldBe` intoTime (0 :: Int64)
 
         it "permissively reads various formats" $ do
             show (read "1970-01-01T00:00:00.000000000Z" :: Time) `shouldBe` "1970-01-01T00:00:00.000000000Z"
@@ -76,12 +77,12 @@ checkTimeStamp = do
 
     describe "Round trip through base time types" $ do
         it "converts to POSIXTime and back again" $ do
-            let t = Time 1406849015948797001
+            let t = intoTime (1406849015948797001 :: Int64)
             intoTime (fromTime t :: POSIXTime) `shouldBe` t
             show (fromTime t :: POSIXTime) `shouldBe` "1406849015.948797001s"
 
         it "converts to UTCTime and back again" $ do
-            let t = Time 1406849015948797001
+            let t = intoTime (1406849015948797001 :: Int64)
             intoTime (fromTime t :: UTCTime) `shouldBe` t
             show (fromTime t :: UTCTime) `shouldBe` "2014-07-31 23:23:35.948797001 UTC"
 
@@ -103,7 +104,7 @@ checkTimeStamp = do
 instance Arbitrary Time where
     arbitrary = do
         tick <- arbitrary
-        return (Time tick)
+        return (intoTime (tick :: Int64))
 
 prop_RoundTrip_ReadShow :: Time -> Bool
 prop_RoundTrip_ReadShow t = (read . show) t == t
