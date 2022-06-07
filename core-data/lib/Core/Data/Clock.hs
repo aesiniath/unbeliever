@@ -38,7 +38,6 @@ module Core.Data.Clock (
 
     -- * Internals
     unTime,
-    convertFromTime,
 ) where
 
 import Control.Applicative ((<|>))
@@ -266,6 +265,10 @@ convertFromPosix =
 convertToPosix :: Time -> POSIXTime
 convertToPosix = fromRational . (/ 1e9) . fromIntegral
 
+instance Instant H.ElapsedP where
+    fromTime = convertFromTime
+    intoTime = convertToTime
+
 {- |
 Get the current system time, expressed as a 'Time' (which is to
 say, number of nanoseconds since the Unix epoch).
@@ -277,10 +280,6 @@ getCurrentTimeNanoseconds = do
     p <- H.timeCurrentP
     return $! convertToTime p
 
---
--- We're not exposing this as an Instant instance because we want the
--- dependency on **hourglass** to go away.
---
 convertToTime :: H.ElapsedP -> Time
 convertToTime (H.ElapsedP (H.Elapsed (H.Seconds seconds)) (H.NanoSeconds nanoseconds)) =
     let s = fromIntegral seconds :: Int64

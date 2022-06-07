@@ -155,7 +155,7 @@ import Control.Exception (evaluate)
 import Control.Monad (when)
 import Control.Monad.Reader.Class (MonadReader (ask))
 import Data.Fixed
-import Data.Hourglass qualified as H (TimeFormatElem (..), timePrint)
+import Data.Hourglass qualified as H (ElapsedP, TimeFormatElem (..), timePrint)
 import Data.Text.Short qualified as S (replicate)
 
 import Core.Data.Clock
@@ -207,7 +207,7 @@ formatLogMessage start now coloured severity message =
                 , H.Format_Second
                 , H.Format_Text 'Z'
                 ]
-                (convertFromTime now)
+                (fromTime now :: H.ElapsedP)
 
         -- I hate doing math in Haskell
         !elapsed = fromRational (toRational (now' - start') / 1e9) :: Fixed E3
