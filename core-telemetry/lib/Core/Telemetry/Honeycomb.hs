@@ -36,7 +36,7 @@ module Core.Telemetry.Honeycomb (
 ) where
 
 import Control.Exception.Safe qualified as Safe (catch, finally, throw)
-import Core.Data.Clock (Time, unTime, getCurrentTimeNanoseconds)
+import Core.Data.Clock (Time, getCurrentTimeNanoseconds, unTime)
 import Core.Data.Structures (Map, fromMap, insertKeyValue, intoMap, lookupKeyValue)
 import Core.Encoding.Json
 import Core.Program.Arguments
@@ -178,7 +178,9 @@ convertDatumToJson datum =
             Just value -> insertKeyValue "trace.span_id" (JsonString (unSpan value)) meta1
 
         meta3 = case parent of
-            Nothing -> insertKeyValue "meta.kind" (JsonString "root") meta2
+            Nothing -> case trace of
+                Nothing -> meta2
+                Just _ -> insertKeyValue "meta.span_type" (JsonString "root") meta2
             Just value -> insertKeyValue "trace.parent_id" (JsonString (unSpan value)) meta2
 
         meta4 = case trace of
