@@ -43,5 +43,5 @@ module Core.System
 where
 
 import Core.System.Base
-import Core.System.External
+import Core.System.External ()
 import Core.System.Pretty

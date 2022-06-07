@@ -1,4 +1,4 @@
-resolver: lts-18.28
+resolver: nightly-2022-05-28
 packages:
  - ./core-data
  - ./core-text
@@ -7,9 +7,5 @@ packages:
  - ./core-webserver-servant
  - ./core-webserver-warp
  - .
-extra-deps:
- - hashable-1.3.5.0
- - semialign-1.2
- - servant-0.19
- - servant-server-0.19.1
- - time-compat-1.9.6.1
+extra-deps: []
+

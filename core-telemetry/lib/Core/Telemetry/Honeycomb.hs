@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
@@ -34,30 +35,30 @@ module Core.Telemetry.Honeycomb (
     honeycombExporter,
 ) where
 
+import Control.Exception.Safe qualified as Safe (catch, finally, throw)
+import Core.Data.Clock (Time, unTime, getCurrentTimeNanoseconds)
 import Core.Data.Structures (Map, fromMap, insertKeyValue, intoMap, lookupKeyValue)
 import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Context
 import Core.Program.Logging
-import Core.System
-import Core.System.Base (stdout)
-import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
+import Core.System.Base (SomeException, liftIO, stdout)
 import Core.Text.Bytes
 import Core.Text.Colour
 import Core.Text.Rope
 import Core.Text.Utilities
 import Data.ByteString (ByteString)
-import qualified Data.ByteString as B (ByteString)
-import qualified Data.ByteString.Char8 as C (append, null, putStrLn)
-import qualified Data.ByteString.Lazy as L (ByteString)
+import Data.ByteString qualified as B (ByteString)
+import Data.ByteString.Char8 qualified as C (append, null, putStrLn)
+import Data.ByteString.Lazy qualified as L (ByteString)
 import Data.Fixed
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
-import qualified Data.List as List
+import Data.List qualified as List
 import Network.Http.Client
 import System.Environment (lookupEnv)
 import System.Exit (ExitCode (..))
 import System.IO.Streams (InputStream)
-import qualified System.Posix.Process as Posix (exitImmediately)
+import System.Posix.Process qualified as Posix (exitImmediately)
 
 {- |
 Indicate which \"dataset\" spans and events will be posted into
@@ -221,7 +222,7 @@ acquireConnection r = do
 
 cleanupConnection :: IORef (Maybe Connection) -> IO ()
 cleanupConnection r = do
-    finally
+    Safe.finally
         ( do
             possible <- readIORef r
             case possible of
@@ -236,7 +237,7 @@ postEventToHoneycombAPI :: IORef (Maybe Connection) -> ApiKey -> Dataset -> Json
 postEventToHoneycombAPI r apikey dataset json = attempt False
   where
     attempt retrying = do
-        catch
+        Safe.catch
             ( do
                 c <- acquireConnection r
 
@@ -252,7 +253,7 @@ postEventToHoneycombAPI r apikey dataset json = attempt False
                     False -> do
                         putStrLn "Reattempting"
                         attempt True
-                    True -> throw e
+                    True -> Safe.throw e
             )
 
     q = buildRequest1 $ do

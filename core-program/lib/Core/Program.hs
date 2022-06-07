@@ -24,6 +24,7 @@ module Core.Program
     module Core.Program.Threads,
     module Core.Program.Unlift,
     module Core.Program.Metadata,
+    module Core.Program.Exceptions,
 
     -- * Command-line argument parsing
 
@@ -48,9 +49,10 @@ module Core.Program
 where
 
 import Core.Program.Arguments
+import Core.Program.Context
+import Core.Program.Exceptions
 import Core.Program.Execute
 import Core.Program.Logging
-import Core.Program.Context
 import Core.Program.Metadata
 import Core.Program.Notify
 import Core.Program.Threads

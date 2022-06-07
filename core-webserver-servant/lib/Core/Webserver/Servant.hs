@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -31,19 +32,19 @@ module Core.Webserver.Servant (
     prepareRoutesWithContext,
 ) where
 
+import Control.Exception.Safe qualified as Safe (try, throw)
 import Control.Monad.Except (ExceptT (..))
 import Core.Program
 import Core.System (Exception (..))
-import Core.Telemetry.Observability (clearMetrics)
 import Core.Webserver.Warp
 import Data.Proxy (Proxy)
 import GHC.Base (Type)
 import Network.Wai (Application)
-import qualified Servant as Servant (
+import Servant qualified as Servant (
     Handler (..),
     ServerT,
  )
-import qualified Servant.Server as Servant (
+import Servant.Server qualified as Servant (
     Context (..),
     HasServer,
     ServerContext,
@@ -108,7 +109,7 @@ prepareRoutesWithContext proxy sContext (routes :: Servant.ServerT api (Program 
 
         context <- case contextFromRequest @τ request of
             Just context' -> pure context'
-            Nothing -> throw ContextNotFoundInRequest
+            Nothing -> Safe.throw ContextNotFoundInRequest
         Servant.serveWithContextT
             proxy
             sContext
@@ -120,8 +121,7 @@ prepareRoutesWithContext proxy sContext (routes :: Servant.ServerT api (Program 
     transformProgram :: Context τ -> Program τ α -> Servant.Handler α
     transformProgram context program =
         let output =
-                try $
+                Safe.try $
                     subProgram context $ do
-                        clearMetrics
                         program
          in Servant.Handler (ExceptT output)

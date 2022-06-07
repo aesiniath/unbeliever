@@ -137,20 +137,18 @@ contextFromRequest request = Vault.lookup requestContextKey (vault request)
 loggingMiddleware :: Context τ -> Application -> Application
 loggingMiddleware (context0 :: Context τ) application request sendResponse = do
     let path = intoRope (rawPathInfo request)
+        query = intoRope (rawQueryString request)
+        method = intoRope (requestMethod request)
 
     subProgram context0 $ do
         resumeTraceIf request $ do
             encloseSpan path $ do
                 context1 <- getContext
 
-                -- we could call `telemetry` here with these values, but since
-                -- we call into nested actions which could clear the state
-                -- without starting a new span, we duplicate adding them below
-                -- to ensure they get passed through.
-
-                let query = intoRope (rawQueryString request)
-                    path' = path <> query
-                    method = intoRope (requestMethod request)
+                -- we could call `telemetry` here with the request values, but
+                -- since we call into nested actions which could clear the
+                -- state without starting a new span, we duplicate adding them
+                -- below to ensure they get passed through.
 
                 liftIO $ do
                     -- The below wires the context in the request's `vault`. As the type of
@@ -167,7 +165,8 @@ loggingMiddleware (context0 :: Context τ) application request sendResponse = do
                             subProgram context1 $ do
                                 telemetry
                                     [ metric "request.method" method
-                                    , metric "request.path" path'
+                                    , metric "request.path" path
+                                    , if nullRope query then metric "request.query" () else metric "request.query" query
                                     , metric "response.status_code" code
                                     ]
 
@@ -185,7 +184,8 @@ loggingMiddleware (context0 :: Context τ) application request sendResponse = do
                                 debug "e" text
                                 telemetry
                                     [ metric "request.method" method
-                                    , metric "request.path" path'
+                                    , metric "request.path" path
+                                    , if nullRope query then metric "request.query" () else metric "request.query" query
                                     , metric "response.status_code" code
                                     , metric "error" text
                                     ]
@@ -243,8 +243,8 @@ resumeTraceIf request action =
     case extractTraceParent request of
         Nothing -> do
             beginTrace action
-        Just (trace, unique) -> do
-            usingTrace trace unique action
+        Just (trace, parent) -> do
+            usingTrace trace parent action
 
 --
 -- This is wildly inefficient. Surely warp must provide a better way to search

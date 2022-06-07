@@ -1,5 +1,5 @@
 name: unbeliever
-version: 0.11.2.0
+version: 0.11.3.0
 synopsis: Opinionated Haskell Interoperability
 description: |
   A library to help build command-line programs, both tools and
@@ -28,6 +28,8 @@ description: |
   * __core-data__
   * __core-program__
   * __core-telemetry__
+  * __core-webserver-warp__
+  * __core-webservver-servant__
   
   with more forthcoming as we continue to add convenince and
   interoperability wrappers around streaming, webservers, and database
@@ -47,8 +49,8 @@ github: aesiniath/unbeliever
 dependencies:
  - base >= 4.11 && < 5
  - core-text >= 0.3.4.0
- - core-data >= 0.3.0.2
- - core-program >= 0.4.0.0
+ - core-data >= 0.3.3.0
+ - core-program >= 0.5.0.0
  - core-telemetry >= 0.1.7.3
  - core-webserver-servant >= 0.0.1.0
  - core-webserver-warp >= 0.1.0.0
@@ -84,6 +86,7 @@ executables:
 tests:
   check:
     dependencies:
+     - aeson
      - async
      - bytestring
      - fingertree
@@ -91,10 +94,12 @@ tests:
      - hspec
      - network-info
      - prettyprinter
+     - QuickCheck
      - safe-exceptions
      - stm
      - text
      - text-short
+     - time
      - unordered-containers
      - wai
     ghc-options: -threaded
@@ -109,6 +114,7 @@ tests:
      - CheckProgramMonad
      - CheckRopeBehaviour
      - CheckTelemetryMachinery
+     - CheckTimeStamp
      - CheckWebserverIntegration
 
 benchmarks:

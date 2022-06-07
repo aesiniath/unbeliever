@@ -144,6 +144,7 @@ module Core.Telemetry.Observability (
     Span (..),
     beginTrace,
     usingTrace,
+    usingTrace',
     setServiceName,
 
     -- * Spans
@@ -169,9 +170,9 @@ import Core.Data.Structures (Map, emptyMap, insertKeyValue)
 import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Context
+import Core.Data.Clock
 import Core.Program.Logging
 import Core.System.Base (SomeException, liftIO)
-import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
 import Core.Telemetry.Identifiers
 import Core.Text.Rope
 import Core.Text.Utilities (oxford, quote)
@@ -265,6 +266,9 @@ instance Telemetry Rope where
 
 instance Telemetry String where
     metric k v = MetricValue (JsonKey k) (JsonString (intoRope v))
+
+instance Telemetry () where
+    metric k _ = MetricValue (JsonKey k) JsonNull
 
 {- |
 The usual warning about assuming the @ByteString@ is ASCII or UTF-8 applies
@@ -438,7 +442,7 @@ encloseSpan label action = do
         datum2 <- readMVar v2
         let datum2' =
                 datum2
-                    { durationFrom = Just (unTimeStamp finish - unTimeStamp start)
+                    { durationFrom = Just (unTime finish - unTime start)
                     }
 
         let tel = telemetryChannelFrom context
@@ -450,6 +454,16 @@ encloseSpan label action = do
         case result of
             Left e -> Safe.throw e
             Right value -> pure value
+
+{- |
+Send a span value up by hand.
+
+This handles a number of convenient things for you, and takes care of a few edge
+cases.
+
+
+@since 0.2.1
+-}
 
 {- |
 Start a new trace. A random identifier will be generated.
@@ -510,6 +524,51 @@ usingTrace trace parent action = do
     internal ("parent = " <> unSpan parent)
 
     encloseTrace trace (Just parent) action
+
+{- |
+Create a new trace with the specified 'Trace' identifier. Unlike 'usingTrace'
+this does /not/ set the parent 'Span' identifier, thereby marking this as a
+new trace and causing the first span enclosed within this trace to be
+considered the \"root\" span of the trace. This is unusual and should only
+expected to be used in concert with the 'setIdentifierSpan' override to create
+a root spans in asynchronous processes /after/ all the child spans have
+already been composed and sent.
+
+Most times, you don't need this. You're much better off using 'beginTrace' to
+create a root span. However, life is not kind, and sometimes bad things happen
+to good abstractions. Maybe you're tracing your build system, which isn't
+obliging enough to be all contained in one Haskell process, but is a
+half-dozen steps shotgunned across several different processes. In situations
+like this, it's useful to be able to generate a 'Trace' identifier and 'Span'
+identifier, use that as the parent across several different process
+executions, hanging children spans off of this as you go, then manually send
+up the root span at the end of it all.
+
+@
+    trace <- ...
+    unique <- ...
+
+    -- many child spans in other processes have used these as trace
+    -- identifiers and parent span identifier. Now form the root span thereby
+    -- finishing the trace.
+
+    'usingTrace'' trace $ do
+        'encloseSpan' \"Launch Missiles\" $ do
+            'setStartTime' start
+            'setIdentifierSpan' unique
+            'telemetry'
+                [ 'metric' ...
+                ]
+@
+
+@since 0.2.1
+-}
+usingTrace' :: Trace -> Program τ α -> Program τ α
+usingTrace' trace action = do
+    internal "Using trace"
+    internal ("trace = " <> unTrace trace)
+
+    encloseTrace trace Nothing action
 
 encloseTrace :: Trace -> Maybe Span -> Program τ α -> Program τ α
 encloseTrace trace possibleParent action = do
@@ -648,7 +707,7 @@ span are recorded automatically when calling 'encloseSpan'. Observabilty tools
 are designed to be used live; traces and spans should be created in real time
 in your code.
 -}
-setStartTime :: TimeStamp -> Program τ ()
+setStartTime :: Time -> Program τ ()
 setStartTime time = do
     context <- getContext
 
