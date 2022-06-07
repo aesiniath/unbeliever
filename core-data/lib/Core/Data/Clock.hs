@@ -28,8 +28,9 @@ The primary use isn't doing calendaring, though; it's just working with
 machine generated timestamps in distributed systems and for conveying start
 and end times around in your program.
 
-There are a few other time formats around the Haskell ecosystem. Use
-'fromTime' to get from here to there.
+There are quite a few other time formats around the Haskell ecosystem. You can
+use the 'fromTime' and 'intoTime' methods of the 'Instant' typeclass  to
+convert from one to another if you need to.
 -}
 module Core.Data.Clock (
     -- * Time type
