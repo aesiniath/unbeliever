@@ -91,7 +91,7 @@ checkTelemetryMachinery = do
             createIdentifierSpan (intoTime (1 :: Int64)) 0 `shouldBe` Span "1000000000000000"
             createIdentifierSpan (intoTime (fromIntegral (maxBound :: Int32) :: Int64)) 0 `shouldBe` Span "fffffff700000000"
             createIdentifierSpan (intoTime (fromIntegral (maxBound :: Word32) :: Int64)) 0 `shouldBe` Span "ffffffff00000000"
-            createIdentifierSpan (intoTime (fromIntegral (maxBound :: Word32) :: Int64) + 1) 0 `shouldBe` Span "0000000010000000"
+            createIdentifierSpan (intoTime (fromIntegral (maxBound :: Word32) + 1 :: Int64) ) 0 `shouldBe` Span "0000000010000000"
             createIdentifierSpan (intoTime (1642770757512438606 :: Int64)) 0 `shouldBe` Span "e43ade8dc4b40000"
             createIdentifierSpan (intoTime (1642770757512438607 :: Int64)) 0 `shouldBe` Span "f43ade8dc4b40000"
             createIdentifierSpan (intoTime (1642770757512438607 :: Int64)) 0x1a2b `shouldBe` Span "f43ade8dc4b4b2a1"

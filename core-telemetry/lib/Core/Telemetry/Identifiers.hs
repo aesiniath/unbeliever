@@ -85,7 +85,7 @@ The two bytes of supplied randomness are put in the middle.
 -}
 createIdentifierTrace :: Time -> Word16 -> MAC -> Trace
 createIdentifierTrace time rand address =
-    let p1 = packRope (toHexReversed64 (fromIntegral time))
+    let p1 = packRope (toHexReversed64 (fromIntegral (unTime time)))
         p2 = packRope (toHexNormal16 rand)
         p3 = packRope (convertMACToHex address)
      in Trace

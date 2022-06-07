@@ -41,6 +41,7 @@ module Core.Data.Clock (
 
     -- * Internals
     unTime,
+    epochTime,
 ) where
 
 import Control.Applicative ((<|>))
@@ -120,7 +121,7 @@ something else.
 @since 0.3.3
 -}
 newtype Time = Time Int64
-    deriving (Eq, Ord, Enum, Num, Real, Integral, Bounded, Generic)
+    deriving (Eq, Ord, Enum, Bounded, Generic)
 
 {- |
 @since 0.3.3
@@ -266,7 +267,7 @@ convertFromPosix =
      in Time . fromIntegral . nano
 
 convertToPosix :: Time -> POSIXTime
-convertToPosix = fromRational . (/ 1e9) . fromIntegral
+convertToPosix = fromRational . (/ 1e9) . fromIntegral . unTime
 
 instance Instant H.ElapsedP where
     fromTime = convertToElapsed
@@ -305,3 +306,11 @@ getCurrentTimeNanoseconds :: IO Time
 getCurrentTimeNanoseconds = do
     p <- H.timeCurrentP
     return $! convertFromElapsed p
+
+{- |
+The occasion of the Unix epoch, 1970-01-01T00:00:00.0Z.
+
+@since 0.3.3
+-}
+epochTime :: Time
+epochTime = Time 0
