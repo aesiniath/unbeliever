@@ -46,6 +46,7 @@ module Core.Data.Clock (
 
 import Control.Applicative ((<|>))
 import Core.Text.Rope
+import Core.Data.Format
 import Data.Aeson qualified as Aeson (FromJSON (..), ToJSON (..), Value (..))
 import Data.Aeson.Encoding qualified as Aeson (string)
 import Data.Aeson.Types qualified as Aeson (typeMismatch)
@@ -57,9 +58,6 @@ import Data.Hourglass qualified as H (
     ISO8601_DateAndTime (..),
     NanoSeconds (..),
     Seconds (..),
-    TimeFormat (..),
-    TimeFormatElem (..),
-    TimeFormatString (..),
     Timeable (timeGetElapsedP),
     timeParse,
     timePrint,
@@ -139,92 +137,6 @@ unTime (Time ticks) = ticks
 instance Show Time where
     show t = H.timePrint ISO8601_Precise (convertToElapsed t)
 
-{- |
-Format string describing full (nanosecond) precision ISO8601 time,
-
-> 2014-07-31T23:09:35.274387019Z
--}
-data ISO8601_Precise = ISO8601_Precise
-
-instance H.TimeFormat ISO8601_Precise where
-    toFormat _ =
-        H.TimeFormatString
-            [ H.Format_Year
-            , H.Format_Text '-'
-            , H.Format_Month2
-            , H.Format_Text '-'
-            , H.Format_Day2
-            , H.Format_Text 'T'
-            , H.Format_Hour
-            , H.Format_Text ':'
-            , H.Format_Minute
-            , H.Format_Text ':'
-            , H.Format_Second
-            , H.Format_Text '.'
-            , H.Format_Precision 9
-            , H.Format_Text 'Z'
-            ]
-
-data ISO8601_Seconds = ISO8601_Seconds
-
-instance H.TimeFormat ISO8601_Seconds where
-    toFormat _ =
-        H.TimeFormatString
-            [ H.Format_Year
-            , H.Format_Text '-'
-            , H.Format_Month2
-            , H.Format_Text '-'
-            , H.Format_Day2
-            , H.Format_Text 'T'
-            , H.Format_Hour
-            , H.Format_Text ':'
-            , H.Format_Minute
-            , H.Format_Text ':'
-            , H.Format_Second
-            , H.Format_Text 'Z'
-            ]
-
-data Posix_Precise = Posix_Precise
-
-instance H.TimeFormat Posix_Precise where
-    toFormat _ =
-        H.TimeFormatString
-            [ H.Format_UnixSecond
-            , H.Format_Text '.'
-            , H.Format_MilliSecond
-            , H.Format_MicroSecond
-            , H.Format_NanoSecond
-            ]
-
-data Posix_Micro = Posix_Micro
-
-instance H.TimeFormat Posix_Micro where
-    toFormat _ =
-        H.TimeFormatString
-            [ H.Format_UnixSecond
-            , H.Format_Text '.'
-            , H.Format_MilliSecond
-            , H.Format_MicroSecond
-            ]
-
-data Posix_Milli = Posix_Milli
-
-instance H.TimeFormat Posix_Milli where
-    toFormat _ =
-        H.TimeFormatString
-            [ H.Format_UnixSecond
-            , H.Format_Text '.'
-            , H.Format_MilliSecond
-            ]
-
-data Posix_Seconds = Posix_Seconds
-
-instance H.TimeFormat Posix_Seconds where
-    toFormat _ =
-        H.TimeFormatString
-            [ H.Format_UnixSecond
-            ]
-
 instance Read Time where
     readsPrec _ s = maybeToList $ (,"") <$> parseInput s
 
@@ -246,7 +158,11 @@ parseInput = fmap reduceDateTime . parse
     reduceDateTime = convertFromElapsed . H.timeGetElapsedP
 
 {- |
-Convert between different representations of time.
+Convert between different representations of time. Our 'Time' timestamp has
+nanosecond precision so converting from a type with  lesser or greater
+precision will require you to either pad with zeros or to round to the nearest
+nanosecond (who the hell has picoseconds of anything anyway?) if writing an
+instance of this type.
 
 @since 0.3.3
 -}

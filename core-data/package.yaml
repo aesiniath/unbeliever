@@ -1,5 +1,5 @@
 name: core-data
-version: 0.3.3.0
+version: 0.3.3.1
 synopsis: Convenience wrappers around common data structures and encodings
 description: |
   Wrappers around common data structures and encodings.
@@ -42,6 +42,7 @@ library:
   exposed-modules:
    - Core.Data
    - Core.Data.Clock
+   - Core.Data.Format
    - Core.Data.Structures
    - Core.Encoding
    - Core.Encoding.Json
