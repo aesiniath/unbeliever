@@ -455,11 +455,11 @@ Copy the pieces underlying a 'Rope' into a single piece object.
 /Warning/
 
 This function was necessary to have a reliable 'Hashable' instance. Currently
-constructing this new @Rope@ is quite inefficient if the number of pieces or
-their respective lengths are large. Usually, however, we're calling 'hash' so
-the value can be used as a key in a hash table and such keys are typically
-simple (or at least not ridiculously long), so this is not an issue in normal
-usage.
+constructing this new 'Rope' is quite inefficient if the number of pieces or
+their respective lengths are large. Usually, however, we're calling
+'Data.Hashable.hash' so the value can be used as a key in a hash table and
+such keys are typically simple (or at least not ridiculously long), so this is
+not an issue in normal usage.
 -}
 copyRope :: Rope -> Rope
 copyRope text@(Rope x) =
@@ -473,21 +473,21 @@ copyRope text@(Rope x) =
 
 {- |
 Machinery to interpret a type as containing valid Unicode that can be
-represented as a @Rope@ object.
+represented as a 'Rope' object.
 
 /Implementation notes/
 
-Given that @Rope@ is backed by a finger tree, 'append' is relatively
+Given that 'Rope' is backed by a finger tree, 'appendRope' is relatively
 inexpensive, plus whatever the cost of conversion is. There is a subtle trap,
 however: if adding small fragments of that were obtained by slicing (for
-example) a large ByteString we would end up holding on to a reference to the
-entire underlying block of memory. This module is optimized to reduce heap
-fragmentation by letting the Haskell runtime and garbage collector manage the
-memory, so instances are expected to /copy/ these substrings out of pinned
-memory.
+example) a large 'Data.ByteString.ByteString' we would end up holding on to a
+reference to the entire underlying block of memory. This module is optimized
+to reduce heap fragmentation by letting the Haskell runtime and garbage
+collector manage the memory, so instances are expected to /copy/ these
+substrings out of pinned memory.
 
-The @ByteString@ instance requires that its content be valid UTF-8. If not an
-empty @Rope@ will be returned.
+The 'Data.ByteString.ByteString' instance requires that its content be valid
+UTF-8. If not an empty 'Rope' will be returned.
 
 Several of the 'fromRope' implementations are expensive and involve a lot of
 intermediate allocation and copying. If you're ultimately writing to a handle
