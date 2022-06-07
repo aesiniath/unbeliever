@@ -36,8 +36,8 @@ dependencies:
 library:
   dependencies:
    - async
-   - core-text >= 0.3.7.0
-   - core-data >= 0.3.2.2
+   - core-text >= 0.3.7
+   - core-data >= 0.3.3
    - directory
    - exceptions
    - filepath
