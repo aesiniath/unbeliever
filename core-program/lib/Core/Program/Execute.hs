@@ -401,7 +401,7 @@ loopForever :: ([a] -> IO ()) -> MVar Verbosity -> TQueue (Maybe Rope) -> TQueue
 loopForever action v out queue = do
     -- block waiting for an item
     possibleItems <- atomically $ do
-        cycleOverQueue []
+        cycleOverQueue (0 :: Int) []
 
     case possibleItems of
         -- we're done!
@@ -419,34 +419,36 @@ loopForever action v out queue = do
                 )
             loopForever action v out queue
   where
-    cycleOverQueue items =
-        case items of
-            [] -> do
-                possibleItem <- readTQueue queue -- blocks
-                case possibleItem of
-                    -- we're finished! time to shutdown
-                    Nothing -> pure Nothing
-                    -- otherwise start accumulating
-                    Just item -> do
-                        cycleOverQueue (item : [])
-            _ -> do
-                pending <- tryReadTQueue queue -- doesn't block
-                case pending of
-                    -- nothing left in the queue
-                    Nothing -> pure (Just items)
-                    -- otherwise we get one of our Maybe Datum, and consider it
-                    Just possibleItem -> do
-                        case possibleItem of
-                            -- oh, time to stop! We put the Nothing back into
-                            -- the queue, then let the accumulated items get
-                            -- processed. The next loop will read the
-                            -- Nothing and shutdown.
-                            Nothing -> do
-                                unGetTQueue queue Nothing
-                                pure (Just items)
-                            -- continue accumulating!
-                            Just item -> do
-                                cycleOverQueue (item : items)
+    cycleOverQueue !count items = do
+        if count >= 1024
+            then pure (Just items)
+            else case items of
+                [] -> do
+                    possibleItem <- readTQueue queue -- blocks
+                    case possibleItem of
+                        -- we're finished! time to shutdown
+                        Nothing -> pure Nothing
+                        -- otherwise start accumulating
+                        Just item -> do
+                            cycleOverQueue 1 (item : [])
+                _ -> do
+                    pending <- tryReadTQueue queue -- doesn't block
+                    case pending of
+                        -- nothing left in the queue
+                        Nothing -> pure (Just items)
+                        -- otherwise we get one of our Maybe Datum, and consider it
+                        Just possibleItem -> do
+                            case possibleItem of
+                                -- oh, time to stop! We put the Nothing back into
+                                -- the queue, then let the accumulated items get
+                                -- processed. The next loop will read the
+                                -- Nothing and shutdown.
+                                Nothing -> do
+                                    unGetTQueue queue Nothing
+                                    pure (Just items)
+                                -- continue accumulating!
+                                Just item -> do
+                                    cycleOverQueue (count + 1) (item : items)
 
     reportStatus start num = do
         level <- readMVar v
