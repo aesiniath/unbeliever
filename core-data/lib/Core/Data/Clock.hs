@@ -269,17 +269,6 @@ instance Instant H.ElapsedP where
     fromTime = convertFromTime
     intoTime = convertToTime
 
-{- |
-Get the current system time, expressed as a 'Time' (which is to
-say, number of nanoseconds since the Unix epoch).
-
-@since 0.3.3
--}
-getCurrentTimeNanoseconds :: IO Time
-getCurrentTimeNanoseconds = do
-    p <- H.timeCurrentP
-    return $! convertToTime p
-
 convertToTime :: H.ElapsedP -> Time
 convertToTime (H.ElapsedP (H.Elapsed (H.Seconds seconds)) (H.NanoSeconds nanoseconds)) =
     let s = fromIntegral seconds :: Int64
@@ -302,3 +291,14 @@ instance Aeson.FromJSON Time where
                 Just t -> pure t
                 Nothing -> fail "Unable to parse input as a TimeStamp"
     parseJSON (invalid) = Aeson.typeMismatch "TimeStamp" invalid
+
+{- |
+Get the current system time, expressed as a 'Time' (which is to
+say, number of nanoseconds since the Unix epoch).
+
+@since 0.3.3
+-}
+getCurrentTimeNanoseconds :: IO Time
+getCurrentTimeNanoseconds = do
+    p <- H.timeCurrentP
+    return $! convertToTime p
