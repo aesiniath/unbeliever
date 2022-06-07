@@ -9,7 +9,7 @@ and frequently do. Developers can define exceptions too, and use them to
 signal anomolies.
 
 In order to catch an exception you need to know the /type/ of that exception.
-The way this is typically done is with the `ScopedTypeVariables` extension
+The way this is typically done is with the @ScopedTypeVariables@ extension
 turned on and then adding a type annotation around the @e@ variable in the
 lambda passed to 'catch'.
 
@@ -40,7 +40,7 @@ instance 'Control.Exception.Exception' FirstWorldProblem
 and that the @performSong@ function at some point does something like:
 
 @
-performSong :: Lyrics -> 'Program' 'None' ()
+performSong :: Lyrics -> 'Program' 'Core.Program.Execute.None' ()
 performSong lyrics = do
     ...
     'throw' PersonCrying
@@ -101,9 +101,10 @@ import Core.Program.Context (
 Catch an exception.
 
 Some care must be taken. Remember that even though it is constrained by the
-'Exception' typeclass, @ε@ does /not/ stand for \"any\" exception type; is has
-a concrete type when it gets to being used in your code. Things are fairly
-straight-forward if you know exactly the exception you are looking for:
+'Control.Exception.Exception' typeclass, @ε@ does /not/ stand for \"any\"
+exception type; is has a concrete type when it gets to being used in your
+code. Things are fairly straight-forward if you know exactly the exception you
+are looking for:
 
 @
     'catch'
@@ -120,7 +121,7 @@ If you just need to catch all exceptions, the pattern for that is as follows:
 @
     'catch'
         action
-        (\\(e :: SomeException) -> do
+        (\\(e :: 'Control.Exception.SomeException') -> do
             ...
         )
 @
