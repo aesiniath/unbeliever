@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
@@ -34,11 +35,11 @@ module Core.Telemetry.Identifiers (
 ) where
 
 import Control.Concurrent.MVar (modifyMVar_, readMVar)
+import Core.Data.Clock
 import Core.Program.Context
 import Core.Program.Logging
 import Core.System (unsafePerformIO)
 import Core.System.Base (liftIO)
-import Core.System.External (TimeStamp (unTimeStamp))
 import Core.Text.Rope
 import Core.Text.Utilities (breakPieces)
 import Data.Bits (shiftL, shiftR, (.&.), (.|.))
@@ -82,9 +83,9 @@ The two bytes of supplied randomness are put in the middle.
 
 @since 0.1.9
 -}
-createIdentifierTrace :: TimeStamp -> Word16 -> MAC -> Trace
+createIdentifierTrace :: Time -> Word16 -> MAC -> Trace
 createIdentifierTrace time rand address =
-    let p1 = packRope (toHexReversed64 (fromIntegral time))
+    let p1 = packRope (toHexReversed64 (fromIntegral (unTime time)))
         p2 = packRope (toHexNormal16 rand)
         p3 = packRope (convertMACToHex address)
      in Trace
@@ -211,14 +212,14 @@ unsafeToDigit w =
 
 {- |
 Generate an identifier for a span. We only have 8 bytes to work with. We use
-the nanosecond prescision timestamp with the nibbles reversed, and then
+the nanosecond prescision Time with the nibbles reversed, and then
 overwrite the last two bytes with the supplied random value.
 
 @since 0.1.9
 -}
-createIdentifierSpan :: TimeStamp -> Word16 -> Span
+createIdentifierSpan :: Time -> Word16 -> Span
 createIdentifierSpan time rand =
-    let t = fromIntegral (unTimeStamp time) :: Word64
+    let t = fromIntegral (unTime time) :: Word64
         r = fromIntegral rand :: Word64
         w = (t .&. 0x0000ffffffffffff) .|. (shiftL r 48)
      in Span

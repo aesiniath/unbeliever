@@ -37,13 +37,13 @@ module Core.Program.Context (
     subProgram,
 ) where
 
-import Chrono.TimeStamp (TimeStamp, getCurrentTimeNanoseconds)
 import Control.Concurrent.MVar (MVar, newEmptyMVar, newMVar, putMVar, readMVar)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
 import Control.Exception.Safe qualified as Safe (throw)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow (throwM))
 import Control.Monad.Reader.Class (MonadReader (..))
 import Control.Monad.Trans.Reader (ReaderT (..))
+import Core.Data.Clock
 import Core.Data.Structures
 import Core.Encoding.Json
 import Core.Program.Arguments
@@ -75,7 +75,7 @@ data Datum = Datum
     { spanIdentifierFrom :: Maybe Span
     , spanNameFrom :: Rope
     , serviceNameFrom :: Maybe Rope
-    , spanTimeFrom :: TimeStamp
+    , spanTimeFrom :: Time
     , traceIdentifierFrom :: Maybe Trace
     , parentIdentifierFrom :: Maybe Span
     , durationFrom :: Maybe Int64
@@ -89,7 +89,7 @@ emptyDatum =
         { spanIdentifierFrom = Nothing
         , spanNameFrom = emptyRope
         , serviceNameFrom = Nothing
-        , spanTimeFrom = 0
+        , spanTimeFrom = epochTime
         , traceIdentifierFrom = Nothing
         , parentIdentifierFrom = Nothing
         , durationFrom = Nothing
@@ -170,7 +170,7 @@ data Context τ = Context
     , initialExportersFrom :: [Exporter]
     , commandLineFrom :: Parameters -- derived at startup
     , exitSemaphoreFrom :: MVar ExitCode
-    , startTimeFrom :: MVar TimeStamp
+    , startTimeFrom :: MVar Time
     , verbosityLevelFrom :: MVar Verbosity
     , outputChannelFrom :: TQueue (Maybe Rope) -- communication channels
     , telemetryChannelFrom :: TQueue (Maybe Datum) -- machinery for telemetry

@@ -170,9 +170,9 @@ import Core.Data.Structures (Map, emptyMap, insertKeyValue)
 import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Context
+import Core.Data.Clock
 import Core.Program.Logging
 import Core.System.Base (SomeException, liftIO)
-import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
 import Core.Telemetry.Identifiers
 import Core.Text.Rope
 import Core.Text.Utilities (oxford, quote)
@@ -442,7 +442,7 @@ encloseSpan label action = do
         datum2 <- readMVar v2
         let datum2' =
                 datum2
-                    { durationFrom = Just (unTimeStamp finish - unTimeStamp start)
+                    { durationFrom = Just (unTime finish - unTime start)
                     }
 
         let tel = telemetryChannelFrom context
@@ -707,7 +707,7 @@ span are recorded automatically when calling 'encloseSpan'. Observabilty tools
 are designed to be used live; traces and spans should be created in real time
 in your code.
 -}
-setStartTime :: TimeStamp -> Program τ ()
+setStartTime :: Time -> Program τ ()
 setStartTime time = do
     context <- getContext
 

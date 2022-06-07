@@ -103,7 +103,6 @@ module Core.Program.Execute (
     lookupEnvironmentValue,
 ) where
 
-import Chrono.TimeStamp (getCurrentTimeNanoseconds)
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (
     ExceptionInLinkedThread (..),
@@ -143,6 +142,7 @@ import Control.Monad (
  )
 import Control.Monad.Catch (Handler (..))
 import Control.Monad.Reader.Class (MonadReader (ask))
+import Core.Data.Clock
 import Core.Data.Structures
 import Core.Program.Arguments
 import Core.Program.Context
