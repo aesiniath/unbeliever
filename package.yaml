@@ -86,6 +86,7 @@ executables:
 tests:
   check:
     dependencies:
+     - aeson
      - async
      - bytestring
      - fingertree
@@ -93,10 +94,12 @@ tests:
      - hspec
      - network-info
      - prettyprinter
+     - QuickCheck
      - safe-exceptions
      - stm
      - text
      - text-short
+     - time
      - unordered-containers
      - wai
     ghc-options: -threaded
@@ -111,6 +114,7 @@ tests:
      - CheckProgramMonad
      - CheckRopeBehaviour
      - CheckTelemetryMachinery
+     - CheckTimeStamp
      - CheckWebserverIntegration
 
 benchmarks:

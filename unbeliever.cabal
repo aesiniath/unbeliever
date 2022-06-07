@@ -105,12 +105,15 @@ test-suite check
       CheckProgramMonad
       CheckRopeBehaviour
       CheckTelemetryMachinery
+      CheckTimeStamp
       CheckWebserverIntegration
   hs-source-dirs:
       tests
   ghc-options: -Wall -Wwarn -fwarn-tabs -threaded
   build-depends:
-      async
+      QuickCheck
+    , aeson
+    , async
     , base >=4.11 && <5
     , bytestring
     , core-data >=0.3.3.0
@@ -128,6 +131,7 @@ test-suite check
     , stm
     , text
     , text-short
+    , time
     , unordered-containers
     , wai
   default-language: Haskell2010
