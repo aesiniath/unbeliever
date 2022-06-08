@@ -52,9 +52,9 @@ library
       async
     , base >=4.11 && <5
     , bytestring
-    , core-data >=0.3.2.2
+    , core-data >=0.3.3.1
     , core-program >=0.5.0.2
-    , core-text >=0.3.6.0
+    , core-text >=0.3.7.1
     , exceptions
     , http-streams
     , io-streams
