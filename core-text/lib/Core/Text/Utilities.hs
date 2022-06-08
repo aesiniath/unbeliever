@@ -1,6 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -52,13 +53,13 @@ import Core.Text.Colour
 import Core.Text.Parsing
 import Core.Text.Rope
 import Data.Bits (Bits (..))
-import qualified Data.ByteString as B (ByteString, length, splitAt, unpack)
+import Data.ByteString qualified as B (ByteString, length, splitAt, unpack)
 import Data.Char (intToDigit)
-import qualified Data.FingerTree as F (ViewL (..), viewl, (<|))
+import Data.FingerTree qualified as F (ViewL (..), viewl, (<|))
 import Data.Kind (Type)
-import qualified Data.List as List (dropWhileEnd, foldl', splitAt)
-import qualified Data.Text as T
-import qualified Data.Text.Short as S (
+import Data.List qualified as List (dropWhileEnd, foldl', splitAt)
+import Data.Text qualified as T
+import Data.Text.Short qualified as S (
     ShortText,
     replicate,
     singleton,
@@ -164,10 +165,9 @@ twoWords ds = go ds
   where
     go [] = []
     go [x] = [softline' <> x]
-    go xs =
-        let (one : two : [], remainder) = List.splitAt 2 xs
-         in group (one <> spacer <> two) : go remainder
-
+    go xs = case List.splitAt 2 xs of
+        (one : two : [], remainder) -> group (one <> spacer <> two) : go remainder
+        _ -> [] -- unreachable
     spacer = flatAlt softline' "  "
 
 byteChunk :: B.ByteString -> [B.ByteString]
@@ -316,7 +316,6 @@ Sadly if there is only one item you don't get an Oxford comma, either:
 λ> __oxford []__
 ""
 @
-
 -}
 oxford :: [Rope] -> Rope
 oxford [] = emptyRope

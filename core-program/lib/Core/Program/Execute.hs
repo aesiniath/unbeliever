@@ -401,7 +401,7 @@ loopForever :: ([a] -> IO ()) -> MVar Verbosity -> TQueue (Maybe Rope) -> TQueue
 loopForever action v out queue = do
     -- block waiting for an item
     possibleItems <- atomically $ do
-        cycleOverQueue []
+        cycleOverQueue 0 []
 
     case possibleItems of
         -- we're done!
@@ -419,7 +419,12 @@ loopForever action v out queue = do
                 )
             loopForever action v out queue
   where
-    cycleOverQueue items =
+    cycleOverQueue !count items =
+        if count >= (1024 :: Int)
+            then pure (Just items)
+            else cycleOverQueue' count items
+
+    cycleOverQueue' !count items =
         case items of
             [] -> do
                 possibleItem <- readTQueue queue -- blocks
@@ -428,7 +433,7 @@ loopForever action v out queue = do
                     Nothing -> pure Nothing
                     -- otherwise start accumulating
                     Just item -> do
-                        cycleOverQueue (item : [])
+                        cycleOverQueue 1 (item : [])
             _ -> do
                 pending <- tryReadTQueue queue -- doesn't block
                 case pending of
@@ -446,7 +451,7 @@ loopForever action v out queue = do
                                 pure (Just items)
                             -- continue accumulating!
                             Just item -> do
-                                cycleOverQueue (item : items)
+                                cycleOverQueue (count + 1) (item : items)
 
     reportStatus start num = do
         level <- readMVar v
