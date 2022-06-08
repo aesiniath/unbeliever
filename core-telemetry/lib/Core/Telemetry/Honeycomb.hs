@@ -262,9 +262,11 @@ postEventToHoneycombAPI r apikey dataset json = attempt False
                 cleanupConnection r
                 case retrying of
                     False -> do
-                        putStrLn "Reattempting"
+                        putStrLn "internal: Reconnecting to Honeycomb"
                         attempt True
-                    True -> Safe.throw e
+                    True -> do
+                        putStrLn "internal: Failed to re-establish connection to Honeycomb"
+                        Safe.throw e
             )
 
     q = buildRequest1 $ do
@@ -297,7 +299,7 @@ postEventToHoneycombAPI r apikey dataset json = attempt False
                                     pure ()
                                 _ -> do
                                     -- some other status!
-                                    putStrLn "Unexpected status returned;"
+                                    putStrLn "internal: Unexpected status returned;"
                                     C.putStrLn body
                             _ -> putStrLn "internal: wtf?"
                     _ -> do
