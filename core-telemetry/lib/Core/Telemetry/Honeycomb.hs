@@ -35,8 +35,9 @@ module Core.Telemetry.Honeycomb (
     honeycombExporter,
 ) where
 
+import Codec.Compression.GZip qualified as GZip (compress)
 import Control.Exception.Safe qualified as Safe (catch, finally, throw)
-import Core.Data.Clock (Time, unTime, getCurrentTimeNanoseconds)
+import Core.Data.Clock (Time, getCurrentTimeNanoseconds, unTime)
 import Core.Data.Structures (Map, fromMap, insertKeyValue, intoMap, lookupKeyValue)
 import Core.Encoding.Json
 import Core.Program.Arguments
@@ -49,6 +50,8 @@ import Core.Text.Rope
 import Core.Text.Utilities
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as B (ByteString)
+import Data.ByteString.Builder (Builder)
+import Data.ByteString.Builder qualified as Builder (lazyByteString)
 import Data.ByteString.Char8 qualified as C (append, null, putStrLn)
 import Data.ByteString.Lazy qualified as L (ByteString)
 import Data.Fixed
@@ -57,7 +60,8 @@ import Data.List qualified as List
 import Network.Http.Client
 import System.Environment (lookupEnv)
 import System.Exit (ExitCode (..))
-import System.IO.Streams (InputStream)
+import System.IO.Streams (InputStream, OutputStream)
+import System.IO.Streams qualified as Streams (write)
 import System.Posix.Process qualified as Posix (exitImmediately)
 
 {- |
@@ -233,6 +237,13 @@ cleanupConnection r = do
             writeIORef r Nothing
         )
 
+compressBody :: Bytes -> OutputStream Builder -> IO ()
+compressBody bytes o = do
+    let x = fromBytes bytes
+    let x' = GZip.compress x
+    let b = Builder.lazyByteString x'
+    Streams.write (Just b) o
+
 postEventToHoneycombAPI :: IORef (Maybe Connection) -> ApiKey -> Dataset -> JsonValue -> IO ()
 postEventToHoneycombAPI r apikey dataset json = attempt False
   where
@@ -242,7 +253,7 @@ postEventToHoneycombAPI r apikey dataset json = attempt False
                 c <- acquireConnection r
 
                 -- actually transmit telemetry to Honeycomb
-                sendRequest c q (simpleBody (fromBytes (encodeToUTF8 json)))
+                sendRequest c q (compressBody (encodeToUTF8 json))
                 receiveResponse c handler
             )
             ( \(e :: SomeException) -> do
@@ -259,6 +270,7 @@ postEventToHoneycombAPI r apikey dataset json = attempt False
     q = buildRequest1 $ do
         http POST (fromRope ("/1/batch/" <> dataset))
         setContentType "application/json"
+        setHeader "Content-Encoding" "gzip"
         setHeader "X-Honeycomb-Team" (fromRope (apikey))
 
     {-

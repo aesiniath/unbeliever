@@ -1,5 +1,5 @@
 name: core-telemetry
-version: 0.2.3.3
+version: 0.2.3.4
 synopsis: Advanced telemetry
 description: |
   This is part of a library to help build command-line programs, both tools and
@@ -46,6 +46,7 @@ library:
    - scientific
    - stm
    - unix
+   - zlib
   source-dirs:
   - lib
   exposed-modules:
