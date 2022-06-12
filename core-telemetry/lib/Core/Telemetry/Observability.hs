@@ -456,16 +456,6 @@ encloseSpan label action = do
             Right value -> pure value
 
 {- |
-Send a span value up by hand.
-
-This handles a number of convenient things for you, and takes care of a few edge
-cases.
-
-
-@since 0.2.1
--}
-
-{- |
 Start a new trace. A random identifier will be generated.
 
 You /must/ have a single \"root span\" immediately below starting a new trace.
