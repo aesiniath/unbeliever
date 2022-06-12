@@ -364,9 +364,8 @@ appendOption option config =
   where
     f :: [Commands] -> Commands -> [Commands]
     f acc command = case command of
-        Global options -> Global (options ++ [option]) : acc
-        c@(Command _ _ _) -> c : acc
-
+        Global options -> acc ++ [Global (options ++ [option])]
+        c@(Command _ _ _) -> acc ++ [c]
 {- |
 Individual parameters read in off the command-line can either have a value
 (in the case of arguments and options taking a value) or be empty (in the
