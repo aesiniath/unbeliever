@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE StrictData #-}
@@ -102,17 +103,17 @@ module Core.Text.Rope (
 
 import Control.DeepSeq (NFData (..))
 import Core.Text.Bytes
-import qualified Data.ByteString as B (ByteString)
-import qualified Data.ByteString.Builder as B (
+import Data.ByteString qualified as B (ByteString)
+import Data.ByteString.Builder qualified as B (
     hPutBuilder,
     toLazyByteString,
  )
-import qualified Data.ByteString.Lazy as L (
+import Data.ByteString.Lazy qualified as L (
     ByteString,
     foldrChunks,
     toStrict,
  )
-import qualified Data.FingerTree as F (
+import Data.FingerTree qualified as F (
     FingerTree,
     Measured (..),
     SearchResult (..),
@@ -129,19 +130,19 @@ import qualified Data.FingerTree as F (
 import Data.Foldable (foldl', toList)
 import Data.Hashable (Hashable, hashWithSalt)
 import Data.String (IsString (..))
-import qualified Data.Text as T (Text)
-import qualified Data.Text.Lazy as U (
+import Data.Text qualified as T (Text)
+import Data.Text.Lazy qualified as U (
     Text,
     foldrChunks,
     fromChunks,
     toStrict,
  )
-import qualified Data.Text.Lazy.Builder as U (
+import Data.Text.Lazy.Builder qualified as U (
     Builder,
     fromText,
     toLazyText,
  )
-import qualified Data.Text.Short as S (
+import Data.Text.Short qualified as S (
     ShortText,
     any,
     append,
@@ -159,7 +160,7 @@ import qualified Data.Text.Short as S (
     uncons,
     unpack,
  )
-import qualified Data.Text.Short.Unsafe as S (fromByteStringUnsafe)
+import Data.Text.Short.Unsafe qualified as S (fromByteStringUnsafe)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), emptyDoc)
 import System.IO (Handle)
@@ -606,11 +607,9 @@ intermediate allocation and copying because we can go from the
 'Data.ByteString.Short.ShortByteString' to 'Data.ByteString.Builder.Builder'
 to the 'System.IO.Handle''s output buffer in one go.
 
-If you're working in the
-<https://hackage.haskell.org/package/core-program/docs/Core-Program-Execute.html#t:Program
-Program> monad, then
-<https://hackage.haskell.org/package/core-program/docs/Core-Program-Logging.html#v:write
-write> provides an efficient way to write a @Rope@ to @stdout@.
+If you're working in the __core-program__ 'Core.Program.Execute.Program' @τ@
+monad, then the 'Core.Program.Logging.write' function there provides an
+efficient way to write a 'Rope' to @stdout@.
 -}
 hWrite :: Handle -> Rope -> IO ()
 hWrite handle (Rope x) = B.hPutBuilder handle (foldr j mempty x)
