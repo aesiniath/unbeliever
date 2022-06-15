@@ -688,11 +688,11 @@ extractShortNames options =
 
 extractRequiredArguments :: [Options] -> [LongName]
 extractRequiredArguments arguments =
-    List.foldl' h [] arguments
+    List.foldr h [] arguments
   where
-    h :: [LongName] -> Options -> [LongName]
-    h needed (Argument longname _) = longname : needed
-    h needed _ = needed
+    h :: Options -> [LongName] -> [LongName]
+    h (Argument longname _) needed = longname : needed
+    h _ needed = needed
 
 extractGlobalOptions :: [Commands] -> [Options]
 extractGlobalOptions commands =

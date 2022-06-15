@@ -37,6 +37,7 @@ options5 =
     [ Argument "one" "The first one"
     , Argument "two" "The second one"
     , Argument "three" "The third one"
+    , Argument "four" "The fourth one"
     , Remaining "All the rest"
     ]
 
@@ -196,8 +197,8 @@ checkArgumentsParsing = do
 
         it "ensures required arguments as in order" $
             let config = simpleConfig options5
-                actual = parseCommandLine config ["un", "deux", "trois", "quatre", "cinq"]
-                expect = Parameters Nothing (intoMap [("one", "un"), ("two", "deux"), ("three", "trois")]) [ "quatre", "cinq"] emptyMap
+                actual = parseCommandLine config ["un", "deux", "trois", "quatre", "cinq", "six"]
+                expect = Parameters Nothing (intoMap [("one", "un"), ("two", "deux"), ("three", "trois"), ("four", "quatre")]) ["cinq", "six"] emptyMap
              in actual `shouldBe` Right expect
 
         -- in complex mode wasn't accpting --version as a global option.
