@@ -32,6 +32,15 @@ options4 =
     [ Remaining "All the rest of the files"
     ]
 
+options5 :: [Options]
+options5 =
+    [ Argument "one" "The first one"
+    , Argument "two" "The second one"
+    , Argument "three" "The third one"
+    , Argument "four" "The fourth one"
+    , Remaining "All the rest"
+    ]
+
 commands1 :: [Commands]
 commands1 =
     [ Global
@@ -182,8 +191,14 @@ checkArgumentsParsing = do
 
         it "accepts trailing arguments as remainder" $
             let config = complexConfig commands4
-                actual = parseCommandLine config ["commit", "one", "two", "tree"]
-                expect = Parameters (Just "commit") emptyMap ["one", "two", "tree"] emptyMap
+                actual = parseCommandLine config ["commit", "one", "two", "three"]
+                expect = Parameters (Just "commit") emptyMap ["one", "two", "three"] emptyMap
+             in actual `shouldBe` Right expect
+
+        it "ensures required arguments as in order" $
+            let config = simpleConfig options5
+                actual = parseCommandLine config ["un", "deux", "trois", "quatre", "cinq", "six"]
+                expect = Parameters Nothing (intoMap [("one", "un"), ("two", "deux"), ("three", "trois"), ("four", "quatre")]) ["cinq", "six"] emptyMap
              in actual `shouldBe` Right expect
 
         -- in complex mode wasn't accpting --version as a global option.
