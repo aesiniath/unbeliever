@@ -90,6 +90,9 @@ performQueryActual label f values query = do
             Just (Left problem) -> do
                 throwErrors label problem
             Just (Right rows) -> do
+                telemetry
+                    [ metric "result_count" (length rows :: Int)
+                    ]
                 pure (fmap f rows)
 
 throwErrors :: Rope -> UsageError -> Program δ a
