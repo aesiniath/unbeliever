@@ -22,9 +22,10 @@ import Core.Telemetry.Observability
 import Core.Text.Rope
 import Data.Vector (Vector, toList)
 import GHC.Tuple (Solo (Solo), getSolo)
-import Hasql.Pool (Pool, UsageError (ConnectionError, SessionError), use)
-import Hasql.Session (QueryError (QueryError), statement)
+import Hasql.Pool (Pool, UsageError (ConnectionUsageError, SessionUsageError), use)
+import Hasql.Session (QueryError (QueryError), sql, statement)
 import Hasql.Statement (Statement)
+import qualified System.Timeout as Base (timeout)
 
 {- |
 In the event of a problem connecting to the database or executing the query
@@ -33,6 +34,7 @@ this exception will be thrown.
 data DatabaseFailure
     = DatabaseConnectionFailed Rope
     | DatabaseQueryFailed Rope
+    | DatabaseQueryTimeout
     deriving (Show)
 
 instance Exception DatabaseFailure
@@ -44,6 +46,21 @@ being made by this helper library.
 -}
 class Database δ where
     connectionPoolFrom :: δ -> Pool
+
+--
+-- We need to ensure that database connections are aborted if they run too
+-- long; otherwise huge database CPU resources are consumed for no benefit to
+-- the end user. There are three magic numbers related to timeouts. Not
+-- visible here is the default 60 second timeout that e.g. Amazaon Application
+-- Load Balancers enforce on HTTP connections. We thus choose a slightly
+-- shorter "statement timeout" of 57 seconds after which the databse
+-- connection is aborted. Finally, just within that at 55 seconds is an I/O
+-- timeout on the Haskell side which is done explicitly so that we can
+-- [attempt to] kill the request and more importantly throw an appropriate
+-- error (so you can in turn return an appropriate HTTP status code, i.e.
+-- 524 A Timeout Occurred so that it's overtly visible within your outer
+-- monitoring).
+--
 
 performQueryActual ::
     Database δ =>
@@ -59,25 +76,33 @@ performQueryActual label f values query = do
         let pool = connectionPoolFrom state
 
         result <- liftIO $ do
-            use pool (statement values query)
+            Base.timeout (55 * 1000000) $ do
+                use
+                    pool
+                    ( do
+                        sql "SET statement_timeout = '57s';"
+                        statement values query
+                    )
 
         case result of
-            Left problem -> do
+            Nothing -> do
+                throwTimeout
+            Just (Left problem) -> do
                 throwErrors label problem
-            Right rows ->
+            Just (Right rows) -> do
                 pure (fmap f rows)
 
 throwErrors :: Rope -> UsageError -> Program δ a
 throwErrors message result = do
     case result of
-        ConnectionError connectionError -> do
+        ConnectionUsageError connectionError -> do
             warn message
 
             telemetry
                 [ metric "error" ("Database connection problem: " <> intoRope (show connectionError))
                 ]
             throw (DatabaseConnectionFailed message)
-        SessionError (QueryError template parameters commandError) -> do
+        SessionUsageError (QueryError template parameters commandError) -> do
             warn message
             debugS "template" template
             debugS "parameters" parameters
@@ -86,6 +111,15 @@ throwErrors message result = do
                 [ metric "error" ("Database transaction failed: " <> intoRope (show commandError))
                 ]
             throw (DatabaseQueryFailed message)
+
+throwTimeout :: Program δ a
+throwTimeout = do
+    let message = "Database query timeout"
+    warn message
+    telemetry
+        [ metric "error" message
+        ]
+    throw DatabaseQueryTimeout
 
 performQuerySingleton ::
     Database δ =>
