@@ -36,9 +36,9 @@ library
   exposed-modules:
       Core.Data
       Core.Data.Clock
-      Core.Data.External
       Core.Data.Structures
       Core.Encoding
+      Core.Encoding.External
       Core.Encoding.Json
   other-modules:
       Core.Data.Format

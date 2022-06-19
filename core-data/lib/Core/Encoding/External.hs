@@ -16,7 +16,7 @@ Of course, the obvious benefits of efficiency didn't stop the entire computer
 industry from near universal adoption of JSON as an interchange format. There
 is, perhaps, no hope for us.
 -}
-module Core.Data.External (
+module Core.Encoding.External (
     -- * Conversions
     Externalize (intoExternal, parseExternal),
 ) where
