@@ -105,6 +105,7 @@ import Control.DeepSeq (NFData (..))
 import Core.Text.Bytes
 import Data.ByteString qualified as B (ByteString)
 import Data.ByteString.Builder qualified as B (
+    Builder,
     hPutBuilder,
     toLazyByteString,
  )
@@ -551,6 +552,20 @@ instance Textual B.ByteString where
     appendRope b' (Rope x) = case S.fromByteString b' of
         Just piece -> Rope ((F.|>) x piece)
         Nothing -> (Rope x) -- bad
+
+-- | from "Data.ByteString.Builder"
+instance Textual B.Builder where
+    fromRope = foldr g mempty . unRope
+      where
+        g piece built = (<>) (S.toBuilder piece) built
+    intoRope =
+        Rope
+            . ( L.foldrChunks
+                    ( (F.<|) . S.fromByteStringUnsafe
+                    )
+                    F.empty
+              )
+            . B.toLazyByteString
 
 -- | from "Data.ByteString.Lazy"
 instance Textual L.ByteString where

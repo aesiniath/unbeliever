@@ -35,7 +35,8 @@ module Core.Encoding.External (
 
 import Core.Data.Clock
 import Core.Text.Rope
-import Data.Int (Int64)
+import Data.ByteString.Builder qualified as Builder
+import Data.Int (Int32, Int64)
 import Data.UUID qualified as Uuid (UUID, fromText, toText)
 import Text.Read (readMaybe)
 
@@ -78,18 +79,37 @@ instance {-# OVERLAPPABLE #-} (Read a, Show a) => Externalize a where
     formatExternal = intoRope . show
     parseExternal = readMaybe . fromRope
 
+--
+-- These weren't really necessary, but they're worth it as an example of
+-- avoiding Show & Read
+--
+
 instance Externalize Int where
-    formatExternal = intoRope . show
+    formatExternal = intoRope . Builder.toLazyByteString . Builder.intDec
+    parseExternal = readMaybe . fromRope
+
+instance Externalize Int32 where
+    formatExternal = intoRope . Builder.toLazyByteString . Builder.int32Dec
     parseExternal = readMaybe . fromRope
 
 instance Externalize Int64 where
-    formatExternal = intoRope . show
+    formatExternal = intoRope . Builder.toLazyByteString . Builder.int64Dec
     parseExternal = readMaybe . fromRope
+
+--
+-- More than anything, THIS was the example that motivated creating this
+-- module.
+--
 
 instance Externalize Uuid.UUID where
     formatExternal = intoRope . Uuid.toText
     parseExternal = Uuid.fromText . fromRope
 
+--
+-- This is a placeholder to remind that if we ever improve the machinery in
+-- Core.Data.Clock to not use **hourglass** (which uses String) we could quite
+-- likely get a better implementation here.
+--
 instance Externalize Time where
     formatExternal = intoRope . show
     parseExternal = readMaybe . fromRope
