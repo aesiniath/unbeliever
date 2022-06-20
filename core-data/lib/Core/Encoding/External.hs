@@ -1,7 +1,7 @@
-{-# LANGUAGE FlexibleInstances#-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_HADDOCK prune #-}
-
 
 {- |
 Quite frequently you will find yourself needing to convert between a rich
@@ -36,6 +36,7 @@ module Core.Encoding.External (
 import Core.Text.Rope
 
 import Data.Int (Int64)
+import Data.UUID qualified as Uuid (UUID, fromText, toText)
 import Text.Read (readMaybe)
 
 {- |
@@ -84,3 +85,7 @@ instance Externalize Int where
 instance Externalize Int64 where
     formatExternal = intoRope . show
     parseExternal = readMaybe . fromRope
+
+instance Externalize Uuid.UUID where
+    formatExternal = intoRope . Uuid.toText
+    parseExternal = Uuid.fromText . fromRope
