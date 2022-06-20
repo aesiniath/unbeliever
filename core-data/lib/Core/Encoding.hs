@@ -18,6 +18,9 @@ this package.
 -}
 module Core.Encoding (
     module Core.Encoding.Json,
+
+    module Core.Encoding.External,
 ) where
 
+import Core.Encoding.External
 import Core.Encoding.Json
