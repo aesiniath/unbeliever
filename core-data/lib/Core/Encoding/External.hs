@@ -37,6 +37,7 @@ import Core.Data.Clock
 import Core.Text.Rope
 import Data.ByteString.Builder qualified as Builder
 import Data.Int (Int32, Int64)
+import Data.Scientific (FPFormat (Exponent), Scientific, formatScientific)
 import Data.UUID qualified as Uuid (UUID, fromText, toText)
 import Text.Read (readMaybe)
 
@@ -65,7 +66,11 @@ does so more efficiently.
 @since 0.3.4
 -}
 class Externalize a where
+    -- | Convert a value into an authoritative, stable textual representation
+    -- for use externally.
     formatExternal :: a -> Rope
+
+    -- | Attempt to read an external textual representation into a Haskell value.
     parseExternal :: Rope -> Maybe a
 
 --
@@ -101,6 +106,13 @@ instance Externalize Int64 where
 -- module.
 --
 
+{- |
+UUIDs are formatted as per RFC 4122:
+
+@
+\"6937e157-d041-4919-8690-4d6c12b7e0e3\"
+@
+-}
 instance Externalize Uuid.UUID where
     formatExternal = intoRope . Uuid.toText
     parseExternal = Uuid.fromText . fromRope
@@ -110,6 +122,25 @@ instance Externalize Uuid.UUID where
 -- Core.Data.Clock to not use **hourglass** (which uses String) we could quite
 -- likely get a better implementation here.
 --
+
+{- |
+Timestamps are formatted as per ISO 8601:
+
+@
+\"2022-06-20T14:51:23.544826062Z\"
+@
+-}
 instance Externalize Time where
     formatExternal = intoRope . show
+    parseExternal = readMaybe . fromRope
+
+{- |
+Numbers are converted to scientific notation:
+
+@
+\"2.99792458e8\"
+@
+-}
+instance Externalize Scientific where
+    formatExternal = intoRope . formatScientific Exponent Nothing
     parseExternal = readMaybe . fromRope
