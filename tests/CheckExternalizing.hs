@@ -9,6 +9,7 @@ import Core.Text
 import Data.Int
 import Data.Scientific
 import Test.Hspec
+import Test.QuickCheck (property)
 
 checkExternalizing :: Spec
 checkExternalizing = do
@@ -21,6 +22,13 @@ checkExternalizing = do
             formatExternal (9223372036854775807 :: Int64) `shouldBe` packRope "9223372036854775807"
             parseExternal (packRope "9223372036854775807") `shouldBe` Just (9223372036854775807 :: Int64)
 
+        it "behaves when QuickChecked" $ do
+            property (prop_RoundTrip_External :: Int64 -> Bool)
+
         it "Scientific" $ do
             formatExternal (299792458 :: Scientific) `shouldBe` packRope "2.99792458e8"
             parseExternal (packRope "2.99792458e8") `shouldBe` Just (299792458 :: Scientific)
+
+
+prop_RoundTrip_External :: (Externalize a, Eq a) => a -> Bool
+prop_RoundTrip_External t = (parseExternal . formatExternal) t == Just t
