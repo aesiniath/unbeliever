@@ -3,6 +3,7 @@
 import CheckArgumentsParsing (checkArgumentsParsing)
 import CheckBytesBehaviour
 import CheckContainerBehaviour
+import CheckExternalizing (checkExternalizing)
 import CheckJsonWrapper
 import CheckProgramMonad
 import CheckRopeBehaviour (checkRopeBehaviour)
@@ -21,6 +22,7 @@ suite = do
     checkBytesBehaviour
     checkContainerBehaviour
     checkTimeStamp
+    checkExternalizing
     checkJsonWrapper
     checkArgumentsParsing
     checkProgramMonad

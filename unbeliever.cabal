@@ -101,6 +101,7 @@ test-suite check
       CheckArgumentsParsing
       CheckBytesBehaviour
       CheckContainerBehaviour
+      CheckExternalizing
       CheckJsonWrapper
       CheckProgramMonad
       CheckRopeBehaviour
@@ -128,6 +129,7 @@ test-suite check
     , network-info
     , prettyprinter
     , safe-exceptions
+    , scientific
     , stm
     , text
     , text-short

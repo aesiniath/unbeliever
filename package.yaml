@@ -96,6 +96,7 @@ tests:
      - prettyprinter
      - QuickCheck
      - safe-exceptions
+     - scientific
      - stm
      - text
      - text-short
@@ -110,6 +111,7 @@ tests:
      - CheckArgumentsParsing
      - CheckBytesBehaviour
      - CheckContainerBehaviour
+     - CheckExternalizing
      - CheckJsonWrapper
      - CheckProgramMonad
      - CheckRopeBehaviour
