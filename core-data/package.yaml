@@ -1,5 +1,5 @@
 name: core-data
-version: 0.3.3.1
+version: 0.3.4.0
 synopsis: Convenience wrappers around common data structures and encodings
 description: |
   Wrappers around common data structures and encodings.
@@ -34,17 +34,20 @@ dependencies:
  - text
  - time
  - unordered-containers
+ - uuid
  - vector
- - core-text >= 0.3.7
 
 library:
   source-dirs: lib
+  dependencies:
+  - core-text >= 0.3.7
   exposed-modules:
    - Core.Data
    - Core.Data.Clock
-   - Core.Data.Format
    - Core.Data.Structures
    - Core.Encoding
+   - Core.Encoding.External
    - Core.Encoding.Json
-  other-modules: []
+  other-modules:
+   - Core.Data.Format
 
