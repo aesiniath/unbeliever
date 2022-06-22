@@ -84,19 +84,48 @@ instance {-# OVERLAPPABLE #-} (Read a, Show a) => Externalize a where
     formatExternal = intoRope . show
     parseExternal = readMaybe . fromRope
 
+instance Externalize Rope where
+    formatExternal = id
+    parseExternal = Just
+
+instance Externalize String where
+    formatExternal = packRope
+    parseExternal = Just . fromRope
+
 --
 -- These weren't really necessary, but they're worth it as an example of
 -- avoiding Show & Read
 --
 
+{- |
+Integers are represented in decimal:
+
+@
+42
+@
+-}
 instance Externalize Int where
     formatExternal = intoRope . Builder.toLazyByteString . Builder.intDec
     parseExternal = readMaybe . fromRope
 
+{- |
+Integers are represented in decimal:
+
+@
+42
+@
+-}
 instance Externalize Int32 where
     formatExternal = intoRope . Builder.toLazyByteString . Builder.int32Dec
     parseExternal = readMaybe . fromRope
 
+{- |
+Integers are represented in decimal:
+
+@
+42
+@
+-}
 instance Externalize Int64 where
     formatExternal = intoRope . Builder.toLazyByteString . Builder.int64Dec
     parseExternal = readMaybe . fromRope
@@ -107,10 +136,10 @@ instance Externalize Int64 where
 --
 
 {- |
-UUIDs are formatted as per RFC 4122:
+Unique identifiers are formatted as per RFC 4122:
 
 @
-\"6937e157-d041-4919-8690-4d6c12b7e0e3\"
+6937e157-d041-4919-8690-4d6c12b7e0e3
 @
 -}
 instance Externalize Uuid.UUID where
@@ -127,7 +156,7 @@ instance Externalize Uuid.UUID where
 Timestamps are formatted as per ISO 8601:
 
 @
-\"2022-06-20T14:51:23.544826062Z\"
+2022-06-20T14:51:23.544826062Z
 @
 -}
 instance Externalize Time where
@@ -138,7 +167,7 @@ instance Externalize Time where
 Numbers are converted to scientific notation:
 
 @
-\"2.99792458e8\"
+2.99792458e8
 @
 -}
 instance Externalize Scientific where
