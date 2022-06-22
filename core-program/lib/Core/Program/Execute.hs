@@ -65,6 +65,7 @@ module Core.Program.Execute (
     queryCommandName,
     queryOptionFlag,
     queryOptionValue,
+    queryOptionValue',
     queryArgument,
     queryRemaining,
     queryEnvironmentValue,
@@ -144,6 +145,7 @@ import Control.Monad.Catch (Handler (..))
 import Control.Monad.Reader.Class (MonadReader (ask))
 import Core.Data.Clock
 import Core.Data.Structures
+import Core.Encoding.External
 import Core.Program.Arguments
 import Core.Program.Context
 import Core.Program.Exceptions
@@ -806,16 +808,21 @@ queryRemaining = do
 
 {- |
 Look to see if the user supplied a valued option and if so, what its value
-was. Use of the @LambdaCase@ extension might make accessing the parameter a
-bit eaiser:
+was. Use of the @LambdaCase@ extension makes accessing the option (and
+specifying a default if it is absent) reasonably nice:
 
 @
 program = do
-    count \<- 'queryOptionValue' \"count\" '>>=' \\case
-        'Nothing' -> 'pure' 0
+    region \<- 'queryOptionValue' \"region\" '>>=' \\case
+        'Nothing' -> 'pure' \"us-west-2\" -- Oregon, not a bad default
         'Just' value -> 'pure' value
-    ...
 @
+
+If you require something other than the text value as entered by the user
+you'll need to do something to parse the returned value and convert it to an
+appropriate type  See 'queryOptionValue'' for an alternative that does this
+automatically in many common cases, i.e. for options that take numberic
+values.
 
 @since 0.3.5
 -}
@@ -837,6 +844,56 @@ lookupOptionValue name params =
             Empty -> Nothing
             Value value -> Just value
 {-# DEPRECATED lookupOptionValue "Use queryOptionValue instead" #-}
+
+data QueryParameterError
+    = OptionValueMissing LongName
+    | UnableParseValue LongName
+    deriving (Show)
+
+instance Exception QueryParameterError where
+    displayException e = case e of
+        OptionValueMissing (LongName name) -> "Option --" ++ name ++ " specified but without a value."
+        UnableParseValue (LongName name) -> "Unable to parse the value supplied to --" ++ name ++ "."
+
+{- |
+Look to see if the user supplied a valued option and if so, what its value
+was. This covers the common case of wanting to read a numeric argument from an
+option:
+
+@
+program = do
+    count \<- 'queryOptionValue'' \"count\" '>>=' \\case
+        'Nothing' -> 'pure' (0 :: 'Int')
+        'Just' value -> 'pure' value
+    ...
+@
+
+The return type of this function has the same semantics as 'queryOptionValue':
+if the option is absent you get 'Nothing' back (and in the example above we
+specify a default in that case) and 'Just' if a value is present. Unlike the
+original function, however, here we assume success in reading the value! If
+the value is unable to be parsed into the nominated Haskell type using
+'parseExternal' then an exception with an appropriate error message will be
+thrown­—which is what you want if the user specifies something that can't be
+parsed.
+
+Note that the return type is polymorphic so you'll need to ensure the concrete
+type you actually want is specified either via type inference or by adding a
+type annotation somewhere.
+
+@since 0.5.1
+-}
+queryOptionValue' :: Externalize ξ => LongName -> Program τ (Maybe ξ)
+queryOptionValue' name = do
+    context <- ask
+    let params = commandLineFrom context
+    case lookupKeyValue name (parameterValuesFrom params) of
+        Nothing -> pure Nothing
+        Just parameter -> case parameter of
+            Empty -> throw (OptionValueMissing name)
+            Value value -> case parseExternal (packRope value) of
+                Nothing -> throw (UnableParseValue name)
+                Just actual -> pure (Just actual)
 
 {- |
 Returns @True@ if the option is present, and @False@ if it is not.

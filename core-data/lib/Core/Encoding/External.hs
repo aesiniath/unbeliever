@@ -65,13 +65,13 @@ does so more efficiently.
 
 @since 0.3.4
 -}
-class Externalize a where
+class Externalize ξ where
     -- | Convert a value into an authoritative, stable textual representation
     -- for use externally.
-    formatExternal :: a -> Rope
+    formatExternal :: ξ -> Rope
 
     -- | Attempt to read an external textual representation into a Haskell value.
-    parseExternal :: Rope -> Maybe a
+    parseExternal :: Rope -> Maybe ξ
 
 --
 -- We use this general instance here rather than as a super class constraint
