@@ -1,12 +1,15 @@
+{-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module CheckProgramMonad where
 
-import qualified Control.Exception.Safe as Safe
+import Control.Exception.Safe qualified as Safe
 import Core.Data.Structures
 import Core.Program.Arguments
+import Core.Program.Context
 import Core.Program.Execute
 import Core.Program.Metadata
 import Core.Program.Unlift
@@ -17,6 +20,7 @@ import Test.Hspec hiding (context)
 options :: [Options]
 options =
     [ Option "all" (Just 'a') Empty "Good will to everyone"
+    , Option "count" Nothing (Value "NUMBER") "The number of times we will say this"
     ]
 
 commands :: [Commands]
@@ -85,6 +89,25 @@ checkProgramMonad = do
             subProgram context $ do
                 Safe.catch (Safe.throw Boom) (\(_ :: Boom) -> return ())
 
+        it "queries option values" $ do
+            context <- configure "0.1" None (simpleConfig options)
+            let context' =
+                    context
+                        { commandLineFrom =
+                            Parameters
+                                Nothing
+                                (singletonMap (LongName "count") (Value "42"))
+                                []
+                                emptyMap
+                        }
+            subProgram context' $ do
+                count <-
+                    queryOptionValue' "count" >>= \case
+                        Nothing -> pure 0
+                        Just value -> pure value
+                liftIO $ do
+                    count `shouldBe` (42 :: Int)
+
     describe "Package metadata" $ do
         it "the source location is accessible" $ do
-            render 80 __LOCATION__ `shouldBe` "tests/CheckProgramMonad.hs:90"
+            render 80 __LOCATION__ `shouldBe` "tests/CheckProgramMonad.hs:113"
