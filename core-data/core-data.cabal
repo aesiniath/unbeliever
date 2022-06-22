@@ -50,7 +50,7 @@ library
     , base >=4.11 && <5
     , bytestring
     , containers
-    , core-text >=0.3.7
+    , core-text >=0.3.8
     , hashable >=1.2
     , hourglass
     , prettyprinter >=1.6.2

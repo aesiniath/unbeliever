@@ -58,8 +58,8 @@ library
       async
     , base >=4.11 && <5
     , bytestring
-    , core-data >=0.3.3
-    , core-text >=0.3.7
+    , core-data >=0.3.4
+    , core-text >=0.3.8
     , directory
     , exceptions
     , filepath

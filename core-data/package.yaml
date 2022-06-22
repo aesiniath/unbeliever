@@ -40,7 +40,7 @@ dependencies:
 library:
   source-dirs: lib
   dependencies:
-  - core-text >= 0.3.7
+  - core-text >= 0.3.8
   exposed-modules:
    - Core.Data
    - Core.Data.Clock
