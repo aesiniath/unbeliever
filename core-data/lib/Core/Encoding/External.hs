@@ -6,7 +6,9 @@
 {- |
 Quite frequently you will find yourself needing to convert between a rich
 semantic Haskell data type and a textual representation of that type which we
-call the /external/ representation of a value.
+call the /external/ representation of a value. The external representation of
+the value is authoriative and is meant to be re-readable even in the face of
+changing implemetations on the program side.
 
 Note that /externalizing/ is not quite the same as /serializing/. If you have
 more complex (ie rich types or nested) data structures then a simple text
@@ -21,10 +23,10 @@ You can, however, regain some of your sanity by ensuring that the individual
 fields of a larger structure are safe, and that's where the externalizing
 machinery in this module comes in.
 
-If you have read this far and think we are describing 'Show' or @toString@ you
-are correct, but at the level of primative and simple types we are providing
-the ability to marshall them to a clean UTF-8 representation and to unmarshall
-them back into Haskell values again.
+If you have read this far and think we are describing something similar to
+'Show' or @toString@ you are correct, but at the level of primative and simple
+types we are providing the ability to marshall them to a clean UTF-8
+representation and to unmarshall them back into Haskell values again.
 
 The other major use case for this module is as a helper to read user input;
 see 'Core.Program.Execute.queryOptionValue'' for an example that makes use of
@@ -32,17 +34,15 @@ this.
 
 /Notes for implementators/
 
-This external representation of the value is authoriative and is meant to be
-re-readable even in the face of changing implemetations on the program side.
-
 Postel's dictum to \"be conservative in what you produce but liberal in what
 you accept\" describes the intent of this module. If you are implementing an
 instance of 'Externalize' then you might consider being flexible as possible
 when parsing with 'parseExternal', within the constraints of having to read a
 given value with exact fidelity. But when outputing a value with
-'formatExternal' you should be correcting the value in a canonical, stable
-form, even if the original input was written differently. See the discussion
-of creating 'Core.Data.Clock.Time' types from varying inputs for an example.
+'formatExternal' you should be correcting the representation of the value to a
+canonical, stable form, even if the original input was written differently.
+See the discussion of creating 'Core.Data.Clock.Time' types from varying
+inputs for an example.
 -}
 module Core.Encoding.External (
     -- * Conversions
