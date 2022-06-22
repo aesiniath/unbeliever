@@ -146,6 +146,28 @@ instance Externalize Int64 where
     formatExternal = intoRope . Builder.toLazyByteString . Builder.int64Dec
     parseExternal = readMaybe . fromRope
 
+{- |
+IEEE 754 floating point:
+
+@
+3.1415927
+@
+-}
+instance Externalize Float where
+    formatExternal = intoRope . Builder.toLazyByteString . Builder.floatDec
+    parseExternal = readMaybe . fromRope
+
+{- |
+IEEE 754 floating point:
+
+@
+3.141592653589793
+@
+-}
+instance Externalize Double where
+    formatExternal = intoRope . Builder.toLazyByteString . Builder.doubleDec
+    parseExternal = readMaybe . fromRope
+
 --
 -- More than anything, THIS was the example that motivated creating this
 -- module.
