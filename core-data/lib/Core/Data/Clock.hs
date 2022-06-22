@@ -79,38 +79,39 @@ import Time.System qualified as H (
 {- |
 Number of nanoseconds since the Unix epoch.
 
-The 'Show' instance displays the 'Time' as seconds with the nanosecond
-precision expressed as a decimal amount after the interger, ie:
+The 'Show' and 'Core.Encoding.External.Externalize' instances display the
+'Time' as seconds with the nanosecond precision expressed as a decimal amount
+after the interger, ie:
 
 >>> t <- getCurrentTimeNanoseconds
->>> show t
-2014-07-31T23:09:35.274387031Z
+>>> formatExternal t
+"2014-07-31T23:09:35.274387031Z"
 
 However this doesn't change the fact the underlying representation counts
 nanoseconds since epoch:
 
 >>> show $ unTime t
-1406848175274387031
+"1406848175274387031"
 
-There is a 'Read' instance that is reasonably accommodating:
+There is a 'Externalize' instance that is reasonably accommodating:
 
->>> read "2014-07-31T13:05:04.942089001Z" :: Time
-2014-07-31T13:05:04.942089001Z
+>>> parseExternal "2014-07-31T13:05:04.942089001Z" :: Maybe Time
+Just 2014-07-31T13:05:04.942089001Z
 
->>> read "1406811904.942089001" :: Time
-2014-07-31T13:05:04.942089001Z
+>>> parseExternal "1406811904.942089001" :: Maybe Time
+Just 2014-07-31T13:05:04.942089001Z
 
->>> read "1406811904" :: Time
-2014-07-31T13:05:04.000000000Z
+>>> parseExternal "1406811904" :: Maybe Time
+Just 2014-07-31T13:05:04.000000000Z
 
 In case you're wondering, the valid range of nanoseconds that fits into the
 underlying 'Int64' is:
 
->>> show $ minBound :: Time
-1677-09-21T00:12:43.145224192Z
+>>> formatExternal (minBound :: Time)
+"1677-09-21T00:12:43.145224192Z"
 
->>> show $ maxBound :: Time
-2262-04-11T23:47:16.854775807Z
+>>> formatExternal (maxBound :: Time)
+"2262-04-11T23:47:16.854775807Z"
 
 so in a quarter millenium's time, yes, you'll have the Y2262 Problem.
 Haskell code from today will, of course, still be running, so in the mid
