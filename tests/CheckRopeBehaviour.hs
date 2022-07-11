@@ -4,10 +4,8 @@
 
 module CheckRopeBehaviour (
     checkRopeBehaviour,
-    main,
 ) where
 
-import Core.System (finally)
 import Core.Text.Rope
 import Core.Text.Utilities
 import Data.Char (isSpace)
@@ -19,10 +17,6 @@ import qualified Data.Text.Encoding as T
 import qualified Data.Text.Lazy as U
 import qualified Data.Text.Short as S
 import Test.Hspec
-
-main :: IO ()
-main = do
-    finally (hspec checkRopeBehaviour) (putStrLn ".")
 
 hydrogen = "H₂" :: Rope
 

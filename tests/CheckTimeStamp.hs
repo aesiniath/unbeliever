@@ -10,6 +10,7 @@ import Core.Data.Clock
 import Data.Aeson
 import Data.ByteString.Lazy.Char8 qualified as L
 import Data.Int (Int64)
+import Data.Time.Calendar
 import Data.Time.Clock
 import Data.Time.Clock.POSIX
 import Test.Hspec
@@ -88,6 +89,11 @@ checkTimeStamp = do
 
         it "behaves when QuickChecked" $ do
             property prop_RoundTrip_ReadShow
+
+        it "converts to Day and back again" $ do
+            let t = intoTime (1406849015948797001 :: Int64)
+            let d = fromTime t :: Day
+            show (intoTime d) `shouldBe` "2014-07-31T00:00:00.000000000Z"
 
     describe "Round trip via JSON" $ do
         it "explicit JSON encoding is correct" $ do

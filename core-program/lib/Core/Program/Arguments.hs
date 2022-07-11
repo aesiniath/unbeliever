@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE StrictData #-}
@@ -49,7 +50,7 @@ module Core.Program.Arguments (
 ) where
 
 import Data.Hashable (Hashable)
-import qualified Data.List as List
+import Data.List qualified as List
 import Data.Maybe (fromMaybe)
 import Data.String (IsString (..))
 import Prettyprinter (
@@ -360,12 +361,7 @@ appendOption option config =
     case config of
         Blank -> Blank
         Simple options -> Simple (options ++ [option])
-        Complex commands -> Complex (List.foldl' f [] commands)
-  where
-    f :: [Commands] -> Commands -> [Commands]
-    f acc command = case command of
-        Global options -> Global (options ++ [option]) : acc
-        c@(Command _ _ _) -> c : acc
+        Complex commands -> Complex (commands ++ [Global [option]])
 
 {- |
 Individual parameters read in off the command-line can either have a value
@@ -692,11 +688,11 @@ extractShortNames options =
 
 extractRequiredArguments :: [Options] -> [LongName]
 extractRequiredArguments arguments =
-    List.foldl' h [] arguments
+    List.foldr h [] arguments
   where
-    h :: [LongName] -> Options -> [LongName]
-    h needed (Argument longname _) = longname : needed
-    h needed _ = needed
+    h :: Options -> [LongName] -> [LongName]
+    h (Argument longname _) needed = longname : needed
+    h _ needed = needed
 
 extractGlobalOptions :: [Commands] -> [Options]
 extractGlobalOptions commands =

@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           core-data
-version:        0.3.3.1
+version:        0.3.5.0
 synopsis:       Convenience wrappers around common data structures and encodings
 description:    Wrappers around common data structures and encodings.
                 .
@@ -36,10 +36,12 @@ library
   exposed-modules:
       Core.Data
       Core.Data.Clock
-      Core.Data.Format
       Core.Data.Structures
       Core.Encoding
+      Core.Encoding.External
       Core.Encoding.Json
+  other-modules:
+      Core.Data.Format
   hs-source-dirs:
       lib
   ghc-options: -Wall -Wwarn -fwarn-tabs
@@ -48,7 +50,7 @@ library
     , base >=4.11 && <5
     , bytestring
     , containers
-    , core-text >=0.3.7
+    , core-text >=0.3.8
     , hashable >=1.2
     , hourglass
     , prettyprinter >=1.6.2
@@ -56,5 +58,6 @@ library
     , text
     , time
     , unordered-containers
+    , uuid
     , vector
   default-language: Haskell2010

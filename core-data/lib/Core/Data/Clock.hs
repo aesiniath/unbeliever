@@ -46,8 +46,8 @@ module Core.Data.Clock (
 ) where
 
 import Control.Applicative ((<|>))
-import Core.Text.Rope
 import Core.Data.Format
+import Core.Text.Rope
 import Data.Aeson qualified as Aeson (FromJSON (..), ToJSON (..), Value (..))
 import Data.Aeson.Encoding qualified as Aeson (string)
 import Data.Aeson.Types qualified as Aeson (typeMismatch)
@@ -65,7 +65,8 @@ import Data.Hourglass qualified as H (
  )
 import Data.Int (Int64)
 import Data.Maybe (maybeToList)
-import Data.Time.Clock (UTCTime)
+import Data.Time.Calendar (Day)
+import Data.Time.Clock (UTCTime (UTCTime, utctDay, utctDayTime))
 import Data.Time.Clock.POSIX (
     POSIXTime,
     posixSecondsToUTCTime,
@@ -79,38 +80,39 @@ import Time.System qualified as H (
 {- |
 Number of nanoseconds since the Unix epoch.
 
-The 'Show' instance displays the 'Time' as seconds with the nanosecond
-precision expressed as a decimal amount after the interger, ie:
+The 'Show' and 'Core.Encoding.External.Externalize' instances display the
+'Time' as seconds with the nanosecond precision expressed as a decimal amount
+after the interger, ie:
 
 >>> t <- getCurrentTimeNanoseconds
->>> show t
-2014-07-31T23:09:35.274387031Z
+>>> formatExternal t
+"2014-07-31T23:09:35.274387031Z"
 
 However this doesn't change the fact the underlying representation counts
 nanoseconds since epoch:
 
 >>> show $ unTime t
-1406848175274387031
+"1406848175274387031"
 
-There is a 'Read' instance that is reasonably accommodating:
+There is a 'Externalize' instance that is reasonably accommodating:
 
->>> read "2014-07-31T13:05:04.942089001Z" :: Time
-2014-07-31T13:05:04.942089001Z
+>>> parseExternal "2014-07-31T13:05:04.942089001Z" :: Maybe Time
+Just 2014-07-31T13:05:04.942089001Z
 
->>> read "1406811904.942089001" :: Time
-2014-07-31T13:05:04.942089001Z
+>>> parseExternal "1406811904.942089001" :: Maybe Time
+Just 2014-07-31T13:05:04.942089001Z
 
->>> read "1406811904" :: Time
-2014-07-31T13:05:04.000000000Z
+>>> parseExternal "1406811904" :: Maybe Time
+Just 2014-07-31T13:05:04.000000000Z
 
 In case you're wondering, the valid range of nanoseconds that fits into the
 underlying 'Int64' is:
 
->>> show $ minBound :: Time
-1677-09-21T00:12:43.145224192Z
+>>> formatExternal (minBound :: Time)
+"1677-09-21T00:12:43.145224192Z"
 
->>> show $ maxBound :: Time
-2262-04-11T23:47:16.854775807Z
+>>> formatExternal (maxBound :: Time)
+"2262-04-11T23:47:16.854775807Z"
 
 so in a quarter millenium's time, yes, you'll have the Y2262 Problem.
 Haskell code from today will, of course, still be running, so in the mid
@@ -165,12 +167,18 @@ precision will require you to either pad with zeros or to round to the nearest
 nanosecond (who the hell has picoseconds of anything anyway?) if writing an
 instance of this type.
 
+The most important instance is probably the 'UTCTime' one, as many other
+Haskell libraries use this type to represent time.
+
 @since 0.3.3
 -}
 class Instant a where
     fromTime :: Time -> a
     intoTime :: a -> Time
 
+{- |
+Number of nanoseconds since the epoch.
+-}
 instance Instant Int64 where
     fromTime = unTime
     intoTime = Time
@@ -192,6 +200,11 @@ convertFromPosix =
 convertToPosix :: Time -> POSIXTime
 convertToPosix = fromRational . (/ 1e9) . fromIntegral . unTime
 
+{- |
+Convert to the elapsed time with sub-second precision type from __hourglass__,
+giving you ready access to that library's time formatting and calendar date
+manipulation functions.
+-}
 instance Instant H.ElapsedP where
     fromTime = convertToElapsed
     intoTime = convertFromElapsed
@@ -206,6 +219,18 @@ convertToElapsed :: Time -> H.ElapsedP
 convertToElapsed (Time ticks) =
     let (s, ns) = divMod ticks 1000000000
      in H.ElapsedP (H.Elapsed (H.Seconds (s))) (H.NanoSeconds (ns))
+
+{- |
+This instance may be useful if you need to work with calendar dates with
+functions from __time__. From here you would probably be interested in
+'Data.Time.Calendar.toGregorian'. If you convert from a 'Day' it will be the
+timestamp of midnight 00:00:00.0 on that date.
+
+@since 0.3.5
+-}
+instance Instant Day where
+    fromTime = utctDay . fromTime
+    intoTime x = intoTime (UTCTime{utctDay = x, utctDayTime = 0})
 
 instance Aeson.ToJSON Time where
     toEncoding = Aeson.string . H.timePrint ISO8601_Precise . convertToElapsed

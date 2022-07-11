@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE StrictData #-}
@@ -102,17 +103,18 @@ module Core.Text.Rope (
 
 import Control.DeepSeq (NFData (..))
 import Core.Text.Bytes
-import qualified Data.ByteString as B (ByteString)
-import qualified Data.ByteString.Builder as B (
+import Data.ByteString qualified as B (ByteString)
+import Data.ByteString.Builder qualified as B (
+    Builder,
     hPutBuilder,
     toLazyByteString,
  )
-import qualified Data.ByteString.Lazy as L (
+import Data.ByteString.Lazy qualified as L (
     ByteString,
     foldrChunks,
     toStrict,
  )
-import qualified Data.FingerTree as F (
+import Data.FingerTree qualified as F (
     FingerTree,
     Measured (..),
     SearchResult (..),
@@ -129,19 +131,19 @@ import qualified Data.FingerTree as F (
 import Data.Foldable (foldl', toList)
 import Data.Hashable (Hashable, hashWithSalt)
 import Data.String (IsString (..))
-import qualified Data.Text as T (Text)
-import qualified Data.Text.Lazy as U (
+import Data.Text qualified as T (Text)
+import Data.Text.Lazy qualified as U (
     Text,
     foldrChunks,
     fromChunks,
     toStrict,
  )
-import qualified Data.Text.Lazy.Builder as U (
+import Data.Text.Lazy.Builder qualified as U (
     Builder,
     fromText,
     toLazyText,
  )
-import qualified Data.Text.Short as S (
+import Data.Text.Short qualified as S (
     ShortText,
     any,
     append,
@@ -159,7 +161,7 @@ import qualified Data.Text.Short as S (
     uncons,
     unpack,
  )
-import qualified Data.Text.Short.Unsafe as S (fromByteStringUnsafe)
+import Data.Text.Short.Unsafe qualified as S (fromByteStringUnsafe)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), emptyDoc)
 import System.IO (Handle)
@@ -455,11 +457,11 @@ Copy the pieces underlying a 'Rope' into a single piece object.
 /Warning/
 
 This function was necessary to have a reliable 'Hashable' instance. Currently
-constructing this new @Rope@ is quite inefficient if the number of pieces or
-their respective lengths are large. Usually, however, we're calling 'hash' so
-the value can be used as a key in a hash table and such keys are typically
-simple (or at least not ridiculously long), so this is not an issue in normal
-usage.
+constructing this new 'Rope' is quite inefficient if the number of pieces or
+their respective lengths are large. Usually, however, we're calling
+'Data.Hashable.hash' so the value can be used as a key in a hash table and
+such keys are typically simple (or at least not ridiculously long), so this is
+not an issue in normal usage.
 -}
 copyRope :: Rope -> Rope
 copyRope text@(Rope x) =
@@ -473,21 +475,21 @@ copyRope text@(Rope x) =
 
 {- |
 Machinery to interpret a type as containing valid Unicode that can be
-represented as a @Rope@ object.
+represented as a 'Rope' object.
 
 /Implementation notes/
 
-Given that @Rope@ is backed by a finger tree, 'append' is relatively
+Given that 'Rope' is backed by a finger tree, 'appendRope' is relatively
 inexpensive, plus whatever the cost of conversion is. There is a subtle trap,
 however: if adding small fragments of that were obtained by slicing (for
-example) a large ByteString we would end up holding on to a reference to the
-entire underlying block of memory. This module is optimized to reduce heap
-fragmentation by letting the Haskell runtime and garbage collector manage the
-memory, so instances are expected to /copy/ these substrings out of pinned
-memory.
+example) a large 'Data.ByteString.ByteString' we would end up holding on to a
+reference to the entire underlying block of memory. This module is optimized
+to reduce heap fragmentation by letting the Haskell runtime and garbage
+collector manage the memory, so instances are expected to /copy/ these
+substrings out of pinned memory.
 
-The @ByteString@ instance requires that its content be valid UTF-8. If not an
-empty @Rope@ will be returned.
+The 'Data.ByteString.ByteString' instance requires that its content be valid
+UTF-8. If not an empty 'Rope' will be returned.
 
 Several of the 'fromRope' implementations are expensive and involve a lot of
 intermediate allocation and copying. If you're ultimately writing to a handle
@@ -551,6 +553,20 @@ instance Textual B.ByteString where
         Just piece -> Rope ((F.|>) x piece)
         Nothing -> (Rope x) -- bad
 
+-- | from "Data.ByteString.Builder"
+instance Textual B.Builder where
+    fromRope = foldr g mempty . unRope
+      where
+        g piece built = (<>) (S.toBuilder piece) built
+    intoRope =
+        Rope
+            . ( L.foldrChunks
+                    ( (F.<|) . S.fromByteStringUnsafe
+                    )
+                    F.empty
+              )
+            . B.toLazyByteString
+
 -- | from "Data.ByteString.Lazy"
 instance Textual L.ByteString where
     fromRope = B.toLazyByteString . foldr g mempty . unRope
@@ -606,11 +622,9 @@ intermediate allocation and copying because we can go from the
 'Data.ByteString.Short.ShortByteString' to 'Data.ByteString.Builder.Builder'
 to the 'System.IO.Handle''s output buffer in one go.
 
-If you're working in the
-<https://hackage.haskell.org/package/core-program/docs/Core-Program-Execute.html#t:Program
-Program> monad, then
-<https://hackage.haskell.org/package/core-program/docs/Core-Program-Logging.html#v:write
-write> provides an efficient way to write a @Rope@ to @stdout@.
+If you're working in the __core-program__ 'Core.Program.Execute.Program' @τ@
+monad, then the 'Core.Program.Logging.write' function there provides an
+efficient way to write a 'Rope' to @stdout@.
 -}
 hWrite :: Handle -> Rope -> IO ()
 hWrite handle (Rope x) = B.hPutBuilder handle (foldr j mempty x)

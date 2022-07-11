@@ -437,12 +437,14 @@ encloseSpan label action = do
             internal ("Leave " <> label)
 
         -- extract the Datum as it stands after running the action, finalize
-        -- with its duration, and send it
+        -- with its duration, and send it. Note that we don't use the original
+        -- start time as it may have been overwritten.
         finish <- getCurrentTimeNanoseconds
         datum2 <- readMVar v2
+        let start2 = spanTimeFrom datum2
         let datum2' =
                 datum2
-                    { durationFrom = Just (unTime finish - unTime start)
+                    { durationFrom = Just (unTime finish - unTime start2)
                     }
 
         let tel = telemetryChannelFrom context
@@ -454,16 +456,6 @@ encloseSpan label action = do
         case result of
             Left e -> Safe.throw e
             Right value -> pure value
-
-{- |
-Send a span value up by hand.
-
-This handles a number of convenient things for you, and takes care of a few edge
-cases.
-
-
-@since 0.2.1
--}
 
 {- |
 Start a new trace. A random identifier will be generated.
