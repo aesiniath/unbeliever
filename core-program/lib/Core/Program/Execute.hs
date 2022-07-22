@@ -172,7 +172,7 @@ import System.Directory (
  )
 import System.Exit (ExitCode (..))
 import System.Posix.Process qualified as Posix (exitImmediately)
-import System.Process.Typed (closed, proc, readProcess, setStdin)
+import System.Process.Typed (nullStream, proc, readProcess, setStdin)
 import Prelude hiding (log)
 
 --
@@ -658,7 +658,7 @@ execProcess (cmd : args) =
     let cmd' = fromRope cmd
         args' = fmap fromRope args
         task = proc cmd' args'
-        task1 = setStdin closed task
+        task1 = setStdin nullStream task
         command = mconcat (List.intersperse (singletonRope ' ') (cmd : args))
      in do
             debug "command" command
