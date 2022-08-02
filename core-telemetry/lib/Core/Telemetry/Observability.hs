@@ -229,6 +229,14 @@ setServiceName service = do
                 pure datum'
             )
 
+{-|
+Adaptor class to take primitive values and send them as metrics. The
+underlying types are either strings, numbers, or boolean so any instance will
+need to externalize and then convert to one of these three.
+
+(this class is what allows us to act pass in what look like polymorphic lists
+of metrics to 'telemetry' and 'sendEvent')
+-}
 class Telemetry σ where
     metric :: Rope -> σ -> MetricValue
 
@@ -600,7 +608,7 @@ Add measurements to the current span.
             ]
 @
 
-The 'metric' function is a method provided by instances of the 'Telemtetry'
+The 'metric' function is a method provided by instances of the 'Telemetry'
 typeclass which is mostly a wrapper around constructing key/value pairs
 suitable to be sent as measurements up to an observability service.
 -}
