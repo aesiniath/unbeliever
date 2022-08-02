@@ -297,8 +297,9 @@ Cancel a thread.
 
 (this wraps __async__\'s 'Control.Concurrent.Async.cancel'. The underlying
 mechanism used is to throw the 'AsyncCancelled' to the other thread. That
-exception is asynchronous, so will not be trapped by a 'catch' block and will
-indeed cause the thread receiving the exception to come to an end)
+exception is asynchronous, so will not be trapped by a
+'Core.Program.Exceptions.catch' block and will indeed cause the thread
+receiving the exception to come to an end)
 
 @since 0.4.5
 -}
