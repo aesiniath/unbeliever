@@ -26,6 +26,7 @@ Note that when you fire off a new thread the top-level application state is
 module Core.Program.Threads (
     -- * Concurrency
     forkThread,
+    forkThread_,
     waitThread,
     waitThread_,
     waitThread',
@@ -144,6 +145,17 @@ forkThread program = do
                 )
 
         return (Thread a)
+
+{-|
+Fork a thread with 'forkThread' but do not wait for a result. This is on the
+assumption that the sub program will either be a side-effect and over quickly,
+or long-running daemon thread (presumably containing a 'Control.Monad.forever'
+loop in it), never returning.
+
+@since 0.5.2
+-}
+forkThread_ :: Program τ α -> Program τ ()
+forkThread_ = void . forkThread
 
 {- |
 Wait for the completion of a thread, returning the result. This is a blocking
