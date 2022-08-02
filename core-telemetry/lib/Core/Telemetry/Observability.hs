@@ -160,28 +160,29 @@ module Core.Telemetry.Observability (
     -- * Events
     sendEvent,
     clearMetrics,
+    clearTrace,
 ) where
 
 import Control.Concurrent.MVar (modifyMVar_, newMVar, readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (writeTQueue)
-import qualified Control.Exception.Safe as Safe
+import Control.Exception.Safe qualified as Safe
+import Core.Data.Clock
 import Core.Data.Structures (Map, emptyMap, insertKeyValue)
 import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Context
-import Core.Data.Clock
 import Core.Program.Logging
 import Core.System.Base (SomeException, liftIO)
 import Core.Telemetry.Identifiers
 import Core.Text.Rope
 import Core.Text.Utilities (oxford, quote)
-import qualified Data.ByteString as B (ByteString)
-import qualified Data.ByteString.Lazy as L (ByteString)
-import qualified Data.List as List (foldl')
+import Data.ByteString qualified as B (ByteString)
+import Data.ByteString.Lazy qualified as L (ByteString)
+import Data.List qualified as List (foldl')
 import Data.Scientific (Scientific)
-import qualified Data.Text as T (Text)
-import qualified Data.Text.Lazy as U (Text)
+import Data.Text qualified as T (Text)
+import Data.Text.Lazy qualified as U (Text)
 import GHC.Int
 import GHC.Word
 import System.Random (randomIO)
@@ -229,7 +230,7 @@ setServiceName service = do
                 pure datum'
             )
 
-{-|
+{- |
 Adaptor class to take primitive values and send them as metrics. The
 underlying types are either strings, numbers, or boolean so any instance will
 need to externalize and then convert to one of these three.
@@ -737,3 +738,22 @@ clearMetrics = do
         modifyMVar_
             v
             (\datum -> pure datum{attachedMetadataFrom = emptyMap})
+
+{- |
+Reset the program context so that the currently executing program is no longer
+within a trace or span.
+
+This is specifically for the occasion where you have forked a new thread but
+have not yet received the event which would occasion starting a new trace.
+
+@since 0.2.4
+-}
+clearTrace :: Program τ ()
+clearTrace = do
+    context <- getContext
+
+    liftIO $ do
+        let v = currentDatumFrom context
+        modifyMVar_
+            v
+            (\_ -> pure emptyDatum)
