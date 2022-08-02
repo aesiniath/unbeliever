@@ -308,11 +308,21 @@ instance Telemetry Bool where
 instance Telemetry JsonValue where
     metric k v = MetricValue (JsonKey k) v
 
-instance Telemetry (Maybe a) where
-    metric k v = MetricValue (JsonKey k) (JsonString (formatExternal v))
+{- |
+Strip the constructor off if the value is Just, and send `null` if Nothing.
 
+@since 0.2.5
+-}
+instance Telemetry σ => Telemetry (Maybe σ) where
+    metric k v = case v of
+        Nothing -> MetricValue (JsonKey k) JsonNull
+        Just v' -> metric k v'
+
+{- |
+@since 0.2.5
+-}
 instance Telemetry UTCTime where
-    metric k v = MetricValue (JsonKey k) (JsonString (formatExternal . intoTime v))
+    metric k v = MetricValue (JsonKey k) (JsonString (formatExternal (intoTime v)))
 
 {- |
 Activate the telemetry subsystem for use within the
