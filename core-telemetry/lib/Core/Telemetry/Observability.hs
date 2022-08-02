@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
@@ -169,6 +170,7 @@ import Control.Concurrent.STM.TQueue (writeTQueue)
 import Control.Exception.Safe qualified as Safe
 import Core.Data.Clock
 import Core.Data.Structures (Map, emptyMap, insertKeyValue)
+import Core.Encoding.External
 import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Context
@@ -183,6 +185,7 @@ import Data.List qualified as List (foldl')
 import Data.Scientific (Scientific)
 import Data.Text qualified as T (Text)
 import Data.Text.Lazy qualified as U (Text)
+import Data.Time.Clock (UTCTime)
 import GHC.Int
 import GHC.Word
 import System.Random (randomIO)
@@ -304,6 +307,22 @@ instance Telemetry Bool where
 
 instance Telemetry JsonValue where
     metric k v = MetricValue (JsonKey k) v
+
+{- |
+Strip the constructor off if the value is Just, and send `null` if Nothing.
+
+@since 0.2.5
+-}
+instance Telemetry σ => Telemetry (Maybe σ) where
+    metric k v = case v of
+        Nothing -> MetricValue (JsonKey k) JsonNull
+        Just v' -> metric k v'
+
+{- |
+@since 0.2.5
+-}
+instance Telemetry UTCTime where
+    metric k v = MetricValue (JsonKey k) (JsonString (formatExternal (intoTime v)))
 
 {- |
 Activate the telemetry subsystem for use within the
