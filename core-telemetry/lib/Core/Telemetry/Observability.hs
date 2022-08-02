@@ -166,11 +166,12 @@ import Control.Concurrent.MVar (modifyMVar_, newMVar, readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (writeTQueue)
 import qualified Control.Exception.Safe as Safe
+import Core.Data.Clock
 import Core.Data.Structures (Map, emptyMap, insertKeyValue)
+import Core.Encoding.External
 import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Context
-import Core.Data.Clock
 import Core.Program.Logging
 import Core.System.Base (SomeException, liftIO)
 import Core.Telemetry.Identifiers
@@ -182,6 +183,7 @@ import qualified Data.List as List (foldl')
 import Data.Scientific (Scientific)
 import qualified Data.Text as T (Text)
 import qualified Data.Text.Lazy as U (Text)
+import Data.Time.Clock (UTCTime)
 import GHC.Int
 import GHC.Word
 import System.Random (randomIO)
@@ -295,6 +297,12 @@ instance Telemetry Bool where
 
 instance Telemetry JsonValue where
     metric k v = MetricValue (JsonKey k) v
+
+instance Telemetry (Maybe a) where
+    metric k v = MetricValue (JsonKey k) (JsonString (formatExternal v))
+
+instance Telemetry UTCTime where
+    metric k v = MetricValue (JsonKey k) (JsonString (formatExternal . intoTime v))
 
 {- |
 Activate the telemetry subsystem for use within the
