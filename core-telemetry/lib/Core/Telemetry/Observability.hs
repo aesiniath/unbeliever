@@ -756,7 +756,12 @@ clearMetrics = do
         let v = currentDatumFrom context
         modifyMVar_
             v
-            (\datum -> pure datum{attachedMetadataFrom = emptyMap})
+            ( \datum ->
+                pure
+                    datum
+                        { attachedMetadataFrom = emptyMap
+                        }
+            )
 
 {- |
 Reset the program context so that the currently executing program is no longer
@@ -764,6 +769,10 @@ within a trace or span.
 
 This is specifically for the occasion where you have forked a new thread but
 have not yet received the event which would occasion starting a new trace.
+
+The current "service name" associated with this execution thread is preserved
+(usually this is set once per process at startup or once with 'setServiceName'
+and having to reset it everytime you call this would be silly).
 
 @since 0.2.4
 -}
@@ -775,4 +784,10 @@ clearTrace = do
         let v = currentDatumFrom context
         modifyMVar_
             v
-            (\_ -> pure emptyDatum)
+            ( \datum -> do
+                let name = serviceNameFrom datum
+                pure
+                    emptyDatum
+                        { serviceNameFrom = name
+                        }
+            )
