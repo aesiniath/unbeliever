@@ -178,6 +178,7 @@ import Core.Program.Logging
 import Core.System.Base (SomeException, liftIO)
 import Core.Telemetry.Identifiers
 import Core.Text.Rope
+import Data.UUID.Types (UUID, toText)
 import Core.Text.Utilities (oxford, quote)
 import Data.ByteString qualified as B (ByteString)
 import Data.ByteString.Lazy qualified as L (ByteString)
@@ -323,6 +324,12 @@ instance Telemetry σ => Telemetry (Maybe σ) where
 -}
 instance Telemetry UTCTime where
     metric k v = MetricValue (JsonKey k) (JsonString (formatExternal (intoTime v)))
+
+{- |
+@since 0.2.6
+-}
+instance Telemetry UUID where
+    metric k v = MetricValue (JsonKey k) (JsonString (intoRope (toText v)))
 
 {- |
 Activate the telemetry subsystem for use within the
