@@ -327,13 +327,13 @@ instance Telemetry UTCTime where
     metric k v = MetricValue (JsonKey k) (JsonString (formatExternal (intoTime v)))
 
 {- |
-@since 0.2.5
+@since 0.2.6
 -}
 instance Telemetry Day where
     metric k v = MetricValue (JsonKey k) (JsonString (formatExternal v))
 
 {- |
-@since 0.2.5
+@since 0.2.6
 -}
 instance Telemetry UUID where
     metric k v = MetricValue (JsonKey k) (JsonString (formatExternal v))
