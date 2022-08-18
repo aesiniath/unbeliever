@@ -34,7 +34,7 @@ library:
   dependencies:
    - async
    - core-text >= 0.3.7.1
-   - core-data >= 0.3.4.0
+   - core-data >= 0.3.6.0
    - core-program >= 0.5.0.2
    - exceptions
    - http-streams

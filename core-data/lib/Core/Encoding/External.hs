@@ -54,6 +54,8 @@ import Core.Text.Rope
 import Data.ByteString.Builder qualified as Builder
 import Data.Int (Int32, Int64)
 import Data.Scientific (FPFormat (Exponent), Scientific, formatScientific)
+import Data.Time.Calendar qualified as Base (Day)
+import Data.Time.Format.ISO8601 qualified as Base (formatParseM, formatShow, iso8601Format)
 import Data.UUID qualified as Uuid (UUID, fromText, toText)
 import Text.Read (readMaybe)
 
@@ -200,6 +202,17 @@ Timestamps are formatted as per ISO 8601:
 instance Externalize Time where
     formatExternal = intoRope . show
     parseExternal = readMaybe . fromRope
+
+{- |
+Days are formatted as per ISO 8601:
+
+@
+2022-06-20
+@
+-}
+instance Externalize Base.Day where
+    formatExternal = intoRope . Base.formatShow Base.iso8601Format
+    parseExternal = Base.formatParseM Base.iso8601Format . fromRope
 
 {- |
 Numbers are converted to scientific notation:
