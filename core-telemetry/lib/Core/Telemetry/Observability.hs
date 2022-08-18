@@ -330,7 +330,7 @@ instance Telemetry UTCTime where
 @since 0.2.5
 -}
 instance Telemetry Day where
-    metric k v = MetricValue (JsonKey k) (JsonString (intoRope (show v)))
+    metric k v = MetricValue (JsonKey k) (JsonString (formatExternal v))
 
 {- |
 @since 0.2.5
