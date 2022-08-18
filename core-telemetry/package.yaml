@@ -1,5 +1,5 @@
 name: core-telemetry
-version: 0.2.5.1
+version: 0.2.5.2
 synopsis: Advanced telemetry
 description: |
   This is part of a library to help build command-line programs, both tools and
@@ -47,6 +47,7 @@ library:
    - stm
    - time
    - unix
+   - uuid-types
    - zlib
   source-dirs:
   - lib

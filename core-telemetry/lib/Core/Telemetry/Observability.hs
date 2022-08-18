@@ -185,7 +185,9 @@ import Data.List qualified as List (foldl')
 import Data.Scientific (Scientific)
 import Data.Text qualified as T (Text)
 import Data.Text.Lazy qualified as U (Text)
+import Data.Time.Calendar (Day)
 import Data.Time.Clock (UTCTime)
+import Data.UUID.Types (UUID)
 import GHC.Int
 import GHC.Word
 import System.Random (randomIO)
@@ -323,6 +325,18 @@ instance Telemetry σ => Telemetry (Maybe σ) where
 -}
 instance Telemetry UTCTime where
     metric k v = MetricValue (JsonKey k) (JsonString (formatExternal (intoTime v)))
+
+{- |
+@since 0.2.5
+-}
+instance Telemetry Day where
+    metric k v = MetricValue (JsonKey k) (JsonString (intoRope (show v)))
+
+{- |
+@since 0.2.5
+-}
+instance Telemetry UUID where
+    metric k v = MetricValue (JsonKey k) (JsonString (formatExternal v))
 
 {- |
 Activate the telemetry subsystem for use within the

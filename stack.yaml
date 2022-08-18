@@ -1,4 +1,4 @@
-resolver: nightly-2022-07-30
+resolver: nightly-2022-08-15
 compiler: ghc-9.2.2
 packages:
  - ./core-data
