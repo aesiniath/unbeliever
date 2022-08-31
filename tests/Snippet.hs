@@ -21,6 +21,7 @@ main = execute $ do
 
     write $ case x of
         Nothing -> "Nothing!"
+        Just _ -> "Something!"
 
     sleepThread 0.2
 

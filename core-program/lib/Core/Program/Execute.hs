@@ -111,7 +111,6 @@ import Control.Concurrent.Async (
 import Control.Concurrent.Async qualified as Async (
     async,
     cancel,
-    race,
     race_,
     wait,
  )
@@ -167,6 +166,7 @@ import Data.ByteString.Char8 qualified as C (singleton)
 import Data.List qualified as List (intersperse)
 import GHC.Conc (getNumProcessors, numCapabilities, setNumCapabilities)
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
+import Ki qualified as Ki (await, fork, forkTry, fork_, scoped)
 import System.Directory (
     findExecutable,
  )
@@ -307,25 +307,27 @@ executeActual context0 program = do
         Safe.catchesAsync
             ( do
                 result <-
-                    Async.race
-                        ( do
-                            code <- readMVar quit
-                            pure code
-                        )
-                        ( do
+                    Ki.scoped $ \scope -> do
+                        t <- Ki.forkTry scope $ do
+                            Ki.fork_ scope $ do
+                                code <- readMVar quit
+                                Safe.throw code
+
                             -- execute actual "main"
                             _ <- subProgram context program
                             pure ()
-                        )
 
-                case result of
+                        atomically $ do
+                                Ki.await t
+
+                case (result :: Either ExitCode ()) of
                     Left code' -> pure code'
                     Right () -> pure ExitSuccess
             )
             (escapeHandlers context)
 
     -- instruct handlers to finish, and wait for the message queues to drain.
-    -- Allow 0.1 seconds, then timeout, in case something has gone wrong and
+    -- Allow 10 seconds, then timeout, in case something has gone wrong and
     -- queues don't empty.
     Async.race_
         ( do

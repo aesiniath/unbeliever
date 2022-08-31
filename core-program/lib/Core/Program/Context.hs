@@ -49,6 +49,7 @@ import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Metadata
 import Core.System.Base
+import Ki qualified as Ki (Scope)
 import Core.Text.Rope
 import Data.Foldable (foldrM)
 import Data.Int (Int64)
@@ -175,6 +176,7 @@ data Context τ = Context
     , outputChannelFrom :: TQueue (Maybe Rope) -- communication channels
     , telemetryChannelFrom :: TQueue (Maybe Datum) -- machinery for telemetry
     , telemetryForwarderFrom :: Maybe Forwarder
+    , currentScopeFrom :: Maybe Ki.Scope
     , currentDatumFrom :: MVar Datum
     , applicationDataFrom :: MVar τ
     }
@@ -374,6 +376,7 @@ configure version t config = do
             , outputChannelFrom = out
             , telemetryChannelFrom = tel
             , telemetryForwarderFrom = Nothing
+            , currentScopeFrom = Nothing
             , currentDatumFrom = v
             , applicationDataFrom = u
             }
