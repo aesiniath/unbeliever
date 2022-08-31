@@ -76,22 +76,19 @@ executable experiment
   default-language: Haskell2010
 
 executable snippet
-  main-is: WarpSnippet.hs
+  main-is: Snippet.hs
   hs-source-dirs:
       tests
   ghc-options: -Wall -Wwarn -fwarn-tabs -threaded
   build-depends:
       base >=4.11 && <5
+    , bytestring
     , core-data >=0.3.4.0
     , core-program >=0.5.1.0
     , core-telemetry >=0.2.3.5
     , core-text >=0.3.8.0
     , core-webserver-servant >=0.1.1.2
-    , core-webserver-warp
-    , http-types
-    , wai
-    , warp
-  buildable: False
+    , core-webserver-warp >=0.1.1.6
   default-language: Haskell2010
 
 test-suite check

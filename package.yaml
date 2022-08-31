@@ -57,17 +57,13 @@ dependencies:
 
 executables:
   snippet:
-    buildable: false
     dependencies:
-     - core-webserver-warp
-     - http-types
-     - wai
-     - warp
+    - bytestring
     ghc-options:
      - -threaded
     source-dirs:
      - tests
-    main: WarpSnippet.hs
+    main: Snippet.hs
     other-modules: []
 
   experiment:
