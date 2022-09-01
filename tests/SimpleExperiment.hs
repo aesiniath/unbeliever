@@ -1,3 +1,4 @@
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -16,8 +17,8 @@ import Core.Encoding
 import Core.Program
 import Core.System
 import Core.Text
-import qualified Data.ByteString.Char8 as S
-import qualified Data.HashMap.Strict as HashMap
+import Data.ByteString.Char8 qualified as S
+import Data.HashMap.Strict qualified as HashMap
 import Prettyprinter (Pretty (..), defaultLayoutOptions, layoutPretty)
 import Prettyprinter.Render.Text (renderStrict)
 

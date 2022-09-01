@@ -25,6 +25,7 @@ Note that when you fire off a new thread the top-level application state is
 -}
 module Core.Program.Threads (
     -- * Concurrency
+    createScope,
     forkThread,
     forkThread_,
     waitThread,
@@ -44,24 +45,12 @@ module Core.Program.Threads (
     getScope,
 ) where
 
-import Control.Concurrent.Async (Async, AsyncCancelled)
-import Control.Concurrent.Async qualified as Async (
-    async,
-    cancel,
-    concurrently,
-    concurrently_,
-    link,
-    race,
-    race_,
-    wait,
-    waitCatch,
- )
 import Control.Concurrent.MVar (
     newMVar,
     readMVar,
  )
 import Control.Concurrent.STM (atomically, orElse)
-import Control.Exception.Safe qualified as Safe (catch, catchAsync, throw)
+import Control.Exception.Safe qualified as Safe (catch, throw)
 import Control.Monad (
     void,
  )
@@ -86,12 +75,37 @@ getScope :: Context τ -> Ki.Scope
 getScope context =
     let possibleScope = currentScopeFrom context
      in case possibleScope of
-            Nothing -> error "Attempt to use a Context that is not within an executing Program monad"
+            Nothing -> error "Attempt to fork a thread outside of an enclosing scope"
             Just scope -> scope
 
 {- |
-Fork a thread. The child thread will run in the same @Context@ as the calling
-@Program@, including sharing the user-defined application state value.
+Create a scope to enclose any subsequently spawned threads.
+
+If any of the child threads throws an exception it will be propegated to this
+parent thread and re-thrown.
+
+When a scope exits, any threads that were spawed within it that are still
+running will be killed.
+
+@since 0.6.0
+-}
+createScope :: Program τ α -> Program τ α
+createScope program = do
+    context <- ask
+    liftIO $ do
+        Ki.scoped $ \scope -> do
+            let context' =
+                    context
+                        { currentScopeFrom = Just scope
+                        }
+            subProgram context' program
+
+{- |
+Fork a thread. The child thread will run in the same 'Context' as the calling
+'Program', including sharing the user-defined application state value.
+
+In order to use this you /must/ be within an enclosing scope created with
+'createScope'.
 
 Threads that are launched off as children are on their own! If the code in the
 child thread throws an exception that is /not/ caught within that thread, the
@@ -99,14 +113,8 @@ exception will kill the thread. Threads dying without telling anyone is a bit
 of an anti-pattern, so this library logs a warning-level log message if this
 happens.
 
-If you additionally want the exception to propagate back to the parent thread
-(say, for example, you want your whole program to die if any of its worker
-threads fail), then call 'linkThread' after forking. If you want the other
-direction, that is, if you want the forked thread to be cancelled when its
-parent is cancelled, then you need to be waiting on it using 'waitThread'.
-
-(this wraps __async__\'s 'Control.Concurrent.Async.async' which in turn wraps
-__base__'s 'Control.Concurrent.forkIO')
+(this wraps __ki__\'s 'Ki.fork' which in turn wraps __base__'s
+'Control.Concurrent.forkIO')
 
 @since 0.2.7
 -}
@@ -221,7 +229,7 @@ successful or the exception if one was thrown by the child thread.
 
 This basically is convenience for calling `waitThread` and putting `catch`
 around it, but as with all the other @wait*@ functions this ensures that if
-the thread waiting is cancelled the cancellation is propagated to the thread
+the thread waiting is killed the cancellation is propagated to the thread
 being watched as well.
 
 (this wraps __async__\'s 'Control.Concurrent.Async.waitCatch')
