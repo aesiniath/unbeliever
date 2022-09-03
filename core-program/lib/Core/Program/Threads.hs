@@ -153,14 +153,15 @@ forkThread program = do
 
         a <- Ki.fork scope $ do
             Safe.catch
-                (subProgram context' program)
-                ( \(e :: SomeException) ->
+                ( do
+                    subProgram context' program
+                )
+                ( \(e :: SomeException) -> do
                     let text = intoRope (displayException e)
-                     in do
-                            subProgram context' $ do
-                                warn "Uncaught exception in thread"
-                                debug "e" text
-                            Safe.throw e
+                    subProgram context' $ do
+                        internal "Uncaught exception ending thread"
+                        internal ("e = " <> text)
+                    Safe.throw e
                 )
 
         return (Thread a)
