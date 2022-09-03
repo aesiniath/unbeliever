@@ -64,7 +64,10 @@ import Ki qualified as Ki (Scope, Thread, await, awaitAll, fork, scoped)
 {- |
 A thread for concurrent computation.
 
-(this wraps __async__'s 'Async')
+(this wraps __ki__'s 'Thread' which in turn wraps __base__'s
+'Control.Concurrent.ThreadId')
+
+@since 0.6.0
 -}
 newtype Thread α = Thread (Ki.Thread α)
 

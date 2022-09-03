@@ -57,6 +57,7 @@ dependencies:
 
 executables:
   snippet:
+    buildable: false
     dependencies:
     - bytestring
     ghc-options:
