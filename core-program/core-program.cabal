@@ -66,7 +66,7 @@ library
     , fsnotify
     , hashable >=1.2
     , hourglass
-    , ki
+    , ki >=1.0.0
     , mtl
     , prettyprinter >=1.6.2
     , safe-exceptions

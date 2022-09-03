@@ -43,7 +43,7 @@ library:
    - filepath
    - fsnotify
    - hourglass
-   - ki
+   - ki >= 1.0.0
    - mtl
    - safe-exceptions
    - stm
