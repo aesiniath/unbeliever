@@ -105,24 +105,14 @@ module Core.Program.Execute (
 ) where
 
 import Control.Concurrent (threadDelay)
-import Control.Concurrent.Async (
-    ExceptionInLinkedThread (..),
- )
-import Control.Concurrent.Async qualified as Async (
-    async,
-    cancel,
-    race_,
-    wait,
- )
 import Control.Concurrent.MVar (
     MVar,
     modifyMVar_,
     putMVar,
     readMVar,
+    tryPutMVar,
  )
-import Control.Concurrent.STM (
-    atomically,
- )
+import Control.Concurrent.STM (atomically, orElse)
 import Control.Concurrent.STM.TQueue (
     TQueue,
     readTQueue,
@@ -133,7 +123,6 @@ import Control.Concurrent.STM.TQueue (
 import Control.Exception qualified as Base (throwIO)
 import Control.Exception.Safe qualified as Safe (
     catch,
-    catchesAsync,
     throw,
  )
 import Control.Monad (
@@ -166,55 +155,13 @@ import Data.ByteString.Char8 qualified as C (singleton)
 import Data.List qualified as List (intersperse)
 import GHC.Conc (getNumProcessors, numCapabilities, setNumCapabilities)
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
-import Ki qualified as Ki (await, fork, forkTry, fork_, scoped)
+import Ki qualified as Ki (await, fork, fork_, scoped)
 import System.Directory (
     findExecutable,
  )
 import System.Exit (ExitCode (..))
-import System.Posix.Process qualified as Posix (exitImmediately)
 import System.Process.Typed (nullStream, proc, readProcess, setStdin)
 import Prelude hiding (log)
-
---
--- If an exception escapes, we'll catch it here. The displayException value
--- for some exceptions is really quit unhelpful, so we pattern match the
--- wrapping gumpf away for cases as we encounter them. The final entry is the
--- catch-all.
---
--- Note this is called via Safe.catchesAsync because we want to be able to
--- strip out ExceptionInLinkedThread (which is asynchronous and otherwise
--- reasonably special) from the final output message.
---
-escapeHandlers :: Context c -> [Handler IO ExitCode]
-escapeHandlers context =
-    [ Handler (\(code :: ExitCode) -> pure code)
-    , Handler (\(ExceptionInLinkedThread _ e) -> bail e)
-    , Handler (\(e :: SomeException) -> bail e)
-    ]
-  where
-    bail :: Exception e => e -> IO ExitCode
-    bail e =
-        let text = intoRope (displayException e)
-         in do
-                subProgram context $ do
-                    setVerbosityLevel Debug
-                    critical text
-                pure (ExitFailure 127)
-
---
--- If an exception occurs in one of the output handlers, its failure causes
--- a subsequent race condition when the program tries to clean up and drain
--- the queues. So we use `exitImmediately` (which we normally avoid, as it
--- unhelpfully destroys the parent process if you're in ghci) because we
--- really need the process to go down and we're in an inconsistent state
--- where debug or console output is no longer possible.
---
-collapseHandler :: String -> SomeException -> IO ()
-collapseHandler problem e = do
-    putStr "error: "
-    putStrLn problem
-    print e
-    Posix.exitImmediately (ExitFailure 99)
 
 {- |
 Trap any exceptions coming out of the given Program action, and discard them.
@@ -287,67 +234,84 @@ executeActual context0 program = do
         tel = telemetryChannelFrom context
         forwarder = telemetryForwarderFrom context
 
-    -- set up signal handlers
-    _ <-
-        Async.async $ do
+    code <- Ki.scoped $ \outer -> do
+        -- set up signal handlers
+        _ <- Ki.fork outer $ do
             setupSignalHandlers quit level
 
-    -- set up standard output
-    o <-
-        Async.async $ do
-            processStandardOutput out
+        -- set up standard output
+        o <-
+            Ki.fork outer $ do
+                processStandardOutput out
 
-    -- set up debug logger
-    l <-
-        Async.async $ do
-            processTelemetryMessages forwarder level out tel
+        -- set up debug logger
+        l <-
+            Ki.fork outer $ do
+                processTelemetryMessages forwarder level out tel
 
-    -- run actual program, ensuring to grab any otherwise uncaught exceptions.
-    code <-
-        Safe.catchesAsync
-            ( do
-                result <-
-                    Ki.scoped $ \scope -> do
-                        t <- Ki.forkTry scope $ do
-                            Ki.fork_ scope $ do
-                                code <- readMVar quit
-                                Safe.throw code
-
-                            -- execute actual "main"
-                            _ <- subProgram context program
-                            pure ()
-
-                        atomically $ do
-                                Ki.await t
-
-                case (result :: Either ExitCode ()) of
-                    Left code' -> pure code'
-                    Right () -> pure ExitSuccess
-            )
-            (escapeHandlers context)
-
-    -- instruct handlers to finish, and wait for the message queues to drain.
-    -- Allow 10 seconds, then timeout, in case something has gone wrong and
-    -- queues don't empty.
-    Async.race_
-        ( do
-            atomically $ do
-                writeTQueue tel Nothing
-
-            Async.wait l
+        -- run actual program, ensuring to grab any otherwise uncaught exceptions.
+        code <- Ki.scoped $ \inner -> do
+            t1 <- Ki.fork inner $ do
+                Safe.catch
+                    ( do
+                        --
+                        -- execute actual "main". Note that we're not passing the
+                        -- Scope into the program's Context; it stays the default
+                        -- Nothing because the outer Scope is none of the
+                        -- program's business and we absolutely don't want an
+                        -- awaitAll to sit there and block on our machinery
+                        -- threads.
+                        --
+                        -- We use tryPutMVar here (rather than putMVar) because we
+                        -- might already be on the way out and need to not block.
+                        --
+                        _ <- subProgram context program
+                        pure ExitSuccess
+                    )
+                    ( \(e :: SomeException) -> do
+                        let text = intoRope (displayException e)
+                        subProgram context $ do
+                            setVerbosityLevel Debug
+                            critical text
+                        pure (ExitFailure 127)
+                    )
+            t2 <- Ki.fork inner $ do
+                -- wait for indication to terminate, and start doing
+                code <- readMVar quit
+                putStr "CODE " >> print code
+                pure code
 
             atomically $ do
-                writeTQueue out Nothing
+                orElse
+                    (Ki.await t1)
+                    (Ki.await t2)
 
-            Async.wait o
-        )
-        ( do
+        putStrLn "HERE"
+
+        -- instruct handlers to finish, and wait for the message queues to
+        -- drain. Allow 10 seconds, then timeout, in case something has gone
+        -- wrong and queues don't empty.
+
+        Ki.fork_ outer $ do
             threadDelay 10000000
-
-            Async.cancel l
-            Async.cancel o
             putStrLn "error: Timeout"
-        )
+            Safe.throw (ExitFailure 99)
+
+        atomically $ do
+            writeTQueue tel Nothing
+
+        atomically $ do
+            Ki.await l
+
+        atomically $ do
+            writeTQueue out Nothing
+
+        atomically $ do
+            Ki.await o
+
+        putStrLn "DONE"
+
+        pure code
 
     hFlush stdout
 
@@ -358,9 +322,7 @@ executeActual context0 program = do
 
 processStandardOutput :: TQueue (Maybe Rope) -> IO ()
 processStandardOutput out =
-    Safe.catch
-        (loop)
-        (collapseHandler "output processing collapsed")
+    loop
   where
     loop :: IO ()
     loop = do
@@ -395,9 +357,7 @@ processTelemetryMessages Nothing _ _ tel = do
             Just _ -> do
                 ignoreForever queue
 processTelemetryMessages (Just processor) v out tel = do
-    Safe.catch
-        (loopForever action v out tel)
-        (collapseHandler "telemetry processing collapsed")
+    loopForever action v out tel
   where
     action = telemetryHandlerFrom processor
 

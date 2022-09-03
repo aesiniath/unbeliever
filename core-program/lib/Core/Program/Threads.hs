@@ -74,12 +74,10 @@ newtype Thread α = Thread (Ki.Thread α)
 unThread :: Thread α -> Ki.Thread α
 unThread (Thread a) = a
 
-getScope :: Context τ -> Ki.Scope
-getScope context =
-    let possibleScope = currentScopeFrom context
-     in case possibleScope of
-            Nothing -> error "Attempt to fork a thread outside of an enclosing scope"
-            Just scope -> scope
+getScope :: Program τ (Maybe Ki.Scope)
+getScope = do
+    context <- ask
+    pure (currentScopeFrom context)
 
 {- |
 Create a scope to enclose any subsequently spawned threads.
@@ -126,7 +124,10 @@ forkThread program = do
     context <- ask
     let i = startTimeFrom context
     let v = currentDatumFrom context
-    let scope = getScope context
+    let scope = case currentScopeFrom context of
+            Nothing -> error "Attempt to fork a thread outside of an enclosing scope"
+            Just scope' -> scope'
+
     liftIO $ do
         -- if someone calls resetTimer in the thread it should just be that
         -- thread's local duration that is affected, not the parent. We simply
@@ -153,14 +154,15 @@ forkThread program = do
 
         a <- Ki.fork scope $ do
             Safe.catch
-                (subProgram context' program)
-                ( \(e :: SomeException) ->
+                ( do
+                    subProgram context' program
+                )
+                ( \(e :: SomeException) -> do
                     let text = intoRope (displayException e)
-                     in do
-                            subProgram context' $ do
-                                warn "Uncaught exception in thread"
-                                debug "e" text
-                            Safe.throw e
+                    subProgram context' $ do
+                        internal "Uncaught exception ending thread"
+                        internal ("e = " <> text)
+                    Safe.throw e
                 )
 
         return (Thread a)

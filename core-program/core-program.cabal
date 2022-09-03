@@ -55,8 +55,7 @@ library
       lib
   ghc-options: -Wall -Wwarn -fwarn-tabs
   build-depends:
-      async
-    , base >=4.11 && <5
+      base >=4.11 && <5
     , bytestring
     , core-data >=0.3.4
     , core-text >=0.3.8
@@ -66,7 +65,7 @@ library
     , fsnotify
     , hashable >=1.2
     , hourglass
-    , ki
+    , ki >=1.0.0
     , mtl
     , prettyprinter >=1.6.2
     , safe-exceptions

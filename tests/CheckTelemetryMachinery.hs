@@ -6,7 +6,6 @@
 module CheckTelemetryMachinery where
 
 import Control.Concurrent (threadDelay)
-import Control.Concurrent.Async qualified as Async (async, wait)
 import Control.Concurrent.MVar (MVar, modifyMVar_, newMVar, readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (newTQueueIO, writeTQueue)
@@ -14,6 +13,7 @@ import Data.Int (Int32, Int64)
 import Data.Word (Word32)
 import Network.Info (MAC (..))
 import Test.Hspec hiding (context)
+import Ki qualified as Ki (scoped, fork, await)
 
 import Core.Data.Clock
 import Core.Program
@@ -154,30 +154,32 @@ checkTelemetryMachinery = do
             out <- newTQueueIO
             queue <- newTQueueIO
 
-            a <- Async.async (loopForever storingAction v out queue)
+            Ki.scoped $ \scope -> do
+                a <- Ki.fork scope (loopForever storingAction v out queue)
 
-            mapM_
-                ( \i -> atomically $ do
-                    writeTQueue queue (Just i)
-                )
-                ([1 .. 100] :: [Int])
-            threadDelay 100000
-            mapM_
-                ( \i -> atomically $ do
-                    writeTQueue queue (Just i)
-                )
-                ([101 .. 200] :: [Int])
-            threadDelay 100000
-            mapM_
-                ( \i -> atomically $ do
-                    writeTQueue queue (Just i)
-                )
-                ([201 .. 300] :: [Int])
+                mapM_
+                    ( \i -> atomically $ do
+                        writeTQueue queue (Just i)
+                    )
+                    ([1 .. 100] :: [Int])
+                threadDelay 100000
+                mapM_
+                    ( \i -> atomically $ do
+                        writeTQueue queue (Just i)
+                    )
+                    ([101 .. 200] :: [Int])
+                threadDelay 100000
+                mapM_
+                    ( \i -> atomically $ do
+                        writeTQueue queue (Just i)
+                    )
+                    ([201 .. 300] :: [Int])
 
-            atomically $ do
-                writeTQueue queue Nothing
+                atomically $ do
+                    writeTQueue queue Nothing
 
-            Async.wait a
+                atomically $ do
+                    Ki.await a
 
-            value <- readMVar store
-            value `shouldBe` ([1 .. 300] :: [Int])
+                value <- readMVar store
+                value `shouldBe` ([1 .. 300] :: [Int])

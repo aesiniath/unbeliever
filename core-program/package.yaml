@@ -35,7 +35,6 @@ dependencies:
 
 library:
   dependencies:
-   - async
    - core-text >= 0.3.8
    - core-data >= 0.3.4
    - directory
@@ -43,7 +42,7 @@ library:
    - filepath
    - fsnotify
    - hourglass
-   - ki
+   - ki >= 1.0.0
    - mtl
    - safe-exceptions
    - stm
