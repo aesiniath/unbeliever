@@ -112,7 +112,7 @@ import Control.Concurrent.MVar (
     readMVar,
     tryPutMVar,
  )
-import Control.Concurrent.STM (atomically)
+import Control.Concurrent.STM (atomically, orElse)
 import Control.Concurrent.STM.TQueue (
     TQueue,
     readTQueue,
@@ -250,34 +250,41 @@ executeActual context0 program = do
                 processTelemetryMessages forwarder level out tel
 
         -- run actual program, ensuring to grab any otherwise uncaught exceptions.
-        _ <- Ki.fork outer $ do
-            Safe.catch
-                ( do
-                    --
-                    -- execute actual "main". Note that we're not passing the
-                    -- Scope into the program's Context; it stays the default
-                    -- Nothing because the outer Scope is none of the
-                    -- program's business and we absolutely don't want an
-                    -- awaitAll to sit there and block on our machinery
-                    -- threads.
-                    --
-                    -- We use tryPutMVar here (rather than putMVar) because we
-                    -- might already be on the way out and need to not block.
-                    --
-                    _ <- subProgram context program
-                    tryPutMVar quit ExitSuccess
-                )
-                ( \(e :: SomeException) -> do
-                    let text = intoRope (displayException e)
-                    subProgram context $ do
-                        setVerbosityLevel Debug
-                        critical text
-                    tryPutMVar quit (ExitFailure 127)
-                )
+        code <- Ki.scoped $ \inner -> do
+            t1 <- Ki.fork inner $ do
+                Safe.catch
+                    ( do
+                        --
+                        -- execute actual "main". Note that we're not passing the
+                        -- Scope into the program's Context; it stays the default
+                        -- Nothing because the outer Scope is none of the
+                        -- program's business and we absolutely don't want an
+                        -- awaitAll to sit there and block on our machinery
+                        -- threads.
+                        --
+                        -- We use tryPutMVar here (rather than putMVar) because we
+                        -- might already be on the way out and need to not block.
+                        --
+                        _ <- subProgram context program
+                        pure ExitSuccess
+                    )
+                    ( \(e :: SomeException) -> do
+                        let text = intoRope (displayException e)
+                        subProgram context $ do
+                            setVerbosityLevel Debug
+                            critical text
+                        pure (ExitFailure 127)
+                    )
+            t2 <- Ki.fork inner $ do
+                -- wait for indication to terminate, and start doing
+                code <- readMVar quit
+                putStr "CODE " >> print code
+                pure code
 
-        -- wait for indication to terminate, and start doing
-        code <- readMVar quit
-        putStr "CODE " >> print code
+            atomically $ do
+                orElse
+                    (Ki.await t1)
+                    (Ki.await t2)
 
         putStrLn "HERE"
 
