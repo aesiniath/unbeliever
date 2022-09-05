@@ -84,11 +84,11 @@ tests:
   check:
     dependencies:
      - aeson
-     - async
      - bytestring
      - fingertree
      - hashable
      - hspec
+     - ki >= 1.0.0
      - network-info
      - prettyprinter
      - QuickCheck
