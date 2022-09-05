@@ -70,7 +70,7 @@ program = do
     writeS x
 
     let possibleY = decodeFromUTF8 b
-    case possibleY of 
+    case possibleY of
         Nothing -> invalid
         Just y -> do
             writeS y

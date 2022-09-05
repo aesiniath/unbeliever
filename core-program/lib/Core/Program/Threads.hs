@@ -187,12 +187,11 @@ If the thread you are waiting on throws an exception it will be rethrown by
 
 If the current thread making this call is cancelled (as a result of being on
 the losing side of 'concurrentThreads' or 'raceThreads' for example, or due to
-an explicit call to 'cancelThread'), then the thread you are waiting on will
-be cancelled. This is necessary to ensure that child threads are not leaked if
+the current Scope exiting), then the thread you are waiting on will be
+cancelled. This is necessary to ensure that child threads are not leaked if
 you nest `forkThread`s.
 
-(this wraps __async__\'s 'Control.Concurrent.Async.wait', taking care to
-ensure the behaviour described above)
+(this wraps __ki__\'s 'Ki.await')
 
 @since 0.2.7
 -}
@@ -236,8 +235,6 @@ This basically is convenience for calling `waitThread` and putting `catch`
 around it, but as with all the other @wait*@ functions this ensures that if
 the thread waiting is killed the cancellation is propagated to the thread
 being watched as well.
-
-(this wraps __async__\'s 'Control.Concurrent.Async.waitCatch')
 
 @since 0.4.5
 -}
@@ -300,8 +297,6 @@ running will be cancelled and the original exception is then re-thrown.
 For a variant that ingores the return values and just waits for both see
 'concurrentThreads_' below.
 
-(this wraps __async__\'s 'Control.Concurrent.Async.concurrently')
-
 @since 0.4.0
 -}
 concurrentThreads :: Program τ α -> Program τ β -> Program τ (α, β)
@@ -328,8 +323,6 @@ This is the same as calling 'forkThread' and 'waitThread_' twice, except that
 if either sub-program fails with an exception the other program which is still
 running will be cancelled and the original exception is then re-thrown.
 
-(this wraps __async__\'s 'Control.Concurrent.Async.concurrently_')
-
 @since 0.4.0
 -}
 concurrentThreads_ :: Program τ α -> Program τ β -> Program τ ()
@@ -353,8 +346,6 @@ will be cancelled with an exception.
 
 For a variant that ingores the return value and just races the threads see
 'raceThreads_' below.
-
-(this wraps __async__\'s 'Control.Concurrent.Async.race')
 
 @since 0.4.0
 -}
@@ -391,8 +382,6 @@ timeouts:
             performAction
         )
 @
-
-(this wraps __async__\'s 'Control.Concurrent.Async.race_')
 
 @since 0.4.0
 -}
