@@ -279,11 +279,8 @@ executeActual context0 program = do
 
     -- wait for indication to terminate
     code <- readMVar quit
-    putStr "CODE " >> print code
 
     killThread t1
-
-    putStrLn "HERE"
 
     -- instruct handlers to finish, and wait for the message queues to
     -- drain. Allow 10 seconds, then timeout, in case something has gone
@@ -303,8 +300,6 @@ executeActual context0 program = do
         writeTQueue out Nothing
 
     readMVar vo
-
-    putStrLn "DONE"
 
     hFlush stdout
 
