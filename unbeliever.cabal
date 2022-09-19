@@ -64,12 +64,9 @@ executable experiment
   build-depends:
       base >=4.11 && <5
     , bytestring
-    , core-data >=0.3.4.0
-    , core-program >=0.5.1.0
-    , core-telemetry >=0.2.3.5
-    , core-text >=0.3.8.0
-    , core-webserver-servant >=0.1.1.2
-    , core-webserver-warp >=0.1.1.6
+    , core-data
+    , core-program
+    , core-text
     , prettyprinter
     , unordered-containers
   buildable: False
@@ -83,13 +80,9 @@ executable snippet
   build-depends:
       base >=4.11 && <5
     , bytestring
-    , core-data >=0.3.4.0
-    , core-program >=0.5.1.0
-    , core-telemetry >=0.2.3.5
-    , core-text >=0.3.8.0
-    , core-webserver-servant >=0.1.1.2
-    , core-webserver-warp >=0.1.1.6
-  buildable: False
+    , core-data
+    , core-program
+    , core-text
   default-language: Haskell2010
 
 test-suite check
@@ -114,12 +107,12 @@ test-suite check
     , aeson
     , base >=4.11 && <5
     , bytestring
-    , core-data >=0.3.4.0
-    , core-program >=0.5.1.0
-    , core-telemetry >=0.2.3.5
-    , core-text >=0.3.8.0
-    , core-webserver-servant >=0.1.1.2
-    , core-webserver-warp >=0.1.1.6
+    , core-data
+    , core-program
+    , core-telemetry
+    , core-text
+    , core-webserver-servant
+    , core-webserver-warp
     , fingertree
     , hashable
     , hspec
@@ -145,12 +138,9 @@ benchmark performance
   build-depends:
       base >=4.11 && <5
     , bytestring
-    , core-data >=0.3.4.0
-    , core-program >=0.5.1.0
-    , core-telemetry >=0.2.3.5
-    , core-text >=0.3.8.0
-    , core-webserver-servant >=0.1.1.2
-    , core-webserver-warp >=0.1.1.6
+    , core-data
+    , core-program
+    , core-text
     , gauge
     , text
   default-language: Haskell2010
