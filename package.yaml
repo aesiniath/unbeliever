@@ -48,16 +48,12 @@ github: aesiniath/unbeliever
 
 dependencies:
  - base >= 4.11 && < 5
- - core-text >= 0.3.8.0
- - core-data >= 0.3.4.0
- - core-program >= 0.5.1.0
- - core-telemetry >= 0.2.3.5
- - core-webserver-servant >= 0.1.1.2
- - core-webserver-warp >= 0.1.1.6
+ - core-text
+ - core-data
+ - core-program
 
 executables:
   snippet:
-    buildable: false
     dependencies:
     - bytestring
     ghc-options:
@@ -83,23 +79,30 @@ executables:
 tests:
   check:
     dependencies:
-     - aeson
-     - bytestring
-     - fingertree
-     - hashable
-     - hspec
-     - ki >= 1.0.0
-     - network-info
-     - prettyprinter
-     - QuickCheck
-     - safe-exceptions
-     - scientific
-     - stm
-     - text
-     - text-short
-     - time
-     - unordered-containers
-     - wai
+    - aeson
+    - bytestring
+    - fingertree
+    - hashable
+    - hspec
+    - ki >= 1.0.0
+    - network-info
+    - prettyprinter
+    - QuickCheck
+    - safe-exceptions
+    - scientific
+    - stm
+    - text
+    - text-short
+    - time
+    - unordered-containers
+    - wai
+    - core-text
+    - core-data
+    - core-program
+    - core-telemetry
+    - core-webserver-servant
+    - core-webserver-warp
+
     ghc-options: -threaded
     source-dirs:
      - tests

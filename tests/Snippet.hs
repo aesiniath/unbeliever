@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}

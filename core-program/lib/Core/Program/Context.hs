@@ -49,11 +49,11 @@ import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Metadata
 import Core.System.Base
-import Ki qualified as Ki (Scope)
 import Core.Text.Rope
 import Data.Foldable (foldrM)
 import Data.Int (Int64)
 import Data.String (IsString)
+import Ki qualified as Ki (Scope)
 import Prettyprinter (LayoutOptions (..), PageWidth (..), layoutPretty)
 import Prettyprinter.Render.Text (renderIO)
 import System.Console.Terminal.Size qualified as Terminal (Window (..), size)
