@@ -104,15 +104,16 @@ module Core.Program.Execute (
     lookupEnvironmentValue,
 ) where
 
-import Control.Concurrent (threadDelay)
+import Control.Concurrent (forkIO, killThread, threadDelay)
 import Control.Concurrent.MVar (
     MVar,
     modifyMVar_,
+    newEmptyMVar,
     putMVar,
     readMVar,
     tryPutMVar,
  )
-import Control.Concurrent.STM (atomically, orElse)
+import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (
     TQueue,
     readTQueue,
@@ -129,7 +130,6 @@ import Control.Monad (
     void,
     when,
  )
-import Control.Monad.Catch (Handler (..))
 import Control.Monad.Reader.Class (MonadReader (ask))
 import Core.Data.Clock
 import Core.Data.Structures
@@ -155,7 +155,6 @@ import Data.ByteString.Char8 qualified as C (singleton)
 import Data.List qualified as List (intersperse)
 import GHC.Conc (getNumProcessors, numCapabilities, setNumCapabilities)
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
-import Ki qualified as Ki (await, fork, fork_, scoped)
 import System.Directory (
     findExecutable,
  )
@@ -234,84 +233,78 @@ executeActual context0 program = do
         tel = telemetryChannelFrom context
         forwarder = telemetryForwarderFrom context
 
-    code <- Ki.scoped $ \outer -> do
-        -- set up signal handlers
-        _ <- Ki.fork outer $ do
-            setupSignalHandlers quit level
+    -- set up signal handlers
+    _ <- forkIO $ do
+        setupSignalHandlers quit level
 
-        -- set up standard output
-        o <-
-            Ki.fork outer $ do
-                processStandardOutput out
+    -- set up standard output
+    vo <- newEmptyMVar
+    _ <- forkIO $ do
+        processStandardOutput out
+        putMVar vo ()
 
-        -- set up debug logger
-        l <-
-            Ki.fork outer $ do
-                processTelemetryMessages forwarder level out tel
+    -- set up debug logger
+    vl <- newEmptyMVar
+    _ <- forkIO $ do
+        processTelemetryMessages forwarder level out tel
+        putMVar vl ()
 
-        -- run actual program, ensuring to grab any otherwise uncaught exceptions.
-        code <- Ki.scoped $ \inner -> do
-            t1 <- Ki.fork inner $ do
-                Safe.catch
-                    ( do
-                        --
-                        -- execute actual "main". Note that we're not passing the
-                        -- Scope into the program's Context; it stays the default
-                        -- Nothing because the outer Scope is none of the
-                        -- program's business and we absolutely don't want an
-                        -- awaitAll to sit there and block on our machinery
-                        -- threads.
-                        --
-                        -- We use tryPutMVar here (rather than putMVar) because we
-                        -- might already be on the way out and need to not block.
-                        --
-                        _ <- subProgram context program
-                        pure ExitSuccess
-                    )
-                    ( \(e :: SomeException) -> do
-                        let text = intoRope (displayException e)
-                        subProgram context $ do
-                            setVerbosityLevel Debug
-                            critical text
-                        pure (ExitFailure 127)
-                    )
-            t2 <- Ki.fork inner $ do
-                -- wait for indication to terminate, and start doing
-                code <- readMVar quit
-                putStr "CODE " >> print code
-                pure code
+    -- run actual program, ensuring to grab any otherwise uncaught exceptions.
+    t1 <- forkIO $ do
+        Safe.catch
+            ( do
+                --
+                -- execute actual "main". Note that we're not passing the
+                -- Scope into the program's Context; it stays the default
+                -- Nothing because the outer Scope is none of the
+                -- program's business and we absolutely don't want an
+                -- awaitAll to sit there and block on our machinery
+                -- threads.
+                --
+                -- We use tryPutMVar here (rather than putMVar) because we
+                -- might already be on the way out and need to not block.
+                --
+                _ <- subProgram context program
+                _ <- tryPutMVar quit ExitSuccess
+                pure ()
+            )
+            ( \(e :: SomeException) -> do
+                let text = intoRope (displayException e)
+                subProgram context $ do
+                    setVerbosityLevel Debug
+                    critical text
+                _ <- tryPutMVar quit (ExitFailure 127)
+                pure ()
+            )
 
-            atomically $ do
-                orElse
-                    (Ki.await t1)
-                    (Ki.await t2)
+    -- wait for indication to terminate
+    code <- readMVar quit
+    putStr "CODE " >> print code
 
-        putStrLn "HERE"
+    killThread t1
 
-        -- instruct handlers to finish, and wait for the message queues to
-        -- drain. Allow 10 seconds, then timeout, in case something has gone
-        -- wrong and queues don't empty.
+    putStrLn "HERE"
 
-        Ki.fork_ outer $ do
-            threadDelay 10000000
-            putStrLn "error: Timeout"
-            Safe.throw (ExitFailure 99)
+    -- instruct handlers to finish, and wait for the message queues to
+    -- drain. Allow 10 seconds, then timeout, in case something has gone
+    -- wrong and queues don't empty.
 
-        atomically $ do
-            writeTQueue tel Nothing
+    _ <- forkIO $ do
+        threadDelay 10000000
+        putStrLn "error: Timeout"
+        Safe.throw (ExitFailure 99)
 
-        atomically $ do
-            Ki.await l
+    atomically $ do
+        writeTQueue tel Nothing
 
-        atomically $ do
-            writeTQueue out Nothing
+    readMVar vl
 
-        atomically $ do
-            Ki.await o
+    atomically $ do
+        writeTQueue out Nothing
 
-        putStrLn "DONE"
+    readMVar vo
 
-        pure code
+    putStrLn "DONE"
 
     hFlush stdout
 
