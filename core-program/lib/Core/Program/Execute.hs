@@ -104,7 +104,7 @@ module Core.Program.Execute (
     lookupEnvironmentValue,
 ) where
 
-import Control.Concurrent (forkIO, killThread, threadDelay)
+import Control.Concurrent (forkFinally, forkIO, killThread, threadDelay)
 import Control.Concurrent.MVar (
     MVar,
     modifyMVar_,
@@ -239,15 +239,17 @@ executeActual context0 program = do
 
     -- set up standard output
     vo <- newEmptyMVar
-    _ <- forkIO $ do
-        processStandardOutput out
-        putMVar vo ()
+    _ <-
+        forkFinally
+            (processStandardOutput out)
+            (\_ -> putMVar vo ())
 
     -- set up debug logger
     vl <- newEmptyMVar
-    _ <- forkIO $ do
-        processTelemetryMessages forwarder level out tel
-        putMVar vl ()
+    _ <-
+        forkFinally
+            (processTelemetryMessages forwarder level out tel)
+            (\_ -> putMVar vl ())
 
     -- run actual program, ensuring to grab any otherwise uncaught exceptions.
     t1 <- forkIO $ do
