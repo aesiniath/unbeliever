@@ -36,7 +36,7 @@ dependencies:
 library:
   dependencies:
    - core-text >= 0.3.8
-   - core-data >= 0.3.4
+   - core-data >= 0.3.8
    - directory
    - exceptions
    - filepath

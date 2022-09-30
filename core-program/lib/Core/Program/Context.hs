@@ -37,8 +37,10 @@ module Core.Program.Context (
     subProgram,
 ) where
 
+import Control.Concurrent (ThreadId)
 import Control.Concurrent.MVar (MVar, newEmptyMVar, newMVar, putMVar, readMVar)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
+import Control.Concurrent.STM.TVar (TVar, newTVarIO)
 import Control.Exception.Safe qualified as Safe (throw)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow (throwM))
 import Control.Monad.Reader.Class (MonadReader (..))
@@ -53,7 +55,6 @@ import Core.Text.Rope
 import Data.Foldable (foldrM)
 import Data.Int (Int64)
 import Data.String (IsString)
-import Ki qualified as Ki (Scope)
 import Prettyprinter (LayoutOptions (..), PageWidth (..), layoutPretty)
 import Prettyprinter.Render.Text (renderIO)
 import System.Console.Terminal.Size qualified as Terminal (Window (..), size)
@@ -176,7 +177,7 @@ data Context τ = Context
     , outputChannelFrom :: TQueue (Maybe Rope) -- communication channels
     , telemetryChannelFrom :: TQueue (Maybe Datum) -- machinery for telemetry
     , telemetryForwarderFrom :: Maybe Forwarder
-    , currentScopeFrom :: Maybe Ki.Scope
+    , currentScopeFrom :: TVar (Set ThreadId)
     , currentDatumFrom :: MVar Datum
     , applicationDataFrom :: MVar τ
     }
@@ -358,11 +359,12 @@ configure version t config = do
     out <- newTQueueIO
     tel <- newTQueueIO
 
-    v <- newMVar (emptyDatum)
+    scope <- newTVarIO emptySet
+    v <- newMVar emptyDatum
     u <- newMVar t
 
-    return
-        $! Context
+    return $!
+        Context
             { programNameFrom = n
             , terminalWidthFrom = columns
             , terminalColouredFrom = coloured
@@ -376,7 +378,7 @@ configure version t config = do
             , outputChannelFrom = out
             , telemetryChannelFrom = tel
             , telemetryForwarderFrom = Nothing
-            , currentScopeFrom = Nothing
+            , currentScopeFrom = scope
             , currentDatumFrom = v
             , applicationDataFrom = u
             }

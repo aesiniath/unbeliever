@@ -121,12 +121,16 @@ import Control.Concurrent.STM.TQueue (
     unGetTQueue,
     writeTQueue,
  )
+import Control.Concurrent.STM.TVar (
+    readTVarIO,
+ )
 import Control.Exception qualified as Base (throwIO)
 import Control.Exception.Safe qualified as Safe (
     catch,
     throw,
  )
 import Control.Monad (
+    forM_,
     void,
     when,
  )
@@ -293,6 +297,11 @@ executeActual context0 program = do
         putStrLn "error: Timeout"
         Safe.throw (ExitFailure 99)
 
+    _ <- forkIO $ do
+        let scope = currentScopeFrom context
+        pointers <- readTVarIO scope
+        forM_ pointers killThread
+
     atomically $ do
         writeTQueue tel Nothing
 
@@ -324,6 +333,7 @@ processStandardOutput out =
             Just text -> do
                 hWrite stdout text
                 B.hPut stdout (C.singleton '\n')
+                hFlush stdout
                 loop
 
 --
