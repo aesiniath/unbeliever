@@ -31,7 +31,8 @@ module Core.Program.Threads (
     waitThread,
     waitThread_,
     waitThread',
-    waitThreads_,
+    waitThreads',
+    cancelThread,
 
     -- * Helper functions
     concurrentThreads,
@@ -274,7 +275,6 @@ waitThread' thread = do
                 killThread (threadPointerOf thread)
             )
 
-
 {- |
 Wait for many threads to complete. This function is intended for the scenario
 where you fire off a number of worker threads with `forkThread` but rather
@@ -318,6 +318,22 @@ ensure the cancellation behaviour described throughout this module)
 waitThreads' :: [Thread α] -> Program τ [Either SomeException α]
 waitThreads' threads = do
     forM_ threads waitThread'
+
+{- |
+Cancel a thread.
+
+(this wraps __base__\'s 'Control.Concurrent.killThread'. The underlying
+mechanism used is to throw the 'GHC.Conc.ThreadKilled' exception to the other
+thread. That exception is asynchronous, so will not be trapped by a
+'Core.Program.Exceptions.catch' block and will indeed cause the thread
+receiving the exception to come to an end)
+
+@since 0.4.5
+-}
+cancelThread :: Thread α -> Program τ ()
+cancelThread thread = do
+    liftIO $ do
+        killThread (threadPointerOf thread)
 
 {- |
 Fork two threads and wait for both to finish. The return value is the pair of
