@@ -79,13 +79,18 @@ unThread :: Thread α -> ThreadId
 unThread = threadPointerOf
 
 {- |
-Create a scope to enclose any subsequently spawned threads.
+Create a scope to enclose any subsequently spawned threads as a single group.
+Ordinarily threads launched in Haskell are completely indepedent. Creating a
+scope allows you to operate on a set of threads as a single group with
+bi-directional exception passing. This is the basis of an approach called
+/structured concurrency/.
 
-If any of the child threads throws an exception it will be propegated to this
-parent thread and re-thrown.
+When the execution flow exits the scope, any threads that were spawned within
+it that are still running will be killed.
 
-When a scope exits, any threads that were spawed within it that are still
-running will be killed.
+If any of the child threads within the scope throws an exception, the other
+remaining threads will be killed and then the original exception will be
+propegated to this parent thread and re-thrown.
 
 @since 0.6.0
 -}
@@ -114,8 +119,9 @@ createScope program = do
 Fork a thread. The child thread will run in the same 'Context' as the calling
 'Program', including sharing the user-defined application state value.
 
-In order to use this you /must/ be within an enclosing scope created with
-'createScope'.
+If you want to find out what the result of a thread was use 'waitThread' on
+the 'Thread' object returned from this function. If you don't need the
+result, use 'forkThread_' instead.
 
 Threads that are launched off as children are on their own! If the code in the
 child thread throws an exception that is /not/ caught within that thread, the
@@ -123,8 +129,7 @@ exception will kill the thread. Threads dying without telling anyone is a bit
 of an anti-pattern, so this library logs a warning-level log message if this
 happens.
 
-(this wraps __ki__\'s 'Ki.fork' which in turn wraps __base__'s
-'Control.Concurrent.forkIO')
+(this wraps __base__'s 'Control.Concurrent.forkIO')
 
 @since 0.2.7
 -}
@@ -205,9 +210,9 @@ If the thread you are waiting on throws an exception it will be rethrown by
 
 If the current thread making this call is cancelled (as a result of being on
 the losing side of 'concurrentThreads' or 'raceThreads' for example, or due to
-the current Scope exiting), then the thread you are waiting on will be
-cancelled. This is necessary to ensure that child threads are not leaked if
-you nest `forkThread`s.
+the current scope exiting), then the thread you are waiting on will be
+cancelled too. This is necessary to ensure that child threads are not leaked
+if you nest `forkThread`s.
 
 @since 0.2.7
 -}
