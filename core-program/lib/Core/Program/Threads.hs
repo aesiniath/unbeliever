@@ -42,42 +42,41 @@ module Core.Program.Threads (
     -- * Internals
     Thread,
     unThread,
-    getScope,
 ) where
 
-import Control.Concurrent.MVar (
-    newMVar,
-    readMVar,
- )
+import Control.Applicative ((<|>))
+import Control.Concurrent (ThreadId, forkIO, killThread, myThreadId, throwTo)
+import Control.Concurrent.MVar (MVar, newEmptyMVar, newMVar, putMVar, readMVar)
 import Control.Concurrent.STM (atomically, orElse)
-import Control.Exception.Safe qualified as Safe (catch, throw)
+import Control.Concurrent.STM.TVar (modifyTVar', newTVarIO, readTVar, readTVarIO)
+import Control.Exception.Base qualified as Base (AsyncException)
+import Control.Exception.Safe qualified as Safe (catch, catchAsync, finally, onException, throw)
 import Control.Monad (
+    forM_,
     void,
  )
 import Control.Monad.Reader.Class (MonadReader (ask))
+import Core.Data.Structures
 import Core.Program.Context
 import Core.Program.Logging
 import Core.System.Base
 import Core.Text.Rope
-import Ki qualified as Ki (Scope, Thread, await, awaitAll, fork, scoped)
 
 {- |
 A thread for concurrent computation.
 
-(this wraps __ki__'s 'Thread' which in turn wraps __base__'s
-'Control.Concurrent.ThreadId')
+(this wraps __base__'s 'Control.Concurrent.ThreadId' along with a holder for
+the result of the thread)
 
 @since 0.6.0
 -}
-newtype Thread α = Thread (Ki.Thread α)
+data Thread α = Thread
+    { threadPointerOf :: ThreadId
+    , threadOutcomeOf :: MVar (Either SomeException α)
+    }
 
-unThread :: Thread α -> Ki.Thread α
-unThread (Thread a) = a
-
-getScope :: Program τ (Maybe Ki.Scope)
-getScope = do
-    context <- ask
-    pure (currentScopeFrom context)
+unThread :: Thread α -> ThreadId
+unThread = threadPointerOf
 
 {- |
 Create a scope to enclose any subsequently spawned threads.
@@ -93,13 +92,23 @@ running will be killed.
 createScope :: Program τ α -> Program τ α
 createScope program = do
     context <- ask
+
     liftIO $ do
-        Ki.scoped $ \scope -> do
-            let context' =
-                    context
-                        { currentScopeFrom = Just scope
-                        }
-            subProgram context' program
+        scope <- newTVarIO emptySet
+
+        let context' =
+                context
+                    { currentScopeFrom = scope
+                    }
+
+        Safe.finally
+            ( do
+                subProgram context' program
+            )
+            ( do
+                pointers <- readTVarIO scope
+                forM_ pointers killThread
+            )
 
 {- |
 Fork a thread. The child thread will run in the same 'Context' as the calling
@@ -124,9 +133,7 @@ forkThread program = do
     context <- ask
     let i = startTimeFrom context
     let v = currentDatumFrom context
-    let scope = case currentScopeFrom context of
-            Nothing -> error "Attempt to fork a thread outside of an enclosing scope"
-            Just scope' -> scope'
+    let scope = currentScopeFrom context
 
     liftIO $ do
         -- if someone calls resetTimer in the thread it should just be that
@@ -152,20 +159,31 @@ forkThread program = do
 
         -- fork, and run nested program
 
-        a <- Ki.fork scope $ do
+        outcome <- newEmptyMVar
+
+        pointer <- forkIO $ do
             Safe.catch
                 ( do
-                    subProgram context' program
+                    actual <- subProgram context' program
+                    putMVar outcome (Right actual)
                 )
                 ( \(e :: SomeException) -> do
                     let text = intoRope (displayException e)
                     subProgram context' $ do
                         internal "Uncaught exception ending thread"
                         internal ("e = " <> text)
-                    Safe.throw e
+                    putMVar outcome (Left e)
                 )
 
-        return (Thread a)
+        atomically $ do
+            modifyTVar' scope (\pointers -> insertElement pointer pointers)
+
+        return
+            ( Thread
+                { threadPointerOf = pointer
+                , threadOutcomeOf = outcome
+                }
+            )
 
 {- |
 Fork a thread with 'forkThread' but do not wait for a result. This is on the
@@ -191,14 +209,15 @@ the current Scope exiting), then the thread you are waiting on will be
 cancelled. This is necessary to ensure that child threads are not leaked if
 you nest `forkThread`s.
 
-(this wraps __ki__\'s 'Ki.await')
-
 @since 0.2.7
 -}
 waitThread :: Thread α -> Program τ α
-waitThread (Thread a) = liftIO $ do
-    atomically $ do
-        Ki.await a
+waitThread thread = do
+    result <- waitThread' thread
+
+    case result of
+        Left problem -> Safe.throw problem
+        Right actual -> pure actual
 
 {- |
 Wait for the completion of a thread, discarding its result. This is
@@ -225,7 +244,7 @@ value.
 @since 0.2.7
 -}
 waitThread_ :: Thread α -> Program τ ()
-waitThread_ t = void (waitThread t)
+waitThread_ thread = void (waitThread thread)
 
 {- |
 Wait for a thread to complete, returning the result if the computation was
@@ -239,16 +258,23 @@ being watched as well.
 @since 0.4.5
 -}
 waitThread' :: Thread α -> Program τ (Either SomeException α)
-waitThread' (Thread a) = liftIO $ do
-    Safe.catch
-        ( do
-            result <- atomically $ do
-                Ki.await a
-            pure (Right result)
-        )
-        ( \(e :: SomeException) -> do
-            pure (Left e)
-        )
+waitThread' thread = do
+    context <- ask
+    let scope = currentScopeFrom context
+    let outcome = threadOutcomeOf thread
+    let pointer = threadPointerOf thread
+
+    liftIO $ do
+        Safe.onException
+            ( do
+                result <- readMVar outcome -- blocks!
+                atomically $ do
+                    modifyTVar' scope (\pointers -> removeElement pointer pointers)
+                pure result
+            )
+            ( do
+                killThread (threadPointerOf thread)
+            )
 
 {- |
 Wait for all child threads in the current scope to complete.
@@ -265,20 +291,11 @@ because it lost the "race", the child threads need to be told in turn to
 cancel so as to avoid those threads being leaked and continuing to run as
 zombies. The machinery underlying this function takes care of that.
 
-(this wraps __ki__\'s 'Ki.awaitAll' )
 
 @since 0.6.0
 -}
 waitThreads_ :: Program τ ()
-waitThreads_ = do
-    context <- ask
-    scope <- case currentScopeFrom context of
-        Nothing -> error "Invalid use of waitThreads_ without an enclosing scope"
-        Just value -> pure value
-
-    liftIO $ do
-        atomically $ do
-            Ki.awaitAll scope
+waitThreads_ = undefined
 
 {- |
 Fork two threads and wait for both to finish. The return value is the pair of
@@ -301,20 +318,12 @@ For a variant that ingores the return values and just waits for both see
 -}
 concurrentThreads :: Program τ α -> Program τ β -> Program τ (α, β)
 concurrentThreads one two = do
-    context <- ask
-    liftIO $ do
-        Ki.scoped $ \scope -> do
-            a1 <- Ki.fork scope $ do
-                subProgram context one
-
-            a2 <- Ki.fork scope $ do
-                subProgram context two
-
-            atomically $ do
-                result1 <- Ki.await a1
-                result2 <- Ki.await a2
-
-                pure (result1, result2)
+    createScope $ do
+        a1 <- forkThread one
+        a2 <- forkThread two
+        result1 <- waitThread a1
+        result2 <- waitThread a2
+        pure (result1, result2)
 
 {- |
 Fork two threads and wait for both to finish.
@@ -351,23 +360,22 @@ For a variant that ingores the return value and just races the threads see
 -}
 raceThreads :: Program τ α -> Program τ β -> Program τ (Either α β)
 raceThreads one two = do
-    context <- ask
-    liftIO $ do
-        Ki.scoped $ \scope -> do
-            t1 <- Ki.fork scope $ do
-                result1 <- subProgram context{currentScopeFrom = Just scope} one
-                pure (Left result1)
+    createScope $ do
+        outcome <- liftIO $ do
+            newEmptyMVar
 
-            t2 <- Ki.fork scope $ do
-                result2 <- subProgram context{currentScopeFrom = Just scope} two
-                pure (Right result2)
+        _ <- forkThread $ do
+            !result1 <- one
+            liftIO $ do
+                putMVar outcome (Left result1)
 
-            result <- atomically $ do
-                orElse
-                    (Ki.await t1)
-                    (Ki.await t2)
+        _ <- forkThread $ do
+            !result2 <- two
+            liftIO $ do
+                putMVar outcome (Right result2)
 
-            pure result
+        liftIO $ do
+            readMVar outcome
 
 {- |
 Fork two threads and race them against each other. When one action completes
