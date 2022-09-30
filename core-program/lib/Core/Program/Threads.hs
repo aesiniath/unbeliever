@@ -51,6 +51,7 @@ import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TVar (modifyTVar', newTVarIO, readTVarIO)
 import Control.Exception.Safe qualified as Safe (catch, finally, onException, throw)
 import Control.Monad (
+    forM,
     forM_,
     void,
  )
@@ -272,7 +273,9 @@ waitThread' thread = do
                 pure result
             )
             ( do
-                killThread (threadPointerOf thread)
+                killThread pointer
+                atomically $ do
+                    modifyTVar' scope (\pointers -> removeElement pointer pointers)
             )
 
 {- |
@@ -317,7 +320,30 @@ ensure the cancellation behaviour described throughout this module)
 -}
 waitThreads' :: [Thread α] -> Program τ [Either SomeException α]
 waitThreads' threads = do
-    forM_ threads waitThread'
+    context <- ask
+    liftIO $ do
+        Safe.onException
+            ( do
+                subProgram context $ do
+                    forM threads waitThread'
+            )
+            ( do
+                --
+                -- This is here because if this thread is cancelled it will
+                -- only be _one_ of the waitThread above that receives the
+                -- exception. All the other child threads need to be killed
+                -- too.
+                --
+
+                let scope = currentScopeFrom context
+
+                forM_ threads $ \thread -> do
+                    let pointer = threadPointerOf thread
+                    killThread pointer
+
+                    atomically $ do
+                        modifyTVar' scope (\pointers -> removeElement pointer pointers)
+            )
 
 {- |
 Cancel a thread.
