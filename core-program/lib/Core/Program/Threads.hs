@@ -274,26 +274,50 @@ waitThread' thread = do
                 killThread (threadPointerOf thread)
             )
 
+
 {- |
-Wait for all child threads in the current scope to complete.
+Wait for many threads to complete. This function is intended for the scenario
+where you fire off a number of worker threads with `forkThread` but rather
+than leaving them to run independantly, you need to wait for them all to
+complete.
 
-This function is intended for the scenario where you fire off a number of
-worker threads with `forkThread` but rather than leaving them to run
-independantly, you need to wait for them all to complete.
+The results of the threads that complete successfully will be returned as
+'Right' values. Should any of the threads being waited upon throw an
+exception, those exceptions will be returned as 'Left' values.
 
-If the thread calling 'waitThreads_' is killed, then all the threads being
-waited upon will also be killed. This often occurs within a timeout or similar
-control measure implemented using 'raceThreads_'. Should the thread that
-spawned all the workers and is waiting for their results be told to cancel
-because it lost the "race", the child threads need to be told in turn to
-cancel so as to avoid those threads being leaked and continuing to run as
-zombies. The machinery underlying this function takes care of that.
+If you don't need to analyse the failures individually, then you can just
+collect the successes using "Data.Either"'s 'Data.Either.rights':
 
+@
+    responses <- 'waitThreads''
 
-@since 0.6.0
+    'info' "Aggregating results..."
+    combineResults ('Data.Either.rights' responses)
+@
+
+Likewise, if you /do/ want to do something with all the failures, you might
+find 'Data.Either.lefts' useful:
+
+@
+    'mapM_' ('warn' . 'intoRope' . 'displayException') ('Data.Either.lefts' responses)
+@
+
+If the thread calling 'waitThreads'' is cancelled, then all the threads being
+waited upon will also be cancelled. This often occurs within a timeout or
+similar control measure implemented using 'raceThreads_'. Should the thread
+that spawned all the workers and is waiting for their results be told to
+cancel because it lost the "race", the child threads need to be told in turn
+to cancel so as to avoid those threads being leaked and continuing to run as
+zombies. This function takes care of that.
+
+(this extends 'waitThread'' to work across a list of Threads, taking care to
+ensure the cancellation behaviour described throughout this module)
+
+@since 0.4.5
 -}
-waitThreads_ :: Program τ ()
-waitThreads_ = undefined
+waitThreads' :: [Thread α] -> Program τ [Either SomeException α]
+waitThreads' threads = do
+    forM_ threads waitThread'
 
 {- |
 Fork two threads and wait for both to finish. The return value is the pair of
