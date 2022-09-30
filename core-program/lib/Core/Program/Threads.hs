@@ -44,13 +44,11 @@ module Core.Program.Threads (
     unThread,
 ) where
 
-import Control.Applicative ((<|>))
-import Control.Concurrent (ThreadId, forkIO, killThread, myThreadId, throwTo)
+import Control.Concurrent (ThreadId, forkIO, killThread)
 import Control.Concurrent.MVar (MVar, newEmptyMVar, newMVar, putMVar, readMVar)
-import Control.Concurrent.STM (atomically, orElse)
-import Control.Concurrent.STM.TVar (modifyTVar', newTVarIO, readTVar, readTVarIO)
-import Control.Exception.Base qualified as Base (AsyncException)
-import Control.Exception.Safe qualified as Safe (catch, catchAsync, finally, onException, throw)
+import Control.Concurrent.STM (atomically)
+import Control.Concurrent.STM.TVar (modifyTVar', newTVarIO, readTVarIO)
+import Control.Exception.Safe qualified as Safe (catch, finally, onException, throw)
 import Control.Monad (
     forM_,
     void,

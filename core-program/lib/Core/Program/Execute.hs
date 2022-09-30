@@ -286,6 +286,7 @@ executeActual context0 program = do
     -- wait for indication to terminate
     code <- readMVar quit
 
+    -- kill main thread
     killThread t1
 
     -- instruct handlers to finish, and wait for the message queues to

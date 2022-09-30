@@ -84,7 +84,6 @@ tests:
     - fingertree
     - hashable
     - hspec
-    - ki >= 1.0.0
     - network-info
     - prettyprinter
     - QuickCheck
