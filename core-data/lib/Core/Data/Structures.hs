@@ -16,6 +16,7 @@ module Core.Data.Structures (
     insertKeyValue,
     containsKey,
     lookupKeyValue,
+    removeKeyValue,
 
     -- * Conversions
     Dictionary (K, V, fromMap, intoMap),
@@ -26,6 +27,7 @@ module Core.Data.Structures (
     singletonSet,
     insertElement,
     containsElement,
+    removeElement,
 
     -- * Conversions
     Collection (E, fromSet, intoSet),
@@ -145,6 +147,14 @@ Does the dictionary contain the specified key?
 -}
 containsKey :: Key κ => κ -> Map κ ν -> Bool
 containsKey k (Map u) = HashMap.member k u
+
+{- |
+Remove a key/value pair if present in the dictionary.
+
+@since 0.3.7
+-}
+removeKeyValue :: Key κ => κ -> Map κ ν -> Map κ ν
+removeKeyValue k (Map u) = Map (HashMap.delete k u)
 
 -- |
 instance Key κ => Semigroup (Map κ ν) where
@@ -288,6 +298,15 @@ Does the collection contain the specified element?
 -}
 containsElement :: Key ε => ε -> Set ε -> Bool
 containsElement e (Set u) = HashSet.member e u
+
+{- |
+Remove an element from the collection if present.
+
+@since 0.3.7
+-}
+removeElement :: Key ε => ε -> Set ε -> Set ε
+removeElement e (Set u) = Set (HashSet.delete e u)
+
 
 {- |
 Types that represent collections of elements that can be converted to

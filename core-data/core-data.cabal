@@ -1,11 +1,11 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.35.0.
 --
 -- see: https://github.com/sol/hpack
 
 name:           core-data
-version:        0.3.6.0
+version:        0.3.7.0
 synopsis:       Convenience wrappers around common data structures and encodings
 description:    Wrappers around common data structures and encodings.
                 .
