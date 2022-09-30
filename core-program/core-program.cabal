@@ -27,7 +27,7 @@ license:        MIT
 license-file:   LICENSE
 build-type:     Simple
 tested-with:
-    GHC == 8.10.7, GHC == 9.2.2
+    GHC == 8.10.7, GHC == 9.2.4
 
 source-repository head
   type: git
@@ -65,7 +65,6 @@ library
     , fsnotify
     , hashable >=1.2
     , hourglass
-    , ki >=1.0.0
     , mtl
     , prettyprinter >=1.6.2
     , safe-exceptions

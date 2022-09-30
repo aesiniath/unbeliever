@@ -50,7 +50,7 @@ license:        MIT
 license-file:   LICENSE
 build-type:     Simple
 tested-with:
-    GHC == 8.10.7
+    GHC == 9.2.4
 
 source-repository head
   type: git
@@ -83,6 +83,7 @@ executable snippet
     , core-data
     , core-program
     , core-text
+  buildable: False
   default-language: Haskell2010
 
 test-suite check

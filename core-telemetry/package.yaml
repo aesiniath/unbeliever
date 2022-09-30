@@ -33,12 +33,11 @@ dependencies:
 library:
   dependencies:
    - core-text >= 0.3.7.1
-   - core-data >= 0.3.6.0
+   - core-data >= 0.3.8.0
    - core-program >= 0.6.0.0
    - exceptions
    - http-streams
    - io-streams
-   - ki
    - mtl
    - network-info
    - random

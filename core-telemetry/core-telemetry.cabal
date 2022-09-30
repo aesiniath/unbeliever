@@ -1,6 +1,6 @@
 cabal-version: 1.18
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.35.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -51,13 +51,12 @@ library
   build-depends:
       base >=4.11 && <5
     , bytestring
-    , core-data >=0.3.6.0
+    , core-data >=0.3.8.0
     , core-program >=0.6.0.0
     , core-text >=0.3.7.1
     , exceptions
     , http-streams
     , io-streams
-    , ki
     , mtl
     , network-info
     , random
