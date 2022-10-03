@@ -41,33 +41,27 @@ license-file: LICENSE
 author: Andrew Cowie <istathar@gmail.com>
 maintainer: Andrew Cowie <istathar@gmail.com>
 copyright: © 2018-2022 Athae Eredh Siniath and Others
-tested-with: GHC == 8.10.7
+tested-with: GHC == 9.2.4
 category: System
 ghc-options: -Wall -Wwarn -fwarn-tabs
 github: aesiniath/unbeliever
 
 dependencies:
  - base >= 4.11 && < 5
- - core-text >= 0.3.8.0
- - core-data >= 0.3.4.0
- - core-program >= 0.5.1.0
- - core-telemetry >= 0.2.3.5
- - core-webserver-servant >= 0.1.1.2
- - core-webserver-warp >= 0.1.1.6
+ - core-text
+ - core-data
+ - core-program
 
 executables:
   snippet:
     buildable: false
     dependencies:
-     - core-webserver-warp
-     - http-types
-     - wai
-     - warp
+    - bytestring
     ghc-options:
      - -threaded
     source-dirs:
      - tests
-    main: WarpSnippet.hs
+    main: Snippet.hs
     other-modules: []
 
   experiment:
@@ -86,23 +80,29 @@ executables:
 tests:
   check:
     dependencies:
-     - aeson
-     - async
-     - bytestring
-     - fingertree
-     - hashable
-     - hspec
-     - network-info
-     - prettyprinter
-     - QuickCheck
-     - safe-exceptions
-     - scientific
-     - stm
-     - text
-     - text-short
-     - time
-     - unordered-containers
-     - wai
+    - aeson
+    - bytestring
+    - fingertree
+    - hashable
+    - hspec
+    - network-info
+    - prettyprinter
+    - QuickCheck
+    - safe-exceptions
+    - scientific
+    - stm
+    - text
+    - text-short
+    - time
+    - unordered-containers
+    - wai
+    - core-text
+    - core-data
+    - core-program
+    - core-telemetry
+    - core-webserver-servant
+    - core-webserver-warp
+
     ghc-options: -threaded
     source-dirs:
      - tests

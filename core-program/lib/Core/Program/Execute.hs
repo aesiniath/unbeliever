@@ -104,26 +104,22 @@ module Core.Program.Execute (
     lookupEnvironmentValue,
 ) where
 
-import Control.Concurrent (threadDelay)
-import Control.Concurrent.Async (
-    ExceptionInLinkedThread (..),
- )
-import Control.Concurrent.Async qualified as Async (
-    async,
-    cancel,
-    race,
-    race_,
-    wait,
+import Control.Concurrent (
+    forkFinally,
+    forkIO,
+    killThread,
+    myThreadId,
+    threadDelay,
  )
 import Control.Concurrent.MVar (
     MVar,
     modifyMVar_,
+    newEmptyMVar,
     putMVar,
     readMVar,
+    tryPutMVar,
  )
-import Control.Concurrent.STM (
-    atomically,
- )
+import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (
     TQueue,
     readTQueue,
@@ -131,17 +127,20 @@ import Control.Concurrent.STM.TQueue (
     unGetTQueue,
     writeTQueue,
  )
+import Control.Concurrent.STM.TVar (
+    readTVarIO,
+ )
 import Control.Exception qualified as Base (throwIO)
 import Control.Exception.Safe qualified as Safe (
     catch,
-    catchesAsync,
     throw,
  )
 import Control.Monad (
+    forM_,
+    forever,
     void,
     when,
  )
-import Control.Monad.Catch (Handler (..))
 import Control.Monad.Reader.Class (MonadReader (ask))
 import Core.Data.Clock
 import Core.Data.Structures
@@ -171,50 +170,8 @@ import System.Directory (
     findExecutable,
  )
 import System.Exit (ExitCode (..))
-import System.Posix.Process qualified as Posix (exitImmediately)
 import System.Process.Typed (nullStream, proc, readProcess, setStdin)
 import Prelude hiding (log)
-
---
--- If an exception escapes, we'll catch it here. The displayException value
--- for some exceptions is really quit unhelpful, so we pattern match the
--- wrapping gumpf away for cases as we encounter them. The final entry is the
--- catch-all.
---
--- Note this is called via Safe.catchesAsync because we want to be able to
--- strip out ExceptionInLinkedThread (which is asynchronous and otherwise
--- reasonably special) from the final output message.
---
-escapeHandlers :: Context c -> [Handler IO ExitCode]
-escapeHandlers context =
-    [ Handler (\(code :: ExitCode) -> pure code)
-    , Handler (\(ExceptionInLinkedThread _ e) -> bail e)
-    , Handler (\(e :: SomeException) -> bail e)
-    ]
-  where
-    bail :: Exception e => e -> IO ExitCode
-    bail e =
-        let text = intoRope (displayException e)
-         in do
-                subProgram context $ do
-                    setVerbosityLevel Debug
-                    critical text
-                pure (ExitFailure 127)
-
---
--- If an exception occurs in one of the output handlers, its failure causes
--- a subsequent race condition when the program tries to clean up and drain
--- the queues. So we use `exitImmediately` (which we normally avoid, as it
--- unhelpfully destroys the parent process if you're in ghci) because we
--- really need the process to go down and we're in an inconsistent state
--- where debug or console output is no longer possible.
---
-collapseHandler :: String -> SomeException -> IO ()
-collapseHandler problem e = do
-    putStr "error: "
-    putStrLn problem
-    print e
-    Posix.exitImmediately (ExitFailure 99)
 
 {- |
 Trap any exceptions coming out of the given Program action, and discard them.
@@ -288,64 +245,80 @@ executeActual context0 program = do
         forwarder = telemetryForwarderFrom context
 
     -- set up signal handlers
-    _ <-
-        Async.async $ do
-            setupSignalHandlers quit level
+    _ <- forkIO $ do
+        setupSignalHandlers quit level
 
     -- set up standard output
-    o <-
-        Async.async $ do
-            processStandardOutput out
+    vo <- newEmptyMVar
+    _ <-
+        forkFinally
+            (processStandardOutput out)
+            (\_ -> putMVar vo ())
 
     -- set up debug logger
-    l <-
-        Async.async $ do
-            processTelemetryMessages forwarder level out tel
+    vl <- newEmptyMVar
+    _ <-
+        forkFinally
+            (processTelemetryMessages forwarder level out tel)
+            (\_ -> putMVar vl ())
 
     -- run actual program, ensuring to grab any otherwise uncaught exceptions.
-    code <-
-        Safe.catchesAsync
+    t1 <- forkIO $ do
+        Safe.catch
             ( do
-                result <-
-                    Async.race
-                        ( do
-                            code <- readMVar quit
-                            pure code
-                        )
-                        ( do
-                            -- execute actual "main"
-                            _ <- subProgram context program
-                            pure ()
-                        )
-
-                case result of
-                    Left code' -> pure code'
-                    Right () -> pure ExitSuccess
+                --
+                -- execute actual "main". Note that we're not passing the
+                -- Scope into the program's Context; it stays the default
+                -- Nothing because the outer Scope is none of the
+                -- program's business and we absolutely don't want an
+                -- awaitAll to sit there and block on our machinery
+                -- threads.
+                --
+                -- We use tryPutMVar here (rather than putMVar) because we
+                -- might already be on the way out and need to not block.
+                --
+                _ <- subProgram context program
+                _ <- tryPutMVar quit ExitSuccess
+                pure ()
             )
-            (escapeHandlers context)
+            ( \(e :: SomeException) -> do
+                let text = intoRope (displayException e)
+                subProgram context $ do
+                    setVerbosityLevel Debug
+                    critical text
+                _ <- tryPutMVar quit (ExitFailure 127)
+                pure ()
+            )
 
-    -- instruct handlers to finish, and wait for the message queues to drain.
-    -- Allow 0.1 seconds, then timeout, in case something has gone wrong and
-    -- queues don't empty.
-    Async.race_
-        ( do
-            atomically $ do
-                writeTQueue tel Nothing
+    -- wait for indication to terminate
+    code <- readMVar quit
 
-            Async.wait l
+    -- kill main thread
+    killThread t1
 
-            atomically $ do
-                writeTQueue out Nothing
+    -- instruct handlers to finish, and wait for the message queues to
+    -- drain. Allow 10 seconds, then timeout, in case something has gone
+    -- wrong and queues don't empty.
 
-            Async.wait o
-        )
-        ( do
-            threadDelay 10000000
+    _ <- forkIO $ do
+        threadDelay 10000000
+        putStrLn "error: Timeout"
+        Safe.throw (ExitFailure 99)
 
-            Async.cancel l
-            Async.cancel o
-            putStrLn "error: Timeout"
-        )
+    _ <- forkIO $ do
+        let scope = currentScopeFrom context
+        pointers <- readTVarIO scope
+        forM_ pointers killThread
+
+    atomically $ do
+        writeTQueue tel Nothing
+
+    readMVar vl
+
+    atomically $ do
+        writeTQueue out Nothing
+
+    readMVar vo
 
     hFlush stdout
 
@@ -356,9 +329,7 @@ executeActual context0 program = do
 
 processStandardOutput :: TQueue (Maybe Rope) -> IO ()
 processStandardOutput out =
-    Safe.catch
-        (loop)
-        (collapseHandler "output processing collapsed")
+    loop
   where
     loop :: IO ()
     loop = do
@@ -370,6 +341,7 @@ processStandardOutput out =
             Just text -> do
                 hWrite stdout text
                 B.hPut stdout (C.singleton '\n')
+                hFlush stdout
                 loop
 
 --
@@ -393,9 +365,7 @@ processTelemetryMessages Nothing _ _ tel = do
             Just _ -> do
                 ignoreForever queue
 processTelemetryMessages (Just processor) v out tel = do
-    Safe.catch
-        (loopForever action v out tel)
-        (collapseHandler "telemetry processing collapsed")
+    loopForever action v out tel
   where
     action = telemetryHandlerFrom processor
 
@@ -487,24 +457,31 @@ loopForever action v out queue = do
                 writeTQueue out (Just message)
 
 {- |
-Safely exit the program with the supplied exit code. Current output and
-debug queues will be flushed, and then the process will terminate.
+Safely exit the program with the supplied exit code. Current output and debug
+queues will be flushed, and then the process will terminate. This function
+does not return.
 -}
 
--- putting to the quit MVar initiates the cleanup and exit sequence,
--- but throwing the exception also aborts execution and starts unwinding
--- back up the stack.
+-- putting to the quit MVar initiates the cleanup and exit sequence, but
+-- throwing the asynchronous exception to self also aborts execution and
+-- starts unwinding back up the stack.
+--
+-- forever is used here to get an IO α as the return type.
 terminate :: Int -> Program τ α
-terminate code =
+terminate code = do
+    context <- ask
+    let quit = exitSemaphoreFrom context
+
     let exit = case code of
             0 -> ExitSuccess
             _ -> ExitFailure code
-     in do
-            context <- ask
-            let quit = exitSemaphoreFrom context
-            liftIO $ do
-                putMVar quit exit
-                Safe.throw exit
+
+    liftIO $ do
+        putMVar quit exit
+        self <- myThreadId
+        killThread self
+        forever $ do
+            threadDelay maxBound
 
 -- undocumented
 getVerbosityLevel :: Program τ Verbosity

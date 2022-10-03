@@ -1,6 +1,6 @@
 cabal-version: 1.18
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.35.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -32,7 +32,7 @@ license:        MIT
 license-file:   LICENSE
 build-type:     Simple
 tested-with:
-    GHC == 8.10.7
+    GHC == 8.10.7, GHC == 9.2.4
 extra-doc-files:
     AnsiColours.png
 

@@ -1,11 +1,11 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.35.0.
 --
 -- see: https://github.com/sol/hpack
 
 name:           core-program
-version:        0.5.2.0
+version:        0.6.0.1
 synopsis:       Opinionated Haskell Interoperability
 description:    A library to help build command-line programs, both tools and
                 longer-running daemons.
@@ -27,7 +27,7 @@ license:        MIT
 license-file:   LICENSE
 build-type:     Simple
 tested-with:
-    GHC == 8.10.7, GHC == 9.2.2
+    GHC == 8.10.7, GHC == 9.2.4
 
 source-repository head
   type: git
@@ -55,10 +55,9 @@ library
       lib
   ghc-options: -Wall -Wwarn -fwarn-tabs
   build-depends:
-      async
-    , base >=4.11 && <5
+      base >=4.11 && <5
     , bytestring
-    , core-data >=0.3.4
+    , core-data >=0.3.8
     , core-text >=0.3.8
     , directory
     , exceptions

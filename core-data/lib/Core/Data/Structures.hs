@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans -Wno-redundant-constraints #-}
 
@@ -38,19 +39,20 @@ module Core.Data.Structures (
     unSet,
 ) where
 
+import Control.Concurrent qualified as Base (ThreadId)
 import Core.Text.Bytes (Bytes)
 import Core.Text.Rope (Rope)
 import Data.Bifoldable (Bifoldable)
-import qualified Data.ByteString as B (ByteString)
-import qualified Data.HashMap.Strict as HashMap
-import qualified Data.HashSet as HashSet
+import Data.ByteString qualified as B (ByteString)
+import Data.HashMap.Strict qualified as HashMap
+import Data.HashSet qualified as HashSet
 import Data.Hashable (Hashable)
 import Data.Kind (Type)
-import qualified Data.Map.Strict as OrdMap
-import qualified Data.Set as OrdSet
-import qualified Data.Text as T (Text)
-import qualified Data.Text.Lazy as U (Text)
-import qualified GHC.Exts as Exts (IsList (..))
+import Data.Map.Strict qualified as OrdMap
+import Data.Set qualified as OrdSet
+import Data.Text qualified as T (Text)
+import Data.Text.Lazy qualified as U (Text)
+import GHC.Exts qualified as Exts (IsList (..))
 
 -- Naming convention used throughout this file is (Thing u) where u is the
 -- underlying structure [from unordered-containers] wrapped in the Thing
@@ -110,6 +112,8 @@ instance Key Int
 
 instance Key B.ByteString
 
+instance Key Base.ThreadId
+
 instance Foldable (Map κ) where
     foldr f start (Map u) = HashMap.foldr f start u
     null (Map u) = HashMap.null u
@@ -156,7 +160,6 @@ Remove a key/value pair if present in the dictionary.
 removeKeyValue :: Key κ => κ -> Map κ ν -> Map κ ν
 removeKeyValue k (Map u) = Map (HashMap.delete k u)
 
--- |
 instance Key κ => Semigroup (Map κ ν) where
     (<>) (Map u1) (Map u2) = Map (HashMap.union u1 u2)
 
@@ -306,7 +309,6 @@ Remove an element from the collection if present.
 -}
 removeElement :: Key ε => ε -> Set ε -> Set ε
 removeElement e (Set u) = Set (HashSet.delete e u)
-
 
 {- |
 Types that represent collections of elements that can be converted to

@@ -37,8 +37,10 @@ module Core.Program.Context (
     subProgram,
 ) where
 
+import Control.Concurrent (ThreadId)
 import Control.Concurrent.MVar (MVar, newEmptyMVar, newMVar, putMVar, readMVar)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
+import Control.Concurrent.STM.TVar (TVar, newTVarIO)
 import Control.Exception.Safe qualified as Safe (throw)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow (throwM))
 import Control.Monad.Reader.Class (MonadReader (..))
@@ -175,6 +177,7 @@ data Context τ = Context
     , outputChannelFrom :: TQueue (Maybe Rope) -- communication channels
     , telemetryChannelFrom :: TQueue (Maybe Datum) -- machinery for telemetry
     , telemetryForwarderFrom :: Maybe Forwarder
+    , currentScopeFrom :: TVar (Set ThreadId)
     , currentDatumFrom :: MVar Datum
     , applicationDataFrom :: MVar τ
     }
@@ -356,11 +359,12 @@ configure version t config = do
     out <- newTQueueIO
     tel <- newTQueueIO
 
-    v <- newMVar (emptyDatum)
+    scope <- newTVarIO emptySet
+    v <- newMVar emptyDatum
     u <- newMVar t
 
-    return
-        $! Context
+    return $!
+        Context
             { programNameFrom = n
             , terminalWidthFrom = columns
             , terminalColouredFrom = coloured
@@ -374,6 +378,7 @@ configure version t config = do
             , outputChannelFrom = out
             , telemetryChannelFrom = tel
             , telemetryForwarderFrom = Nothing
+            , currentScopeFrom = scope
             , currentDatumFrom = v
             , applicationDataFrom = u
             }

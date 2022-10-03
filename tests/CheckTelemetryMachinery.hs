@@ -5,8 +5,7 @@
 
 module CheckTelemetryMachinery where
 
-import Control.Concurrent (threadDelay)
-import Control.Concurrent.Async qualified as Async (async, wait)
+import Control.Concurrent (threadDelay, forkIO)
 import Control.Concurrent.MVar (MVar, modifyMVar_, newMVar, readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (newTQueueIO, writeTQueue)
@@ -20,6 +19,8 @@ import Core.Program
 import Core.System
 import Core.Telemetry.Identifiers
 import Core.Text
+import Control.Concurrent.MVar (newEmptyMVar)
+import Control.Concurrent.MVar (putMVar)
 
 countingAction :: Int -> [Int] -> IO ()
 countingAction target ints = sum ints `shouldBe` target
@@ -153,8 +154,11 @@ checkTelemetryMachinery = do
             v <- newMVar Debug
             out <- newTQueueIO
             queue <- newTQueueIO
+            done <- newEmptyMVar
 
-            a <- Async.async (loopForever storingAction v out queue)
+            _ <- forkIO $ do
+                loopForever storingAction v out queue
+                putMVar done ()
 
             mapM_
                 ( \i -> atomically $ do
@@ -177,7 +181,7 @@ checkTelemetryMachinery = do
             atomically $ do
                 writeTQueue queue Nothing
 
-            Async.wait a
+            readMVar done
 
             value <- readMVar store
             value `shouldBe` ([1 .. 300] :: [Int])
