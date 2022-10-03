@@ -104,7 +104,13 @@ module Core.Program.Execute (
     lookupEnvironmentValue,
 ) where
 
-import Control.Concurrent (forkFinally, forkIO, killThread, threadDelay)
+import Control.Concurrent (
+    forkFinally,
+    forkIO,
+    killThread,
+    myThreadId,
+    threadDelay,
+ )
 import Control.Concurrent.MVar (
     MVar,
     modifyMVar_,
@@ -131,6 +137,7 @@ import Control.Exception.Safe qualified as Safe (
  )
 import Control.Monad (
     forM_,
+    forever,
     void,
     when,
  )
@@ -450,24 +457,31 @@ loopForever action v out queue = do
                 writeTQueue out (Just message)
 
 {- |
-Safely exit the program with the supplied exit code. Current output and
-debug queues will be flushed, and then the process will terminate.
+Safely exit the program with the supplied exit code. Current output and debug
+queues will be flushed, and then the process will terminate. This function
+does not return.
 -}
 
--- putting to the quit MVar initiates the cleanup and exit sequence,
--- but throwing the exception also aborts execution and starts unwinding
--- back up the stack.
+-- putting to the quit MVar initiates the cleanup and exit sequence, but
+-- throwing the asynchronous exception to self also aborts execution and
+-- starts unwinding back up the stack.
+--
+-- forever is used here to get an IO α as the return type.
 terminate :: Int -> Program τ α
-terminate code =
+terminate code = do
+    context <- ask
+    let quit = exitSemaphoreFrom context
+
     let exit = case code of
             0 -> ExitSuccess
             _ -> ExitFailure code
-     in do
-            context <- ask
-            let quit = exitSemaphoreFrom context
-            liftIO $ do
-                putMVar quit exit
-                Safe.throw exit
+
+    liftIO $ do
+        putMVar quit exit
+        self <- myThreadId
+        killThread self
+        forever $ do
+            threadDelay maxBound
 
 -- undocumented
 getVerbosityLevel :: Program τ Verbosity
