@@ -466,12 +466,6 @@ timeouts:
 raceThreads_ :: Program τ α -> Program τ β -> Program τ ()
 raceThreads_ one two = void (raceThreads one two)
 
-{- |
-Does nothing except maintain the legacy API for backwards compatibility.
-Exceptions are bidirectional so linkThread no longer needed.
-
-@since 0.4.2
--}
-linkThread :: Thread a -> Program t ()
+linkThread :: Thread α -> Program τ ()
 linkThread = pure $ pure ()
 {-# DEPRECATED linkThread "Exceptions are bidirectional so linkThread no longer needed" #-}
