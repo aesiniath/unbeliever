@@ -11,7 +11,7 @@ the value is authoriative and is meant to be re-readable even in the face of
 changing implemetations on the program side.
 
 Note that /externalizing/ is not quite the same as /serializing/. If you have
-more complex (ie rich types or nested) data structures then a simple text
+more complex data structures (ie rich types or nesting) then a simple text
 string will probably not be sufficient to convey sufficient information to
 represent it accurately. Serializing is focused on both performance encoding
 and decoding, and efficiency of the representation when transmitted over the
@@ -24,9 +24,10 @@ fields of a larger structure are safe, and that's where the externalizing
 machinery in this module comes in.
 
 If you have read this far and think we are describing something similar to
-'Show' or @toString@ you are correct, but at the level of primative and simple
-types we are providing the ability to marshall them to a clean UTF-8
-representation and to unmarshall them back into Haskell values again.
+Haskell's 'Show', Python's @repr()@ or Java's @toString()@ you would be
+correct, but at the level of primative and simple types we are providing the
+ability to marshall them to a clean UTF-8 representation and to unmarshall
+them back into Haskell values again.
 
 The other major use case for this module is as a helper to read user input;
 see 'Core.Program.Execute.queryOptionValue'' for an example that makes use of

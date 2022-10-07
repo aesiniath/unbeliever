@@ -1,4 +1,4 @@
-resolver: nightly-2022-09-28
+resolver: nightly-2022-10-05
 packages:
  - ./core-data
  - ./core-text
