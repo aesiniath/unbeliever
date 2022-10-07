@@ -472,7 +472,6 @@ Exceptions are bidirectional so linkThread no longer needed.
 
 @since 0.4.2
 -}
-linkedThread :: Thread a -> Program t ()
-linkedThread = pure ()
-
+linkThread :: Thread a -> Program t ()
+linkThread = pure ()
 {-# DEPRECATED linkThread "Exceptions are bidirectional so linkThread no longer needed" #-}
