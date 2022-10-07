@@ -28,6 +28,7 @@ module Core.Program.Threads (
     createScope,
     forkThread,
     forkThread_,
+    linkThread,
     waitThread,
     waitThread_,
     waitThread',
@@ -464,3 +465,14 @@ timeouts:
 -}
 raceThreads_ :: Program τ α -> Program τ β -> Program τ ()
 raceThreads_ one two = void (raceThreads one two)
+
+{- |
+Does nothing except maintain the legacy API for backwards compatibility.
+Exceptions are bidirectional so linkThread no longer needed.
+
+@since 0.4.2
+-}
+linkedThread :: Thread a -> Program t ()
+linkedThread = pure ()
+
+{-# DEPRECATED linkThread "Exceptions are bidirectional so linkThread no longer needed" #-}
