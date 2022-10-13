@@ -71,6 +71,7 @@ module Core.Webserver.Warp (
     launchWebserver,
     requestContextKey,
     contextFromRequest,
+    ContextNotFoundInRequest(..),
 ) where
 
 --

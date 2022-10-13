@@ -24,6 +24,7 @@ dependencies:
  - async
  - base >= 4.11 && < 5
  - bytestring
+ - bytestring-trie
  - core-data
  - core-program >= 0.4.6
  - core-telemetry >= 0.2.3
@@ -40,5 +41,6 @@ library:
   dependencies: []
   source-dirs: lib
   exposed-modules:
+   - Core.Webserver.Router
    - Core.Webserver.Warp
   other-modules: []
