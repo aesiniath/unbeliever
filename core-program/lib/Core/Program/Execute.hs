@@ -191,7 +191,7 @@ This function really will swollow expcetions, which means that you'd better
 have handled any synchronous checked errors already with a 'catch' and/or have
 released resources with 'bracket' or 'finally' as shown above.
 
-An info level message will be sent to the log channel indicating that an
+A warning level message will be sent to the log channel indicating that an
 uncaught exception was trapped along with a debug level message showing the
 exception text, if any.
 
