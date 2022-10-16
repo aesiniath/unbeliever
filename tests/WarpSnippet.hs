@@ -1,3 +1,4 @@
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
@@ -10,10 +11,11 @@ import Core.Program
 import Core.System
 import Core.Telemetry
 import Core.Text
+import Core.Webserver.Router
 import Core.Webserver.Warp
+import Data.Trie qualified as Trie
 import Network.HTTP.Types
 import Network.Wai
-import qualified Network.Wai.Handler.Warp as Warp
 
 -- type Application =
 -- Request -> (Response -> IO ResponseReceived) -> IO ResponseReceived
