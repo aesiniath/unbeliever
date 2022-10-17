@@ -27,8 +27,6 @@ module Core.Webserver.Router (
     captureRoute,
     prepareRoutes,
     (</>),
-    (<~>),
-    (<:>),
 ) where
 
 import Control.Exception.Safe qualified as Safe
@@ -37,7 +35,6 @@ import Core.Program.Logging
 import Core.Program.Unlift (subProgram)
 import Core.Text.Rope
 import Core.Webserver.Warp (ContextNotFoundInRequest (..), contextFromRequest)
-import Data.ByteString (ByteString)
 import Data.ByteString.Builder qualified as Builder
 import Data.List qualified as List (foldl')
 import Data.String (IsString (fromString))
@@ -50,9 +47,11 @@ type Prefix = Rope
 
 type Remainder = Rope
 
-data Route τ
-    = Route Prefix (Remainder -> Request -> Program τ Response)
-    | Children (Route τ) [Route τ]
+data Route τ = Route
+    { routePrefix :: Prefix
+    , routeHandler :: Remainder -> Request -> Program τ Response
+    , routeChildren :: [Route τ]
+    }
 
 {- |
 A segment of a route that is to be matched exactly. For example,
@@ -67,60 +66,50 @@ will match the context path @/url@.
 -}
 literalRoute :: Prefix -> Route τ
 literalRoute prefix =
+    -- if this is the node that gets served, then it's 404 Not Found because, by definition, there wasn't an actual
+    -- handler defined by the user!
     Route
-        prefix
-        -- if this is the node that gets served, then it's 404 Not Found because, by definition, there wasn't an actual
-        -- handler defined by the user!
-        (\_ request -> notFoundHandler request)
+        { routePrefix = prefix
+        , routeHandler = (\_ request -> notFoundHandler request)
+        , routeChildren = []
+        }
 
 handleRoute :: Prefix -> (Request -> Program τ Response) -> Route τ
 handleRoute prefix handler =
     Route
-        prefix
-        (\_ request -> handler request)
+        { routePrefix = prefix
+        , routeHandler = (\_ request -> handler request)
+        , routeChildren = []
+        }
 
 captureRoute :: Prefix -> (Remainder -> Request -> Program τ Response) -> Route τ
 captureRoute prefix handler =
     Route
-        prefix
-        ( \remainder request ->
-            handler remainder request
-        )
+        { routePrefix = prefix
+        , routeHandler = (\remainder request -> handler remainder request)
+        , routeChildren = []
+        }
 
 {- |
 A default handler for routes that are encountered that don't have actual
-handlers defined.
+handlers defined. This is what is served if the user requests an endpoint that
+is defined by a 'literalRoute'.
+
+@since 0.1.2
 -}
 notFoundHandler :: Request -> Program τ Response
-notFoundHandler = undefined
+notFoundHandler _ = do
+    pure (responseBuilder status404 [] (Builder.stringUtf8 "Not Found"))
 
 instance IsString (Route τ) where
     fromString :: String -> Route τ
     fromString = literalRoute . packRope
 
 (</>) :: Route τ -> [Route τ] -> Route τ
-(</>) parent children = Children parent children
-
-{-
-    let children' = fmap prependPrefix children
-     in (parent : children')
--}
-prependPrefix :: Rope -> Route τ -> Route τ
-prependPrefix prefix0 (Route prefix1 handler) = Route (prefix0 <> "/" <> prefix1) handler
-
-(<~>) :: Rope -> (Request -> Program τ Response) -> Route τ
-(<~>) = handleRoute
-
-(<:>) :: Rope -> (Rope -> Request -> Program τ Response) -> Route τ
-(<:>) = captureRoute
-
-{-
-data Route =
- = Route Route
- | Branch [Route]
- | Handler (Request -> Program τ Response)
- | Capture (Request -> ByteString -> Program τ Response)
--}
+(</>) parent children =
+    parent
+        { routeChildren = children
+        }
 
 {- |
 Compile a list of route handlers into a WAI 'Application'.
@@ -129,11 +118,7 @@ Compile a list of route handlers into a WAI 'Application'.
 -}
 prepareRoutes :: [Route τ] -> Program τ Application
 prepareRoutes routes = do
-    -- let routes' = fmap (\(route, handler) -> (fromRope route, handler)) routes
-    -- let tree = Trie.fromList routes'
-
     let trie = buildTrie emptyRope routes
-
     pure (makeApplication trie)
 
 buildTrie :: Prefix -> [Route τ] -> Trie.Trie (Remainder -> Request -> Program τ Response)
@@ -144,8 +129,12 @@ buildTrie prefix0 routes =
         Trie.Trie (Remainder -> Request -> Program τ Response) ->
         Route τ ->
         Trie.Trie (Remainder -> Request -> Program τ Response)
-    f trie (Route prefix1 handler) = Trie.insert (fromRope (prefix0 <> "/" <> prefix1)) handler trie
-    f trie (Children parent children) = Trie.unionL trie (buildTrie prefix2 children)
+    f trie (Route prefix1 handler children) =
+        let prefix' = prefix0 <> "/" <> prefix1
+            trie1 = Trie.insert (fromRope prefix') handler trie
+         in case children of
+                [] -> trie1
+                _ -> Trie.unionL trie1 (buildTrie prefix' children)
 
 -- We invoke makeApplication here partially applied in order to return an
 -- Application,
@@ -173,10 +162,12 @@ makeApplication trie request sendResponse = do
 
     case possibleRoute of
         Nothing -> do
-            sendResponse (responseBuilder status404 [] (Builder.byteString path))
-        Just (route, handler, remainder) -> do
+            sendResponse (responseBuilder status404 [] (Builder.stringUtf8 "Not Found"))
+        Just (prefix', handler, remainder') -> do
             response <- subProgram context $ do
-                internal ("matched = " <> intoRope route)
-                internal ("remainder = " <> intoRope remainder)
+                let prefix = intoRope prefix'
+                let remainder = intoRope remainder'
+                internal ("prefix = " <> prefix)
+                internal ("remainder = " <> remainder)
                 handler remainder request
             sendResponse response

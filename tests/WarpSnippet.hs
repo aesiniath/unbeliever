@@ -115,16 +115,3 @@ server2 =
                     ]
             ]
     ]
-
-server3 :: [Route t]
-server3 =
-    [ "api"
-        </> [ "check" <~> checkHandler
-            , "servicename"
-                </> [ "v3"
-                        </> [ "status" <~> statusHandler
-                            ,  "update" <:> updateHandler
-                            ]
-                    ]
-            ]
-    ]
