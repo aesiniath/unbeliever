@@ -4,29 +4,66 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 {- |
+Machinery for routing HTTP requests to appropriate handler functions.
 
-You use this by creating a list of "handlers", one for each context path
-prefix you want to route requests to, then using the 'prepareRoutes' function
-to compile this list into a WAI 'Application' that can be passed to
-'Core.Webserver.Warp.launchWebserver'.
+Most of the time when writing a webserver of application backend service we
+need to handle multiple different request paths. Even if the process handles a
+only single primary endpoint there is still often a requirement to respond to
+requests for status and to have simple health checks that can be used to
+inform load balancers that the service is available in addition to that
+primary endpoint. Sending different requests to different functions is called
+/routing/.
+
+= Usage
+
+This module provides a simple mechanism for declaring routes and their
+corresponding targets. You do this by creating a list of "handlers", one for
+each context path prefix you want to route requests to, then using the
+'prepareRoutes' function to compile this list into a WAI 'Application' that
+can be passed to 'Core.Webserver.Warp.launchWebserver'.
 
 @
     application <- 'prepareRoutes'
-        [ ("/update", updateHandler)
-        , ("/status", statusHandler)
+        [ \"api\"
+            '</>' [ \"check\" `'handleRoute'` checkHandler
+                , \"servicename\"
+                    '</>' [ \"v3\"
+                            '</>' [ \"status\" `'handleRoute'` statusHandler
+                                , \"update\" `'captureRoute'` updateHandler
+                                ]
+                        ]
+                ]
         ]
+
     'Core.Webserver.Warp.launchWebserver' 80 application
 @
+
+This results in an HTTP server responding to the following routes:
+
+@
+\/api\/check
+\/api\/servicename\/v3\/status
+\/api\/servicename\/v3\/update\/12345678
+@
+
+Requests to any other paths (for example @\/api@ and
+@\/api\/servicename\/v3\/update@) will result in a @404 Not Found@ response.
 -}
 module Core.Webserver.Router (
+    -- * Setup
     Route,
     Prefix,
     Remainder,
     literalRoute,
     handleRoute,
     captureRoute,
-    prepareRoutes,
     (</>),
+
+    -- * Compile
+    prepareRoutes,
+
+    -- * Internal
+    notFoundHandler,
 ) where
 
 import Control.Exception.Safe qualified as Safe
@@ -60,9 +97,19 @@ A segment of a route that is to be matched exactly. For example,
     'literalRoute' \"api\"
 @
 
-will match the context path @/url@.
+will match the context path @\/api@.
 
-@since 0.1.2
+This is the used for the definition of the 'IsString' instance enabling use of
+@OverloadedStrings@, so
+
+@
+    \"api\"
+@
+
+will /also/ match the context path @\/api@ and makes for cleaner routing
+specifications when building up nested paths with '(</>)'.
+
+@since 0.2.0
 -}
 literalRoute :: Prefix -> Route τ
 literalRoute prefix =
@@ -74,6 +121,20 @@ literalRoute prefix =
         , routeChildren = []
         }
 
+{- |
+Route a given prefix to the supplied handler. You specify the prefix that you
+want covered, and if the request path a matches the handler function will be
+invoked.
+
+@
+    'handleRoute' \"status\" statusHandler
+@
+
+will match the context path @/status@ and invoke your function called
+@statusHandler@ when requests for this path come in.
+
+@since 0.2.0
+-}
 handleRoute :: Prefix -> (Request -> Program τ Response) -> Route τ
 handleRoute prefix handler =
     Route
@@ -82,6 +143,15 @@ handleRoute prefix handler =
         , routeChildren = []
         }
 
+{- |
+Route a given prefix to the supplied handler, passing any following components
+of the path to that handler.
+
+This is a specialized variation of 'handleRoute' which allows you to
+\"capture\" the part of the context path that came /after/ the route prefix.
+
+@since 0.2.0
+-}
 captureRoute :: Prefix -> (Remainder -> Request -> Program τ Response) -> Route τ
 captureRoute prefix handler =
     Route
@@ -95,7 +165,7 @@ A default handler for routes that are encountered that don't have actual
 handlers defined. This is what is served if the user requests an endpoint that
 is defined by a 'literalRoute'.
 
-@since 0.1.2
+@since 0.2.0
 -}
 notFoundHandler :: Request -> Program τ Response
 notFoundHandler _ = do
@@ -105,6 +175,13 @@ instance IsString (Route τ) where
     fromString :: String -> Route τ
     fromString = literalRoute . packRope
 
+{- |
+Nest a set of routes below a parent. This will take the prefix inherited to
+this point and insert it in front of the prefixes of each of the `Route`s
+listed as children.
+
+@since 0.2.0
+-}
 (</>) :: Route τ -> [Route τ] -> Route τ
 (</>) parent children =
     parent
@@ -114,7 +191,12 @@ instance IsString (Route τ) where
 {- |
 Compile a list of route handlers into a WAI 'Application'.
 
-@since 0.1.2
+Internally this builds up a patricia tree of the different route prefixes.
+Incoming requests are matched against these possibilities, and either the
+corresponding handler is invoked or 'notFoundHandler' is called to return @404
+Not Found@.
+
+@since 0.2.0
 -}
 prepareRoutes :: [Route τ] -> Program τ Application
 prepareRoutes routes = do
@@ -162,7 +244,9 @@ makeApplication trie request sendResponse = do
 
     case possibleRoute of
         Nothing -> do
-            sendResponse (responseBuilder status404 [] (Builder.stringUtf8 "Not Found"))
+            response <- subProgram context $ do
+                notFoundHandler request
+            sendResponse response
         Just (prefix', handler, remainder') -> do
             response <- subProgram context $ do
                 let prefix = intoRope prefix'
