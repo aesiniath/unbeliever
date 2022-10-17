@@ -53,7 +53,78 @@ main :: IO ()
 main = do
     context <- configure "1" None (simpleConfig [])
     context' <- initializeTelemetry [consoleExporter, structuredExporter, honeycombExporter] context
-    executeWith context' $ do
-        info "Starting..."
-        debugS "port" port
-        launchWebserver port exampleApplication
+    executeWith context' program3
+
+program1 :: Program None ()
+program1 = do
+    info "Starting..."
+    debugS "port" port
+    launchWebserver port exampleApplication
+
+program3 :: Program None ()
+program3 = do
+    info "Starting..."
+    debugS "port" port
+
+    application <-
+        prepareRoutes server1
+
+    launchWebserver port application
+
+updateHandler :: Rope -> Request -> Program t Response
+updateHandler _request _remainder = do
+    pure (responseLBS status200 [] "UPDATE")
+
+statusHandler :: Request -> Program t Response
+statusHandler _request = do
+    pure (responseLBS status200 [] "STATUS")
+
+checkHandler :: Request -> Program t Response
+checkHandler _request = do
+    pure (responseLBS status200 [] "CHECK")
+
+-- IDEA ensureRequest
+
+-- /api/check
+-- /api/servicename/v3/status
+-- /api/servicename/v3/update/12345678
+
+server1 :: [Route t]
+server1 =
+    [ literalRoute "api"
+        </> [ handleRoute "check" checkHandler
+            , literalRoute "servicename"
+                </> [ literalRoute "v3"
+                        </> [ handleRoute "status" statusHandler
+                            , captureRoute "update" updateHandler
+                            ]
+                    ]
+            ]
+    ]
+
+
+server2 :: [Route t]
+server2 =
+    [ "api"
+        </> [ "check" `handleRoute` checkHandler
+            , "servicename"
+                </> [ "v3"
+                        </> [ "status" `handleRoute` statusHandler
+                            ,  "update" `captureRoute` updateHandler
+                            ]
+                    ]
+            ]
+    ]
+
+server3 :: [Route t]
+server3 =
+    [ "api"
+        </> [ "check" <~> checkHandler
+            , "servicename"
+                </> [ "v3"
+                        </> [ "status" <~> statusHandler
+                            ,  "update" <:> updateHandler
+                            ]
+                    ]
+            ]
+    ]
