@@ -67,12 +67,12 @@ program3 = do
     debugS "port" port
 
     application <-
-        prepareRoutes server1
+        prepareRoutes server2
 
     launchWebserver port application
 
-updateHandler :: Rope -> Request -> Program t Response
-updateHandler _request _remainder = do
+updateHandler :: Prefix -> Remainder -> Request -> Program t Response
+updateHandler _prefix _remainder _request = do
     pure (responseLBS status200 [] "UPDATE")
 
 statusHandler :: Request -> Program t Response
@@ -102,7 +102,6 @@ server1 =
             ]
     ]
 
-
 server2 :: [Route t]
 server2 =
     [ "api"
@@ -110,7 +109,7 @@ server2 =
             , "servicename"
                 </> [ "v3"
                         </> [ "status" `handleRoute` statusHandler
-                            ,  "update" `captureRoute` updateHandler
+                            , "update" `captureRoute` updateHandler
                             ]
                     ]
             ]

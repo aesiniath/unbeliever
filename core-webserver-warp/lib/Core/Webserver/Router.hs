@@ -6,13 +6,13 @@
 {- |
 Machinery for routing HTTP requests to appropriate handler functions.
 
-Most of the time when writing a webserver of application backend service we
-need to handle multiple different request paths. Even if the process handles a
-only single primary endpoint there is still often a requirement to respond to
-requests for status and to have simple health checks that can be used to
-inform load balancers that the service is available in addition to that
-primary endpoint. Sending different requests to different functions is called
-/routing/.
+Most of the time when writing a webserver or backend service for an
+application we need to handle multiple different request paths. Even if the
+process handles a only single primary endpoint there is often still a
+requirement to respond to requests for status and to have simple health checks
+that can be used to inform load balancers that the service is available in
+addition to that primary endpoint. Sending different requests to different
+functions is called /routing/.
 
 = Usage
 
@@ -40,14 +40,16 @@ can be passed to 'Core.Webserver.Warp.launchWebserver'.
 
 This results in an HTTP server responding to the following routes:
 
-@
-\/api\/check
-\/api\/servicename\/v3\/status
-\/api\/servicename\/v3\/update\/12345678
-@
+- <http:\/\/www.example.com\/api\/check>
+
+- <http:\/\/www.example.com\/api\/servicename\/v3\/status>
+
+- <http:\/\/www.example.com\/api\/servicename\/v3\/update>
+
+- <http:\/\/www.example.com\/api\/servicename\/v3\/update\/12345678/field>
 
 Requests to any other paths (for example @\/api@ and
-@\/api\/servicename\/v3\/update@) will result in a @404 Not Found@ response.
+@\/api\/servicename\/v3@) will result in a @404 Not Found@ response.
 -}
 module Core.Webserver.Router (
     -- * Setup
@@ -70,6 +72,7 @@ import Control.Exception.Safe qualified as Safe
 import Core.Program.Context (Program)
 import Core.Program.Logging
 import Core.Program.Unlift (subProgram)
+import Core.Telemetry.Observability (metric, setSpanName, telemetry)
 import Core.Text.Rope
 import Core.Webserver.Warp (ContextNotFoundInRequest (..), contextFromRequest)
 import Data.ByteString.Builder qualified as Builder
@@ -84,9 +87,16 @@ type Prefix = Rope
 
 type Remainder = Rope
 
+{- |
+Component of a context path in a URL request that can be routed to a hander in
+the 'Program' @τ@ monad. Routes can be nested under other routes, building up
+the familiar tree structure commonly used by webservers.
+
+@since 0.2.0
+-}
 data Route τ = Route
     { routePrefix :: Prefix
-    , routeHandler :: Remainder -> Request -> Program τ Response
+    , routeHandler :: Prefix -> Remainder -> Request -> Program τ Response
     , routeChildren :: [Route τ]
     }
 
@@ -117,7 +127,7 @@ literalRoute prefix =
     -- handler defined by the user!
     Route
         { routePrefix = prefix
-        , routeHandler = (\_ request -> notFoundHandler request)
+        , routeHandler = (\_ _ request -> notFoundHandler request)
         , routeChildren = []
         }
 
@@ -139,7 +149,7 @@ handleRoute :: Prefix -> (Request -> Program τ Response) -> Route τ
 handleRoute prefix handler =
     Route
         { routePrefix = prefix
-        , routeHandler = (\_ request -> handler request)
+        , routeHandler = (\_ _ request -> handler request)
         , routeChildren = []
         }
 
@@ -147,23 +157,46 @@ handleRoute prefix handler =
 Route a given prefix to the supplied handler, passing any following components
 of the path to that handler.
 
-This is a specialized variation of 'handleRoute' which allows you to
-\"capture\" the part of the context path that came /after/ the route prefix.
+This is a more general variation of 'handleRoute' which allows you to
+\"capture\" the part of the context path that came /after/ the route prefix,
+if there is one (and an empty string otherwise).
+
+For example,
+
+@
+    'captureRoute' \"person\"
+@
+
+will match the context paths in the URLs like these:
+
+- <http:\/\/www.example.com\/person>
+
+- <http:\/\/www.example.com\/person\/U37gcRTh>
+
+- <http:\/\/www.example.com\/person\/U37gcRTh\/name>
+
+In the case of the third example the result of matching on this 'Route' would
+have a prefix of @\/person@ and a remainder of @\/U37gcRTh\/name@.
 
 @since 0.2.0
 -}
-captureRoute :: Prefix -> (Remainder -> Request -> Program τ Response) -> Route τ
-captureRoute prefix handler =
+captureRoute :: Prefix -> (Prefix -> Remainder -> Request -> Program τ Response) -> Route τ
+captureRoute prefix0 handler =
     Route
-        { routePrefix = prefix
-        , routeHandler = (\remainder request -> handler remainder request)
+        { routePrefix = prefix0
+        , routeHandler =
+            ( \prefix remainder request -> do
+                    setSpanName prefix
+                    handler prefix remainder request
+            )
         , routeChildren = []
         }
 
 {- |
 A default handler for routes that are encountered that don't have actual
 handlers defined. This is what is served if the user requests an endpoint that
-is defined by a 'literalRoute'.
+is defined by a 'literalRoute' or if the user requests a path that does not
+route successfully..
 
 @since 0.2.0
 -}
@@ -189,12 +222,12 @@ listed as children.
         }
 
 {- |
-Compile a list of route handlers into a WAI 'Application'.
+Compile a list of route handlers into a WAI 'Application' suitable to be
+passed to 'Core.Webserver.Warp.launchWebserver'.
 
 Internally this builds up a patricia tree of the different route prefixes.
 Incoming requests are matched against these possibilities, and either the
-corresponding handler is invoked or 'notFoundHandler' is called to return @404
-Not Found@.
+corresponding handler is invoked or @404 Not Found@ is returned.
 
 @since 0.2.0
 -}
@@ -203,16 +236,16 @@ prepareRoutes routes = do
     let trie = buildTrie emptyRope routes
     pure (makeApplication trie)
 
-buildTrie :: Prefix -> [Route τ] -> Trie.Trie (Remainder -> Request -> Program τ Response)
+buildTrie :: Prefix -> [Route τ] -> Trie.Trie (Prefix -> Remainder -> Request -> Program τ Response)
 buildTrie prefix0 routes =
     List.foldl' f Trie.empty routes
   where
     f ::
-        Trie.Trie (Remainder -> Request -> Program τ Response) ->
+        Trie.Trie (Prefix -> Remainder -> Request -> Program τ Response) ->
         Route τ ->
-        Trie.Trie (Remainder -> Request -> Program τ Response)
+        Trie.Trie (Prefix -> Remainder -> Request -> Program τ Response)
     f trie (Route prefix1 handler children) =
-        let prefix' = prefix0 <> "/" <> prefix1
+        let prefix' = prefix0 <> singletonRope '/' <> prefix1
             trie1 = Trie.insert (fromRope prefix') handler trie
          in case children of
                 [] -> trie1
@@ -225,7 +258,7 @@ buildTrie prefix0 routes =
 --
 -- but we expand out the signature in here in full in order to understand
 -- where ther request object and response functions come from.
-makeApplication :: Trie.Trie (Remainder -> Request -> Program τ Response) -> Request -> (Response -> IO ResponseReceived) -> IO ResponseReceived
+makeApplication :: Trie.Trie (Prefix -> Remainder -> Request -> Program τ Response) -> Request -> (Response -> IO ResponseReceived) -> IO ResponseReceived
 makeApplication trie request sendResponse = do
     let possibleContext = contextFromRequest request
 
@@ -253,5 +286,10 @@ makeApplication trie request sendResponse = do
                 let remainder = intoRope remainder'
                 internal ("prefix = " <> prefix)
                 internal ("remainder = " <> remainder)
-                handler remainder request
+                telemetry
+                    [ metric "request.route" prefix
+                    ]
+
+                handler prefix remainder request
+
             sendResponse response
