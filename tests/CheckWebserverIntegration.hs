@@ -3,14 +3,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-import Control.Exception qualified as Base (finally)
+module CheckWebserverIntegration (
+    checkWebserverIntegration,
+) where
+
 import Data.Trie qualified as Trie
 
 import Test.Hspec hiding (context)
-
-main :: IO ()
-main = do
-    Base.finally (hspec checkWebserverIntegration) (putStrLn ".")
 
 {-
 type Application =
