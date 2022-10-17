@@ -77,6 +77,22 @@ executables:
     main: SimpleExperiment.hs
     other-modules: []
 
+  webserver:
+    buildable: false
+    dependencies:
+    - bytestring
+    - bytestring-trie
+    - core-telemetry
+    - core-webserver-warp
+    - http-types
+    - wai
+    ghc-options:
+     - -threaded
+    source-dirs:
+     - tests
+    main: WarpSnippet.hs
+    other-modules: []
+
 tests:
   check:
     dependencies:
