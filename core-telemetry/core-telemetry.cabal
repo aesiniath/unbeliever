@@ -52,7 +52,7 @@ library
       base >=4.11 && <5
     , bytestring
     , core-data >=0.3.8.0
-    , core-program >=0.6.0.0
+    , core-program >=0.6.1
     , core-text >=0.3.7.1
     , exceptions
     , http-streams

@@ -26,7 +26,7 @@ dependencies:
  - bytestring
  - bytestring-trie
  - core-data
- - core-program >= 0.6.0
+ - core-program >= 0.6.1
  - core-telemetry >= 0.2.7
  - core-text
  - http-types
