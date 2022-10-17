@@ -152,6 +152,7 @@ module Core.Telemetry.Observability (
     Label,
     encloseSpan,
     setStartTime,
+    setSpanName,
 
     -- * Creating telemetry
     MetricValue,
@@ -417,7 +418,7 @@ type Label = Rope
 Begin a span.
 
 You need to call this from within the context of a trace, which is established
-either by calling `beginTrace` or `usingTrace` somewhere above this point in
+either by calling 'beginTrace' or 'usingTrace' somewhere above this point in
 the program.
 
 You can nest spans as you make your way through your program, which means each
@@ -425,6 +426,10 @@ span has a parent (except for the first one, which is the root span) In the
 context of a trace, allows an observability tool to reconstruct the sequence
 of events and to display them as a nested tree correspoding to your program
 flow.
+
+By convention the name of a span is the name of the function (method, handler,
+action, ...) you've just entered. Additional metadata can be added to the span
+using the 'telemetry' function.
 
 The current time will be noted when entering the 'Program' this span encloses,
 and its duration recorded when the sub @Program@ exits. Start time, duration,
@@ -740,6 +745,8 @@ Under normal circumstances this shouldn't be necessary. The start and end of a
 span are recorded automatically when calling 'encloseSpan'. Observabilty tools
 are designed to be used live; traces and spans should be created in real time
 in your code.
+
+@since 0.1.6
 -}
 setStartTime :: Time -> Program τ ()
 setStartTime time = do
@@ -751,6 +758,28 @@ setStartTime time = do
         modifyMVar_
             v
             (\datum -> pure datum{spanTimeFrom = time})
+
+{- |
+Override the name of the current span.
+
+Under normal circumstances this shouldn't be necessary. The label specified
+when you call 'encloseSpan' will be used to name the span when it is sent to
+the telemetry channel. If, however, the span you are in was created
+automatically and the circumstances you find yourself in require a different
+name, you can use this function to change it.
+
+@since 0.2.7
+-}
+setSpanName :: Label -> Program τ ()
+setSpanName label = do
+    context <- getContext
+
+    liftIO $ do
+        -- get the map out
+        let v = currentDatumFrom context
+        modifyMVar_
+            v
+            (\datum -> pure datum{spanNameFrom = label})
 
 {- |
 Reset the accumulated metadata metrics to the emtpy set.
