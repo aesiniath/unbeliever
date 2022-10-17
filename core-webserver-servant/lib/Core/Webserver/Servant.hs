@@ -51,11 +51,6 @@ import Servant.Server qualified as Servant (
     serveWithContextT,
  )
 
-data ContextNotFoundInRequest = ContextNotFoundInRequest deriving (Show)
-
-instance Exception ContextNotFoundInRequest where
-    displayException _ = "Context was not found in request. This is a serious error."
-
 {- |
 Convert a __servant__ API and set of handlers into a __warp__ 'Application'.
 

@@ -1,3 +1,4 @@
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -70,6 +71,7 @@ module Core.Webserver.Warp (
     launchWebserver,
     requestContextKey,
     contextFromRequest,
+    ContextNotFoundInRequest(..),
 ) where
 
 --
@@ -80,15 +82,15 @@ module Core.Webserver.Warp (
 -- webserver frameworks.
 --
 
-import qualified Control.Exception.Safe as Safe (catch)
+import Control.Exception.Safe qualified as Safe (catch)
 import Core.Program.Context
 import Core.Program.Logging
 import Core.System.Base
 import Core.Telemetry.Identifiers
 import Core.Telemetry.Observability
 import Core.Text.Rope
-import qualified Data.List as List
-import qualified Data.Vault.Lazy as Vault
+import Data.List qualified as List
+import Data.Vault.Lazy qualified as Vault
 import Network.HTTP.Types (
     Status,
     hContentType,
@@ -104,7 +106,7 @@ import Network.HTTP2.Frame (
  )
 import Network.Wai
 import Network.Wai.Handler.Warp (InvalidRequest, Port)
-import qualified Network.Wai.Handler.Warp as Warp
+import Network.Wai.Handler.Warp qualified as Warp
 
 {- |
 Given a WAI 'Application', run a Warp webserver on the specified port from
@@ -132,6 +134,11 @@ requestContextKey = unsafePerformIO Vault.newKey
 
 contextFromRequest :: forall t. Request -> Maybe (Context t)
 contextFromRequest request = Vault.lookup requestContextKey (vault request)
+
+data ContextNotFoundInRequest = ContextNotFoundInRequest deriving (Show)
+
+instance Exception ContextNotFoundInRequest where
+    displayException _ = "Context was not found in request. This is a serious error."
 
 -- which is IO
 loggingMiddleware :: Context τ -> Application -> Application

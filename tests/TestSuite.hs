@@ -8,6 +8,7 @@ import CheckJsonWrapper
 import CheckProgramMonad
 import CheckRopeBehaviour (checkRopeBehaviour)
 import CheckTelemetryMachinery
+import CheckWebserverIntegration (checkWebserverIntegration)
 import CheckTimeStamp
 import Control.Exception (finally)
 import Test.Hspec
@@ -27,3 +28,4 @@ suite = do
     checkArgumentsParsing
     checkProgramMonad
     checkTelemetryMachinery
+    checkWebserverIntegration
