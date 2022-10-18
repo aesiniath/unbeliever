@@ -24,7 +24,7 @@ dependencies:
  - base >= 4.11 && < 5
  - core-program >= 0.6.1
  - core-telemetry
- - core-webserver-warp
+ - core-webserver-warp >= 0.2.0
  - mtl
  - safe-exceptions
  - servant
