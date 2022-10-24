@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -70,7 +71,6 @@ module Core.Webserver.Router (
 
 import Control.Exception.Safe qualified as Safe
 import Core.Program.Context (Program)
-import Core.Program.Logging
 import Core.Program.Unlift (subProgram)
 import Core.Telemetry.Observability (metric, setSpanName, telemetry)
 import Core.Text.Rope
@@ -186,8 +186,8 @@ captureRoute prefix0 handler =
         { routePrefix = prefix0
         , routeHandler =
             ( \prefix remainder request -> do
-                    setSpanName prefix
-                    handler prefix remainder request
+                setSpanName prefix
+                handler prefix remainder request
             )
         , routeChildren = []
         }
@@ -233,7 +233,7 @@ corresponding handler is invoked or @404 Not Found@ is returned.
 -}
 prepareRoutes :: [Route τ] -> Program τ Application
 prepareRoutes routes = do
-    let trie = buildTrie emptyRope routes
+    let !trie = buildTrie emptyRope routes
     pure (makeApplication trie)
 
 buildTrie :: Prefix -> [Route τ] -> Trie.Trie (Prefix -> Remainder -> Request -> Program τ Response)
@@ -284,8 +284,6 @@ makeApplication trie request sendResponse = do
             response <- subProgram context $ do
                 let prefix = intoRope prefix'
                 let remainder = intoRope remainder'
-                internal ("prefix = " <> prefix)
-                internal ("remainder = " <> remainder)
                 telemetry
                     [ metric "request.route" prefix
                     ]
