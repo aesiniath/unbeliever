@@ -1,4 +1,4 @@
-resolver: nightly-2022-11-16
+resolver: lts-20.0
 packages:
  - ./core-data
  - ./core-text
