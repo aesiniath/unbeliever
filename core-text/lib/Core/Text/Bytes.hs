@@ -23,30 +23,30 @@ This module presents a simple wrapper around various representations of binary
 data to make it easier to interoperate with libraries supplying or consuming
 bytes.
 -}
-module Core.Text.Bytes (
-    Bytes,
-    emptyBytes,
-    packBytes,
-    Binary (fromBytes, intoBytes),
-    hOutput,
-    hInput,
+module Core.Text.Bytes
+    ( Bytes
+    , emptyBytes
+    , packBytes
+    , Binary (fromBytes, intoBytes)
+    , hOutput
+    , hInput
 
-    -- * Internals
-    unBytes,
-) where
+      -- * Internals
+    , unBytes
+    ) where
 
-import qualified Data.ByteString as B (
-    ByteString,
-    empty,
-    hGetContents,
-    hPut,
-    pack,
-    unpack,
- )
+import qualified Data.ByteString as B
+    ( ByteString
+    , empty
+    , hGetContents
+    , hPut
+    , pack
+    , unpack
+    )
 import qualified Data.ByteString.Builder as B (Builder, byteString, toLazyByteString)
-import qualified Data.ByteString.Char8 as C (
-    pack
- )
+import qualified Data.ByteString.Char8 as C
+    ( pack
+    )
 import qualified Data.ByteString.Lazy as L (ByteString, fromStrict, toStrict)
 import Data.Hashable (Hashable)
 import Data.Word (Word8)

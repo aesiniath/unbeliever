@@ -2,15 +2,15 @@
 {-# OPTIONS_HADDOCK hide #-}
 
 -- This is an Internal module, hidden from Haddock
-module Core.Text.Breaking (
-    breakRope,
-    breakWords,
-    breakLines,
-    breakPieces,
-    intoPieces,
-    intoChunks,
-    isNewline,
-) where
+module Core.Text.Breaking
+    ( breakRope
+    , breakWords
+    , breakLines
+    , breakPieces
+    , intoPieces
+    , intoChunks
+    , isNewline
+    ) where
 
 import Core.Text.Rope
 import Data.Char (isSpace)
@@ -53,7 +53,7 @@ breakLines text =
     let result = breakPieces isNewline text
         n = length result - 1
         (fore, aft) = splitAt n result
-     in case result of
+    in  case result of
             [] -> []
             [p] -> [p]
             _ ->
@@ -78,7 +78,7 @@ breakPieces :: (Char -> Bool) -> Rope -> [Rope]
 breakPieces predicate text =
     let x = unRope text
         (final, result) = foldr (intoPieces predicate) (Nothing, []) x
-     in case final of
+    in  case final of
             Nothing -> result
             Just piece -> intoRope piece : result
 
@@ -94,7 +94,7 @@ intoPieces predicate piece (stream, list) =
             Nothing -> piece
             Just previous -> piece <> previous -- more rope, less text?
         pieces = intoChunks predicate piece'
-     in case uncons pieces of
+    in  case uncons pieces of
             Nothing -> (Nothing, list)
             Just (text, remainder) -> (Just (fromRope text), remainder ++ list)
 
@@ -140,7 +140,7 @@ intoChunks predicate piece =
                 if S.null remaining
                     then (predicate c, S.empty)
                     else (False, remaining)
-     in if trailing
+    in  if trailing
             then intoRope chunk : emptyRope : []
             else intoRope chunk : intoChunks predicate remainder'
 
@@ -161,6 +161,6 @@ site where that predicate returns 'True'.
 breakRope :: (Char -> Bool) -> Rope -> (Rope, Rope)
 breakRope predicate text =
     let possibleIndex = findIndexRope predicate text
-     in case possibleIndex of
+    in  case possibleIndex of
             Nothing -> (text, emptyRope)
             Just i -> splitRope i text

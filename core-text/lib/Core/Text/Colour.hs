@@ -7,37 +7,37 @@ Support for colour in the terminal.
 
 ![ANSI colours](AnsiColours.png)
 -}
-module Core.Text.Colour (
-    AnsiColour,
-    intoEscapes,
-    boldColour,
-    dullRed,
-    brightRed,
-    pureRed,
-    dullGreen,
-    brightGreen,
-    pureGreen,
-    dullBlue,
-    brightBlue,
-    pureBlue,
-    dullCyan,
-    brightCyan,
-    pureCyan,
-    dullMagenta,
-    brightMagenta,
-    pureMagenta,
-    dullYellow,
-    brightYellow,
-    pureYellow,
-    pureBlack,
-    dullGrey,
-    brightGrey,
-    pureGrey,
-    pureWhite,
-    dullWhite,
-    brightWhite,
-    resetColour,
-) where
+module Core.Text.Colour
+    ( AnsiColour
+    , intoEscapes
+    , boldColour
+    , dullRed
+    , brightRed
+    , pureRed
+    , dullGreen
+    , brightGreen
+    , pureGreen
+    , dullBlue
+    , brightBlue
+    , pureBlue
+    , dullCyan
+    , brightCyan
+    , pureCyan
+    , dullMagenta
+    , brightMagenta
+    , pureMagenta
+    , dullYellow
+    , brightYellow
+    , pureYellow
+    , pureBlack
+    , dullGrey
+    , brightGrey
+    , pureGrey
+    , pureWhite
+    , dullWhite
+    , brightWhite
+    , resetColour
+    ) where
 
 import Core.Text.Rope
 import Data.Colour.SRGB (sRGB, sRGB24read)
@@ -50,7 +50,7 @@ to console.
 -}
 newtype AnsiColour = Escapes [SGR]
 
-{-|
+{- |
 Convert an AnsiColour into the ANSI escape sequences which will make that
 colour appear in the user's terminal.
 -}
