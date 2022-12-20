@@ -8,8 +8,8 @@ import CheckJsonWrapper
 import CheckProgramMonad
 import CheckRopeBehaviour (checkRopeBehaviour)
 import CheckTelemetryMachinery
-import CheckWebserverIntegration (checkWebserverIntegration)
 import CheckTimeStamp
+import CheckWebserverIntegration (checkWebserverIntegration)
 import Control.Exception (finally)
 import Test.Hspec
 

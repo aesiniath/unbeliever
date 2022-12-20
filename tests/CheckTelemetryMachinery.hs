@@ -5,7 +5,7 @@
 
 module CheckTelemetryMachinery where
 
-import Control.Concurrent (threadDelay, forkIO)
+import Control.Concurrent (forkIO, threadDelay)
 import Control.Concurrent.MVar (MVar, modifyMVar_, newMVar, readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (newTQueueIO, writeTQueue)
@@ -14,13 +14,12 @@ import Data.Word (Word32)
 import Network.Info (MAC (..))
 import Test.Hspec hiding (context)
 
+import Control.Concurrent.MVar (newEmptyMVar, putMVar)
 import Core.Data.Clock
 import Core.Program
 import Core.System
 import Core.Telemetry.Identifiers
 import Core.Text
-import Control.Concurrent.MVar (newEmptyMVar)
-import Control.Concurrent.MVar (putMVar)
 
 countingAction :: Int -> [Int] -> IO ()
 countingAction target ints = sum ints `shouldBe` target
@@ -92,7 +91,7 @@ checkTelemetryMachinery = do
             createIdentifierSpan (intoTime (1 :: Int64)) 0 `shouldBe` Span "1000000000000000"
             createIdentifierSpan (intoTime (fromIntegral (maxBound :: Int32) :: Int64)) 0 `shouldBe` Span "fffffff700000000"
             createIdentifierSpan (intoTime (fromIntegral (maxBound :: Word32) :: Int64)) 0 `shouldBe` Span "ffffffff00000000"
-            createIdentifierSpan (intoTime (fromIntegral (maxBound :: Word32) + 1 :: Int64) ) 0 `shouldBe` Span "0000000010000000"
+            createIdentifierSpan (intoTime (fromIntegral (maxBound :: Word32) + 1 :: Int64)) 0 `shouldBe` Span "0000000010000000"
             createIdentifierSpan (intoTime (1642770757512438606 :: Int64)) 0 `shouldBe` Span "e43ade8dc4b40000"
             createIdentifierSpan (intoTime (1642770757512438607 :: Int64)) 0 `shouldBe` Span "f43ade8dc4b40000"
             createIdentifierSpan (intoTime (1642770757512438607 :: Int64)) 0x1a2b `shouldBe` Span "f43ade8dc4b4b2a1"

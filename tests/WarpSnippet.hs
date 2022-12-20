@@ -43,7 +43,7 @@ exampleApplication request sendResponse =
     let path = intoRope (rawPathInfo request)
         query = intoRope (rawQueryString request)
         path' = fromRope (path <> query)
-     in do
+    in  do
             sendResponse (responseLBS status200 [] path')
 
 port :: Port

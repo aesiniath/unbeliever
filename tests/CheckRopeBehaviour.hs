@@ -2,9 +2,9 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
-module CheckRopeBehaviour (
-    checkRopeBehaviour,
-) where
+module CheckRopeBehaviour
+    ( checkRopeBehaviour
+    ) where
 
 import Core.Text.Rope
 import Core.Text.Utilities
@@ -72,7 +72,7 @@ checkRopeBehaviour = do
 
         it "exports to ByteString" $
             let expected = T.encodeUtf8 (T.pack "H₂SO₄")
-             in do
+            in  do
                     fromRope sulfuric_acid `shouldBe` expected
 
         it "exports to Text (Strict)" $ do
@@ -84,8 +84,8 @@ checkRopeBehaviour = do
         it "knows how to use an Oxford comma properly" $ do
             oxford ["one", "two", "three"] `shouldBe` "one, two, and three"
             oxford ["four", "five"] `shouldBe` "four and five"
-            oxford ["six"]`shouldBe`"six"
-            oxford []`shouldBe`""
+            oxford ["six"] `shouldBe` "six"
+            oxford [] `shouldBe` ""
 
         it "does the splits" $ do
             -- compare behaviour on Haskell lists
@@ -175,27 +175,27 @@ World
 
         it "single piece containing multiple words splits correctly" $
             let text = "This is a test"
-             in do
+            in  do
                     breakWords text `shouldBe` ["This", "is", "a", "test"]
 
         it "single piece, long run of whitespace splits correctly" $
             let text = "This is\na    test"
-             in do
+            in  do
                     breakWords text `shouldBe` ["This", "is", "a", "test"]
 
         it "text spanning two pieces can be split into words" $
             let text = "This is " <> "a test"
-             in do
+            in  do
                     breakWords text `shouldBe` ["This", "is", "a", "test"]
 
         it "text spanning many pieces can be split into words" $
             let text = "st" <> "" <> "op" <> "" <> " " <> " " <> "and go" <> "op"
-             in do
+            in  do
                     breakWords text `shouldBe` ["stop", "and", "goop"]
 
         it "empty and whitespace-only corner cases handled correctly" $
             let text = "  " <> "" <> "stop" <> "" <> "  "
-             in do
+            in  do
                     breakWords text `shouldBe` ["stop"]
 
     describe "Splitting into lines" $ do
@@ -218,7 +218,7 @@ of the Emergency
 Broadcast
 System, beeeeep
 |]
-             in do
+            in  do
                     breakLines para
                         `shouldBe` [ "This is a test"
                                    , "of the Emergency"
@@ -233,7 +233,7 @@ First line.
 
 Third line.
 |]
-             in do
+            in  do
                     breakLines para
                         `shouldBe` [ "First line."
                                    , ""
@@ -248,7 +248,7 @@ Hello this is
 a test
  of the Emergency Broadcast System
             |]
-             in wrap 20 para
+            in  wrap 20 para
                     `shouldBe` [quote|
 Hello this is a test
 of the Emergency

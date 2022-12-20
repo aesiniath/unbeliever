@@ -13,9 +13,9 @@ import qualified Data.ByteString.Char8 as C
 
 main :: IO ()
 main = execute $ do
-  setVerbosityLevel Debug
-  event "Starting..."
+    setVerbosityLevel Debug
+    event "Starting..."
 
-  forever (waitForChange ["tests/Snippet.hs"])
+    forever (waitForChange ["tests/Snippet.hs"])
 
-  write "Done"
+    write "Done"

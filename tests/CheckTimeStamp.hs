@@ -20,7 +20,7 @@ checkTimeStamp :: Spec
 checkTimeStamp = do
     describe "Smallest valid Time" $
         let t = intoTime (-9223372036854775808 :: Int64)
-         in do
+        in  do
                 it "should be representable" $ do
                     t `shouldBe` (minBound :: Time)
 
@@ -32,7 +32,7 @@ checkTimeStamp = do
 
     describe "Largest valid Time" $
         let t = intoTime (9223372036854775807 :: Int64)
-         in do
+        in  do
                 it "should be representable" $ do
                     t `shouldBe` (maxBound :: Time)
 
