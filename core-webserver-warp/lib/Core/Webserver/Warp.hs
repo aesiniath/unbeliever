@@ -66,13 +66,13 @@ This is useful for debugging during development but for production you are
 recommended to use the structured logging output or to send the traces to an
 observability service; this will be the root span of a trace.
 -}
-module Core.Webserver.Warp (
-    Port,
-    launchWebserver,
-    requestContextKey,
-    contextFromRequest,
-    ContextNotFoundInRequest(..),
-) where
+module Core.Webserver.Warp
+    ( Port
+    , launchWebserver
+    , requestContextKey
+    , contextFromRequest
+    , ContextNotFoundInRequest (..)
+    ) where
 
 --
 -- We follow the convention used elsewhere in this collection of libraries of
@@ -91,19 +91,19 @@ import Core.Telemetry.Observability
 import Core.Text.Rope
 import Data.List qualified as List
 import Data.Vault.Lazy qualified as Vault
-import Network.HTTP.Types (
-    Status,
-    hContentType,
-    status400,
-    status413,
-    status431,
-    status500,
-    statusCode,
- )
-import Network.HTTP2.Frame (
-    ErrorCodeId (UnknownErrorCode),
-    HTTP2Error (ConnectionError),
- )
+import Network.HTTP.Types
+    ( Status
+    , hContentType
+    , status400
+    , status413
+    , status431
+    , status500
+    , statusCode
+    )
+import Network.HTTP2.Frame
+    ( ErrorCodeId (UnknownErrorCode)
+    , HTTP2Error (ConnectionError)
+    )
 import Network.Wai
 import Network.Wai.Handler.Warp (InvalidRequest, Port)
 import Network.Wai.Handler.Warp qualified as Warp
@@ -163,7 +163,7 @@ loggingMiddleware (context0 :: Context τ) application request sendResponse = do
                     -- application to make sure that consumers can later fetch the appropriate
                     -- `Context t`.
                     let vault' = Vault.insert (requestContextKey @τ) context1 (vault request)
-                        request' = request{vault = vault'}
+                        request' = request {vault = vault'}
                     Safe.catch
                         ( application request' $ \response -> do
                             -- accumulate the details for logging
@@ -239,7 +239,7 @@ onExceptionHandler context possibleRequest e = do
             Nothing -> pure ()
             Just request ->
                 let line = intoRope (requestMethod request) <> " " <> intoRope (rawPathInfo request) <> intoRope (rawQueryString request)
-                 in debug "request" line
+                in  debug "request" line
 
 {- |
 Pull the Trace identifier and parent Span identifier out of the request
@@ -261,6 +261,6 @@ extractTraceParent :: Request -> Maybe (Trace, Span)
 extractTraceParent request =
     let headers = requestHeaders request
         possibleValue = List.lookup "traceparent" headers
-     in case possibleValue of
+    in  case possibleValue of
             Nothing -> Nothing
             Just value -> parseTraceParentHeader (intoRope value)
