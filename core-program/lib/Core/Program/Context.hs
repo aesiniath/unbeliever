@@ -13,29 +13,29 @@
 {-# OPTIONS_HADDOCK hide #-}
 
 -- This is an Internal module, hidden from Haddock
-module Core.Program.Context (
-    Datum (..),
-    emptyDatum,
-    Trace (..),
-    unTrace,
-    Span (..),
-    unSpan,
-    Context (..),
-    handleCommandLine,
-    handleVerbosityLevel,
-    handleTelemetryChoice,
-    Exporter (..),
-    Forwarder (..),
-    None (..),
-    isNone,
-    configure,
-    Verbosity (..),
-    Program (..),
-    unProgram,
-    getContext,
-    fmapContext,
-    subProgram,
-) where
+module Core.Program.Context
+    ( Datum (..)
+    , emptyDatum
+    , Trace (..)
+    , unTrace
+    , Span (..)
+    , unSpan
+    , Context (..)
+    , handleCommandLine
+    , handleVerbosityLevel
+    , handleTelemetryChoice
+    , Exporter (..)
+    , Forwarder (..)
+    , None (..)
+    , isNone
+    , configure
+    , Verbosity (..)
+    , Program (..)
+    , unProgram
+    , getContext
+    , fmapContext
+    , subProgram
+    ) where
 
 import Control.Concurrent (ThreadId)
 import Control.Concurrent.MVar (MVar, newEmptyMVar, newMVar, putMVar, readMVar)
@@ -198,7 +198,7 @@ fmapContext f context = do
     state <- readMVar (applicationDataFrom context)
     let state' = f state
     u <- newMVar state'
-    return (context{applicationDataFrom = u})
+    return (context {applicationDataFrom = u})
 
 {- |
 A 'Program' with no user-supplied state to be threaded throughout the
@@ -487,7 +487,7 @@ queryVerbosityLevel :: Parameters -> Either ExitCode Verbosity
 queryVerbosityLevel params =
     let debug = lookupKeyValue "debug" (parameterValuesFrom params)
         verbose = lookupKeyValue "verbose" (parameterValuesFrom params)
-     in case debug of
+    in  case debug of
             Just value -> case value of
                 Empty -> Right Debug
                 Value "internal" -> Right Internal

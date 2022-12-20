@@ -49,98 +49,98 @@ runtime, but to specify the allowed command-line options and expected
 arguments you can initialize your program using 'configure' and then run
 with 'executeWith'.
 -}
-module Core.Program.Execute (
-    Program (),
+module Core.Program.Execute
+    ( Program ()
 
-    -- * Running programs
-    configure,
-    execute,
-    executeWith,
+      -- * Running programs
+    , configure
+    , execute
+    , executeWith
 
-    -- * Exiting a program
-    terminate,
+      -- * Exiting a program
+    , terminate
 
-    -- * Accessing program context
-    getCommandLine,
-    queryCommandName,
-    queryOptionFlag,
-    queryOptionValue,
-    queryOptionValue',
-    queryArgument,
-    queryRemaining,
-    queryEnvironmentValue,
-    getProgramName,
-    setProgramName,
-    getVerbosityLevel,
-    setVerbosityLevel,
-    getConsoleWidth,
-    getApplicationState,
-    setApplicationState,
+      -- * Accessing program context
+    , getCommandLine
+    , queryCommandName
+    , queryOptionFlag
+    , queryOptionValue
+    , queryOptionValue'
+    , queryArgument
+    , queryRemaining
+    , queryEnvironmentValue
+    , getProgramName
+    , setProgramName
+    , getVerbosityLevel
+    , setVerbosityLevel
+    , getConsoleWidth
+    , getApplicationState
+    , setApplicationState
 
-    -- * Useful actions
-    outputEntire,
-    inputEntire,
-    execProcess,
-    sleepThread,
-    resetTimer,
-    trap_,
+      -- * Useful actions
+    , outputEntire
+    , inputEntire
+    , execProcess
+    , sleepThread
+    , resetTimer
+    , trap_
 
-    -- * Exception handling
-    catch,
-    throw,
-    try,
+      -- * Exception handling
+    , catch
+    , throw
+    , try
 
-    -- * Internals
-    Context,
-    None (..),
-    isNone,
-    unProgram,
-    invalid,
-    Boom (..),
-    loopForever,
-    lookupOptionFlag,
-    lookupOptionValue,
-    lookupArgument,
-    lookupEnvironmentValue,
-) where
+      -- * Internals
+    , Context
+    , None (..)
+    , isNone
+    , unProgram
+    , invalid
+    , Boom (..)
+    , loopForever
+    , lookupOptionFlag
+    , lookupOptionValue
+    , lookupArgument
+    , lookupEnvironmentValue
+    ) where
 
-import Control.Concurrent (
-    forkFinally,
-    forkIO,
-    killThread,
-    myThreadId,
-    threadDelay,
- )
-import Control.Concurrent.MVar (
-    MVar,
-    modifyMVar_,
-    newEmptyMVar,
-    putMVar,
-    readMVar,
-    tryPutMVar,
- )
+import Control.Concurrent
+    ( forkFinally
+    , forkIO
+    , killThread
+    , myThreadId
+    , threadDelay
+    )
+import Control.Concurrent.MVar
+    ( MVar
+    , modifyMVar_
+    , newEmptyMVar
+    , putMVar
+    , readMVar
+    , tryPutMVar
+    )
 import Control.Concurrent.STM (atomically)
-import Control.Concurrent.STM.TQueue (
-    TQueue,
-    readTQueue,
-    tryReadTQueue,
-    unGetTQueue,
-    writeTQueue,
- )
-import Control.Concurrent.STM.TVar (
-    readTVarIO,
- )
+import Control.Concurrent.STM.TQueue
+    ( TQueue
+    , readTQueue
+    , tryReadTQueue
+    , unGetTQueue
+    , writeTQueue
+    )
+import Control.Concurrent.STM.TVar
+    ( readTVarIO
+    )
 import Control.Exception qualified as Base (throwIO)
-import Control.Exception.Safe qualified as Safe (
-    catch,
-    throw,
- )
-import Control.Monad (
-    forM_,
-    forever,
-    void,
-    when,
- )
+import Control.Exception.Safe qualified as Safe
+    ( catch
+    , throw
+    )
+import Control.Monad
+    ( forM_
+    , forever
+    , void
+    , when
+    )
 import Control.Monad.Reader.Class (MonadReader (ask))
 import Core.Data.Clock
 import Core.Data.Structures
@@ -150,15 +150,15 @@ import Core.Program.Context
 import Core.Program.Exceptions
 import Core.Program.Logging
 import Core.Program.Signal
-import Core.System.Base (
-    Exception,
-    Handle,
-    SomeException,
-    displayException,
-    hFlush,
-    liftIO,
-    stdout,
- )
+import Core.System.Base
+    ( Exception
+    , Handle
+    , SomeException
+    , displayException
+    , hFlush
+    , liftIO
+    , stdout
+    )
 import Core.Text.Bytes
 import Core.Text.Rope
 import Data.ByteString qualified as B (hPut)
@@ -166,9 +166,9 @@ import Data.ByteString.Char8 qualified as C (singleton)
 import Data.List qualified as List (intersperse)
 import GHC.Conc (getNumProcessors, numCapabilities, setNumCapabilities)
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
-import System.Directory (
-    findExecutable,
- )
+import System.Directory
+    ( findExecutable
+    )
 import System.Exit (ExitCode (..))
 import System.Process.Typed (nullStream, proc, readProcess, setStdin)
 import Prelude hiding (log)
@@ -203,7 +203,7 @@ trap_ action =
         (void action)
         ( \(e :: SomeException) ->
             let text = intoRope (displayException e)
-             in do
+            in  do
                     warn "Trapped uncaught exception"
                     debug "e" text
         )
@@ -637,7 +637,7 @@ execProcess (cmd : args) =
         task = proc cmd' args'
         task1 = setStdin nullStream task
         command = mconcat (List.intersperse (singletonRope ' ') (cmd : args))
-     in do
+    in  do
             debug "command" command
 
             probe <- liftIO $ do
@@ -698,7 +698,7 @@ example, to delay a second and a half, do:
 sleepThread :: Rational -> Program τ ()
 sleepThread seconds =
     let us = floor (toRational (seconds * 1e6))
-     in liftIO $ threadDelay us
+    in  liftIO $ threadDelay us
 
 {- |
 Retrieve the values of parameters parsed from options and arguments supplied

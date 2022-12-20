@@ -23,39 +23,39 @@ them easily from the 'Program' monad.
 Note that when you fire off a new thread the top-level application state is
 /shared/; it's the same @τ@ inherited from the parent 'Program'.
 -}
-module Core.Program.Threads (
-    -- * Concurrency
-    createScope,
-    forkThread,
-    forkThread_,
-    linkThread,
-    waitThread,
-    waitThread_,
-    waitThread',
-    waitThreads',
-    cancelThread,
+module Core.Program.Threads
+    ( -- * Concurrency
+      createScope
+    , forkThread
+    , forkThread_
+    , linkThread
+    , waitThread
+    , waitThread_
+    , waitThread'
+    , waitThreads'
+    , cancelThread
 
-    -- * Helper functions
-    concurrentThreads,
-    concurrentThreads_,
-    raceThreads,
-    raceThreads_,
+      -- * Helper functions
+    , concurrentThreads
+    , concurrentThreads_
+    , raceThreads
+    , raceThreads_
 
-    -- * Internals
-    Thread,
-    unThread,
-) where
+      -- * Internals
+    , Thread
+    , unThread
+    ) where
 
 import Control.Concurrent (ThreadId, forkIO, killThread)
 import Control.Concurrent.MVar (MVar, newEmptyMVar, newMVar, putMVar, readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TVar (modifyTVar', newTVarIO, readTVarIO)
 import Control.Exception.Safe qualified as Safe (catch, finally, onException, throw)
-import Control.Monad (
-    forM,
-    forM_,
-    void,
- )
+import Control.Monad
+    ( forM
+    , forM_
+    , void
+    )
 import Control.Monad.Reader.Class (MonadReader (ask))
 import Core.Data.Structures
 import Core.Program.Context

@@ -121,32 +121,32 @@ to the program using /kill/:
 \$
 @
 -}
-module Core.Program.Logging (
-    putMessage,
-    formatLogMessage,
-    Severity (..),
-    Verbosity (..),
+module Core.Program.Logging
+    ( putMessage
+    , formatLogMessage
+    , Severity (..)
+    , Verbosity (..)
 
-    -- * Normal output
-    write,
-    writeS,
-    writeR,
+      -- * Normal output
+    , write
+    , writeS
+    , writeR
 
-    -- * Informational
-    info,
-    warn,
-    critical,
+      -- * Informational
+    , info
+    , warn
+    , critical
 
-    -- * Debugging
-    debug,
-    debugS,
-    debugR,
+      -- * Debugging
+    , debug
+    , debugS
+    , debugR
     -- internal
-    internal,
-    isEvent,
-    isDebug,
-    isInternal,
-) where
+    , internal
+    , isEvent
+    , isDebug
+    , isInternal
+    ) where
 
 import Control.Concurrent.MVar (readMVar)
 import Control.Concurrent.STM (atomically)
@@ -221,7 +221,7 @@ formatLogMessage start now coloured severity message =
             SeverityInternal -> intoEscapes dullBlue
 
         !reset = intoEscapes resetColour
-     in case coloured of
+    in  case coloured of
             True ->
                 mconcat
                     [ intoEscapes dullWhite

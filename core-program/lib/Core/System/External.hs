@@ -3,5 +3,6 @@
 {- |
 Re-exports of dependencies from various external libraries.
 -}
-module Core.System.External (
+module Core.System.External
+    (
     ) where
