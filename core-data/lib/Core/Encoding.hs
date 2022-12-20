@@ -16,11 +16,10 @@ wide use across the Haskell community; these modules are here as wrappers
 providing for ease of use and interoperability across the various tools in
 this package.
 -}
-module Core.Encoding (
-    module Core.Encoding.Json,
-
-    module Core.Encoding.External,
-) where
+module Core.Encoding
+    ( module Core.Encoding.Json
+    , module Core.Encoding.External
+    ) where
 
 import Core.Encoding.External
 import Core.Encoding.Json

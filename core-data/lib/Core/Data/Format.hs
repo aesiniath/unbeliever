@@ -4,11 +4,11 @@
 
 module Core.Data.Format where
 
-import Data.Hourglass qualified as H (
-    TimeFormat (..),
-    TimeFormatElem (..),
-    TimeFormatString (..),
- )
+import Data.Hourglass qualified as H
+    ( TimeFormat (..)
+    , TimeFormatElem (..)
+    , TimeFormatString (..)
+    )
 
 {- |
 Format string describing full (nanosecond) precision ISO8601 time,

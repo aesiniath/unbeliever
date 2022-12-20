@@ -9,35 +9,35 @@ Convenience wrappers around dictionary and collection types and tools
 facilitating conversion between them and various map and set types in
 common use in the Haskell ecosystem.
 -}
-module Core.Data.Structures (
-    -- * Map type
-    Map,
-    emptyMap,
-    singletonMap,
-    insertKeyValue,
-    containsKey,
-    lookupKeyValue,
-    removeKeyValue,
+module Core.Data.Structures
+    ( -- * Map type
+      Map
+    , emptyMap
+    , singletonMap
+    , insertKeyValue
+    , containsKey
+    , lookupKeyValue
+    , removeKeyValue
 
-    -- * Conversions
-    Dictionary (K, V, fromMap, intoMap),
+      -- * Conversions
+    , Dictionary (K, V, fromMap, intoMap)
 
-    -- * Set type
-    Set,
-    emptySet,
-    singletonSet,
-    insertElement,
-    containsElement,
-    removeElement,
+      -- * Set type
+    , Set
+    , emptySet
+    , singletonSet
+    , insertElement
+    , containsElement
+    , removeElement
 
-    -- * Conversions
-    Collection (E, fromSet, intoSet),
+      -- * Conversions
+    , Collection (E, fromSet, intoSet)
 
-    -- * Internals
-    Key,
-    unMap,
-    unSet,
-) where
+      -- * Internals
+    , Key
+    , unMap
+    , unSet
+    ) where
 
 import Control.Concurrent qualified as Base (ThreadId)
 import Core.Text.Bytes (Bytes)

@@ -45,10 +45,9 @@ canonical, stable form, even if the original input was written differently.
 See the discussion of creating 'Core.Data.Clock.Time' types from varying
 inputs for an example.
 -}
-module Core.Encoding.External (
-    -- * Conversions
-    Externalize (formatExternal, parseExternal),
-) where
+module Core.Encoding.External
+    ( Externalize (formatExternal, parseExternal)
+    ) where
 
 import Core.Data.Clock
 import Core.Text.Rope
