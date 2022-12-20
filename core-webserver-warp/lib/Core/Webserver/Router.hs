@@ -52,22 +52,22 @@ This results in an HTTP server responding to the following routes:
 Requests to any other paths (for example @\/api@ and
 @\/api\/servicename\/v3@) will result in a @404 Not Found@ response.
 -}
-module Core.Webserver.Router (
-    -- * Setup
-    Route,
-    Prefix,
-    Remainder,
-    literalRoute,
-    handleRoute,
-    captureRoute,
-    (</>),
+module Core.Webserver.Router
+    ( -- * Setup
+      Route
+    , Prefix
+    , Remainder
+    , literalRoute
+    , handleRoute
+    , captureRoute
+    , (</>)
 
-    -- * Compile
-    prepareRoutes,
+      -- * Compile
+    , prepareRoutes
 
-    -- * Internal
-    notFoundHandler,
-) where
+      -- * Internal
+    , notFoundHandler
+    ) where
 
 import Control.Exception.Safe qualified as Safe
 import Core.Program.Context (Program)
@@ -240,14 +240,14 @@ buildTrie :: Prefix -> [Route τ] -> Trie.Trie (Prefix -> Remainder -> Request -
 buildTrie prefix0 routes =
     List.foldl' f Trie.empty routes
   where
-    f ::
-        Trie.Trie (Prefix -> Remainder -> Request -> Program τ Response) ->
-        Route τ ->
-        Trie.Trie (Prefix -> Remainder -> Request -> Program τ Response)
+    f
+        :: Trie.Trie (Prefix -> Remainder -> Request -> Program τ Response)
+        -> Route τ
+        -> Trie.Trie (Prefix -> Remainder -> Request -> Program τ Response)
     f trie (Route prefix1 handler children) =
         let prefix' = prefix0 <> singletonRope '/' <> prefix1
             trie1 = Trie.insert (fromRope prefix') handler trie
-         in case children of
+        in  case children of
                 [] -> trie1
                 _ -> Trie.unionL trie1 (buildTrie prefix' children)
 

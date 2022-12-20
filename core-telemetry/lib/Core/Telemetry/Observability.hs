@@ -135,35 +135,35 @@ Either way, explicitly sending an event, or upon exiting a span, the telemetry
 will be gathered up and sent via the chosen exporter and forwarded to the
 observability or monitoring service you have chosen.
 -}
-module Core.Telemetry.Observability (
-    -- * Initializing
-    Exporter,
-    initializeTelemetry,
+module Core.Telemetry.Observability
+    ( -- * Initializing
+      Exporter
+    , initializeTelemetry
 
-    -- * Traces
-    Trace (..),
-    Span (..),
-    beginTrace,
-    usingTrace,
-    usingTrace',
-    setServiceName,
+      -- * Traces
+    , Trace (..)
+    , Span (..)
+    , beginTrace
+    , usingTrace
+    , usingTrace'
+    , setServiceName
 
-    -- * Spans
-    Label,
-    encloseSpan,
-    setStartTime,
-    setSpanName,
+      -- * Spans
+    , Label
+    , encloseSpan
+    , setStartTime
+    , setSpanName
 
-    -- * Creating telemetry
-    MetricValue,
-    Telemetry (metric),
-    telemetry,
+      -- * Creating telemetry
+    , MetricValue
+    , Telemetry (metric)
+    , telemetry
 
-    -- * Events
-    sendEvent,
-    clearMetrics,
-    clearTrace,
-) where
+      -- * Events
+    , sendEvent
+    , clearMetrics
+    , clearTrace
+    ) where
 
 import Control.Concurrent.MVar (modifyMVar_, newMVar, readMVar)
 import Control.Concurrent.STM (atomically)
@@ -396,7 +396,7 @@ initializeTelemetry exporters1 context =
                 config0
 
         config2 = List.foldl' f config1 exporters2
-     in pure
+    in  pure
             ( context
                 { initialConfigFrom = config2
                 , initialExportersFrom = exporters2
@@ -410,7 +410,7 @@ initializeTelemetry exporters1 context =
     f :: Config -> Exporter -> Config
     f config exporter =
         let setup = setupConfigFrom exporter
-         in setup config
+        in  setup config
 
 type Label = Rope
 
@@ -757,7 +757,7 @@ setStartTime time = do
         let v = currentDatumFrom context
         modifyMVar_
             v
-            (\datum -> pure datum{spanTimeFrom = time})
+            (\datum -> pure datum {spanTimeFrom = time})
 
 {- |
 Override the name of the current span.
@@ -779,7 +779,7 @@ setSpanName label = do
         let v = currentDatumFrom context
         modifyMVar_
             v
-            (\datum -> pure datum{spanNameFrom = label})
+            (\datum -> pure datum {spanNameFrom = label})
 
 {- |
 Reset the accumulated metadata metrics to the emtpy set.

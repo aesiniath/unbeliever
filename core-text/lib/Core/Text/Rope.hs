@@ -73,94 +73,94 @@ customary convenience functions you would find in the other libraries; so far
 of) small pieces, and then efficiently taking the resultant text object out to
 a file handle, be that the terminal console, a file, or a network socket.
 -}
-module Core.Text.Rope (
-    -- * Rope type
-    Rope,
-    emptyRope,
-    singletonRope,
-    packRope,
-    replicateRope,
-    replicateChar,
-    widthRope,
-    unconsRope,
-    splitRope,
-    takeRope,
-    insertRope,
-    containsCharacter,
-    findIndexRope,
+module Core.Text.Rope
+    ( -- * Rope type
+      Rope
+    , emptyRope
+    , singletonRope
+    , packRope
+    , replicateRope
+    , replicateChar
+    , widthRope
+    , unconsRope
+    , splitRope
+    , takeRope
+    , insertRope
+    , containsCharacter
+    , findIndexRope
 
-    -- * Interoperation and Output
-    Textual (fromRope, intoRope, appendRope),
-    hWrite,
+      -- * Interoperation and Output
+    , Textual (fromRope, intoRope, appendRope)
+    , hWrite
 
-    -- * Internals
-    unRope,
-    nullRope,
-    unsafeIntoRope,
-    copyRope,
-    Width (..),
-) where
+      -- * Internals
+    , unRope
+    , nullRope
+    , unsafeIntoRope
+    , copyRope
+    , Width (..)
+    ) where
 
 import Control.DeepSeq (NFData (..))
 import Core.Text.Bytes
 import Data.ByteString qualified as B (ByteString)
-import Data.ByteString.Builder qualified as B (
-    Builder,
-    hPutBuilder,
-    toLazyByteString,
- )
-import Data.ByteString.Lazy qualified as L (
-    ByteString,
-    foldrChunks,
-    toStrict,
- )
-import Data.FingerTree qualified as F (
-    FingerTree,
-    Measured (..),
-    SearchResult (..),
-    ViewL (..),
-    empty,
-    null,
-    search,
-    singleton,
-    viewl,
-    (<|),
-    (><),
-    (|>),
- )
+import Data.ByteString.Builder qualified as B
+    ( Builder
+    , hPutBuilder
+    , toLazyByteString
+    )
+import Data.ByteString.Lazy qualified as L
+    ( ByteString
+    , foldrChunks
+    , toStrict
+    )
+import Data.FingerTree qualified as F
+    ( FingerTree
+    , Measured (..)
+    , SearchResult (..)
+    , ViewL (..)
+    , empty
+    , null
+    , search
+    , singleton
+    , viewl
+    , (<|)
+    , (><)
+    , (|>)
+    )
 import Data.Foldable (foldl', toList)
 import Data.Hashable (Hashable, hashWithSalt)
 import Data.String (IsString (..))
 import Data.Text qualified as T (Text)
-import Data.Text.Lazy qualified as U (
-    Text,
-    foldrChunks,
-    fromChunks,
-    toStrict,
- )
-import Data.Text.Lazy.Builder qualified as U (
-    Builder,
-    fromText,
-    toLazyText,
- )
-import Data.Text.Short qualified as S (
-    ShortText,
-    any,
-    append,
-    empty,
-    findIndex,
-    fromByteString,
-    fromText,
-    length,
-    pack,
-    replicate,
-    singleton,
-    splitAt,
-    toBuilder,
-    toText,
-    uncons,
-    unpack,
- )
+import Data.Text.Lazy qualified as U
+    ( Text
+    , foldrChunks
+    , fromChunks
+    , toStrict
+    )
+import Data.Text.Lazy.Builder qualified as U
+    ( Builder
+    , fromText
+    , toLazyText
+    )
+import Data.Text.Short qualified as S
+    ( ShortText
+    , any
+    , append
+    , empty
+    , findIndex
+    , fromByteString
+    , fromText
+    , length
+    , pack
+    , replicate
+    , singleton
+    , splitAt
+    , toBuilder
+    , toText
+    , uncons
+    , unpack
+    )
 import Data.Text.Short.Unsafe qualified as S (fromByteStringUnsafe)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), emptyDoc)
@@ -310,7 +310,7 @@ hold /n/ references to the provided input text.
 replicateRope :: Int -> Rope -> Rope
 replicateRope count (Rope x) =
     let x' = foldr (\_ acc -> (F.><) x acc) F.empty [1 .. count]
-     in Rope x'
+    in  Rope x'
 
 {- |
 Repeat the input 'Char' @n@ times. This is a special case of 'replicateRope'
@@ -331,7 +331,7 @@ widthRope :: Rope -> Int
 widthRope text =
     let x = unRope text
         (Width w) = F.measure x
-     in w
+    in  w
 
 nullRope :: Rope -> Bool
 nullRope text = widthRope text == 0
@@ -346,7 +346,7 @@ returning 'Just' that character and the remainder of the text. Returns
 unconsRope :: Rope -> Maybe (Char, Rope)
 unconsRope text =
     let x = unRope text
-     in case F.viewl x of
+    in  case F.viewl x of
             F.EmptyL -> Nothing
             (F.:<) piece x' ->
                 case S.uncons piece of
@@ -380,11 +380,11 @@ splitRope :: Int -> Rope -> (Rope, Rope)
 splitRope i text@(Rope x) =
     let pos = Width i
         result = F.search (\w1 _ -> w1 >= pos) x
-     in case result of
+    in  case result of
             F.Position before piece after ->
                 let (Width w) = F.measure before
                     (one, two) = S.splitAt (i - w) piece
-                 in (Rope ((F.|>) before one), Rope ((F.<|) two after))
+                in  (Rope ((F.|>) before one), Rope ((F.<|) two after))
             F.OnLeft -> (Rope F.empty, text)
             F.OnRight -> (text, Rope F.empty)
             F.Nowhere -> error "Position not found in split. Probable cause: predicate function given not monotonic. This is supposed to be unreachable"
@@ -400,7 +400,7 @@ Take the first _n_ characters from the beginning of the Rope.
 takeRope :: Int -> Rope -> Rope
 takeRope i text =
     let (before, _) = splitRope i text
-     in before
+    in  before
 
 {- |
 Insert a new piece of text into an existing @Rope@ at the specified offset.
@@ -418,7 +418,7 @@ insertRope :: Int -> Rope -> Rope -> Rope
 insertRope 0 (Rope new) (Rope x) = Rope ((F.><) new x)
 insertRope i (Rope new) text =
     let (Rope before, Rope after) = splitRope i text
-     in Rope (mconcat [before, new, after])
+    in  Rope (mconcat [before, new, after])
 
 findIndexRope :: (Char -> Bool) -> Rope -> Maybe Int
 findIndexRope predicate = fst . foldl f (Nothing, 0) . unRope
@@ -449,7 +449,7 @@ instance Hashable Rope where
             piece = case F.viewl x' of
                 F.EmptyL -> S.empty
                 (F.:<) first _ -> first
-         in hashWithSalt salt piece
+        in  hashWithSalt salt piece
 
 {- |
 Copy the pieces underlying a 'Rope' into a single piece object.

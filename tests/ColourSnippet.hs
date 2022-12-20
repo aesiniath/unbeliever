@@ -13,34 +13,34 @@ import Core.Data
 import Core.Encoding
 import Core.Program
 import Core.System
-import Core.Text (
-    Render (Token, colourize, highlight),
-    brightBlue,
-    brightCyan,
-    brightGreen,
-    brightGrey,
-    brightMagenta,
-    brightRed,
-    brightWhite,
-    brightYellow,
-    dullBlue,
-    dullCyan,
-    dullGreen,
-    dullGrey,
-    dullMagenta,
-    dullRed,
-    dullWhite,
-    dullYellow,
-    pureBlack,
-    pureBlue,
-    pureCyan,
-    pureGreen,
-    pureGrey,
-    pureMagenta,
-    pureRed,
-    pureWhite,
-    pureYellow,
- )
+import Core.Text
+    ( Render (Token, colourize, highlight)
+    , brightBlue
+    , brightCyan
+    , brightGreen
+    , brightGrey
+    , brightMagenta
+    , brightRed
+    , brightWhite
+    , brightYellow
+    , dullBlue
+    , dullCyan
+    , dullGreen
+    , dullGrey
+    , dullMagenta
+    , dullRed
+    , dullWhite
+    , dullYellow
+    , pureBlack
+    , pureBlue
+    , pureCyan
+    , pureGreen
+    , pureGrey
+    , pureMagenta
+    , pureRed
+    , pureWhite
+    , pureYellow
+    )
 import Data.Char (toLower)
 
 data Colours

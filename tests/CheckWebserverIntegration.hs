@@ -3,9 +3,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module CheckWebserverIntegration (
-    checkWebserverIntegration,
-) where
+module CheckWebserverIntegration
+    ( checkWebserverIntegration
+    ) where
 
 import Data.Trie qualified as Trie
 

@@ -17,32 +17,32 @@ import "Core.System"
 
 as there's no particular benefit to cherry-picking the various sub-modules.
 -}
-module Core.System (
-    -- * Base libraries
+module Core.System
+    ( -- * Base libraries
 
-    -- |
-    -- Re-exports from foundational libraries supplied by the compiler runtime,
-    -- or from re-implementations of those areas.
-    module Core.System.Base,
+      -- |
+      -- Re-exports from foundational libraries supplied by the compiler runtime,
+      -- or from re-implementations of those areas.
+        module Core.System.Base
 
-    -- * External dependencies
+      -- * External dependencies
 
-    -- |
-    -- Dependencies from libraries outside the traditional ecosystem of Haskell.
-    -- These are typically special cases or custom re-implementations of things
-    -- which are maintained either by ourselves or people we are in regular
-    -- contact with.
-    module Core.System.External,
+      -- |
+      -- Dependencies from libraries outside the traditional ecosystem of Haskell.
+      -- These are typically special cases or custom re-implementations of things
+      -- which are maintained either by ourselves or people we are in regular
+      -- contact with.
+    , module Core.System.External
 
-    -- * Pretty Printing
+      -- * Pretty Printing
 
-    -- |
-    -- When using the Render typeclass from "Core.Text.Utilities" you are
-    -- presented with the @Doc a@ type for accumulating a \"document\" to be
-    -- pretty printed. There are a large family of combinators used when doing
-    -- this. For convenience they are exposed here.
-    module Core.System.Pretty,
-) where
+      -- |
+      -- When using the Render typeclass from "Core.Text.Utilities" you are
+      -- presented with the @Doc a@ type for accumulating a \"document\" to be
+      -- pretty printed. There are a large family of combinators used when doing
+      -- this. For convenience they are exposed here.
+    , module Core.System.Pretty
+    ) where
 
 import Core.System.Base
 import Core.System.External

@@ -15,24 +15,24 @@ specification, specifically as relates to forming trace identifiers and span
 identifiers into @traceparent@ headers. The key requirements are that traces
 be globally unique and that spans be unique within a trace.
 -}
-module Core.Telemetry.Identifiers (
-    -- * Traces and Spans
-    getIdentifierTrace,
-    getIdentifierSpan,
-    setIdentifierSpan,
+module Core.Telemetry.Identifiers
+    ( -- * Traces and Spans
+      getIdentifierTrace
+    , getIdentifierSpan
+    , setIdentifierSpan
 
-    -- * Internals
-    createIdentifierTrace,
-    createIdentifierSpan,
-    hostMachineIdentity,
-    createTraceParentHeader,
-    parseTraceParentHeader,
+      -- * Internals
+    , createIdentifierTrace
+    , createIdentifierSpan
+    , hostMachineIdentity
+    , createTraceParentHeader
+    , parseTraceParentHeader
     -- for testing
-    toHexNormal64,
-    toHexReversed64,
-    toHexNormal32,
-    toHexReversed32,
-) where
+    , toHexNormal64
+    , toHexReversed64
+    , toHexNormal32
+    , toHexReversed32
+    ) where
 
 import Control.Concurrent.MVar (modifyMVar_, readMVar)
 import Core.Data.Clock
@@ -63,7 +63,7 @@ hostMachineIdentity = unsafePerformIO $ do
     go [] = bogusAddress
     go (interface : remainder) =
         let address = mac interface
-         in if address /= loopbackAddress
+        in  if address /= loopbackAddress
                 then address
                 else go remainder
 
@@ -88,68 +88,68 @@ createIdentifierTrace time rand address =
     let p1 = packRope (toHexReversed64 (fromIntegral (unTime time)))
         p2 = packRope (toHexNormal16 rand)
         p3 = packRope (convertMACToHex address)
-     in Trace
+    in  Trace
             (p1 <> p2 <> p3)
 
 convertMACToHex :: MAC -> [Char]
 convertMACToHex (MAC b1 b2 b3 b4 b5 b6) =
-    nibbleToHex b1 4 :
-    nibbleToHex b1 0 :
-    nibbleToHex b2 4 :
-    nibbleToHex b2 0 :
-    nibbleToHex b3 4 :
-    nibbleToHex b3 0 :
-    nibbleToHex b4 4 :
-    nibbleToHex b4 0 :
-    nibbleToHex b5 4 :
-    nibbleToHex b5 0 :
-    nibbleToHex b6 4 :
-    nibbleToHex b6 0 :
-    []
+    nibbleToHex b1 4
+        : nibbleToHex b1 0
+        : nibbleToHex b2 4
+        : nibbleToHex b2 0
+        : nibbleToHex b3 4
+        : nibbleToHex b3 0
+        : nibbleToHex b4 4
+        : nibbleToHex b4 0
+        : nibbleToHex b5 4
+        : nibbleToHex b5 0
+        : nibbleToHex b6 4
+        : nibbleToHex b6 0
+        : []
   where
     nibbleToHex w = unsafeToDigit . fromIntegral . (.&.) 0x0f . shiftR w
 
 toHexReversed64 :: Word64 -> [Char]
 toHexReversed64 w =
-    nibbleToHex 00 :
-    nibbleToHex 04 :
-    nibbleToHex 08 :
-    nibbleToHex 12 :
-    nibbleToHex 16 :
-    nibbleToHex 20 :
-    nibbleToHex 24 :
-    nibbleToHex 28 : -- Word32
-    nibbleToHex 32 :
-    nibbleToHex 36 :
-    nibbleToHex 40 :
-    nibbleToHex 44 :
-    nibbleToHex 48 :
-    nibbleToHex 52 :
-    nibbleToHex 56 :
-    nibbleToHex 60 :
-    []
+    nibbleToHex 00
+        : nibbleToHex 04
+        : nibbleToHex 08
+        : nibbleToHex 12
+        : nibbleToHex 16
+        : nibbleToHex 20
+        : nibbleToHex 24
+        : nibbleToHex 28
+        : nibbleToHex 32 -- Word32
+        : nibbleToHex 36
+        : nibbleToHex 40
+        : nibbleToHex 44
+        : nibbleToHex 48
+        : nibbleToHex 52
+        : nibbleToHex 56
+        : nibbleToHex 60
+        : []
   where
     nibbleToHex = unsafeToDigit . fromIntegral . (.&.) 0x0f . shiftR w
 
 toHexNormal64 :: Word64 -> [Char]
 toHexNormal64 w =
-    nibbleToHex 60 :
-    nibbleToHex 56 :
-    nibbleToHex 52 :
-    nibbleToHex 48 :
-    nibbleToHex 44 :
-    nibbleToHex 40 :
-    nibbleToHex 36 :
-    nibbleToHex 32 :
-    nibbleToHex 28 : -- Word32
-    nibbleToHex 24 :
-    nibbleToHex 20 :
-    nibbleToHex 16 :
-    nibbleToHex 12 :
-    nibbleToHex 08 :
-    nibbleToHex 04 :
-    nibbleToHex 00 :
-    []
+    nibbleToHex 60
+        : nibbleToHex 56
+        : nibbleToHex 52
+        : nibbleToHex 48
+        : nibbleToHex 44
+        : nibbleToHex 40
+        : nibbleToHex 36
+        : nibbleToHex 32
+        : nibbleToHex 28
+        : nibbleToHex 24 -- Word32
+        : nibbleToHex 20
+        : nibbleToHex 16
+        : nibbleToHex 12
+        : nibbleToHex 08
+        : nibbleToHex 04
+        : nibbleToHex 00
+        : []
   where
     nibbleToHex = unsafeToDigit . fromIntegral . (.&.) 0x0f . shiftR w
 
@@ -159,39 +159,39 @@ toHexNormal64 w =
 --
 toHexReversed32 :: Word32 -> [Char]
 toHexReversed32 w =
-    nibbleToHex 00 :
-    nibbleToHex 04 :
-    nibbleToHex 08 :
-    nibbleToHex 12 :
-    nibbleToHex 16 :
-    nibbleToHex 20 :
-    nibbleToHex 24 :
-    nibbleToHex 28 :
-    []
+    nibbleToHex 00
+        : nibbleToHex 04
+        : nibbleToHex 08
+        : nibbleToHex 12
+        : nibbleToHex 16
+        : nibbleToHex 20
+        : nibbleToHex 24
+        : nibbleToHex 28
+        : []
   where
     nibbleToHex = unsafeToDigit . fromIntegral . (.&.) 0x0f . shiftR w
 
 toHexNormal32 :: Word32 -> [Char]
 toHexNormal32 w =
-    nibbleToHex 28 :
-    nibbleToHex 24 :
-    nibbleToHex 20 :
-    nibbleToHex 16 :
-    nibbleToHex 12 :
-    nibbleToHex 08 :
-    nibbleToHex 04 :
-    nibbleToHex 00 :
-    []
+    nibbleToHex 28
+        : nibbleToHex 24
+        : nibbleToHex 20
+        : nibbleToHex 16
+        : nibbleToHex 12
+        : nibbleToHex 08
+        : nibbleToHex 04
+        : nibbleToHex 00
+        : []
   where
     nibbleToHex = unsafeToDigit . fromIntegral . (.&.) 0x0f . shiftR w
 
 toHexNormal16 :: Word16 -> [Char]
 toHexNormal16 w =
-    nibbleToHex 12 :
-    nibbleToHex 08 :
-    nibbleToHex 04 :
-    nibbleToHex 00 :
-    []
+    nibbleToHex 12
+        : nibbleToHex 08
+        : nibbleToHex 04
+        : nibbleToHex 00
+        : []
   where
     nibbleToHex = unsafeToDigit . fromIntegral . (.&.) 0x0f . shiftR w
 
@@ -222,7 +222,7 @@ createIdentifierSpan time rand =
     let t = fromIntegral (unTime time) :: Word64
         r = fromIntegral rand :: Word64
         w = (t .&. 0x0000ffffffffffff) .|. (shiftL r 48)
-     in Span
+    in  Span
             ( packRope
                 ( toHexReversed64 w
                 )
@@ -244,7 +244,7 @@ createTraceParentHeader :: Trace -> Span -> Rope
 createTraceParentHeader trace unique =
     let version = "00"
         flags = "00"
-     in version <> "-" <> unTrace trace <> "-" <> unSpan unique <> "-" <> flags
+    in  version <> "-" <> unTrace trace <> "-" <> unSpan unique <> "-" <> flags
 
 {- |
 Parse a @traceparent@ header into a 'Trace' and 'Span', assuming it was a
@@ -258,7 +258,7 @@ spans to an existing trace started by another program or service.
 parseTraceParentHeader :: Rope -> Maybe (Trace, Span)
 parseTraceParentHeader header =
     let pieces = breakPieces (== '-') header
-     in case pieces of
+    in  case pieces of
             ("00" : trace : unique : _ : []) -> Just (Trace trace, Span unique)
             _ -> Nothing
 
@@ -317,4 +317,4 @@ setIdentifierSpan unique = do
         let v = currentDatumFrom context
         modifyMVar_
             v
-            (\datum -> pure datum{spanIdentifierFrom = Just unique})
+            (\datum -> pure datum {spanIdentifierFrom = Just unique})

@@ -20,53 +20,53 @@ in the program's Context.
 Additionally, this module allows you to specify environment variables that,
 if present, will be incorporated into the stored configuration.
 -}
-module Core.Program.Arguments (
-    -- * Setup
-    Config,
-    blankConfig,
-    simpleConfig,
-    complexConfig,
-    baselineOptions,
-    Parameters (..),
-    ParameterValue (..),
+module Core.Program.Arguments
+    ( -- * Setup
+      Config
+    , blankConfig
+    , simpleConfig
+    , complexConfig
+    , baselineOptions
+    , Parameters (..)
+    , ParameterValue (..)
 
-    -- * Options and Arguments
-    LongName (..),
-    ShortName,
-    Description,
-    Options (..),
+      -- * Options and Arguments
+    , LongName (..)
+    , ShortName
+    , Description
+    , Options (..)
 
-    -- * Programs with Commands
-    Commands (..),
-    appendOption,
+      -- * Programs with Commands
+    , Commands (..)
+    , appendOption
 
-    -- * Internals
-    parseCommandLine,
-    extractValidEnvironments,
-    InvalidCommandLine (..),
-    buildUsage,
-    buildVersion,
-    emptyParameters,
-) where
+      -- * Internals
+    , parseCommandLine
+    , extractValidEnvironments
+    , InvalidCommandLine (..)
+    , buildUsage
+    , buildVersion
+    , emptyParameters
+    ) where
 
 import Data.Hashable (Hashable)
 import Data.List qualified as List
 import Data.Maybe (fromMaybe)
 import Data.String (IsString (..))
-import Prettyprinter (
-    Doc,
-    Pretty (..),
-    align,
-    emptyDoc,
-    fillBreak,
-    fillCat,
-    fillSep,
-    hardline,
-    indent,
-    nest,
-    softline,
-    (<+>),
- )
+import Prettyprinter
+    ( Doc
+    , Pretty (..)
+    , align
+    , emptyDoc
+    , fillBreak
+    , fillCat
+    , fillSep
+    , hardline
+    , indent
+    , nest
+    , softline
+    , (<+>)
+    )
 import Prettyprinter.Util (reflow)
 import System.Environment (getProgName)
 
@@ -498,12 +498,12 @@ with complex values escaped according to the rules of your shell:
 
 For options valid in this program, please see --help.
         |]
-             in one ++ two
+            in  one ++ two
         UnknownOption name -> "Sorry, option '" ++ name ++ "' not recognized."
         MissingArgument (LongName name) -> "Mandatory argument '" ++ name ++ "' missing."
         UnexpectedArguments args ->
             let quoted = List.intercalate "', '" args
-             in [quote|
+            in  [quote|
 Unexpected trailing arguments:
 
 |]
@@ -557,7 +557,7 @@ parseCommandLine config argv = case config of
     Complex commands ->
         let globalOptions = extractGlobalOptions commands
             modes = extractValidModes commands
-         in do
+        in  do
                 (possibles, argv') <- splitCommandLine1 argv
                 (params1, _) <- extractor Nothing globalOptions possibles
                 (first, moreArgs) <- splitCommandLine2 argv'
@@ -572,7 +572,7 @@ parseCommandLine config argv = case config of
             valids = extractValidNames options
             shorts = extractShortNames options
             needed = extractRequiredArguments options
-         in do
+        in  do
                 list1 <- parsePossibleOptions mode valids shorts possibles
                 (list2, arguments') <- parseRequiredArguments needed arguments
                 pure (((<>) (intoMap list1) (intoMap list2)), arguments')
@@ -602,12 +602,12 @@ isOption arg = case arg of
     ('-' : _) -> True
     _ -> False
 
-parsePossibleOptions ::
-    Maybe LongName ->
-    Set LongName ->
-    Map ShortName LongName ->
-    [String] ->
-    Either InvalidCommandLine [(LongName, ParameterValue)]
+parsePossibleOptions
+    :: Maybe LongName
+    -> Set LongName
+    -> Map ShortName LongName
+    -> [String]
+    -> Either InvalidCommandLine [(LongName, ParameterValue)]
 parsePossibleOptions mode valids shorts args = mapM f args
   where
     f arg = case arg of
@@ -626,7 +626,7 @@ parsePossibleOptions mode valids shorts args = mapM f args
             value' = case List.uncons value of
                 Just (_, remainder) -> Value remainder
                 Nothing -> Empty
-         in if containsElement candidate valids
+        in  if containsElement candidate valids
                 then Right (candidate, value')
                 else Left (UnknownOption ("--" ++ name))
 
@@ -636,10 +636,10 @@ parsePossibleOptions mode valids shorts args = mapM f args
             Just name -> Right (name, Empty)
             Nothing -> Left (UnknownOption ['-', c])
 
-parseRequiredArguments ::
-    [LongName] ->
-    [String] ->
-    Either InvalidCommandLine ([(LongName, ParameterValue)], [String])
+parseRequiredArguments
+    :: [LongName]
+    -> [String]
+    -> Either InvalidCommandLine ([(LongName, ParameterValue)], [String])
 parseRequiredArguments needed argv = iter needed argv
   where
     iter :: [LongName] -> [String] -> Either InvalidCommandLine ([(LongName, ParameterValue)], [String])
@@ -650,17 +650,17 @@ parseRequiredArguments needed argv = iter needed argv
     iter (name : _) [] = Left (MissingArgument name)
     iter (name : names) (arg : args) =
         let deeper = iter names args
-         in case deeper of
+        in  case deeper of
                 Left e -> Left e
                 Right (list, remainder) -> Right (((name, Value arg) : list), remainder)
 
-parseIndicatedCommand ::
-    Map LongName [Options] ->
-    String ->
-    Either InvalidCommandLine (LongName, [Options])
+parseIndicatedCommand
+    :: Map LongName [Options]
+    -> String
+    -> Either InvalidCommandLine (LongName, [Options])
 parseIndicatedCommand modes first =
     let candidate = LongName first
-     in case lookupKeyValue candidate modes of
+    in  case lookupKeyValue candidate modes of
             Just options -> Right (candidate, options)
             Nothing -> Left (UnknownCommand first)
 
@@ -722,14 +722,14 @@ We do it this way so that `parseCommandLine` can pas the global options to
 splitCommandLine1 :: [String] -> Either InvalidCommandLine ([String], [String])
 splitCommandLine1 args =
     let (possibles, remainder) = List.span isOption args
-     in if null possibles && null remainder
+    in  if null possibles && null remainder
             then Left NoCommandFound
             else Right (possibles, remainder)
 
 splitCommandLine2 :: [String] -> Either InvalidCommandLine (String, [String])
 splitCommandLine2 argv' =
     let x = List.uncons argv'
-     in case x of
+    in  case x of
             Just (mode, remainingArgs) -> Right (mode, remainingArgs)
             Nothing -> Left NoCommandFound
 
@@ -747,7 +747,7 @@ extractValidEnvironments mode config = case config of
 
             locals = extractLocalVariables commands (fromMaybe "" mode)
             variables2 = extractVariableNames locals
-         in variables1 <> variables2
+        in  variables1 <> variables2
 
 extractLocalVariables :: [Commands] -> LongName -> [Options]
 extractLocalVariables commands mode =
@@ -777,7 +777,9 @@ buildUsage config mode = case config of
     Blank -> emptyDoc
     Simple options ->
         let (o, a, v) = partitionParameters options
-         in "Usage:" <> hardline <> hardline
+        in  "Usage:"
+                <> hardline
+                <> hardline
                 <> indent
                     4
                     ( nest
@@ -802,7 +804,7 @@ buildUsage config mode = case config of
             modes = extractValidModes commands
 
             (oG, _, vG) = partitionParameters globalOptions
-         in "Usage:" <> hardline <> hardline <> case mode of
+        in  "Usage:" <> hardline <> hardline <> case mode of
                 Nothing ->
                     indent
                         2
@@ -826,7 +828,7 @@ buildUsage config mode = case config of
                     let (oL, aL, vL) = case lookupKeyValue longname modes of
                             Just localOptions -> partitionParameters localOptions
                             Nothing -> error "Illegal State"
-                     in indent
+                    in  indent
                             2
                             ( nest
                                 4
@@ -913,7 +915,7 @@ buildUsage config mode = case config of
                 Nothing -> "      --"
             l = pretty longname
             d = fromRope description
-         in case valued of
+        in  case valued of
                 Empty ->
                     fillBreak 16 (s <> l <> " ") <+> align (reflow d) <> hardline <> acc
                 Value label ->
@@ -921,14 +923,14 @@ buildUsage config mode = case config of
     g acc (Argument longname description) =
         let l = pretty longname
             d = fromRope description
-         in fillBreak 16 ("  <" <> l <> "> ") <+> align (reflow d) <> hardline <> acc
+        in  fillBreak 16 ("  <" <> l <> "> ") <+> align (reflow d) <> hardline <> acc
     g acc (Remaining description) =
         let d = fromRope description
-         in fillBreak 16 ("  " <> "... ") <+> align (reflow d) <> hardline <> acc
+        in  fillBreak 16 ("  " <> "... ") <+> align (reflow d) <> hardline <> acc
     g acc (Variable longname description) =
         let l = pretty longname
             d = fromRope description
-         in fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
+        in  fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline <> acc
 
     formatCommands :: [Commands] -> Doc ann
     formatCommands commands = hardline <> List.foldl' h emptyDoc commands
@@ -937,12 +939,12 @@ buildUsage config mode = case config of
     h acc (Command longname description _) =
         let l = pretty longname
             d = fromRope description
-         in acc <> fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline
+        in  acc <> fillBreak 16 ("  " <> l <> " ") <+> align (reflow d) <> hardline
     h acc _ = acc
 
 buildVersion :: Version -> Doc ann
 buildVersion version =
     pretty (projectNameFrom version)
         <+> "v"
-        <> pretty (versionNumberFrom version)
-        <> hardline
+            <> pretty (versionNumberFrom version)
+            <> hardline

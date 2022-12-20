@@ -32,18 +32,18 @@ There are quite a few other time formats around the Haskell ecosystem. You can
 use the 'fromTime' and 'intoTime' methods of the 'Instant' typeclass  to
 convert from one to another if you need to.
 -}
-module Core.Data.Clock (
-    -- * Time type
-    Time,
-    getCurrentTimeNanoseconds,
+module Core.Data.Clock
+    ( -- * Time type
+      Time
+    , getCurrentTimeNanoseconds
 
-    -- * Conversions
-    Instant (fromTime, intoTime),
+      -- * Conversions
+    , Instant (fromTime, intoTime)
 
-    -- * Internals
-    unTime,
-    epochTime,
-) where
+      -- * Internals
+    , unTime
+    , epochTime
+    ) where
 
 import Control.Applicative ((<|>))
 import Core.Data.Format
@@ -51,31 +51,31 @@ import Core.Text.Rope
 import Data.Aeson qualified as Aeson (FromJSON (..), ToJSON (..), Value (..))
 import Data.Aeson.Encoding qualified as Aeson (string)
 import Data.Aeson.Types qualified as Aeson (typeMismatch)
-import Data.Hourglass qualified as H (
-    DateTime (..),
-    Elapsed (..),
-    ElapsedP (..),
-    ISO8601_Date (..),
-    ISO8601_DateAndTime (..),
-    NanoSeconds (..),
-    Seconds (..),
-    Timeable (timeGetElapsedP),
-    timeParse,
-    timePrint,
- )
+import Data.Hourglass qualified as H
+    ( DateTime (..)
+    , Elapsed (..)
+    , ElapsedP (..)
+    , ISO8601_Date (..)
+    , ISO8601_DateAndTime (..)
+    , NanoSeconds (..)
+    , Seconds (..)
+    , Timeable (timeGetElapsedP)
+    , timeParse
+    , timePrint
+    )
 import Data.Int (Int64)
 import Data.Maybe (maybeToList)
 import Data.Time.Calendar (Day)
 import Data.Time.Clock (UTCTime (UTCTime, utctDay, utctDayTime))
-import Data.Time.Clock.POSIX (
-    POSIXTime,
-    posixSecondsToUTCTime,
-    utcTimeToPOSIXSeconds,
- )
+import Data.Time.Clock.POSIX
+    ( POSIXTime
+    , posixSecondsToUTCTime
+    , utcTimeToPOSIXSeconds
+    )
 import GHC.Generics
-import Time.System qualified as H (
-    timeCurrentP,
- )
+import Time.System qualified as H
+    ( timeCurrentP
+    )
 
 {- |
 Number of nanoseconds since the Unix epoch.
@@ -195,7 +195,7 @@ convertFromPosix :: POSIXTime -> Time
 convertFromPosix =
     let nano :: POSIXTime -> Int64
         nano = floor . (* 1000000000) . toRational
-     in Time . fromIntegral . nano
+    in  Time . fromIntegral . nano
 
 convertToPosix :: Time -> POSIXTime
 convertToPosix = fromRational . (/ 1e9) . fromIntegral . unTime
@@ -213,12 +213,12 @@ convertFromElapsed :: H.ElapsedP -> Time
 convertFromElapsed (H.ElapsedP (H.Elapsed (H.Seconds seconds)) (H.NanoSeconds nanoseconds)) =
     let s = fromIntegral seconds :: Int64
         ns = fromIntegral nanoseconds
-     in Time $! (s * 1000000000) + ns
+    in  Time $! (s * 1000000000) + ns
 
 convertToElapsed :: Time -> H.ElapsedP
 convertToElapsed (Time ticks) =
     let (s, ns) = divMod ticks 1000000000
-     in H.ElapsedP (H.Elapsed (H.Seconds (s))) (H.NanoSeconds (ns))
+    in  H.ElapsedP (H.Elapsed (H.Seconds (s))) (H.NanoSeconds (ns))
 
 {- |
 This instance may be useful if you need to work with calendar dates with
@@ -230,7 +230,7 @@ timestamp of midnight 00:00:00.0 on that date.
 -}
 instance Instant Day where
     fromTime = utctDay . fromTime
-    intoTime x = intoTime (UTCTime{utctDay = x, utctDayTime = 0})
+    intoTime x = intoTime (UTCTime {utctDay = x, utctDayTime = 0})
 
 instance Aeson.ToJSON Time where
     toEncoding = Aeson.string . H.timePrint ISO8601_Precise . convertToElapsed
@@ -239,7 +239,7 @@ instance Aeson.FromJSON Time where
     parseJSON (Aeson.String value) =
         let str = (fromRope (intoRope value))
             result = parseInput str
-         in case result of
+        in  case result of
                 Just t -> pure t
                 Nothing -> fail "Unable to parse input as a TimeStamp"
     parseJSON (invalid) = Aeson.typeMismatch "TimeStamp" invalid

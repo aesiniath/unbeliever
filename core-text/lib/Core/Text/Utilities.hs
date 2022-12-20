@@ -13,39 +13,39 @@
 Useful tools for working with 'Rope's. Support for pretty printing, multi-line
 strings, and...
 -}
-module Core.Text.Utilities (
-    -- * Pretty printing
-    Render (..),
-    render,
-    renderNoAnsi,
+module Core.Text.Utilities
+    ( -- * Pretty printing
+      Render (..)
+    , render
+    , renderNoAnsi
 
-    -- * Helpers
-    indefinite,
-    oxford,
-    breakRope,
-    breakWords,
-    breakLines,
-    breakPieces,
-    isNewline,
-    wrap,
-    calculatePositionEnd,
-    underline,
-    leftPadWith,
-    rightPadWith,
+      -- * Helpers
+    , indefinite
+    , oxford
+    , breakRope
+    , breakWords
+    , breakLines
+    , breakPieces
+    , isNewline
+    , wrap
+    , calculatePositionEnd
+    , underline
+    , leftPadWith
+    , rightPadWith
 
-    -- * Multi-line strings
-    quote,
+      -- * Multi-line strings
+    , quote
     -- for testing
-    intoPieces,
-    intoChunks,
-    byteChunk,
+    , intoPieces
+    , intoChunks
+    , byteChunk
 
-    -- * Deprecated
-    intoDocA,
-    module Core.Text.Colour,
-    bold,
-    -- | AnsiColour and colour constants moved to this module.
-) where
+      -- * Deprecated
+    , intoDocA
+    , module Core.Text.Colour
+    , bold
+      -- | AnsiColour and colour constants moved to this module.
+    ) where
 
 import Core.Text.Breaking
 import Core.Text.Bytes
@@ -59,34 +59,34 @@ import Data.FingerTree qualified as F (ViewL (..), viewl, (<|))
 import Data.Kind (Type)
 import Data.List qualified as List (dropWhileEnd, foldl', splitAt)
 import Data.Text qualified as T
-import Data.Text.Short qualified as S (
-    ShortText,
-    replicate,
-    singleton,
-    toText,
-    uncons,
- )
+import Data.Text.Short qualified as S
+    ( ShortText
+    , replicate
+    , singleton
+    , toText
+    , uncons
+    )
 import Data.Word (Word8)
 import Language.Haskell.TH (litE, stringL)
 import Language.Haskell.TH.Quote (QuasiQuoter (QuasiQuoter))
-import Prettyprinter (
-    Doc,
-    LayoutOptions (LayoutOptions),
-    PageWidth (AvailablePerLine),
-    Pretty (..),
-    SimpleDocStream (..),
-    annotate,
-    emptyDoc,
-    flatAlt,
-    group,
-    hsep,
-    layoutPretty,
-    pretty,
-    reAnnotateS,
-    softline',
-    unAnnotateS,
-    vcat,
- )
+import Prettyprinter
+    ( Doc
+    , LayoutOptions (LayoutOptions)
+    , PageWidth (AvailablePerLine)
+    , Pretty (..)
+    , SimpleDocStream (..)
+    , annotate
+    , emptyDoc
+    , flatAlt
+    , group
+    , hsep
+    , layoutPretty
+    , pretty
+    , reAnnotateS
+    , softline'
+    , unAnnotateS
+    , vcat
+    )
 import Prettyprinter.Render.Text (renderLazy)
 
 {- |
@@ -155,7 +155,9 @@ instance Render Bytes where
 
 prettyBytes :: Bytes -> Doc ()
 prettyBytes =
-    annotate () . vcat . twoWords
+    annotate ()
+        . vcat
+        . twoWords
         . fmap wordToHex
         . byteChunk
         . unBytes
@@ -175,7 +177,7 @@ byteChunk = reverse . go []
   where
     go acc blob =
         let (eight, remainder) = B.splitAt 8 blob
-         in if B.length remainder == 0
+        in  if B.length remainder == 0
                 then eight : acc
                 else go (eight : acc) remainder
 
@@ -184,7 +186,7 @@ wordToHex :: B.ByteString -> Doc ann
 wordToHex eight =
     let ws = B.unpack eight
         ds = fmap byteToHex ws
-     in hsep ds
+    in  hsep ds
 
 byteToHex :: Word8 -> Doc ann
 byteToHex c = pretty hi <> pretty low
@@ -224,7 +226,8 @@ of the terminal.
 render :: Render α => Int -> α -> Rope
 render columns (thing :: α) =
     let options = LayoutOptions (AvailablePerLine (columns - 1) 1.0)
-     in go [] . reAnnotateS (colourize @α)
+    in  go []
+            . reAnnotateS (colourize @α)
             . layoutPretty options
             . highlight
             $ thing
@@ -268,7 +271,9 @@ escape codes so it comes outformatted but as plain black & white text.
 renderNoAnsi :: Render α => Int -> α -> Rope
 renderNoAnsi columns (thing :: α) =
     let options = LayoutOptions (AvailablePerLine (columns - 1) 1.0)
-     in intoRope . renderLazy . unAnnotateS
+    in  intoRope
+            . renderLazy
+            . unAnnotateS
             . layoutPretty options
             . highlight
             $ thing
@@ -282,7 +287,7 @@ it's a vowel or not.
 indefinite :: Rope -> Rope
 indefinite text =
     let x = unRope text
-     in case F.viewl x of
+    in  case F.viewl x of
             F.EmptyL -> text
             piece F.:< _ -> case S.uncons piece of
                 Nothing -> text
@@ -341,7 +346,7 @@ Any trailing newlines will be removed.
 wrap :: Int -> Rope -> Rope
 wrap margin text =
     let built = wrapHelper margin (breakWords text)
-     in built
+    in  built
 
 wrapHelper :: Int -> [Rope] -> Rope
 wrapHelper _ [] = ""
@@ -353,7 +358,7 @@ wrapLine :: Int -> (Int, Rope) -> Rope -> (Int, Rope)
 wrapLine margin (pos, builder) word =
     let wide = widthRope word
         wide' = pos + wide + 1
-     in if wide' > margin
+    in  if wide' > margin
             then (wide, builder <> "\n" <> word)
             else (wide', builder <> " " <> word)
 
@@ -361,7 +366,7 @@ underline :: Char -> Rope -> Rope
 underline level text =
     let title = fromRope text
         line = T.map (\_ -> level) title
-     in intoRope line
+    in  intoRope line
 
 {- |
 Pad a piece of text on the left with a specified character to the desired

@@ -8,18 +8,18 @@
 Digging metadata out of the description of your project, and other useful
 helpers.
 -}
-module Core.Program.Metadata (
-    Version,
-    versionNumberFrom,
-    projectNameFrom,
-    projectSynopsisFrom,
+module Core.Program.Metadata
+    ( Version
+    , versionNumberFrom
+    , projectNameFrom
+    , projectSynopsisFrom
 
-    -- * Splice
-    fromPackage,
+      -- * Splice
+    , fromPackage
 
-    -- * Source code
-    __LOCATION__,
-) where
+      -- * Source code
+    , __LOCATION__
+    ) where
 
 import Core.Data
 import Core.System.Base (IOMode (..), withFile)
@@ -66,7 +66,7 @@ emptyVersion :: Version
 emptyVersion = Version "" "" "0"
 
 instance IsString Version where
-    fromString x = emptyVersion{versionNumberFrom = x}
+    fromString x = emptyVersion {versionNumberFrom = x}
 
 {- |
 This is a splice which includes key built-time metadata, including the number
@@ -154,7 +154,7 @@ readCabalFile = runIO $ do
 parseCabalFile :: Bytes -> Map Rope Rope
 parseCabalFile contents =
     let breakup = intoMap . fmap (\(a, b) -> (a, trimValue b)) . fmap (breakRope (== ':')) . breakLines . fromBytes
-     in breakup contents
+    in  breakup contents
 
 -- knock off the colon and whitespace in ":      hello"
 trimValue :: Rope -> Rope

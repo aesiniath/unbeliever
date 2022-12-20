@@ -93,14 +93,14 @@ probably at the top where you have the lambda. This can be confusing. If
 you're having trouble with the types try putting @return ()@ at the end of
 your subprogram.
 -}
-module Core.Program.Unlift (
-    -- * Unlifting
-    withContext,
+module Core.Program.Unlift
+    ( -- * Unlifting
+      withContext
 
-    -- * Internals
-    getContext,
-    subProgram,
-) where
+      -- * Internals
+    , getContext
+    , subProgram
+    ) where
 
 import Core.Program.Context
 import Core.Program.Execute
@@ -151,9 +151,9 @@ following pattern:
 -- the signature is similar. I'm not sure if there is any benefit to
 -- restating this as a `withRunInIO` action; we're deliberately trying to
 -- constrain the types.
-withContext ::
-    ((forall β. Program τ β -> IO β) -> IO α) ->
-    Program τ α
+withContext
+    :: ((forall β. Program τ β -> IO β) -> IO α)
+    -> Program τ α
 withContext action = do
     context <- getContext
     let runThing = subProgram context

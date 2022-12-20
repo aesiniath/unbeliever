@@ -1,21 +1,21 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
-module Core.Program.Signal (
-    setupSignalHandlers,
-) where
+module Core.Program.Signal
+    ( setupSignalHandlers
+    ) where
 
 import Control.Concurrent.MVar (MVar, modifyMVar_, putMVar)
 import Core.Program.Context
 import Foreign.C.Types (CInt)
 import System.Exit (ExitCode (..))
 import System.IO (hFlush, hPutStrLn, stdout)
-import System.Posix.Signals (
-    Handler (Catch),
-    installHandler,
-    sigINT,
-    sigTERM,
-    sigUSR1,
- )
+import System.Posix.Signals
+    ( Handler (Catch)
+    , installHandler
+    , sigINT
+    , sigTERM
+    , sigUSR1
+    )
 
 {- |
 Make a non-zero exit code which is 0b1000000 + the number of the signal.

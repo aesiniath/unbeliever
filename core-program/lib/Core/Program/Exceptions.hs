@@ -72,30 +72,30 @@ fail fast if something goes wrong and you can get an appropriate error message
 back to the surface (in our case the 'Program' @τ@ monad) and you can 'throw'
 from there.
 -}
-module Core.Program.Exceptions (
-    catch,
-    try,
-    throw,
-    bracket,
-    finally,
-    onException,
-    Boom (..),
-) where
+module Core.Program.Exceptions
+    ( catch
+    , try
+    , throw
+    , bracket
+    , finally
+    , onException
+    , Boom (..)
+    ) where
 
-import Control.Exception qualified as Base (
-    Exception,
- )
-import Control.Exception.Safe qualified as Safe (
-    bracket,
-    catch,
-    finally,
-    onException,
-    throw,
-    try,
- )
-import Core.Program.Context (
-    Program,
- )
+import Control.Exception qualified as Base
+    ( Exception
+    )
+import Control.Exception.Safe qualified as Safe
+    ( bracket
+    , catch
+    , finally
+    , onException
+    , throw
+    , try
+    )
+import Core.Program.Context
+    ( Program
+    )
 
 {- |
 Catch an exception.
@@ -188,7 +188,7 @@ which will get you a nice crash message as your world falls down around you:
 
 @
 22:54:39Z (00.002) SomeoneWrongOnInternet \"Ashley thinks there are more than three Star Wars movies\"
-$
+\$
 @
 
 but if you're in a hurry and don't want to define a local exception type to

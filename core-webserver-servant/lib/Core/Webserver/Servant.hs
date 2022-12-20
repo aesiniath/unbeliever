@@ -27,29 +27,28 @@ main = do
         'launchWebserver' 8080 application
 @
 -}
-module Core.Webserver.Servant (
-    prepareRoutes,
-    prepareRoutesWithContext,
-) where
+module Core.Webserver.Servant
+    ( prepareRoutes
+    , prepareRoutesWithContext
+    ) where
 
-import Control.Exception.Safe qualified as Safe (try, throw)
+import Control.Exception.Safe qualified as Safe (throw, try)
 import Control.Monad.Except (ExceptT (..))
 import Core.Program
-import Core.System (Exception (..))
 import Core.Webserver.Warp
 import Data.Proxy (Proxy)
 import GHC.Base (Type)
 import Network.Wai (Application)
-import Servant qualified as Servant (
-    Handler (..),
-    ServerT,
- )
-import Servant.Server qualified as Servant (
-    Context (..),
-    HasServer,
-    ServerContext,
-    serveWithContextT,
- )
+import Servant qualified as Servant
+    ( Handler (..)
+    , ServerT
+    )
+import Servant.Server qualified as Servant
+    ( Context (..)
+    , HasServer
+    , ServerContext
+    , serveWithContextT
+    )
 
 {- |
 Convert a __servant__ API and set of handlers into a __warp__ 'Application'.
@@ -68,12 +67,12 @@ This code creates an Application which has sufficient information to unlift
 back to the 'Program' monad so that your handlers can be take advantage of the
 logging and telemetry facilities of __core-program__ and __core-telemetry__.
 -}
-prepareRoutes ::
-    forall τ (api :: Type).
-    Servant.HasServer api '[] =>
-    Proxy api ->
-    Servant.ServerT api (Program τ) ->
-    Program τ Application
+prepareRoutes
+    :: forall τ (api :: Type)
+     . Servant.HasServer api '[]
+    => Proxy api
+    -> Servant.ServerT api (Program τ)
+    -> Program τ Application
 prepareRoutes proxy = prepareRoutesWithContext proxy Servant.EmptyContext
 
 {- |
@@ -82,13 +81,13 @@ Prepare routes as with 'prepareRoutes' above, but providing a __servant__
 
 @since 0.1.1
 -}
-prepareRoutesWithContext ::
-    forall τ (api :: Type) context.
-    (Servant.HasServer api context, Servant.ServerContext context) =>
-    Proxy api ->
-    Servant.Context context ->
-    Servant.ServerT api (Program τ) ->
-    Program τ Application
+prepareRoutesWithContext
+    :: forall τ (api :: Type) context
+     . (Servant.HasServer api context, Servant.ServerContext context)
+    => Proxy api
+    -> Servant.Context context
+    -> Servant.ServerT api (Program τ)
+    -> Program τ Application
 prepareRoutesWithContext proxy sContext (routes :: Servant.ServerT api (Program τ)) =
     pure application
   where
@@ -119,4 +118,4 @@ prepareRoutesWithContext proxy sContext (routes :: Servant.ServerT api (Program 
                 Safe.try $
                     subProgram context $ do
                         program
-         in Servant.Handler (ExceptT output)
+        in  Servant.Handler (ExceptT output)
