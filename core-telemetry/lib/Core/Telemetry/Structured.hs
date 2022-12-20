@@ -68,9 +68,9 @@ relevant contextual information will be added to the output:
 }
 @
 -}
-module Core.Telemetry.Structured (
-    structuredExporter,
-) where
+module Core.Telemetry.Structured
+    ( structuredExporter
+    ) where
 
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (TQueue, writeTQueue)
@@ -139,7 +139,7 @@ convertDatumToJson datum =
 
         time = intoRope (show (spanTimeFrom datum))
         meta7 = insertKeyValue "timestamp" (JsonString time) meta6
-     in JsonObject meta7
+    in  JsonObject meta7
 
 processStructuredOutput :: TQueue (Maybe Rope) -> [Datum] -> IO ()
 processStructuredOutput out datums = do

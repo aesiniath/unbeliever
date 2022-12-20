@@ -30,10 +30,10 @@ applications. In the future you may be able to look at
 "Core.Telemetry.General" if you instead want to forward to a generic
 OpenTelemetry provider.
 -}
-module Core.Telemetry.Honeycomb (
-    Dataset,
-    honeycombExporter,
-) where
+module Core.Telemetry.Honeycomb
+    ( Dataset
+    , honeycombExporter
+    ) where
 
 import Codec.Compression.GZip qualified as GZip (compress)
 import Control.Exception.Safe qualified as Safe (catch, finally, throw)
@@ -113,7 +113,7 @@ setupHoneycombConfig config0 =
                     "The name of the dataset within your Honeycomb account that this program's telemetry will be written to."
                 )
                 config1
-     in config2
+    in  config2
 
 setupHoneycombAction :: Context τ -> IO Forwarder
 setupHoneycombAction context = do
@@ -211,7 +211,7 @@ convertDatumToJson datum =
                     , (JsonKey "data", JsonObject meta6)
                     ]
                 )
-     in point
+    in  point
 
 acquireConnection :: IORef (Maybe Connection) -> IO Connection
 acquireConnection r = do

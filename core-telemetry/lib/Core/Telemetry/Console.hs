@@ -18,9 +18,9 @@ would be:
   precise = 45.0
 @
 -}
-module Core.Telemetry.Console (
-    consoleExporter,
-) where
+module Core.Telemetry.Console
+    ( consoleExporter
+    ) where
 
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (TQueue, writeTQueue)
@@ -74,7 +74,7 @@ processConsoleOutput out datums = do
                     <> singletonRope ':'
                     <> let pairs :: [(JsonKey, JsonValue)]
                            pairs = fromMap (attachedMetadataFrom datum)
-                        in List.foldl' f emptyRope pairs
+                       in  List.foldl' f emptyRope pairs
                             <> intoEscapes resetColour
 
         now <- getCurrentTimeNanoseconds
@@ -90,7 +90,8 @@ processConsoleOutput out datums = do
 
 f :: Rope -> (JsonKey, JsonValue) -> Rope
 f acc (k, v) =
-    acc <> "\n  "
+    acc
+        <> "\n  "
         <> intoEscapes pureGrey
         <> intoRope k
         <> " = "
