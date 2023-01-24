@@ -1,5 +1,5 @@
 name: core-program
-version: 0.6.2.0
+version: 0.6.2.1
 synopsis: Opinionated Haskell Interoperability
 description: |
   A library to help build command-line programs, both tools and
@@ -48,6 +48,7 @@ library:
    - terminal-size
    - transformers
    - unix
+   - unliftio-core
   source-dirs: lib
   exposed-modules:
    - Core.Program
