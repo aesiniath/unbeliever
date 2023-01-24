@@ -69,6 +69,7 @@ module Core.Program.Execute
     , queryArgument
     , queryRemaining
     , queryEnvironmentValue
+    , queryEnvironmentValue'
     , getProgramName
     , setProgramName
     , getVerbosityLevel
@@ -102,7 +103,8 @@ module Core.Program.Execute
     , lookupOptionValue
     , lookupArgument
     , lookupEnvironmentValue
-    ) where
+    )
+where
 
 import Control.Concurrent
     ( forkFinally
@@ -824,13 +826,17 @@ lookupOptionValue name params =
 
 data QueryParameterError
     = OptionValueMissing LongName
-    | UnableParseValue LongName
+    | UnableParseOption LongName
+    | EnvironmentVariableMissing LongName
+    | UnableParseVariable LongName
     deriving (Show)
 
 instance Exception QueryParameterError where
     displayException e = case e of
         OptionValueMissing (LongName name) -> "Option --" ++ name ++ " specified but without a value."
-        UnableParseValue (LongName name) -> "Unable to parse the value supplied to --" ++ name ++ "."
+        UnableParseOption (LongName name) -> "Unable to parse the value supplied to --" ++ name ++ "."
+        EnvironmentVariableMissing (LongName name) -> "Variable " ++ name ++ " requested but is unset."
+        UnableParseVariable (LongName name) -> "Unable to parse the value present in " ++ name ++ "."
 
 {- |
 Look to see if the user supplied a valued option and if so, what its value
@@ -869,7 +875,7 @@ queryOptionValue' name = do
         Just parameter -> case parameter of
             Empty -> throw (OptionValueMissing name)
             Value value -> case parseExternal (packRope value) of
-                Nothing -> throw (UnableParseValue name)
+                Nothing -> throw (UnableParseOption name)
                 Just actual -> pure (Just actual)
 
 {- |
@@ -914,6 +920,27 @@ queryEnvironmentValue name = do
         Just param -> case param of
             Empty -> pure Nothing
             Value str -> pure (Just (intoRope str))
+
+{- |
+Look to see if the user supplied the named environment variable and if so,
+return what its value was.
+
+This makes the assumption that the requested environment variable must be
+present, and that it must not be the empty string.
+
+@since 0.6.2
+-}
+queryEnvironmentValue' :: Externalize ξ => LongName -> Program τ (Maybe ξ)
+queryEnvironmentValue' name = do
+    context <- ask
+    let params = commandLineFrom context
+    case lookupKeyValue name (environmentValuesFrom params) of
+        Nothing -> error "Attempted lookup of unconfigured environment variable"
+        Just param -> case param of
+            Empty -> pure Nothing
+            Value value -> case parseExternal (packRope value) of
+                Nothing -> throw (UnableParseVariable name)
+                Just actual -> pure (Just actual)
 
 lookupEnvironmentValue :: LongName -> Parameters -> Maybe String
 lookupEnvironmentValue name params =
