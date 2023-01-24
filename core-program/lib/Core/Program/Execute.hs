@@ -925,8 +925,13 @@ queryEnvironmentValue name = do
 Look to see if the user supplied the named environment variable and if so,
 return what its value was.
 
-This makes the assumption that the requested environment variable must be
-present, and that it must not be the empty string.
+Like 'queryOptionValue'' above, this function attempts to parse the supplied
+value as 'Just' the inferred type. This makes the assumption that the
+requested environment variable is populated. If it is not set in the
+environment, or is set to the empty string, then this function will return
+'Nothing'.
+
+If the attempt to parse the supplied value fails an exception will be thrown.
 
 @since 0.6.2
 -}
