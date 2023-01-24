@@ -145,6 +145,8 @@ following pattern:
             -- now in Program monad
         ...
 @
+
+Note there is a 'MonadUnliftIO' instance which may be useful to you as well.
 -}
 
 -- I think I just discovered the same pattern as **unliftio**? Certainly

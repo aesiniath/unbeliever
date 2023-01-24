@@ -43,6 +43,7 @@ import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
 import Control.Concurrent.STM.TVar (TVar, newTVarIO)
 import Control.Exception.Safe qualified as Safe (throw)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow (throwM))
+import Control.Monad.IO.Unlift (MonadUnliftIO (withRunInIO))
 import Control.Monad.Reader.Class (MonadReader (..))
 import Control.Monad.Trans.Reader (ReaderT (..))
 import Core.Data.Clock
@@ -317,6 +318,18 @@ Run a subprogram from within a lifted @IO@ block.
 subProgram :: Context τ -> Program τ α -> IO α
 subProgram context (Program r) = do
     runReaderT r context
+
+--
+-- This isn't needed by our packages, but it's a useful instance. This is a
+-- copy of what is in Core.Program.Unlift.withContext. I would have put this
+-- there, but it leaves an orphan.
+--
+instance MonadUnliftIO (Program τ) where
+    {-# INLINE withRunInIO #-}
+    withRunInIO action = do
+        context <- getContext
+        liftIO $ do
+            action (subProgram context)
 
 {-
 This is complicated. The **safe-exceptions** library exports a `throwM` which
