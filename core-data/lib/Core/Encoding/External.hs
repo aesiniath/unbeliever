@@ -47,16 +47,18 @@ inputs for an example.
 -}
 module Core.Encoding.External
     ( Externalize (formatExternal, parseExternal)
-    ) where
+    )
+where
 
 import Core.Data.Clock
 import Core.Text.Rope
 import Data.ByteString.Builder qualified as Builder
-import Data.Int (Int32, Int64)
+import Data.Int (Int16, Int32, Int64, Int8)
 import Data.Scientific (FPFormat (Exponent), Scientific, formatScientific)
 import Data.Time.Calendar qualified as Base (Day)
 import Data.Time.Format.ISO8601 qualified as Base (formatParseM, formatShow, iso8601Format)
 import Data.UUID qualified as Uuid (UUID, fromText, toText)
+import Data.Word (Word16, Word32, Word64, Word8)
 import Text.Read (readMaybe)
 
 {- |
@@ -133,6 +135,28 @@ Integers are represented in decimal:
 42
 @
 -}
+instance Externalize Int8 where
+    formatExternal = intoRope . Builder.toLazyByteString . Builder.int8Dec
+    parseExternal = readMaybe . fromRope
+
+{- |
+Integers are represented in decimal:
+
+@
+42
+@
+-}
+instance Externalize Int16 where
+    formatExternal = intoRope . Builder.toLazyByteString . Builder.int16Dec
+    parseExternal = readMaybe . fromRope
+
+{- |
+Integers are represented in decimal:
+
+@
+42
+@
+-}
 instance Externalize Int32 where
     formatExternal = intoRope . Builder.toLazyByteString . Builder.int32Dec
     parseExternal = readMaybe . fromRope
@@ -146,6 +170,50 @@ Integers are represented in decimal:
 -}
 instance Externalize Int64 where
     formatExternal = intoRope . Builder.toLazyByteString . Builder.int64Dec
+    parseExternal = readMaybe . fromRope
+
+{- |
+Words are likewise represented in decimal:
+
+@
+255
+@
+-}
+instance Externalize Word8 where
+    formatExternal = intoRope . Builder.toLazyByteString . Builder.word8Dec
+    parseExternal = readMaybe . fromRope
+
+{- |
+Words are likewise represented in decimal:
+
+@
+65535
+@
+-}
+instance Externalize Word16 where
+    formatExternal = intoRope . Builder.toLazyByteString . Builder.word16Dec
+    parseExternal = readMaybe . fromRope
+
+{- |
+Words are likewise represented in decimal:
+
+@
+4294967295
+@
+-}
+instance Externalize Word32 where
+    formatExternal = intoRope . Builder.toLazyByteString . Builder.word32Dec
+    parseExternal = readMaybe . fromRope
+
+{- |
+Words are likewise represented in decimal:
+
+@
+18446744073709551615
+@
+-}
+instance Externalize Word64 where
+    formatExternal = intoRope . Builder.toLazyByteString . Builder.word64Dec
     parseExternal = readMaybe . fromRope
 
 {- |
