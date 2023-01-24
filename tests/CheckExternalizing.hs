@@ -12,6 +12,7 @@ import Data.Scientific
 import Data.Time.Calendar (Day (ModifiedJulianDay))
 import Test.Hspec
 import Test.QuickCheck (property)
+import Data.Word
 
 checkExternalizing :: Spec
 checkExternalizing = do
@@ -24,8 +25,11 @@ checkExternalizing = do
             formatExternal (9223372036854775807 :: Int64) `shouldBe` packRope "9223372036854775807"
             parseExternal (packRope "9223372036854775807") `shouldBe` Just (9223372036854775807 :: Int64)
 
-        it "behaves when QuickChecked" $ do
+        it "Int64 behaves when QuickChecked" $ do
             property (prop_RoundTrip_External :: Int64 -> Bool)
+
+        it "Word16 behaves when QuickChecked" $ do
+            property (prop_RoundTrip_External :: Word16 -> Bool)
 
         it "Timestamps and Days" $ do
             formatExternal (intoTime (1660802416710578538 :: Int64)) `shouldBe` packRope "2022-08-18T06:00:16.710578538Z"
