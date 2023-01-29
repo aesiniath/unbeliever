@@ -11,63 +11,72 @@
 {- |
 
 = Usage
-
 -}
 module Core.Effect.Effectful
     ( ProgramE
     , runProgram
+    , runProgramE
     )
 where
 
+--
+-- We follow the convention used elsewhere in this collection of libraries of
+-- using a qualified name for the imports of significant libraries. It's a bit
+-- cumbersome, but makes it easier to disambiguate what's going on when
+-- comparing to almost identical code in sibling modules covering other
+-- webserver frameworks.
+--
 
 import Control.Monad.IO.Unlift qualified as UnliftIO
 import Core.Program.Context
-import Core.Program.Logging
 import Core.System.Base
-import Core.Telemetry.Identifiers
 import Core.Telemetry.Observability
-import Core.Text.Rope
-import Effectful
+import Data.Kind (Type)
+import Effectful qualified as Effect
     ( Dispatch (Static)
     , Effect
     )
 import Effectful.Internal.Effect (type (:>>))
-import Effectful.Internal.Env
+import Effectful.Internal.Env qualified as Effect
     ( DispatchOf
     , SideEffects (WithSideEffects)
     )
-import Effectful.Internal.Monad
+import Effectful.Internal.Monad (withEffToIO)
+import Effectful.Internal.Monad qualified as Effect
     ( Eff
     , IOE
     , StaticRep
+    , evalStaticRep
+    , getStaticRep
     , withEffToIO
     )
+import GHC.Stack (HasCallStack)
 
 -------------------------------------------------------------------------------
 -- Effect
 
-data ProgramE (τ :: *) :: Effect
+data ProgramE (τ :: Type) :: Effect.Effect
 
-type instance DispatchOf (ProgramE τ) = Static WithSideEffects
-newtype instance StaticRep (ProgramE τ) = ProgramE (Context τ)
+type instance Effect.DispatchOf (ProgramE τ) = Effect.Static Effect.WithSideEffects
+newtype instance Effect.StaticRep (ProgramE τ) = ProgramE (Context τ)
 
 -------------------------------------------------------------------------------
 -- Interpretation
 
 runProgramE
-    :: '[IOE] :> es
+    :: '[Effect.IOE] :>> es
     => Context τ
-    -> Eff (ProgramE τ : es) α
-    -> Eff es α
+    -> Effect.Eff (ProgramE τ : es) α
+    -> Effect.Eff es α
 runProgramE context = Effect.evalStaticRep (ProgramE context)
 
 --------------------------------------------------------------------------------
 -- Wrappers
 
 runProgram
-    :: '[IOE, ProgramE τ] :>> es
+    :: '[Effect.IOE, ProgramE τ] :>> es
     => Program τ a
-    -> Eff es a
+    -> Effect.Eff es a
 runProgram action = do
     ProgramE context <- Effect.getStaticRep
     liftIO $ subProgram context action
@@ -77,10 +86,10 @@ runProgram action = do
 -- to either withSeqEffToIO or withConcEffToIO.
 runProgramEndo
     :: forall τ es a
-     . (HasCallStack, '[IOE, ProgramE τ] :>> es)
+     . (HasCallStack, '[Effect.IOE, ProgramE τ] :>> es)
     => (Program τ a -> Program τ a)
-    -> Eff es a
-    -> Eff es a
+    -> Effect.Eff es a
+    -> Effect.Eff es a
 runProgramEndo endo eff = do
     ProgramE context <- Effect.getStaticRep
     withEffToIO @es $ \effToIO ->
@@ -91,8 +100,8 @@ runProgramEndo endo eff = do
 
 encloseSpanEff
     :: forall τ es a
-     . (HasCallStack, '[IOE, ProgramE τ] :>> es)
+     . (HasCallStack, '[Effect.IOE, ProgramE τ] :>> es)
     => Label
-    -> Eff es a
-    -> Eff es a
+    -> Effect.Eff es a
+    -> Effect.Eff es a
 encloseSpanEff label = runProgramEndo @τ (encloseSpan label)
