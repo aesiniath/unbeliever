@@ -54,14 +54,16 @@ dependencies:
 
 executables:
   snippet:
-    buildable: false
     dependencies:
     - bytestring
+    - effectful
+    - effectful-core
+    - core-effect-effectful
     ghc-options:
      - -threaded
     source-dirs:
      - tests
-    main: Snippet.hs
+    main: EffectSnippet.hs
     other-modules: []
 
   experiment:

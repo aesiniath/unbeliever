@@ -1,5 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -12,11 +13,18 @@
 {- |
 
 = Usage
+
+
+The function 'runProgram' exported here is a the same name as that recommended
+in "Core.Program.Unlift" for the inner function when calling 'withContext'.
+There won't be a name collision but be aware of shadowing if using this
+function.
 -}
 module Core.Effect.Effectful
     ( ProgramE
     , runProgram
     , runProgramE
+    , runProgram'
     )
 where
 
@@ -28,10 +36,8 @@ where
 -- webserver frameworks.
 --
 
-import Control.Monad.IO.Unlift qualified as UnliftIO
 import Core.Program.Context
 import Core.System.Base
-import Core.Telemetry.Observability
 import Data.Kind (Type)
 import Effectful.Internal.Effect (type (:>))
 import Effectful.Internal.Effect qualified as Effect
@@ -50,7 +56,6 @@ import Effectful.Internal.Monad qualified as Effect
     , getStaticRep
     , withEffToIO
     )
-import GHC.Stack (HasCallStack)
 
 -------------------------------------------------------------------------------
 -- Effect
@@ -81,27 +86,21 @@ runProgram action = do
     ProgramE context <- Effect.getStaticRep
     liftIO $ subProgram context action
 
--- This function may be tweaked if for some reason we want a precise unlifting
--- strategy (seems related to threads and concurrency) by changing withEffToIO
--- to either withSeqEffToIO or withConcEffToIO.
-runProgramEndo
-    :: forall τ es a
-     . (HasCallStack, Effect.IOE :> es, ProgramE τ :> es)
-    => (Program τ a -> Program τ a)
-    -> Effect.Eff es a
-    -> Effect.Eff es a
-runProgramEndo endo eff = do
+runProgram'
+    :: (Effect.IOE :> es, ProgramE τ :> es)
+    => ((forall β. Effect.Eff es β -> Program τ β) -> Program τ α)
+    -> Effect.Eff es α
+runProgram' action = do
+    -- extract Context τ
     ProgramE context <- Effect.getStaticRep
-    Effect.withEffToIO @es $ \effToIO ->
-        liftIO $
-            subProgram context $
-                UnliftIO.withRunInIO @(Program τ) $ \runInIO ->
-                    runInIO $ endo $ UnliftIO.liftIO $ effToIO eff
 
-encloseSpanEff
-    :: forall τ es a
-     . (HasCallStack, Effect.IOE :> es, ProgramE τ :> es)
-    => Label
-    -> Effect.Eff es a
-    -> Effect.Eff es a
-encloseSpanEff label = runProgramEndo @τ (encloseSpan label)
+    -- lift to IO, using the provided specialized unlifting function
+    Effect.withEffToIO $ \runInIO ->
+        -- now in IO. Lift to Program τ
+        subProgram context $ do
+            -- now in Program τ. We form the function that will run an effect
+            -- in Program, and pass it to the supplied action.
+            action $ \inner -> do
+                liftIO $ do
+                    runInIO $ do
+                        inner

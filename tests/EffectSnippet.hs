@@ -35,7 +35,7 @@ main = execute $ do
 
 thing :: (Effect.IOE :> es, ProgramE τ :> es) => Effect.Eff es ()
 thing = do
-    withEffect $ \runEffect -> do
+    runProgram' $ \runEffect -> do
         info "Running in Program"
 
         name <- runEffect $ do
