@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ImportQualifiedPost #-}
@@ -32,16 +33,15 @@ import Core.Program.Context
 import Core.System.Base
 import Core.Telemetry.Observability
 import Data.Kind (Type)
-import Effectful qualified as Effect
-    ( Dispatch (Static)
-    , Effect
+import Effectful.Internal.Effect (type (:>))
+import Effectful.Internal.Effect qualified as Effect
+    ( Effect
     )
-import Effectful.Internal.Effect (type (:>>))
 import Effectful.Internal.Env qualified as Effect
-    ( DispatchOf
+    ( Dispatch (Static)
+    , DispatchOf
     , SideEffects (WithSideEffects)
     )
-import Effectful.Internal.Monad (withEffToIO)
 import Effectful.Internal.Monad qualified as Effect
     ( Eff
     , IOE
@@ -57,14 +57,14 @@ import GHC.Stack (HasCallStack)
 
 data ProgramE (τ :: Type) :: Effect.Effect
 
-type instance Effect.DispatchOf (ProgramE τ) = Effect.Static Effect.WithSideEffects
+type instance Effect.DispatchOf (ProgramE τ) = 'Effect.Static 'Effect.WithSideEffects
 newtype instance Effect.StaticRep (ProgramE τ) = ProgramE (Context τ)
 
 -------------------------------------------------------------------------------
 -- Interpretation
 
 runProgramE
-    :: '[Effect.IOE] :>> es
+    :: Effect.IOE :> es
     => Context τ
     -> Effect.Eff (ProgramE τ : es) α
     -> Effect.Eff es α
@@ -74,7 +74,7 @@ runProgramE context = Effect.evalStaticRep (ProgramE context)
 -- Wrappers
 
 runProgram
-    :: '[Effect.IOE, ProgramE τ] :>> es
+    :: (Effect.IOE :> es, ProgramE τ :> es)
     => Program τ a
     -> Effect.Eff es a
 runProgram action = do
@@ -86,13 +86,13 @@ runProgram action = do
 -- to either withSeqEffToIO or withConcEffToIO.
 runProgramEndo
     :: forall τ es a
-     . (HasCallStack, '[Effect.IOE, ProgramE τ] :>> es)
+     . (HasCallStack, Effect.IOE :> es, ProgramE τ :> es)
     => (Program τ a -> Program τ a)
     -> Effect.Eff es a
     -> Effect.Eff es a
 runProgramEndo endo eff = do
     ProgramE context <- Effect.getStaticRep
-    withEffToIO @es $ \effToIO ->
+    Effect.withEffToIO @es $ \effToIO ->
         liftIO $
             subProgram context $
                 UnliftIO.withRunInIO @(Program τ) $ \runInIO ->
@@ -100,7 +100,7 @@ runProgramEndo endo eff = do
 
 encloseSpanEff
     :: forall τ es a
-     . (HasCallStack, '[Effect.IOE, ProgramE τ] :>> es)
+     . (HasCallStack, Effect.IOE :> es, ProgramE τ :> es)
     => Label
     -> Effect.Eff es a
     -> Effect.Eff es a
