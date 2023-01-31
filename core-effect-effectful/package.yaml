@@ -1,5 +1,5 @@
 name: core-effect-effectful
-version: 0.0.0.1
+version: 0.0.0.2
 synopsis: Interoperability with the Effectful effects library
 description: |
   This is part of a library to help build command-line programs, both tools and

@@ -47,7 +47,7 @@ retrieveProgramName
      . (Effect.IOE :> es, ProgramE τ :> es)
     => Effect.Eff es ()
 retrieveProgramName = do
-    -- we're in (IOE :> es) => Eff es, right?
+    -- we're in (IOE :> es, ProgramE :> es) => Eff es, right?
 
     withProgram @τ $ \runEffect -> do
         -- now we're in Program τ

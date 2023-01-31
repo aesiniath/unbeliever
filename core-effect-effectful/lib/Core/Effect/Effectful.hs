@@ -22,7 +22,7 @@ function.
 -}
 module Core.Effect.Effectful
     ( ProgramE
-    , runProgram
+    , withProgram'
     , runProgramE
     , withProgram
     )
@@ -79,14 +79,19 @@ runProgramE context = Effect.evalStaticRep (ProgramE context)
 --------------------------------------------------------------------------------
 -- Wrappers
 
-runProgram
+withProgram'
     :: forall τ es α
      . (Effect.IOE :> es, ProgramE τ :> es)
     => Program τ α
     -> Effect.Eff es α
-runProgram action = do
+withProgram' action = do
     ProgramE context <- Effect.getStaticRep
-    liftIO $ subProgram context action
+
+    -- lift to IO
+    liftIO $ do
+        -- now in IO. Lift to Program τ
+        subProgram context $ do
+            action
 
 withProgram
     :: forall τ es α
@@ -97,13 +102,15 @@ withProgram action = do
     -- extract Context τ
     ProgramE context <- Effect.getStaticRep
 
-    -- lift to IO, using the provided specialized unlifting function
+    -- lift to IO, using the provided specialized function which gives an unlift
+    -- function for later use.
     Effect.withEffToIO $ \runInIO ->
         -- now in IO. Lift to Program τ
         subProgram context $ do
             -- now in Program τ. We form the function that will run an effect
-            -- in Program, and pass it to the supplied action.
+            -- in Program τ, and pass it to the supplied action.
             action $ \inner -> do
                 liftIO $ do
                     runInIO $ do
+                        -- now in (IOE :> es, ProgramE :> es) => Eff es
                         inner
