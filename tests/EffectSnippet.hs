@@ -21,30 +21,46 @@ import Effectful.Environment qualified as Effect
 import Effectful.Internal.Effect (type (:>))
 
 main :: IO ()
-main = execute $ do
+main = execute program
+
+program :: Program None ()
+program = do
+    -- in Program τ
     context <- getContext
     liftIO $ do
+        -- in IO
         Effect.runEff $ do
-            --         Effect.runEnvironment $ do
-            --             Effect.getProgName
-            -- debugS "name" name
+            -- in (IOE :> es) => Eff es
             runProgramE context $ do
-                thing
+                retrieveProgramName @None
 
     write "Done"
 
-thing :: (Effect.IOE :> es, ProgramE τ :> es) => Effect.Eff es ()
-thing = do
-    runProgram' $ \runEffect -> do
+--
+-- In order to test the withProgram unlifting mechanism, we wanted an example
+-- of something that needs the IOE effect. The Environment effect fits the
+-- bill.
+--
+
+retrieveProgramName
+    :: forall τ es
+     . (Effect.IOE :> es, ProgramE τ :> es)
+    => Effect.Eff es ()
+retrieveProgramName = do
+    -- we're in (IOE :> es) => Eff es, right?
+
+    withProgram @τ $ \runEffect -> do
+        -- now we're in Program τ
         info "Running in Program"
 
-        name <- runEffect $ do
-            -- an example of something that needs IOE
-            Effect.runEnvironment $ do
-                Effect.getProgName
+        path <- runEffect $ do
+            -- now back in (IOE :> es, ProgramE :> es) => Eff es, and can call
+            -- something that requires the IOE effect be present.
 
-        debugS "name" (name :: String)
+            Effect.runEnvironment $ do
+                -- now in (Environment :> es) => Eff es
+                Effect.getExecutablePath
 
         info "Done running effects"
+        debugS "path" path
 
-        pure ()

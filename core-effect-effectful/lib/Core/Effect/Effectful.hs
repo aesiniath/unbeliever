@@ -24,7 +24,7 @@ module Core.Effect.Effectful
     ( ProgramE
     , runProgram
     , runProgramE
-    , runProgram'
+    , withProgram
     )
 where
 
@@ -69,7 +69,8 @@ newtype instance Effect.StaticRep (ProgramE τ) = ProgramE (Context τ)
 -- Interpretation
 
 runProgramE
-    :: Effect.IOE :> es
+    :: forall τ es α
+     . Effect.IOE :> es
     => Context τ
     -> Effect.Eff (ProgramE τ : es) α
     -> Effect.Eff es α
@@ -79,18 +80,20 @@ runProgramE context = Effect.evalStaticRep (ProgramE context)
 -- Wrappers
 
 runProgram
-    :: (Effect.IOE :> es, ProgramE τ :> es)
-    => Program τ a
-    -> Effect.Eff es a
+    :: forall τ es α
+     . (Effect.IOE :> es, ProgramE τ :> es)
+    => Program τ α
+    -> Effect.Eff es α
 runProgram action = do
     ProgramE context <- Effect.getStaticRep
     liftIO $ subProgram context action
 
-runProgram'
-    :: (Effect.IOE :> es, ProgramE τ :> es)
+withProgram
+    :: forall τ es α
+     . (Effect.IOE :> es, ProgramE τ :> es)
     => ((forall β. Effect.Eff es β -> Program τ β) -> Program τ α)
     -> Effect.Eff es α
-runProgram' action = do
+withProgram action = do
     -- extract Context τ
     ProgramE context <- Effect.getStaticRep
 
