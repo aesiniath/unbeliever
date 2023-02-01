@@ -31,6 +31,8 @@ tested-with:
     GHC == 8.10.7
 extra-doc-files:
     HoneycombTraceExample.png
+    honeycomb-sad-trace.png
+    honeycomb-happy-trace.png
 
 source-repository head
   type: git

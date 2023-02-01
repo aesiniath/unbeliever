@@ -4,13 +4,13 @@ synopsis: Advanced telemetry
 description: |
   This is part of a library to help build command-line programs, both tools and
   longer-running daemons.
-  
+
   This package in particular adds helpers for recording telemetry for
   subsequent analysis. You can instrument your code with tracing and spans,
   and also emit events carrying arbitrary metadata. Backends are provided for
   structured logs, sending traces to observability services, or even just
   outputting the telemetry to console.
-  
+
   See "Core.Telemetry.Observability" to get started.
 
 stability: provisional
@@ -62,3 +62,5 @@ library:
 
 extra-doc-files:
   - HoneycombTraceExample.png
+  - honeycomb-sad-trace.png
+  - honeycomb-happy-trace.png
