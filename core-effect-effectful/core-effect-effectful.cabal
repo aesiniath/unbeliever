@@ -5,14 +5,16 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           core-effect-effectful
-version:        0.0.0.3
-synopsis:       Interoperability with the Effectful effects library
+version:        0.0.0.4
+synopsis:       Interoperability with the effectful effects system
 description:    This is part of a library to help build command-line programs, both tools and
                 longer-running daemons.
                 .
                 This package adds wrappers around the __effectful__ library, providing an
-                implmentation of a ProgramE effect wrapping the Program τ monad from
-                __core-program__.
+                implmentation of a ProgramE τ effect wrapping the Program τ monad from
+                __core-program__ so that applications needing to use a complicated effect
+                system can still access top-level program utilities such as concurrency,
+                logging, and telemetry.
 category:       System
 stability:      experimental
 homepage:       https://github.com/aesiniath/unbeliever#readme
@@ -37,12 +39,9 @@ library
       lib
   ghc-options: -Wall -Wwarn -fwarn-tabs
   build-depends:
-      async
-    , base >=4.11 && <5
+      base >=4.11 && <5
     , core-data
-    , core-program >=0.6.1
-    , core-telemetry >=0.2.7
+    , core-program >=0.6.2
     , core-text
     , effectful-core
-    , unliftio-core
   default-language: Haskell2010
