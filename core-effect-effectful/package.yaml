@@ -1,0 +1,37 @@
+name: core-effect-effectful
+version: 0.0.0.4
+synopsis: Interoperability with the effectful effects system
+description: |
+  This is part of a library to help build command-line programs, both tools and
+  longer-running daemons.
+  
+  This package adds wrappers around the __effectful__ library, providing an
+  implmentation of a ProgramE τ effect wrapping the Program τ monad from
+  __core-program__ so that applications needing to use a complicated effect
+  system can still access top-level program utilities such as concurrency,
+  logging, and telemetry.
+
+stability: experimental
+license: MIT
+license-file: LICENSE
+author: Juan Raphael Diaz Simões <juanrapha@gmail.com>
+maintainer: Andrew Cowie <istathar@gmail.com>
+copyright: © 2023- Athae Eredh Siniath and Others
+tested-with: GHC == 9.2.4
+category: System
+ghc-options: -Wall -Wwarn -fwarn-tabs
+github: aesiniath/unbeliever
+  
+dependencies:
+ - base >= 4.11 && < 5
+ - core-data
+ - core-program >= 0.6.2
+ - core-text
+ - effectful-core
+
+library:
+  dependencies: []
+  source-dirs: lib
+  exposed-modules:
+   - Core.Effect.Effectful
+  other-modules: []

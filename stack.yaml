@@ -2,6 +2,7 @@ resolver: lts-20.8
 compiler: ghc-9.2.4
 packages:
  - ./core-data
+ - ./core-effect-effectful
  - ./core-text
  - ./core-program
  - ./core-telemetry

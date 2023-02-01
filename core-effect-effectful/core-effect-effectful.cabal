@@ -1,0 +1,47 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.35.1.
+--
+-- see: https://github.com/sol/hpack
+
+name:           core-effect-effectful
+version:        0.0.0.4
+synopsis:       Interoperability with the effectful effects system
+description:    This is part of a library to help build command-line programs, both tools and
+                longer-running daemons.
+                .
+                This package adds wrappers around the __effectful__ library, providing an
+                implmentation of a ProgramE τ effect wrapping the Program τ monad from
+                __core-program__ so that applications needing to use a complicated effect
+                system can still access top-level program utilities such as concurrency,
+                logging, and telemetry.
+category:       System
+stability:      experimental
+homepage:       https://github.com/aesiniath/unbeliever#readme
+bug-reports:    https://github.com/aesiniath/unbeliever/issues
+author:         Juan Raphael Diaz Simões <juanrapha@gmail.com>
+maintainer:     Andrew Cowie <istathar@gmail.com>
+copyright:      © 2023- Athae Eredh Siniath and Others
+license:        MIT
+license-file:   LICENSE
+build-type:     Simple
+tested-with:
+    GHC == 9.2.4
+
+source-repository head
+  type: git
+  location: https://github.com/aesiniath/unbeliever
+
+library
+  exposed-modules:
+      Core.Effect.Effectful
+  hs-source-dirs:
+      lib
+  ghc-options: -Wall -Wwarn -fwarn-tabs
+  build-depends:
+      base >=4.11 && <5
+    , core-data
+    , core-program >=0.6.2
+    , core-text
+    , effectful-core
+  default-language: Haskell2010
