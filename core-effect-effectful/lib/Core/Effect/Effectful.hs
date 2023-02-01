@@ -116,6 +116,7 @@ import Effectful.Internal.Monad qualified as Effect
     , StaticRep
     , evalStaticRep
     , getStaticRep
+    , putStaticRep
     , withEffToIO
     )
 
@@ -165,12 +166,12 @@ withProgram'
     => Program τ α
     -> Effect.Eff es α
 withProgram' action = do
-    ProgramE context <- Effect.getStaticRep
+    ProgramE context1 <- Effect.getStaticRep
 
     -- lift to IO
     liftIO $ do
         -- now in IO. Lift to Program τ
-        subProgram context $ do
+        subProgram context1 $ do
             action
 
 {- |
@@ -196,17 +197,25 @@ withProgram
     -> Effect.Eff es α
 withProgram action = do
     -- extract Context τ
-    ProgramE context <- Effect.getStaticRep
+    ProgramE context1 <- Effect.getStaticRep
 
     -- lift to IO, using the provided specialized function which gives an unlift
     -- function for later use.
     Effect.withEffToIO $ \runInIO ->
         -- now in IO. Lift to Program τ
-        subProgram context $ do
+        subProgram context1 $ do
             -- now in Program τ. We form the function that will run an effect
             -- in Program τ, and pass it to the supplied action.
             action $ \inner -> do
+                context2 <- getContext
                 liftIO $ do
+                    -- now in IO
                     runInIO $ do
-                        -- now in (IOE :> es, ProgramE :> es) => Eff es
+                        -- now in (IOE :> es, ProgramE :> es) => Eff es, but
+                        -- we need to update the Context τ in the ProgramE τ
+                        -- effect with the one that was present just before we
+                        -- ran the unlifting function.
+                        Effect.putStaticRep (ProgramE context2)
+
+                        -- now we can proceed with running the nested effects.
                         inner

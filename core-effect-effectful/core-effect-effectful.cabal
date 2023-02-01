@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           core-effect-effectful
-version:        0.0.0.2
+version:        0.0.0.3
 synopsis:       Interoperability with the Effectful effects library
 description:    This is part of a library to help build command-line programs, both tools and
                 longer-running daemons.
