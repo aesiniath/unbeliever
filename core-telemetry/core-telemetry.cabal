@@ -1,11 +1,11 @@
 cabal-version: 1.18
 
--- This file has been generated from package.yaml by hpack version 0.35.0.
+-- This file has been generated from package.yaml by hpack version 0.35.1.
 --
 -- see: https://github.com/sol/hpack
 
 name:           core-telemetry
-version:        0.2.7.0
+version:        0.2.7.2
 synopsis:       Advanced telemetry
 description:    This is part of a library to help build command-line programs, both tools and
                 longer-running daemons.
@@ -54,7 +54,7 @@ library
       base >=4.11 && <5
     , bytestring
     , core-data >=0.3.8.0
-    , core-program >=0.6.1
+    , core-program >=0.6.2.2
     , core-text >=0.3.7.1
     , exceptions
     , http-streams
