@@ -235,7 +235,7 @@ executeActual :: Context τ -> Program τ α -> IO ()
 executeActual context0 program = do
     -- ensure threaded runtime is active
     unless hostIsThreaded $ do
-        putStrLn "error: Program must be compiled with -threaded GHC option"
+        putStrLn "error: Application must be compiled with -threaded GHC option"
         Posix.exitImmediately (ExitFailure 98)
 
     -- command line +RTS -Nn -RTS value
