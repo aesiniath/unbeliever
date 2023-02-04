@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           core-effect-effectful
-version:        0.0.0.4
+version:        0.0.0.5
 synopsis:       Interoperability with the effectful effects system
 description:    This is part of a library to help build command-line programs, both tools and
                 longer-running daemons.
@@ -40,8 +40,6 @@ library
   ghc-options: -Wall -Wwarn -fwarn-tabs
   build-depends:
       base >=4.11 && <5
-    , core-data
     , core-program >=0.6.2
-    , core-text
     , effectful-core
   default-language: Haskell2010

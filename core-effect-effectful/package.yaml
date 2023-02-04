@@ -1,5 +1,5 @@
 name: core-effect-effectful
-version: 0.0.0.4
+version: 0.0.0.5
 synopsis: Interoperability with the effectful effects system
 description: |
   This is part of a library to help build command-line programs, both tools and
@@ -24,9 +24,7 @@ github: aesiniath/unbeliever
   
 dependencies:
  - base >= 4.11 && < 5
- - core-data
  - core-program >= 0.6.2
- - core-text
  - effectful-core
 
 library:
