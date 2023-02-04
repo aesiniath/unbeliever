@@ -140,6 +140,7 @@ import Control.Exception.Safe qualified as Safe
 import Control.Monad
     ( forM_
     , forever
+    , unless
     , void
     , when
     )
@@ -172,6 +173,8 @@ import System.Directory
     ( findExecutable
     )
 import System.Exit (ExitCode (..))
+import System.Posix.Internals (hostIsThreaded)
+import System.Posix.Process qualified as Posix (exitImmediately)
 import System.Process.Typed (nullStream, proc, readProcess, setStdin)
 import Prelude hiding (log)
 
@@ -230,8 +233,14 @@ executeWith = executeActual
 
 executeActual :: Context τ -> Program τ α -> IO ()
 executeActual context0 program = do
+    -- ensure threaded runtime is active
+    unless hostIsThreaded $ do
+        putStrLn "error: Program must be compiled with -threaded GHC option"
+        Posix.exitImmediately (ExitFailure 98)
+
     -- command line +RTS -Nn -RTS value
-    when (numCapabilities == 1) (getNumProcessors >>= setNumCapabilities)
+    when (numCapabilities == 1) $ do
+        getNumProcessors >>= setNumCapabilities
 
     -- force UTF-8 working around bad VMs
     setLocaleEncoding utf8
