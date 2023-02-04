@@ -10,9 +10,9 @@ import Core.Text
 import Data.Int
 import Data.Scientific
 import Data.Time.Calendar (Day (ModifiedJulianDay))
+import Data.Word
 import Test.Hspec
 import Test.QuickCheck (property)
-import Data.Word
 
 checkExternalizing :: Spec
 checkExternalizing = do

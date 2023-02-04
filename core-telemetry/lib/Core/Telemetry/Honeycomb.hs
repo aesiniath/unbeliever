@@ -32,23 +32,23 @@ OpenTelemetry provider.
 
 = Gotchas
 
-Spans are sent to Honeycomb as they are closed. Hence, if you have a long lived
-span, while its child spans are sent to Honeycomb and are displayed, the parent
-span will be initially missing.
+Spans are sent to Honeycomb as they are closed. Hence, if you have a long
+lived span, while its child spans are sent to Honeycomb and are displayed, the
+parent span will be initially missing.
 
 ![Example Sad Trace](honeycomb-sad-trace.png)
 
-This is of course jarring, because the parent is defined in the code /before/ the
-section where the child is called. So when writing long lived services, it is best
-to call 'Core.Telemetry.Observability.beginTrace' inside a function that will iterate
-continuously. That way complete telemetry will be generated for that part of the code,
-making on-the-fly diagnosis and monitoring possible.
+This is of course jarring, because the parent is defined in the code /before/
+the section where the child is called. So when writing long lived services, it
+is best to call 'Core.Telemetry.Observability.beginTrace' inside a function
+that will iterate continuously. That way complete telemetry will be generated
+for that part of the code, making on-the-fly diagnosis and monitoring
+possible.
 
-Either way, when the parent span is closed, unless the process is killed, the full
-trace will be visible.
+Either way, when the parent span is closed, unless the process is killed, the
+full trace will be visible.
 
 ![Example Happy Trace](honeycomb-happy-trace.png)
-
 -}
 module Core.Telemetry.Honeycomb
     ( Dataset

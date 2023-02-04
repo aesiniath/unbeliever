@@ -63,4 +63,3 @@ retrieveProgramName = do
 
         info "Done running effects"
         debugS "path" path
-
