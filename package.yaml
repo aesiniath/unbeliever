@@ -41,7 +41,7 @@ license-file: LICENSE
 author: Andrew Cowie <istathar@gmail.com>
 maintainer: Andrew Cowie <istathar@gmail.com>
 copyright: © 2018-2022 Athae Eredh Siniath and Others
-tested-with: GHC == 9.2.4
+tested-with: GHC == 9.2.5
 category: System
 ghc-options: -Wall -Wwarn -fwarn-tabs
 github: aesiniath/unbeliever
