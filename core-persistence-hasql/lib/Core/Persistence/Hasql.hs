@@ -1,3 +1,4 @@
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -8,11 +9,11 @@ This module simply contains conveniences for using the most excellent
 __hasql__ library in concert with the rest of the packages in
 this collection.
 -}
-module Core.Persistence.Hasql (
-    performQuerySingleton,
-    performQueryVector,
-    performQueryMaybe,
-) where
+module Core.Persistence.Hasql
+    ( performQuerySingleton
+    , performQueryVector
+    , performQueryMaybe
+    ) where
 
 import Core.Program.Context
 import Core.Program.Execute
@@ -25,7 +26,7 @@ import GHC.Tuple (Solo (Solo), getSolo)
 import Hasql.Pool (Pool, UsageError (AcquisitionTimeoutUsageError, ConnectionUsageError, SessionUsageError), use)
 import Hasql.Session (QueryError (QueryError), sql, statement)
 import Hasql.Statement (Statement)
-import qualified System.Timeout as Base (timeout)
+import System.Timeout qualified as Base (timeout)
 
 {- |
 In the event of a problem connecting to the database or executing the query
@@ -63,15 +64,15 @@ class Database δ where
 -- monitoring).
 --
 
-performQueryActual ::
-    Database δ =>
-    Functor f =>
-    Foldable f =>
-    Rope ->
-    (result -> α) ->
-    params ->
-    Statement params (f result) ->
-    Program δ (f α)
+performQueryActual
+    :: Database δ
+    => Functor f
+    => Foldable f
+    => Rope
+    -> (result -> α)
+    -> params
+    -> Statement params (f result)
+    -> Program δ (f α)
 performQueryActual label f values query = do
     encloseSpan label $ do
         state <- getApplicationState
@@ -97,7 +98,7 @@ performQueryActual label f values query = do
                     ]
                 pure (fmap f rows)
 
-throwErrors :: Rope -> UsageError -> Program δ a
+throwErrors :: Rope -> UsageError -> Program δ α
 throwErrors message result = do
     case result of
         ConnectionUsageError connectionError -> do
@@ -125,7 +126,7 @@ throwErrors message result = do
                 ]
             throw DatabaseConnectionPool
 
-throwTimeout :: Program δ a
+throwTimeout :: Program δ α
 throwTimeout = do
     let message = "Database query timeout"
     warn message
@@ -134,29 +135,29 @@ throwTimeout = do
         ]
     throw DatabaseQueryTimeout
 
-performQuerySingleton ::
-    Database δ =>
-    Rope ->
-    (result -> α) ->
-    params ->
-    Statement params result ->
-    Program δ α
+performQuerySingleton
+    :: Database δ
+    => Rope
+    -> (result -> α)
+    -> params
+    -> Statement params result
+    -> Program δ α
 performQuerySingleton label f values query = performQueryActual label f values (fmap Solo query) >>= pure . getSolo
 
-performQueryVector ::
-    Database δ =>
-    Rope ->
-    (result -> α) ->
-    params ->
-    Statement params (Vector result) ->
-    Program δ [α]
+performQueryVector
+    :: Database δ
+    => Rope
+    -> (result -> α)
+    -> params
+    -> Statement params (Vector result)
+    -> Program δ [α]
 performQueryVector label f values query = performQueryActual label f values query >>= pure . toList
 
-performQueryMaybe ::
-    Database δ =>
-    Rope ->
-    (result -> α) ->
-    params ->
-    Statement params (Maybe result) ->
-    Program δ (Maybe α)
+performQueryMaybe
+    :: Database δ
+    => Rope
+    -> (result -> α)
+    -> params
+    -> Statement params (Maybe result)
+    -> Program δ (Maybe α)
 performQueryMaybe label f values query = performQueryActual label f values query
