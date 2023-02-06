@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -48,159 +49,134 @@ runtime, but to specify the allowed command-line options and expected
 arguments you can initialize your program using 'configure' and then run
 with 'executeWith'.
 -}
-module Core.Program.Execute (
-    Program (),
+module Core.Program.Execute
+    ( Program ()
 
-    -- * Running programs
-    configure,
-    execute,
-    executeWith,
+      -- * Running programs
+    , configure
+    , execute
+    , executeWith
 
-    -- * Exiting a program
-    terminate,
+      -- * Exiting a program
+    , terminate
 
-    -- * Accessing program context
-    getCommandLine,
-    queryCommandName,
-    queryOptionFlag,
-    queryOptionValue,
-    queryArgument,
-    queryRemaining,
-    queryEnvironmentValue,
-    getProgramName,
-    setProgramName,
-    getVerbosityLevel,
-    setVerbosityLevel,
-    getConsoleWidth,
-    getApplicationState,
-    setApplicationState,
+      -- * Accessing program context
+    , getCommandLine
+    , queryCommandName
+    , queryOptionFlag
+    , queryOptionValue
+    , queryOptionValue'
+    , queryArgument
+    , queryRemaining
+    , queryEnvironmentValue
+    , queryEnvironmentValue'
+    , getProgramName
+    , setProgramName
+    , getVerbosityLevel
+    , setVerbosityLevel
+    , getConsoleWidth
+    , getApplicationState
+    , setApplicationState
 
-    -- * Useful actions
-    outputEntire,
-    inputEntire,
-    execProcess,
-    sleepThread,
-    resetTimer,
-    trap_,
+      -- * Useful actions
+    , outputEntire
+    , inputEntire
+    , execProcess
+    , sleepThread
+    , resetTimer
+    , trap_
 
-    -- * Re-exports from safe-exports
-    Safe.catch,
-    Safe.catchesAsync,
-    Safe.throw,
-    Safe.try,
-    Safe.tryAsync,
+      -- * Exception handling
+    , catch
+    , throw
+    , try
 
-    -- * Internals
-    Context,
-    None (..),
-    isNone,
-    unProgram,
-    invalid,
-    Boom (..),
-    loopForever,
-    lookupOptionFlag,
-    lookupOptionValue,
-    lookupArgument,
-    lookupEnvironmentValue,
-) where
+      -- * Internals
+    , Context
+    , None (..)
+    , isNone
+    , unProgram
+    , invalid
+    , Boom (..)
+    , loopForever
+    , lookupOptionFlag
+    , lookupOptionValue
+    , lookupArgument
+    , lookupEnvironmentValue
+    )
+where
 
-import Chrono.TimeStamp (getCurrentTimeNanoseconds)
-import Control.Concurrent (threadDelay)
-import Control.Concurrent.Async (
-    ExceptionInLinkedThread (..),
- )
-import qualified Control.Concurrent.Async as Async (
-    async,
-    cancel,
-    race,
-    race_,
-    wait,
- )
-import Control.Concurrent.MVar (
-    MVar,
-    modifyMVar_,
-    putMVar,
-    readMVar,
- )
-import Control.Concurrent.STM (
-    atomically,
- )
-import Control.Concurrent.STM.TQueue (
-    TQueue,
-    readTQueue,
-    tryReadTQueue,
-    unGetTQueue,
-    writeTQueue,
- )
-import qualified Control.Exception as Base (throwIO)
-import qualified Control.Exception.Safe as Safe (catch, catchesAsync, throw, try, tryAsync)
-import Control.Monad (
-    void,
-    when,
- )
-import Control.Monad.Catch (Handler (..))
+import Control.Concurrent
+    ( forkFinally
+    , forkIO
+    , killThread
+    , myThreadId
+    , threadDelay
+    )
+import Control.Concurrent.MVar
+    ( MVar
+    , modifyMVar_
+    , newEmptyMVar
+    , putMVar
+    , readMVar
+    , tryPutMVar
+    )
+import Control.Concurrent.STM (atomically)
+import Control.Concurrent.STM.TQueue
+    ( TQueue
+    , readTQueue
+    , tryReadTQueue
+    , unGetTQueue
+    , writeTQueue
+    )
+import Control.Concurrent.STM.TVar
+    ( readTVarIO
+    )
+import Control.Exception qualified as Base (throwIO)
+import Control.Exception.Safe qualified as Safe
+    ( catch
+    , throw
+    )
+import Control.Monad
+    ( forM_
+    , forever
+    , unless
+    , void
+    , when
+    )
 import Control.Monad.Reader.Class (MonadReader (ask))
+import Core.Data.Clock
 import Core.Data.Structures
+import Core.Encoding.External
 import Core.Program.Arguments
 import Core.Program.Context
+import Core.Program.Exceptions
 import Core.Program.Logging
 import Core.Program.Signal
 import Core.System.Base
+    ( Exception
+    , Handle
+    , SomeException
+    , displayException
+    , hFlush
+    , liftIO
+    , stdout
+    )
 import Core.Text.Bytes
 import Core.Text.Rope
-import qualified Data.ByteString as B (hPut)
-import qualified Data.ByteString.Char8 as C (singleton)
-import qualified Data.List as List (intersperse)
+import Data.ByteString qualified as B (hPut)
+import Data.ByteString.Char8 qualified as C (singleton)
+import Data.List qualified as List (intersperse)
 import GHC.Conc (getNumProcessors, numCapabilities, setNumCapabilities)
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
-import System.Directory (
-    findExecutable,
- )
+import System.Directory
+    ( findExecutable
+    )
 import System.Exit (ExitCode (..))
-import qualified System.Posix.Process as Posix (exitImmediately)
-import System.Process.Typed (closed, proc, readProcess, setStdin)
+import System.Posix.Internals (hostIsThreaded)
+import System.Posix.Process qualified as Posix (exitImmediately)
+import System.Process.Typed (nullStream, proc, readProcess, setStdin)
 import Prelude hiding (log)
-
---
--- If an exception escapes, we'll catch it here. The displayException value
--- for some exceptions is really quit unhelpful, so we pattern match the
--- wrapping gumpf away for cases as we encounter them. The final entry is the
--- catch-all.
---
--- Note this is called via Safe.catchesAsync because we want to be able to
--- strip out ExceptionInLinkedThread (which is asynchronous and otherwise
--- reasonably special) from the final output message.
---
-escapeHandlers :: Context c -> [Handler IO ExitCode]
-escapeHandlers context =
-    [ Handler (\(code :: ExitCode) -> pure code)
-    , Handler (\(ExceptionInLinkedThread _ e) -> bail e)
-    , Handler (\(e :: SomeException) -> bail e)
-    ]
-  where
-    bail :: Exception e => e -> IO ExitCode
-    bail e =
-        let text = intoRope (displayException e)
-         in do
-                subProgram context $ do
-                    setVerbosityLevel Debug
-                    critical text
-                pure (ExitFailure 127)
-
---
--- If an exception occurs in one of the output handlers, its failure causes
--- a subsequent race condition when the program tries to clean up and drain
--- the queues. So we use `exitImmediately` (which we normally avoid, as it
--- unhelpfully destroys the parent process if you're in ghci) because we
--- really need the process to go down and we're in an inconsistent state
--- where debug or console output is no longer possible.
---
-collapseHandler :: String -> SomeException -> IO ()
-collapseHandler problem e = do
-    putStr "error: "
-    putStrLn problem
-    print e
-    Posix.exitImmediately (ExitFailure 99)
 
 {- |
 Trap any exceptions coming out of the given Program action, and discard them.
@@ -220,7 +196,7 @@ This function really will swollow expcetions, which means that you'd better
 have handled any synchronous checked errors already with a 'catch' and/or have
 released resources with 'bracket' or 'finally' as shown above.
 
-An info level message will be sent to the log channel indicating that an
+A warning level message will be sent to the log channel indicating that an
 uncaught exception was trapped along with a debug level message showing the
 exception text, if any.
 
@@ -232,7 +208,7 @@ trap_ action =
         (void action)
         ( \(e :: SomeException) ->
             let text = intoRope (displayException e)
-             in do
+            in  do
                     warn "Trapped uncaught exception"
                     debug "e" text
         )
@@ -257,8 +233,14 @@ executeWith = executeActual
 
 executeActual :: Context τ -> Program τ α -> IO ()
 executeActual context0 program = do
+    -- ensure threaded runtime is active
+    unless hostIsThreaded $ do
+        putStrLn "error: Application must be compiled with -threaded GHC option"
+        Posix.exitImmediately (ExitFailure 98)
+
     -- command line +RTS -Nn -RTS value
-    when (numCapabilities == 1) (getNumProcessors >>= setNumCapabilities)
+    when (numCapabilities == 1) $ do
+        getNumProcessors >>= setNumCapabilities
 
     -- force UTF-8 working around bad VMs
     setLocaleEncoding utf8
@@ -274,64 +256,80 @@ executeActual context0 program = do
         forwarder = telemetryForwarderFrom context
 
     -- set up signal handlers
-    _ <-
-        Async.async $ do
-            setupSignalHandlers quit level
+    _ <- forkIO $ do
+        setupSignalHandlers quit level
 
     -- set up standard output
-    o <-
-        Async.async $ do
-            processStandardOutput out
+    vo <- newEmptyMVar
+    _ <-
+        forkFinally
+            (processStandardOutput out)
+            (\_ -> putMVar vo ())
 
     -- set up debug logger
-    l <-
-        Async.async $ do
-            processTelemetryMessages forwarder level out tel
+    vl <- newEmptyMVar
+    _ <-
+        forkFinally
+            (processTelemetryMessages forwarder level out tel)
+            (\_ -> putMVar vl ())
 
     -- run actual program, ensuring to grab any otherwise uncaught exceptions.
-    code <-
-        Safe.catchesAsync
+    t1 <- forkIO $ do
+        Safe.catch
             ( do
-                result <-
-                    Async.race
-                        ( do
-                            code <- readMVar quit
-                            pure code
-                        )
-                        ( do
-                            -- execute actual "main"
-                            _ <- subProgram context program
-                            pure ()
-                        )
-
-                case result of
-                    Left code' -> pure code'
-                    Right () -> pure ExitSuccess
+                --
+                -- execute actual "main". Note that we're not passing the
+                -- Scope into the program's Context; it stays the default
+                -- Nothing because the outer Scope is none of the
+                -- program's business and we absolutely don't want an
+                -- awaitAll to sit there and block on our machinery
+                -- threads.
+                --
+                -- We use tryPutMVar here (rather than putMVar) because we
+                -- might already be on the way out and need to not block.
+                --
+                _ <- subProgram context program
+                _ <- tryPutMVar quit ExitSuccess
+                pure ()
             )
-            (escapeHandlers context)
+            ( \(e :: SomeException) -> do
+                let text = intoRope (displayException e)
+                subProgram context $ do
+                    setVerbosityLevel Debug
+                    critical text
+                _ <- tryPutMVar quit (ExitFailure 127)
+                pure ()
+            )
 
-    -- instruct handlers to finish, and wait for the message queues to drain.
-    -- Allow 0.1 seconds, then timeout, in case something has gone wrong and
-    -- queues don't empty.
-    Async.race_
-        ( do
-            atomically $ do
-                writeTQueue tel Nothing
+    -- wait for indication to terminate
+    code <- readMVar quit
 
-            Async.wait l
+    -- kill main thread
+    killThread t1
 
-            atomically $ do
-                writeTQueue out Nothing
+    -- instruct handlers to finish, and wait for the message queues to
+    -- drain. Allow 10 seconds, then timeout, in case something has gone
+    -- wrong and queues don't empty.
 
-            Async.wait o
-        )
-        ( do
-            threadDelay 10000000
+    _ <- forkIO $ do
+        threadDelay 10000000
+        putStrLn "error: Timeout"
+        Safe.throw (ExitFailure 99)
 
-            Async.cancel l
-            Async.cancel o
-            putStrLn "error: Timeout"
-        )
+    _ <- forkIO $ do
+        let scope = currentScopeFrom context
+        pointers <- readTVarIO scope
+        forM_ pointers killThread
+
+    atomically $ do
+        writeTQueue tel Nothing
+
+    readMVar vl
+
+    atomically $ do
+        writeTQueue out Nothing
+
+    readMVar vo
 
     hFlush stdout
 
@@ -342,9 +340,7 @@ executeActual context0 program = do
 
 processStandardOutput :: TQueue (Maybe Rope) -> IO ()
 processStandardOutput out =
-    Safe.catch
-        (loop)
-        (collapseHandler "output processing collapsed")
+    loop
   where
     loop :: IO ()
     loop = do
@@ -356,6 +352,7 @@ processStandardOutput out =
             Just text -> do
                 hWrite stdout text
                 B.hPut stdout (C.singleton '\n')
+                hFlush stdout
                 loop
 
 --
@@ -379,9 +376,7 @@ processTelemetryMessages Nothing _ _ tel = do
             Just _ -> do
                 ignoreForever queue
 processTelemetryMessages (Just processor) v out tel = do
-    Safe.catch
-        (loopForever action v out tel)
-        (collapseHandler "telemetry processing collapsed")
+    loopForever action v out tel
   where
     action = telemetryHandlerFrom processor
 
@@ -389,7 +384,7 @@ loopForever :: ([a] -> IO ()) -> MVar Verbosity -> TQueue (Maybe Rope) -> TQueue
 loopForever action v out queue = do
     -- block waiting for an item
     possibleItems <- atomically $ do
-        cycleOverQueue []
+        cycleOverQueue 0 []
 
     case possibleItems of
         -- we're done!
@@ -397,7 +392,7 @@ loopForever action v out queue = do
         -- handle it and loop
         Just items -> do
             start <- getCurrentTimeNanoseconds
-            catch
+            Safe.catch
                 ( do
                     action (reverse items)
                     reportStatus start (length items)
@@ -407,7 +402,12 @@ loopForever action v out queue = do
                 )
             loopForever action v out queue
   where
-    cycleOverQueue items =
+    cycleOverQueue !count items =
+        if count >= (1024 :: Int)
+            then pure (Just items)
+            else cycleOverQueue' count items
+
+    cycleOverQueue' !count items =
         case items of
             [] -> do
                 possibleItem <- readTQueue queue -- blocks
@@ -416,7 +416,7 @@ loopForever action v out queue = do
                     Nothing -> pure Nothing
                     -- otherwise start accumulating
                     Just item -> do
-                        cycleOverQueue (item : [])
+                        cycleOverQueue 1 (item : [])
             _ -> do
                 pending <- tryReadTQueue queue -- doesn't block
                 case pending of
@@ -434,7 +434,7 @@ loopForever action v out queue = do
                                 pure (Just items)
                             -- continue accumulating!
                             Just item -> do
-                                cycleOverQueue (item : items)
+                                cycleOverQueue (count + 1) (item : items)
 
     reportStatus start num = do
         level <- readMVar v
@@ -468,24 +468,31 @@ loopForever action v out queue = do
                 writeTQueue out (Just message)
 
 {- |
-Safely exit the program with the supplied exit code. Current output and
-debug queues will be flushed, and then the process will terminate.
+Safely exit the program with the supplied exit code. Current output and debug
+queues will be flushed, and then the process will terminate. This function
+does not return.
 -}
 
--- putting to the quit MVar initiates the cleanup and exit sequence,
--- but throwing the exception also aborts execution and starts unwinding
--- back up the stack.
+-- putting to the quit MVar initiates the cleanup and exit sequence, but
+-- throwing the asynchronous exception to self also aborts execution and
+-- starts unwinding back up the stack.
+--
+-- forever is used here to get an IO α as the return type.
 terminate :: Int -> Program τ α
-terminate code =
+terminate code = do
+    context <- ask
+    let quit = exitSemaphoreFrom context
+
     let exit = case code of
             0 -> ExitSuccess
             _ -> ExitFailure code
-     in do
-            context <- ask
-            let quit = exitSemaphoreFrom context
-            liftIO $ do
-                putMVar quit exit
-                Safe.throw exit
+
+    liftIO $ do
+        putMVar quit exit
+        self <- myThreadId
+        killThread self
+        forever $ do
+            threadDelay maxBound
 
 -- undocumented
 getVerbosityLevel :: Program τ Verbosity
@@ -639,16 +646,16 @@ execProcess (cmd : args) =
     let cmd' = fromRope cmd
         args' = fmap fromRope args
         task = proc cmd' args'
-        task1 = setStdin closed task
+        task1 = setStdin nullStream task
         command = mconcat (List.intersperse (singletonRope ' ') (cmd : args))
-     in do
+    in  do
             debug "command" command
 
             probe <- liftIO $ do
                 findExecutable cmd'
             case probe of
                 Nothing -> do
-                    throw (CommandNotFound cmd)
+                    Safe.throw (CommandNotFound cmd)
                 Just _ -> do
                     (exit, out, err) <- liftIO $ do
                         readProcess task1
@@ -702,7 +709,7 @@ example, to delay a second and a half, do:
 sleepThread :: Rational -> Program τ ()
 sleepThread seconds =
     let us = floor (toRational (seconds * 1e6))
-     in liftIO $ threadDelay us
+    in  liftIO $ threadDelay us
 
 {- |
 Retrieve the values of parameters parsed from options and arguments supplied
@@ -789,16 +796,21 @@ queryRemaining = do
 
 {- |
 Look to see if the user supplied a valued option and if so, what its value
-was. Use of the @LambdaCase@ extension might make accessing the parameter a
-bit eaiser:
+was. Use of the @LambdaCase@ extension makes accessing the option (and
+specifying a default if it is absent) reasonably nice:
 
 @
 program = do
-    count \<- 'queryOptionValue' \"count\" '>>=' \\case
-        'Nothing' -> 'pure' 0
+    region \<- 'queryOptionValue' \"region\" '>>=' \\case
+        'Nothing' -> 'pure' \"us-west-2\" -- Oregon, not a bad default
         'Just' value -> 'pure' value
-    ...
 @
+
+If you require something other than the text value as entered by the user
+you'll need to do something to parse the returned value and convert it to an
+appropriate type  See 'queryOptionValue'' for an alternative that does this
+automatically in many common cases, i.e. for options that take numberic
+values.
 
 @since 0.3.5
 -}
@@ -820,6 +832,60 @@ lookupOptionValue name params =
             Empty -> Nothing
             Value value -> Just value
 {-# DEPRECATED lookupOptionValue "Use queryOptionValue instead" #-}
+
+data QueryParameterError
+    = OptionValueMissing LongName
+    | UnableParseOption LongName
+    | EnvironmentVariableMissing LongName
+    | UnableParseVariable LongName
+    deriving (Show)
+
+instance Exception QueryParameterError where
+    displayException e = case e of
+        OptionValueMissing (LongName name) -> "Option --" ++ name ++ " specified but without a value."
+        UnableParseOption (LongName name) -> "Unable to parse the value supplied to --" ++ name ++ "."
+        EnvironmentVariableMissing (LongName name) -> "Variable " ++ name ++ " requested but is unset."
+        UnableParseVariable (LongName name) -> "Unable to parse the value present in " ++ name ++ "."
+
+{- |
+Look to see if the user supplied a valued option and if so, what its value
+was. This covers the common case of wanting to read a numeric argument from an
+option:
+
+@
+program = do
+    count \<- 'queryOptionValue'' \"count\" '>>=' \\case
+        'Nothing' -> 'pure' (0 :: 'Int')
+        'Just' value -> 'pure' value
+    ...
+@
+
+The return type of this function has the same semantics as 'queryOptionValue':
+if the option is absent you get 'Nothing' back (and in the example above we
+specify a default in that case) and 'Just' if a value is present. Unlike the
+original function, however, here we assume success in reading the value! If
+the value is unable to be parsed into the nominated Haskell type using
+'parseExternal' then an exception with an appropriate error message will be
+thrown­—which is what you want if the user specifies something that can't be
+parsed.
+
+Note that the return type is polymorphic so you'll need to ensure the concrete
+type you actually want is specified either via type inference or by adding a
+type annotation somewhere.
+
+@since 0.5.1
+-}
+queryOptionValue' :: Externalize ξ => LongName -> Program τ (Maybe ξ)
+queryOptionValue' name = do
+    context <- ask
+    let params = commandLineFrom context
+    case lookupKeyValue name (parameterValuesFrom params) of
+        Nothing -> pure Nothing
+        Just parameter -> case parameter of
+            Empty -> throw (OptionValueMissing name)
+            Value value -> case parseExternal (packRope value) of
+                Nothing -> throw (UnableParseOption name)
+                Just actual -> pure (Just actual)
 
 {- |
 Returns @True@ if the option is present, and @False@ if it is not.
@@ -863,6 +929,32 @@ queryEnvironmentValue name = do
         Just param -> case param of
             Empty -> pure Nothing
             Value str -> pure (Just (intoRope str))
+
+{- |
+Look to see if the user supplied the named environment variable and if so,
+return what its value was.
+
+Like 'queryOptionValue'' above, this function attempts to parse the supplied
+value as 'Just' the inferred type. This makes the assumption that the
+requested environment variable is populated. If it is not set in the
+environment, or is set to the empty string, then this function will return
+'Nothing'.
+
+If the attempt to parse the supplied value fails an exception will be thrown.
+
+@since 0.6.2
+-}
+queryEnvironmentValue' :: Externalize ξ => LongName -> Program τ (Maybe ξ)
+queryEnvironmentValue' name = do
+    context <- ask
+    let params = commandLineFrom context
+    case lookupKeyValue name (environmentValuesFrom params) of
+        Nothing -> error "Attempted lookup of unconfigured environment variable"
+        Just param -> case param of
+            Empty -> pure Nothing
+            Value value -> case parseExternal (packRope value) of
+                Nothing -> throw (UnableParseVariable name)
+                Just actual -> pure (Just actual)
 
 lookupEnvironmentValue :: LongName -> Parameters -> Maybe String
 lookupEnvironmentValue name params =

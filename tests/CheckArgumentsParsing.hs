@@ -1,19 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
-module CheckArgumentsParsing (
-    checkArgumentsParsing,
-    main,
-) where
+module CheckArgumentsParsing
+    ( checkArgumentsParsing
+    ) where
 
 import Core.Data.Structures
 import Core.Program.Arguments
-import Core.System.Base
 import Test.Hspec
-
-main :: IO ()
-main = do
-    finally (hspec checkArgumentsParsing) (putStrLn ".")
 
 options1 :: [Options]
 options1 =
@@ -36,6 +30,15 @@ options3 =
 options4 :: [Options]
 options4 =
     [ Remaining "All the rest of the files"
+    ]
+
+options5 :: [Options]
+options5 =
+    [ Argument "one" "The first one"
+    , Argument "two" "The second one"
+    , Argument "three" "The third one"
+    , Argument "four" "The fourth one"
+    , Remaining "All the rest"
     ]
 
 commands1 :: [Commands]
@@ -83,7 +86,7 @@ checkArgumentsParsing = do
             let config = simpleConfig options1
                 actual = parseCommandLine config ["--verbose"]
                 expect = Parameters Nothing (intoMap [("verbose", Empty)]) [] emptyMap
-             in actual `shouldBe` Right expect
+            in  actual `shouldBe` Right expect
         it "recognizes all specified options" $
             let config = simpleConfig options1
                 actual = parseCommandLine config ["--verbose", "--quiet", "--dry-run=Tomorrow"]
@@ -98,7 +101,7 @@ checkArgumentsParsing = do
                         )
                         []
                         emptyMap
-             in actual `shouldBe` Right expect
+            in  actual `shouldBe` Right expect
 
         it "recognizes required arguments" $
             let config = simpleConfig options2
@@ -112,7 +115,7 @@ checkArgumentsParsing = do
                         )
                         []
                         emptyMap
-             in actual `shouldBe` Right expect
+            in  actual `shouldBe` Right expect
 
         it "handles valued parameter" $
             let config = simpleConfig options2
@@ -126,27 +129,27 @@ checkArgumentsParsing = do
                         )
                         []
                         emptyMap
-             in actual `shouldBe` Right expect
+            in  actual `shouldBe` Right expect
 
         it "rejects unknown options" $
             let config = simpleConfig options2
                 actual = parseCommandLine config ["-a"]
-             in actual `shouldBe` Left (UnknownOption "-a")
+            in  actual `shouldBe` Left (UnknownOption "-a")
 
         it "rejects a malformed option" $
             let config = simpleConfig options2
                 actual = parseCommandLine config ["-help"]
-             in actual `shouldBe` Left (InvalidOption "-help")
+            in  actual `shouldBe` Left (InvalidOption "-help")
 
         it "fails on missing argument" $
             let config = simpleConfig options2
                 actual = parseCommandLine config []
-             in actual `shouldBe` Left (MissingArgument "filename")
+            in  actual `shouldBe` Left (MissingArgument "filename")
 
         it "accepts request for version" $
             let config = simpleConfig options1
                 actual = parseCommandLine config ["--version"]
-             in actual `shouldBe` Left VersionRequest
+            in  actual `shouldBe` Left VersionRequest
 
     describe "Parsing of complex command-lines" $ do
         it "recognizes only single command" $
@@ -163,38 +166,44 @@ checkArgumentsParsing = do
                         )
                         []
                         emptyMap
-             in actual `shouldBe` Right expect
+            in  actual `shouldBe` Right expect
 
         it "fails on missing command" $
             let config = complexConfig commands1
                 actual = parseCommandLine config []
-             in actual `shouldBe` Left (NoCommandFound)
+            in  actual `shouldBe` Left (NoCommandFound)
 
         it "rejects an unknown command" $
             let config = complexConfig commands1
                 actual = parseCommandLine config ["launch"]
-             in actual `shouldBe` Left (UnknownCommand "launch")
+            in  actual `shouldBe` Left (UnknownCommand "launch")
 
         it "recognizes different command" $ -- ie, now from among multiple choices
             let config = complexConfig commands2
                 actual = parseCommandLine config ["commit"]
                 expect = Parameters (Just "commit") emptyMap [] emptyMap
-             in actual `shouldBe` Right expect
+            in  actual `shouldBe` Right expect
 
         it "rejects further trailing arguments" $
             let config = complexConfig commands2
                 actual = parseCommandLine config ["commit", "some"]
-             in actual `shouldBe` Left (UnexpectedArguments ["some"])
+            in  actual `shouldBe` Left (UnexpectedArguments ["some"])
 
         it "accepts trailing arguments as remainder" $
             let config = complexConfig commands4
-                actual = parseCommandLine config ["commit", "one", "two", "tree"]
-                expect = Parameters (Just "commit") emptyMap ["one", "two", "tree"] emptyMap
-             in actual `shouldBe` Right expect
+                actual = parseCommandLine config ["commit", "one", "two", "three"]
+                expect = Parameters (Just "commit") emptyMap ["one", "two", "three"] emptyMap
+            in  actual `shouldBe` Right expect
+
+        it "ensures required arguments as in order" $
+            let config = simpleConfig options5
+                actual = parseCommandLine config ["un", "deux", "trois", "quatre", "cinq", "six"]
+                expect = Parameters Nothing (intoMap [("one", "un"), ("two", "deux"), ("three", "trois"), ("four", "quatre")]) ["cinq", "six"] emptyMap
+            in  actual `shouldBe` Right expect
 
         -- in complex mode wasn't accpting --version as a global option.
 
         it "accepts request for version" $
             let config = complexConfig commands2
                 actual = parseCommandLine config ["--version"]
-             in actual `shouldBe` Left VersionRequest
+            in  actual `shouldBe` Left VersionRequest

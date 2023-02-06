@@ -1,3 +1,4 @@
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -8,7 +9,6 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
 
---import Data.Text (Text)
 import Control.Concurrent (threadDelay)
 import Control.Monad (replicateM_)
 import Core.Data
@@ -16,8 +16,8 @@ import Core.Encoding
 import Core.Program
 import Core.System
 import Core.Text
-import qualified Data.ByteString.Char8 as S
-import qualified Data.HashMap.Strict as HashMap
+import Data.ByteString.Char8 qualified as S
+import Data.HashMap.Strict qualified as HashMap
 import Prettyprinter (Pretty (..), defaultLayoutOptions, layoutPretty)
 import Prettyprinter.Render.Text (renderStrict)
 
@@ -69,28 +69,33 @@ program = do
     let x = encodeToUTF8 j
     writeS x
 
-    let (Just y) = decodeFromUTF8 b
-    writeS y
-    writeS (encodeToUTF8 y)
-    writeR (encodeToUTF8 y)
-    writeS (encodeToUTF8 r)
+    let possibleY = decodeFromUTF8 b
+    case possibleY of
+        Nothing -> invalid
+        Just y -> do
+            writeS y
+            writeS (encodeToUTF8 y)
+            writeR (encodeToUTF8 y)
+            writeS (encodeToUTF8 r)
 
     debugR "packet" j
 
     info "Clock..."
 
-    t <- forkThread $ do
+    createScope $ do
+        t1 <- forkThread $ do
             sleepThread 1.5
             warn "Wakey wakey"
             throw Boom
-    linkThread t
 
-    replicateM_ 5 $ do
-        sleepThread 0.5
-        info "tick"
+        forkThread $ do
+            replicateM_ 500 $ do
+                sleepThread 0.1
+                info "tick"
+
+        waitThread t1
 
     info "Brr! It's cold"
-    terminate 0
 
 version :: Version
 version = $(fromPackage)

@@ -5,10 +5,9 @@
 Helpers for watching files for changes and taking action in the event of a
 change.
 -}
-module Core.Program.Notify (
-  -- * Notify
-  waitForChange,
-) where
+module Core.Program.Notify
+    ( waitForChange
+    ) where
 
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar)
 import Control.Monad.IO.Class (liftIO)
@@ -40,50 +39,50 @@ finish its write and switcheroo sequence.
 --
 waitForChange :: [FilePath] -> Program τ ()
 waitForChange files =
-  let f :: FilePath -> Set FilePath -> Set FilePath
-      f path acc = insertElement path acc
+    let f :: FilePath -> Set FilePath -> Set FilePath
+        f path acc = insertElement path acc
 
-      g :: FilePath -> Set FilePath -> Set FilePath
-      g path acc = insertElement (dropFileName path) acc
-   in do
-        info "Watching for changes"
+        g :: FilePath -> Set FilePath -> Set FilePath
+        g path acc = insertElement (dropFileName path) acc
+    in  do
+            info "Watching for changes"
 
-        canonical <- mapM (liftIO . canonicalizePath) files
-        let paths = foldr f emptySet canonical
-        let dirs = foldr g emptySet files
+            canonical <- mapM (liftIO . canonicalizePath) files
+            let paths = foldr f emptySet canonical
+            let dirs = foldr g emptySet files
 
-        withContext $ \runProgram -> do
-          block <- newEmptyMVar
-          withManager $ \manager -> do
-            -- setup watches
-            stoppers <-
-              foldrM
-                ( \dir acc -> do
-                    runProgram (debugS "watching" dir)
-                    stopper <-
-                      watchDir
-                        manager
-                        dir
-                        ( \trigger -> case trigger of
-                            Modified file _ _ -> do
-                              if containsElement file paths
-                                then True
-                                else False
-                            _ -> False
-                        )
-                        ( \trigger -> do
-                            runProgram (debugS "trigger" (eventPath trigger))
-                            putMVar block False
-                        )
-                    return (stopper : acc)
-                )
-                []
-                dirs
+            withContext $ \runProgram -> do
+                block <- newEmptyMVar
+                withManager $ \manager -> do
+                    -- setup watches
+                    stoppers <-
+                        foldrM
+                            ( \dir acc -> do
+                                runProgram (debugS "watching" dir)
+                                stopper <-
+                                    watchDir
+                                        manager
+                                        dir
+                                        ( \trigger -> case trigger of
+                                            Modified file _ _ -> do
+                                                if containsElement file paths
+                                                    then True
+                                                    else False
+                                            _ -> False
+                                        )
+                                        ( \trigger -> do
+                                            runProgram (debugS "trigger" (eventPath trigger))
+                                            putMVar block False
+                                        )
+                                return (stopper : acc)
+                            )
+                            []
+                            dirs
 
-            -- wait
-            _ <- readMVar block
+                    -- wait
+                    _ <- readMVar block
 
-            sequence_ stoppers
-            return ()
+                    sequence_ stoppers
+                    return ()
 
-        sleepThread 0.1
+            sleepThread 0.1

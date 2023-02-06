@@ -3,12 +3,14 @@
 import CheckArgumentsParsing (checkArgumentsParsing)
 import CheckBytesBehaviour
 import CheckContainerBehaviour
+import CheckExternalizing (checkExternalizing)
 import CheckJsonWrapper
 import CheckProgramMonad
 import CheckRopeBehaviour (checkRopeBehaviour)
 import CheckTelemetryMachinery
-
-import Core.System
+import CheckTimeStamp
+import CheckWebserverIntegration (checkWebserverIntegration)
+import Control.Exception (finally)
 import Test.Hspec
 
 main :: IO ()
@@ -20,7 +22,10 @@ suite = do
     checkRopeBehaviour
     checkBytesBehaviour
     checkContainerBehaviour
+    checkTimeStamp
+    checkExternalizing
     checkJsonWrapper
     checkArgumentsParsing
     checkProgramMonad
     checkTelemetryMachinery
+    checkWebserverIntegration

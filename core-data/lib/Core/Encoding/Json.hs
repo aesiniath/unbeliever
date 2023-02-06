@@ -51,21 +51,21 @@ which you is somewhat less cumbersome in declaration-heavy code. You're
 certainly welcome to use the constructors if you find it makes for more
 readable code or if you need the type annotations.
 -}
-module Core.Encoding.Json (
-    -- * Encoding and Decoding
-    encodeToUTF8,
-    encodeToRope,
-    decodeFromUTF8,
-    decodeFromRope,
-    JsonValue (..),
-    JsonKey (..),
+module Core.Encoding.Json
+    ( -- * Encoding and Decoding
+      encodeToUTF8
+    , encodeToRope
+    , decodeFromUTF8
+    , decodeFromRope
+    , JsonValue (..)
+    , JsonKey (..)
 
-    -- * Syntax highlighting
-    JsonToken (..),
-    colourizeJson,
-    prettyKey,
-    prettyValue,
-) where
+      -- * Syntax highlighting
+    , JsonToken (..)
+    , colourizeJson
+    , prettyKey
+    , prettyValue
+    ) where
 
 #if MIN_VERSION_aeson(2,0,1)
 import qualified Data.Aeson.Key as Aeson
@@ -76,68 +76,68 @@ import qualified Data.HashMap.Strict as HashMap
 
 import Core.Data.Structures (Key, Map, fromMap, intoMap)
 import Core.Text.Bytes (Bytes, fromBytes, intoBytes)
-import Core.Text.Colour (
-    AnsiColour,
-    brightBlue,
-    brightGrey,
-    brightMagenta,
-    dullBlue,
-    dullCyan,
-    dullGreen,
-    dullYellow,
-    pureGrey,
- )
-import Core.Text.Rope (
-    Rope,
-    Textual,
-    fromRope,
-    intoRope,
-    singletonRope,
-    unconsRope,
- )
-import Core.Text.Utilities (
-    Render (Token, colourize, highlight),
-    breakRope,
- )
+import Core.Text.Colour
+    ( AnsiColour
+    , brightBlue
+    , brightGrey
+    , brightMagenta
+    , dullBlue
+    , dullCyan
+    , dullGreen
+    , dullYellow
+    , pureGrey
+    )
+import Core.Text.Rope
+    ( Rope
+    , Textual
+    , fromRope
+    , intoRope
+    , singletonRope
+    , unconsRope
+    )
+import Core.Text.Utilities
+    ( Render (Token, colourize, highlight)
+    , breakRope
+    )
 import Data.Aeson (FromJSON, Value (String))
 import qualified Data.Aeson as Aeson
 import Data.Char (intToDigit)
 import Data.Coerce
 import Data.Hashable (Hashable)
 import qualified Data.List as List
-import Data.Scientific (
-    FPFormat (..),
-    Scientific,
-    formatScientific,
-    isFloating,
- )
+import Data.Scientific
+    ( FPFormat (..)
+    , Scientific
+    , formatScientific
+    , isFloating
+    )
 import Data.String (IsString (..))
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics
-import Prettyprinter (
-    Doc,
-    Pretty (..),
-    annotate,
-    comma,
-    dquote,
-    group,
-    hcat,
-    indent,
-    lbrace,
-    lbracket,
-    line,
-    line',
-    nest,
-    punctuate,
-    rbrace,
-    rbracket,
-    sep,
-    unAnnotate,
-    viaShow,
-    vsep,
-    (<+>),
- )
+import Prettyprinter
+    ( Doc
+    , Pretty (..)
+    , annotate
+    , comma
+    , dquote
+    , group
+    , hcat
+    , indent
+    , lbrace
+    , lbracket
+    , line
+    , line'
+    , nest
+    , punctuate
+    , rbrace
+    , rbracket
+    , sep
+    , unAnnotate
+    , viaShow
+    , vsep
+    , (<+>)
+    )
 
 {- |
 Given a JSON value, encode it to UTF-8 bytes
@@ -157,7 +157,7 @@ encodeToRope value = case value of
     JsonObject xm ->
         let kvs = fromMap xm
             members = fmap (\((JsonKey k), v) -> doublequote <> escapeString k <> doublequote <> colonspace <> encodeToRope v) kvs
-         in openbrace <> mconcat (List.intersperse commaspace members) <> closebrace
+        in  openbrace <> mconcat (List.intersperse commaspace members) <> closebrace
     JsonArray xs ->
         openbracket <> mconcat (List.intersperse commaspace (fmap encodeToRope xs)) <> closebracket
     JsonString x ->
@@ -184,7 +184,7 @@ Escape any quotes, backslashes, or other possible rubbish in a 'JsonString'.
 escapeString :: Rope -> Rope
 escapeString text =
     let (before, after) = breakRope needsEscaping text
-     in case unconsRope after of
+    in  case unconsRope after of
             Nothing ->
                 text
             Just (c, after') ->
@@ -215,7 +215,7 @@ decodeFromUTF8 :: Bytes -> Maybe JsonValue
 decodeFromUTF8 b =
     let x :: Maybe Aeson.Value
         x = Aeson.decodeStrict' (fromBytes b)
-     in fmap fromAeson x
+    in  fmap fromAeson x
 
 {- |
 Given an string that is full of a bunch of JSON, attempt to decode
@@ -225,7 +225,7 @@ decodeFromRope :: Rope -> Maybe JsonValue
 decodeFromRope text =
     let x :: Maybe Aeson.Value
         x = Aeson.decodeStrict' (fromRope text)
-     in fmap fromAeson x
+    in  fmap fromAeson x
 
 {- |
 A JSON value.
@@ -277,6 +277,7 @@ instance Textual JsonKey where
     fromRope t = coerce t
     intoRope x = coerce x
 
+{- FOURMOLU_DISABLE -}
 fromAeson :: Aeson.Value -> JsonValue
 fromAeson value = case value of
 #if MIN_VERSION_aeson(2,0,1)
@@ -314,6 +315,7 @@ fromAeson value = case value of
     Aeson.Number n -> JsonNumber n
     Aeson.Bool x -> JsonBool x
     Aeson.Null -> JsonNull
+{- FOURMOLU_ENABLE -}
 
 --
 -- Pretty printing
@@ -405,12 +407,12 @@ prettyValue value = case value of
                 (JsonObject _) -> line <> doc
                 (JsonArray _) -> group doc
                 _ -> doc
-         in if length entries == 0
+        in  if length entries == 0
                 then annotate SymbolToken (lbrace <> rbrace)
                 else annotate SymbolToken lbrace <> line <> indent 4 (vsep (punctuate (annotate SymbolToken comma) entries)) <> line <> annotate SymbolToken rbrace
     JsonArray xs ->
         let entries = fmap prettyValue xs
-         in line'
+        in  line'
                 <> nest
                     4
                     ( annotate SymbolToken lbracket
@@ -435,7 +437,7 @@ escapeText text =
     let t = fromRope text :: T.Text
         ts = T.split (== '"') t
         ds = fmap pretty ts
-     in hcat (punctuate (annotate EscapeToken "\\\"") ds)
+    in  hcat (punctuate (annotate EscapeToken "\\\"") ds)
 {-# INLINEABLE escapeText #-}
 
 --

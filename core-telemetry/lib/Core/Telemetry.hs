@@ -14,28 +14,28 @@ import "Core.Telemetry"
 the submodules are mostly there to group documentation, along with grouping
 the implementations for each of the different supported backends.
 -}
-module Core.Telemetry (
-    -- * Traces and Spans
+module Core.Telemetry
+    ( -- * Traces and Spans
 
-    -- |
-    -- Adding observability tracing to your program.
-    module Core.Telemetry.Observability,
+      -- |
+      -- Adding observability tracing to your program.
+        module Core.Telemetry.Observability
 
-    -- * Exporting to backends
+      -- * Exporting to backends
 
-    -- |
-    -- Processors to export telemetry to a backend.
-    module Core.Telemetry.Console,
-    module Core.Telemetry.General,
-    module Core.Telemetry.Honeycomb,
-    module Core.Telemetry.Structured,
+      -- |
+      -- Processors to export telemetry to a backend.
+    , module Core.Telemetry.Console
+    , module Core.Telemetry.General
+    , module Core.Telemetry.Honeycomb
+    , module Core.Telemetry.Structured
 
-    -- * Internals
+      -- * Internals
 
-    -- |
-    -- Various helper functions.
-    module Core.Telemetry.Identifiers
-) where
+      -- |
+      -- Various helper functions.
+    , module Core.Telemetry.Identifiers
+    ) where
 
 import Core.Telemetry.Console
 import Core.Telemetry.General

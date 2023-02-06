@@ -1,11 +1,11 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.35.0.
 --
 -- see: https://github.com/sol/hpack
 
 name:           core-webserver-warp
-version:        0.1.1.5
+version:        0.2.0.1
 synopsis:       Interoperability with Wai/Warp
 description:    This is part of a library to help build command-line programs, both tools and
                 longer-running daemons.
@@ -24,7 +24,7 @@ license:        MIT
 license-file:   LICENSE
 build-type:     Simple
 tested-with:
-    GHC == 8.10.7
+    GHC == 8.10.7, GHC == 9.2.4
 
 source-repository head
   type: git
@@ -32,6 +32,7 @@ source-repository head
 
 library
   exposed-modules:
+      Core.Webserver.Router
       Core.Webserver.Warp
   hs-source-dirs:
       lib
@@ -40,9 +41,10 @@ library
       async
     , base >=4.11 && <5
     , bytestring
+    , bytestring-trie
     , core-data
-    , core-program >=0.4.6
-    , core-telemetry >=0.2.0
+    , core-program >=0.6.1
+    , core-telemetry >=0.2.7
     , core-text
     , http-types
     , http2

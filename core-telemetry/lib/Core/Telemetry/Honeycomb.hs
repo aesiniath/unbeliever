@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
@@ -28,36 +29,60 @@ offers a free tier which is quite suitable for individual use and small local
 applications. In the future you may be able to look at
 "Core.Telemetry.General" if you instead want to forward to a generic
 OpenTelemetry provider.
--}
-module Core.Telemetry.Honeycomb (
-    Dataset,
-    honeycombExporter,
-) where
 
+= Gotchas
+
+Spans are sent to Honeycomb as they are closed. Hence, if you have a long
+lived span, while its child spans are sent to Honeycomb and are displayed, the
+parent span will be initially missing.
+
+![Example Sad Trace](honeycomb-sad-trace.png)
+
+This is of course jarring, because the parent is defined in the code /before/
+the section where the child is called. So when writing long lived services, it
+is best to call 'Core.Telemetry.Observability.beginTrace' inside a function
+that will iterate continuously. That way complete telemetry will be generated
+for that part of the code, making on-the-fly diagnosis and monitoring
+possible.
+
+Either way, when the parent span is closed, unless the process is killed, the
+full trace will be visible.
+
+![Example Happy Trace](honeycomb-happy-trace.png)
+-}
+module Core.Telemetry.Honeycomb
+    ( Dataset
+    , honeycombExporter
+    ) where
+
+import Codec.Compression.GZip qualified as GZip (compress)
+import Control.Exception.Safe qualified as Safe (catch, finally, throw)
+import Core.Data.Clock (Time, getCurrentTimeNanoseconds, unTime)
 import Core.Data.Structures (Map, fromMap, insertKeyValue, intoMap, lookupKeyValue)
 import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Context
 import Core.Program.Logging
-import Core.System
-import Core.System.Base (stdout)
-import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
+import Core.System.Base (SomeException, liftIO, stdout)
 import Core.Text.Bytes
 import Core.Text.Colour
 import Core.Text.Rope
 import Core.Text.Utilities
 import Data.ByteString (ByteString)
-import qualified Data.ByteString as B (ByteString)
-import qualified Data.ByteString.Char8 as C (append, null, putStrLn)
-import qualified Data.ByteString.Lazy as L (ByteString)
+import Data.ByteString qualified as B (ByteString)
+import Data.ByteString.Builder (Builder)
+import Data.ByteString.Builder qualified as Builder (lazyByteString)
+import Data.ByteString.Char8 qualified as C (append, null, putStrLn)
+import Data.ByteString.Lazy qualified as L (ByteString)
 import Data.Fixed
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
-import qualified Data.List as List
+import Data.List qualified as List
 import Network.Http.Client
 import System.Environment (lookupEnv)
 import System.Exit (ExitCode (..))
-import System.IO.Streams (InputStream)
-import qualified System.Posix.Process as Posix (exitImmediately)
+import System.IO.Streams (InputStream, OutputStream)
+import System.IO.Streams qualified as Streams (write)
+import System.Posix.Process qualified as Posix (exitImmediately)
 
 {- |
 Indicate which \"dataset\" spans and events will be posted into
@@ -108,7 +133,7 @@ setupHoneycombConfig config0 =
                     "The name of the dataset within your Honeycomb account that this program's telemetry will be written to."
                 )
                 config1
-     in config2
+    in  config2
 
 setupHoneycombAction :: Context τ -> IO Forwarder
 setupHoneycombAction context = do
@@ -177,7 +202,9 @@ convertDatumToJson datum =
             Just value -> insertKeyValue "trace.span_id" (JsonString (unSpan value)) meta1
 
         meta3 = case parent of
-            Nothing -> meta2
+            Nothing -> case trace of
+                Nothing -> meta2
+                Just _ -> insertKeyValue "meta.span_type" (JsonString "root") meta2
             Just value -> insertKeyValue "trace.parent_id" (JsonString (unSpan value)) meta2
 
         meta4 = case trace of
@@ -204,7 +231,7 @@ convertDatumToJson datum =
                     , (JsonKey "data", JsonObject meta6)
                     ]
                 )
-     in point
+    in  point
 
 acquireConnection :: IORef (Maybe Connection) -> IO Connection
 acquireConnection r = do
@@ -221,7 +248,7 @@ acquireConnection r = do
 
 cleanupConnection :: IORef (Maybe Connection) -> IO ()
 cleanupConnection r = do
-    finally
+    Safe.finally
         ( do
             possible <- readIORef r
             case possible of
@@ -232,16 +259,23 @@ cleanupConnection r = do
             writeIORef r Nothing
         )
 
+compressBody :: Bytes -> OutputStream Builder -> IO ()
+compressBody bytes o = do
+    let x = fromBytes bytes
+    let x' = GZip.compress x
+    let b = Builder.lazyByteString x'
+    Streams.write (Just b) o
+
 postEventToHoneycombAPI :: IORef (Maybe Connection) -> ApiKey -> Dataset -> JsonValue -> IO ()
 postEventToHoneycombAPI r apikey dataset json = attempt False
   where
     attempt retrying = do
-        catch
+        Safe.catch
             ( do
                 c <- acquireConnection r
 
                 -- actually transmit telemetry to Honeycomb
-                sendRequest c q (simpleBody (fromBytes (encodeToUTF8 json)))
+                sendRequest c q (compressBody (encodeToUTF8 json))
                 receiveResponse c handler
             )
             ( \(e :: SomeException) -> do
@@ -250,14 +284,17 @@ postEventToHoneycombAPI r apikey dataset json = attempt False
                 cleanupConnection r
                 case retrying of
                     False -> do
-                        putStrLn "Reattempting"
+                        putStrLn "internal: Reconnecting to Honeycomb"
                         attempt True
-                    True -> throw e
+                    True -> do
+                        putStrLn "internal: Failed to re-establish connection to Honeycomb"
+                        Safe.throw e
             )
 
     q = buildRequest1 $ do
         http POST (fromRope ("/1/batch/" <> dataset))
         setContentType "application/json"
+        setHeader "Content-Encoding" "gzip"
         setHeader "X-Honeycomb-Team" (fromRope (apikey))
 
     {-
@@ -284,7 +321,7 @@ postEventToHoneycombAPI r apikey dataset json = attempt False
                                     pure ()
                                 _ -> do
                                     -- some other status!
-                                    putStrLn "Unexpected status returned;"
+                                    putStrLn "internal: Unexpected status returned;"
                                     C.putStrLn body
                             _ -> putStrLn "internal: wtf?"
                     _ -> do

@@ -5,50 +5,36 @@
 {- |
 Re-exports of Haskell base and GHC system libraries.
 -}
-module Core.System.Base (
-    -- * Input/Output
+module Core.System.Base
+    ( -- * Input/Output
 
-    -- ** from Control.Monad.IO.Class
+      -- ** from Control.Monad.IO.Class
 
-    -- | Re-exported from "Control.Monad.IO.Class" in __base__:
-    liftIO,
-    MonadIO,
+      -- | Re-exported from "Control.Monad.IO.Class" in __base__:
+      liftIO
+    , MonadIO
 
-    -- ** from System.IO
+      -- ** from System.IO
 
-    -- | Re-exported from "System.IO" in __base__:
-    Handle,
-    IOMode (..),
-    withFile,
-    stdin,
-    stdout,
-    stderr,
-    hFlush,
-    unsafePerformIO,
+      -- | Re-exported from "System.IO" in __base__:
+    , Handle
+    , IOMode (..)
+    , withFile
+    , stdin
+    , stdout
+    , stderr
+    , hFlush
+    , unsafePerformIO
 
-    -- * Exception handling
+      -- * Exception handling
+    , Exception (..)
+    , SomeException
+    ) where
 
-    -- ** from Control.Exception.Safe
-
-    -- | Re-exported from "Control.Exception.Safe" in the __safe-exceptions__ package:
-    Exception (..),
-    SomeException,
-    throw,
-    impureThrow,
-    bracket,
-    catch,
-    finally,
-) where
-
-import Control.Exception.Safe (
-    Exception (..),
-    SomeException,
-    bracket,
-    catch,
-    finally,
-    impureThrow,
-    throw,
- )
+import Control.Exception
+    ( Exception (..)
+    , SomeException
+    )
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.IO (Handle, IOMode (..), hFlush, stderr, stdin, stdout, withFile)
 import System.IO.Unsafe (unsafePerformIO)

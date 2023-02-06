@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK prune #-}
@@ -120,34 +121,33 @@ to the program using /kill/:
 \$
 @
 -}
-module Core.Program.Logging (
-    putMessage,
-    formatLogMessage,
-    Severity (..),
-    Verbosity (..),
+module Core.Program.Logging
+    ( putMessage
+    , formatLogMessage
+    , Severity (..)
+    , Verbosity (..)
 
-    -- * Normal output
-    write,
-    writeS,
-    writeR,
+      -- * Normal output
+    , write
+    , writeS
+    , writeR
 
-    -- * Informational
-    info,
-    warn,
-    critical,
+      -- * Informational
+    , info
+    , warn
+    , critical
 
-    -- * Debugging
-    debug,
-    debugS,
-    debugR,
+      -- * Debugging
+    , debug
+    , debugS
+    , debugR
     -- internal
-    internal,
-    isEvent,
-    isDebug,
-    isInternal,
-) where
+    , internal
+    , isEvent
+    , isDebug
+    , isInternal
+    ) where
 
-import Chrono.TimeStamp (TimeStamp (..), getCurrentTimeNanoseconds)
 import Control.Concurrent.MVar (readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (writeTQueue)
@@ -155,16 +155,17 @@ import Control.Exception (evaluate)
 import Control.Monad (when)
 import Control.Monad.Reader.Class (MonadReader (ask))
 import Data.Fixed
-import Data.Hourglass (TimeFormatElem (..), timePrint)
-import qualified Data.Text.Short as S (replicate)
+import Data.Hourglass qualified as H (ElapsedP, TimeFormatElem (..), timePrint)
+import Data.Text.Short qualified as S (replicate)
 
+import Core.Data.Clock
 import Core.Program.Context
 import Core.System.Base
 import Core.Text.Colour
 import Core.Text.Rope
 import Core.Text.Utilities
 
-data Message = Message TimeStamp Severity Rope (Maybe Rope)
+data Message = Message Time Severity Rope (Maybe Rope)
 
 data Severity
     = SeverityNone
@@ -193,20 +194,20 @@ putMessage context (Message now level text possiblelValue) = do
     atomically $ do
         writeTQueue output (Just result)
 
-formatLogMessage :: TimeStamp -> TimeStamp -> Bool -> Severity -> Rope -> Rope
+formatLogMessage :: Time -> Time -> Bool -> Severity -> Rope -> Rope
 formatLogMessage start now coloured severity message =
-    let !start' = unTimeStamp start
-        !now' = unTimeStamp now
+    let !start' = unTime start
+        !now' = unTime now
         !stampZ =
-            timePrint
-                [ Format_Hour
-                , Format_Text ':'
-                , Format_Minute
-                , Format_Text ':'
-                , Format_Second
-                , Format_Text 'Z'
+            H.timePrint
+                [ H.Format_Hour
+                , H.Format_Text ':'
+                , H.Format_Minute
+                , H.Format_Text ':'
+                , H.Format_Second
+                , H.Format_Text 'Z'
                 ]
-                now
+                (fromTime now :: H.ElapsedP)
 
         -- I hate doing math in Haskell
         !elapsed = fromRational (toRational (now' - start') / 1e9) :: Fixed E3
@@ -220,7 +221,7 @@ formatLogMessage start now coloured severity message =
             SeverityInternal -> intoEscapes dullBlue
 
         !reset = intoEscapes resetColour
-     in case coloured of
+    in  case coloured of
             True ->
                 mconcat
                     [ intoEscapes dullWhite
@@ -470,7 +471,7 @@ debugR label thing = do
 
             let columns = terminalWidthFrom context
 
-            -- TODO take into account 22 width already consumed by timestamp
+            -- TODO take into account 22 width already consumed by Time
             -- TODO move render to putMessage? putMessageR?
             let value = render columns thing
             !value' <- evaluate value

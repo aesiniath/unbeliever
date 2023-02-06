@@ -1,18 +1,18 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.35.1.
 --
 -- see: https://github.com/sol/hpack
 
 name:           core-program
-version:        0.4.6.4
+version:        0.6.2.2
 synopsis:       Opinionated Haskell Interoperability
 description:    A library to help build command-line programs, both tools and
                 longer-running daemons.
                 .
                 A description of this package, a list of features, and some background
                 to its design is contained in the
-                <https://github.com/aesiniath/unbeliever/blob/master/README.markdown README>
+                <https://github.com/aesiniath/unbeliever/blob/master/README.md README>
                 on GitHub.
                 .
                 See "Core.Program.Execute" to get started.
@@ -27,7 +27,7 @@ license:        MIT
 license-file:   LICENSE
 build-type:     Simple
 tested-with:
-    GHC == 8.10.7
+    GHC == 8.10.7, GHC == 9.2.4
 
 source-repository head
   type: git
@@ -39,6 +39,7 @@ library
       Core.Program.Arguments
       Core.Program.Context
       Core.Program.Execute
+      Core.Program.Exceptions
       Core.Program.Logging
       Core.Program.Metadata
       Core.Program.Notify
@@ -54,12 +55,10 @@ library
       lib
   ghc-options: -Wall -Wwarn -fwarn-tabs
   build-depends:
-      async
-    , base >=4.11 && <5
+      base >=4.11 && <5
     , bytestring
-    , chronologique
-    , core-data >=0.3.2.2
-    , core-text >=0.3.7.0
+    , core-data >=0.3.8
+    , core-text >=0.3.8
     , directory
     , exceptions
     , filepath
@@ -77,4 +76,5 @@ library
     , transformers
     , typed-process
     , unix
+    , unliftio-core
   default-language: Haskell2010

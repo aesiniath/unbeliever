@@ -1,3 +1,4 @@
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -65,12 +66,13 @@ This is useful for debugging during development but for production you are
 recommended to use the structured logging output or to send the traces to an
 observability service; this will be the root span of a trace.
 -}
-module Core.Webserver.Warp (
-    Port,
-    launchWebserver,
-    requestContextKey,
-    contextFromRequest,
-) where
+module Core.Webserver.Warp
+    ( Port
+    , launchWebserver
+    , requestContextKey
+    , contextFromRequest
+    , ContextNotFoundInRequest (..)
+    ) where
 
 --
 -- We follow the convention used elsewhere in this collection of libraries of
@@ -80,31 +82,31 @@ module Core.Webserver.Warp (
 -- webserver frameworks.
 --
 
-import qualified Control.Exception.Safe as Safe (catch)
+import Control.Exception.Safe qualified as Safe (catch)
 import Core.Program.Context
 import Core.Program.Logging
 import Core.System.Base
 import Core.Telemetry.Identifiers
 import Core.Telemetry.Observability
 import Core.Text.Rope
-import qualified Data.List as List
-import qualified Data.Vault.Lazy as Vault
-import Network.HTTP.Types (
-    Status,
-    hContentType,
-    status400,
-    status413,
-    status431,
-    status500,
-    statusCode,
- )
-import Network.HTTP2.Frame (
-    ErrorCodeId (UnknownErrorCode),
-    HTTP2Error (ConnectionError),
- )
+import Data.List qualified as List
+import Data.Vault.Lazy qualified as Vault
+import Network.HTTP.Types
+    ( Status
+    , hContentType
+    , status400
+    , status413
+    , status431
+    , status500
+    , statusCode
+    )
+import Network.HTTP2.Frame
+    ( ErrorCodeId (UnknownErrorCode)
+    , HTTP2Error (ConnectionError)
+    )
 import Network.Wai
 import Network.Wai.Handler.Warp (InvalidRequest, Port)
-import qualified Network.Wai.Handler.Warp as Warp
+import Network.Wai.Handler.Warp qualified as Warp
 
 {- |
 Given a WAI 'Application', run a Warp webserver on the specified port from
@@ -133,6 +135,11 @@ requestContextKey = unsafePerformIO Vault.newKey
 contextFromRequest :: forall t. Request -> Maybe (Context t)
 contextFromRequest request = Vault.lookup requestContextKey (vault request)
 
+data ContextNotFoundInRequest = ContextNotFoundInRequest deriving (Show)
+
+instance Exception ContextNotFoundInRequest where
+    displayException _ = "Context was not found in request. This is a serious error."
+
 -- which is IO
 loggingMiddleware :: Context τ -> Application -> Application
 loggingMiddleware (context0 :: Context τ) application request sendResponse = do
@@ -156,7 +163,7 @@ loggingMiddleware (context0 :: Context τ) application request sendResponse = do
                     -- application to make sure that consumers can later fetch the appropriate
                     -- `Context t`.
                     let vault' = Vault.insert (requestContextKey @τ) context1 (vault request)
-                        request' = request{vault = vault'}
+                        request' = request {vault = vault'}
                     Safe.catch
                         ( application request' $ \response -> do
                             -- accumulate the details for logging
@@ -166,7 +173,7 @@ loggingMiddleware (context0 :: Context τ) application request sendResponse = do
                                 telemetry
                                     [ metric "request.method" method
                                     , metric "request.path" path
-                                    , metric "request.query" query
+                                    , if nullRope query then metric "request.query" () else metric "request.query" query
                                     , metric "response.status_code" code
                                     ]
 
@@ -185,7 +192,7 @@ loggingMiddleware (context0 :: Context τ) application request sendResponse = do
                                 telemetry
                                     [ metric "request.method" method
                                     , metric "request.path" path
-                                    , metric "request.query" query
+                                    , if nullRope query then metric "request.query" () else metric "request.query" query
                                     , metric "response.status_code" code
                                     , metric "error" text
                                     ]
@@ -232,7 +239,7 @@ onExceptionHandler context possibleRequest e = do
             Nothing -> pure ()
             Just request ->
                 let line = intoRope (requestMethod request) <> " " <> intoRope (rawPathInfo request) <> intoRope (rawQueryString request)
-                 in debug "request" line
+                in  debug "request" line
 
 {- |
 Pull the Trace identifier and parent Span identifier out of the request
@@ -254,6 +261,6 @@ extractTraceParent :: Request -> Maybe (Trace, Span)
 extractTraceParent request =
     let headers = requestHeaders request
         possibleValue = List.lookup "traceparent" headers
-     in case possibleValue of
+    in  case possibleValue of
             Nothing -> Nothing
             Just value -> parseTraceParentHeader (intoRope value)

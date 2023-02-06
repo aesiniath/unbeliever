@@ -23,30 +23,30 @@ This module presents a simple wrapper around various representations of binary
 data to make it easier to interoperate with libraries supplying or consuming
 bytes.
 -}
-module Core.Text.Bytes (
-    Bytes,
-    emptyBytes,
-    packBytes,
-    Binary (fromBytes, intoBytes),
-    hOutput,
-    hInput,
+module Core.Text.Bytes
+    ( Bytes
+    , emptyBytes
+    , packBytes
+    , Binary (fromBytes, intoBytes)
+    , hOutput
+    , hInput
 
-    -- * Internals
-    unBytes,
-) where
+      -- * Internals
+    , unBytes
+    ) where
 
-import qualified Data.ByteString as B (
-    ByteString,
-    empty,
-    hGetContents,
-    hPut,
-    pack,
-    unpack,
- )
+import qualified Data.ByteString as B
+    ( ByteString
+    , empty
+    , hGetContents
+    , hPut
+    , pack
+    , unpack
+    )
 import qualified Data.ByteString.Builder as B (Builder, byteString, toLazyByteString)
-import qualified Data.ByteString.Char8 as C (
-    pack
- )
+import qualified Data.ByteString.Char8 as C
+    ( pack
+    )
 import qualified Data.ByteString.Lazy as L (ByteString, fromStrict, toStrict)
 import Data.Hashable (Hashable)
 import Data.Word (Word8)
@@ -61,7 +61,7 @@ newtype Bytes
     deriving (Show, Eq, Ord, Generic)
 
 {- |
-Access the strict 'ByteString' underlying the @Bytes@ type.
+Access the strict 'Data.ByteString.ByteString' underlying the 'Bytes' type.
 -}
 unBytes :: Bytes -> B.ByteString
 unBytes (StrictBytes b') = b'
@@ -119,11 +119,11 @@ emptyBytes = StrictBytes B.empty
 For the annoyingly common case of needing to take an ASCII string literal in
 your code and use it as a bunch of 'Bytes'.
 
-Done via "Data.ByteString.Char8" so all @Char@s will be truncated to 8 bits
+Done via "Data.ByteString.Char8" so all 'Char's will be truncated to 8 bits
 (/i.e./ Latin-1 characters less than 255). You should probably consider this
 to be unsafe. Also note that we deliberately do not have a @[Char]@ instance
 of 'Binary'; if you need to come back to a textual representation use
-'intoRope'.
+'Core.Text.Rope.intoRope'.
 -}
 packBytes :: String -> Bytes
 packBytes = StrictBytes . C.pack
@@ -143,7 +143,7 @@ output or logging facililities of this libarary as you will corrupt the
 ordering of output on the user's terminal. Instead do:
 
 @
-    'Core.Program.Execute.write' ('intoRope' b)
+    'Core.Program.Execute.write' ('Core.Text.Rope.intoRope' b)
 @
 
 on the assumption that the bytes in question are UTF-8 (or plain ASCII)

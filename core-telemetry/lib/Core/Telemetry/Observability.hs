@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
@@ -134,54 +135,60 @@ Either way, explicitly sending an event, or upon exiting a span, the telemetry
 will be gathered up and sent via the chosen exporter and forwarded to the
 observability or monitoring service you have chosen.
 -}
-module Core.Telemetry.Observability (
-    -- * Initializing
-    Exporter,
-    initializeTelemetry,
+module Core.Telemetry.Observability
+    ( -- * Initializing
+      Exporter
+    , initializeTelemetry
 
-    -- * Traces
-    Trace (..),
-    Span (..),
-    beginTrace,
-    usingTrace,
-    usingTrace',
-    setServiceName,
+      -- * Traces
+    , Trace (..)
+    , Span (..)
+    , beginTrace
+    , usingTrace
+    , usingTrace'
+    , setServiceName
 
-    -- * Spans
-    Label,
-    encloseSpan,
-    setStartTime,
+      -- * Spans
+    , Label
+    , encloseSpan
+    , setStartTime
+    , setSpanName
 
-    -- * Creating telemetry
-    MetricValue,
-    Telemetry (metric),
-    telemetry,
+      -- * Creating telemetry
+    , MetricValue
+    , Telemetry (metric)
+    , telemetry
 
-    -- * Events
-    sendEvent,
-    clearMetrics,
-) where
+      -- * Events
+    , sendEvent
+    , clearMetrics
+    , clearTrace
+    ) where
 
 import Control.Concurrent.MVar (modifyMVar_, newMVar, readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (writeTQueue)
-import qualified Control.Exception.Safe as Safe
+import Control.Exception.Safe qualified as Safe
+import Core.Data.Clock
 import Core.Data.Structures (Map, emptyMap, insertKeyValue)
+import Core.Encoding.External
 import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Context
 import Core.Program.Logging
 import Core.System.Base (SomeException, liftIO)
-import Core.System.External (TimeStamp (unTimeStamp), getCurrentTimeNanoseconds)
 import Core.Telemetry.Identifiers
 import Core.Text.Rope
 import Core.Text.Utilities (oxford, quote)
-import qualified Data.ByteString as B (ByteString)
-import qualified Data.ByteString.Lazy as L (ByteString)
-import qualified Data.List as List (foldl')
+import Data.ByteString qualified as B (ByteString)
+import Data.ByteString.Lazy qualified as L (ByteString)
+import Data.List qualified as List (foldl')
 import Data.Scientific (Scientific)
-import qualified Data.Text as T (Text)
-import qualified Data.Text.Lazy as U (Text)
+import Data.Text qualified as T (Text)
+import Data.Text.Lazy qualified as U (Text)
+import Data.Time.Calendar (Day)
+import Data.Time.Clock (UTCTime)
+import Data.UUID.Types (UUID)
 import GHC.Int
 import GHC.Word
 import System.Random (randomIO)
@@ -229,6 +236,14 @@ setServiceName service = do
                 pure datum'
             )
 
+{- |
+Adaptor class to take primitive values and send them as metrics. The
+underlying types are either strings, numbers, or boolean so any instance will
+need to externalize and then convert to one of these three.
+
+(this class is what allows us to act pass in what look like polymorphic lists
+of metrics to 'telemetry' and 'sendEvent')
+-}
 class Telemetry σ where
     metric :: Rope -> σ -> MetricValue
 
@@ -267,6 +282,9 @@ instance Telemetry Rope where
 instance Telemetry String where
     metric k v = MetricValue (JsonKey k) (JsonString (intoRope v))
 
+instance Telemetry () where
+    metric k _ = MetricValue (JsonKey k) JsonNull
+
 {- |
 The usual warning about assuming the @ByteString@ is ASCII or UTF-8 applies
 here. Don't use this to send binary mush.
@@ -292,6 +310,34 @@ instance Telemetry Bool where
 
 instance Telemetry JsonValue where
     metric k v = MetricValue (JsonKey k) v
+
+{- |
+Strip the constructor off if the value is Just, and send `null` if Nothing.
+
+@since 0.2.5
+-}
+instance Telemetry σ => Telemetry (Maybe σ) where
+    metric k v = case v of
+        Nothing -> MetricValue (JsonKey k) JsonNull
+        Just v' -> metric k v'
+
+{- |
+@since 0.2.5
+-}
+instance Telemetry UTCTime where
+    metric k v = MetricValue (JsonKey k) (JsonString (formatExternal (intoTime v)))
+
+{- |
+@since 0.2.6
+-}
+instance Telemetry Day where
+    metric k v = MetricValue (JsonKey k) (JsonString (formatExternal v))
+
+{- |
+@since 0.2.6
+-}
+instance Telemetry UUID where
+    metric k v = MetricValue (JsonKey k) (JsonString (formatExternal v))
 
 {- |
 Activate the telemetry subsystem for use within the
@@ -350,7 +396,7 @@ initializeTelemetry exporters1 context =
                 config0
 
         config2 = List.foldl' f config1 exporters2
-     in pure
+    in  pure
             ( context
                 { initialConfigFrom = config2
                 , initialExportersFrom = exporters2
@@ -364,7 +410,7 @@ initializeTelemetry exporters1 context =
     f :: Config -> Exporter -> Config
     f config exporter =
         let setup = setupConfigFrom exporter
-         in setup config
+        in  setup config
 
 type Label = Rope
 
@@ -372,7 +418,7 @@ type Label = Rope
 Begin a span.
 
 You need to call this from within the context of a trace, which is established
-either by calling `beginTrace` or `usingTrace` somewhere above this point in
+either by calling 'beginTrace' or 'usingTrace' somewhere above this point in
 the program.
 
 You can nest spans as you make your way through your program, which means each
@@ -380,6 +426,10 @@ span has a parent (except for the first one, which is the root span) In the
 context of a trace, allows an observability tool to reconstruct the sequence
 of events and to display them as a nested tree correspoding to your program
 flow.
+
+By convention the name of a span is the name of the function (method, handler,
+action, ...) you've just entered. Additional metadata can be added to the span
+using the 'telemetry' function.
 
 The current time will be noted when entering the 'Program' this span encloses,
 and its duration recorded when the sub @Program@ exits. Start time, duration,
@@ -434,12 +484,14 @@ encloseSpan label action = do
             internal ("Leave " <> label)
 
         -- extract the Datum as it stands after running the action, finalize
-        -- with its duration, and send it
+        -- with its duration, and send it. Note that we don't use the original
+        -- start time as it may have been overwritten.
         finish <- getCurrentTimeNanoseconds
         datum2 <- readMVar v2
+        let start2 = spanTimeFrom datum2
         let datum2' =
                 datum2
-                    { durationFrom = Just (unTimeStamp finish - unTimeStamp start)
+                    { durationFrom = Just (unTime finish - unTime start2)
                     }
 
         let tel = telemetryChannelFrom context
@@ -451,16 +503,6 @@ encloseSpan label action = do
         case result of
             Left e -> Safe.throw e
             Right value -> pure value
-
-{- |
-Send a span value up by hand.
-
-This handles a number of convenient things for you, and takes care of a few edge
-cases.
-
-
-@since 0.2.1
--}
 
 {- |
 Start a new trace. A random identifier will be generated.
@@ -605,7 +647,7 @@ Add measurements to the current span.
             ]
 @
 
-The 'metric' function is a method provided by instances of the 'Telemtetry'
+The 'metric' function is a method provided by instances of the 'Telemetry'
 typeclass which is mostly a wrapper around constructing key/value pairs
 suitable to be sent as measurements up to an observability service.
 -}
@@ -703,8 +745,10 @@ Under normal circumstances this shouldn't be necessary. The start and end of a
 span are recorded automatically when calling 'encloseSpan'. Observabilty tools
 are designed to be used live; traces and spans should be created in real time
 in your code.
+
+@since 0.1.6
 -}
-setStartTime :: TimeStamp -> Program τ ()
+setStartTime :: Time -> Program τ ()
 setStartTime time = do
     context <- getContext
 
@@ -713,7 +757,29 @@ setStartTime time = do
         let v = currentDatumFrom context
         modifyMVar_
             v
-            (\datum -> pure datum{spanTimeFrom = time})
+            (\datum -> pure datum {spanTimeFrom = time})
+
+{- |
+Override the name of the current span.
+
+Under normal circumstances this shouldn't be necessary. The label specified
+when you call 'encloseSpan' will be used to name the span when it is sent to
+the telemetry channel. If, however, the span you are in was created
+automatically and the circumstances you find yourself in require a different
+name, you can use this function to change it.
+
+@since 0.2.7
+-}
+setSpanName :: Label -> Program τ ()
+setSpanName label = do
+    context <- getContext
+
+    liftIO $ do
+        -- get the map out
+        let v = currentDatumFrom context
+        modifyMVar_
+            v
+            (\datum -> pure datum {spanNameFrom = label})
 
 {- |
 Reset the accumulated metadata metrics to the emtpy set.
@@ -733,4 +799,38 @@ clearMetrics = do
         let v = currentDatumFrom context
         modifyMVar_
             v
-            (\datum -> pure datum{attachedMetadataFrom = emptyMap})
+            ( \datum ->
+                pure
+                    datum
+                        { attachedMetadataFrom = emptyMap
+                        }
+            )
+
+{- |
+Reset the program context so that the currently executing program is no longer
+within a trace or span.
+
+This is specifically for the occasion where you have forked a new thread but
+have not yet received the event which would occasion starting a new trace.
+
+The current "service name" associated with this execution thread is preserved
+(usually this is set once per process at startup or once with 'setServiceName'
+and having to reset it everytime you call this would be silly).
+
+@since 0.2.4
+-}
+clearTrace :: Program τ ()
+clearTrace = do
+    context <- getContext
+
+    liftIO $ do
+        let v = currentDatumFrom context
+        modifyMVar_
+            v
+            ( \datum -> do
+                let name = serviceNameFrom datum
+                pure
+                    emptyDatum
+                        { serviceNameFrom = name
+                        }
+            )

@@ -1,5 +1,5 @@
 name: core-text
-version: 0.3.7.1
+version: 0.3.8.0
 synopsis: A rope type based on a finger tree over UTF-8 fragments
 description: |
   A rope data type for text, built as a finger tree over UTF-8 text
@@ -23,7 +23,7 @@ license-file: LICENSE
 author: Andrew Cowie <istathar@gmail.com>
 maintainer: Andrew Cowie <istathar@gmail.com>
 copyright: © 2018-2022 Athae Eredh Siniath and Others
-tested-with: GHC == 8.10.7
+tested-with: GHC == 8.10.7, GHC == 9.2.4
 category: System
 ghc-options: -Wall -Wwarn -fwarn-tabs
 github: aesiniath/unbeliever

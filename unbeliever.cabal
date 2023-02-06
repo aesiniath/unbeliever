@@ -1,11 +1,11 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.35.1.
 --
 -- see: https://github.com/sol/hpack
 
 name:           unbeliever
-version:        0.11.2.0
+version:        0.11.3.1
 synopsis:       Opinionated Haskell Interoperability
 description:    A library to help build command-line programs, both tools and
                 longer-running daemons. Its @Program@ type provides unified ouptut &
@@ -33,6 +33,8 @@ description:    A library to help build command-line programs, both tools and
                 * __core-data__
                 * __core-program__
                 * __core-telemetry__
+                * __core-webserver-warp__
+                * __core-webservver-servant__
                 .
                 with more forthcoming as we continue to add convenince and
                 interoperability wrappers around streaming, webservers, and database
@@ -48,7 +50,7 @@ license:        MIT
 license-file:   LICENSE
 build-type:     Simple
 tested-with:
-    GHC == 8.10.7
+    GHC == 9.2.4
 
 source-repository head
   type: git
@@ -62,33 +64,44 @@ executable experiment
   build-depends:
       base >=4.11 && <5
     , bytestring
-    , core-data >=0.3.0.2
-    , core-program >=0.4.0.0
-    , core-telemetry >=0.1.7.3
-    , core-text >=0.3.4.0
-    , core-webserver-servant >=0.0.1.0
-    , core-webserver-warp >=0.1.0.0
+    , core-data
+    , core-program
+    , core-text
     , prettyprinter
     , unordered-containers
   buildable: False
   default-language: Haskell2010
 
 executable snippet
+  main-is: Snippet.hs
+  hs-source-dirs:
+      tests
+  ghc-options: -Wall -Wwarn -fwarn-tabs -threaded
+  build-depends:
+      base >=4.11 && <5
+    , bytestring
+    , core-data
+    , core-program
+    , core-text
+  buildable: False
+  default-language: Haskell2010
+
+executable webserver
   main-is: WarpSnippet.hs
   hs-source-dirs:
       tests
   ghc-options: -Wall -Wwarn -fwarn-tabs -threaded
   build-depends:
       base >=4.11 && <5
-    , core-data >=0.3.0.2
-    , core-program >=0.4.0.0
-    , core-telemetry >=0.1.7.3
-    , core-text >=0.3.4.0
-    , core-webserver-servant >=0.0.1.0
+    , bytestring
+    , bytestring-trie
+    , core-data
+    , core-program
+    , core-telemetry
+    , core-text
     , core-webserver-warp
     , http-types
     , wai
-    , warp
   buildable: False
   default-language: Haskell2010
 
@@ -99,33 +112,39 @@ test-suite check
       CheckArgumentsParsing
       CheckBytesBehaviour
       CheckContainerBehaviour
+      CheckExternalizing
       CheckJsonWrapper
       CheckProgramMonad
       CheckRopeBehaviour
       CheckTelemetryMachinery
+      CheckTimeStamp
       CheckWebserverIntegration
   hs-source-dirs:
       tests
   ghc-options: -Wall -Wwarn -fwarn-tabs -threaded
   build-depends:
-      async
+      QuickCheck
+    , aeson
     , base >=4.11 && <5
     , bytestring
-    , core-data >=0.3.0.2
-    , core-program >=0.4.0.0
-    , core-telemetry >=0.1.7.3
-    , core-text >=0.3.4.0
-    , core-webserver-servant >=0.0.1.0
-    , core-webserver-warp >=0.1.0.0
+    , bytestring-trie
+    , core-data
+    , core-program
+    , core-telemetry
+    , core-text
+    , core-webserver-servant
+    , core-webserver-warp
     , fingertree
     , hashable
     , hspec
     , network-info
     , prettyprinter
     , safe-exceptions
+    , scientific
     , stm
     , text
     , text-short
+    , time
     , unordered-containers
     , wai
   default-language: Haskell2010
@@ -139,12 +158,9 @@ benchmark performance
   build-depends:
       base >=4.11 && <5
     , bytestring
-    , core-data >=0.3.0.2
-    , core-program >=0.4.0.0
-    , core-telemetry >=0.1.7.3
-    , core-text >=0.3.4.0
-    , core-webserver-servant >=0.0.1.0
-    , core-webserver-warp >=0.1.0.0
+    , core-data
+    , core-program
+    , core-text
     , gauge
     , text
   default-language: Haskell2010

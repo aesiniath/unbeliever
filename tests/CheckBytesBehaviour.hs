@@ -11,12 +11,12 @@ import Test.Hspec
 
 checkBytesBehaviour :: Spec
 checkBytesBehaviour = do
-  describe "Bytes data type" $ do
-    it "chunks Bytes in 64 bit words" $
-      let expected =
-            [ C.pack "Hello Wo",
-              C.pack "rld! Goo",
-              C.pack "d Bye."
-            ]
-       in do
-            byteChunk (C.pack "Hello World! Good Bye.") `shouldBe` expected
+    describe "Bytes data type" $ do
+        it "chunks Bytes in 64 bit words" $
+            let expected =
+                    [ C.pack "Hello Wo"
+                    , C.pack "rld! Goo"
+                    , C.pack "d Bye."
+                    ]
+            in  do
+                    byteChunk (C.pack "Hello World! Good Bye.") `shouldBe` expected

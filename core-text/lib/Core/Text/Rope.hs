@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE StrictData #-}
@@ -72,94 +73,95 @@ customary convenience functions you would find in the other libraries; so far
 of) small pieces, and then efficiently taking the resultant text object out to
 a file handle, be that the terminal console, a file, or a network socket.
 -}
-module Core.Text.Rope (
-    -- * Rope type
-    Rope,
-    emptyRope,
-    singletonRope,
-    packRope,
-    replicateRope,
-    replicateChar,
-    widthRope,
-    unconsRope,
-    splitRope,
-    takeRope,
-    insertRope,
-    containsCharacter,
-    findIndexRope,
+module Core.Text.Rope
+    ( -- * Rope type
+      Rope
+    , emptyRope
+    , singletonRope
+    , packRope
+    , replicateRope
+    , replicateChar
+    , widthRope
+    , unconsRope
+    , splitRope
+    , takeRope
+    , insertRope
+    , containsCharacter
+    , findIndexRope
 
-    -- * Interoperation and Output
-    Textual (fromRope, intoRope, appendRope),
-    hWrite,
+      -- * Interoperation and Output
+    , Textual (fromRope, intoRope, appendRope)
+    , hWrite
 
-    -- * Internals
-    unRope,
-    nullRope,
-    unsafeIntoRope,
-    copyRope,
-    Width (..),
-) where
+      -- * Internals
+    , unRope
+    , nullRope
+    , unsafeIntoRope
+    , copyRope
+    , Width (..)
+    ) where
 
 import Control.DeepSeq (NFData (..))
 import Core.Text.Bytes
-import qualified Data.ByteString as B (ByteString)
-import qualified Data.ByteString.Builder as B (
-    hPutBuilder,
-    toLazyByteString,
- )
-import qualified Data.ByteString.Lazy as L (
-    ByteString,
-    foldrChunks,
-    toStrict,
- )
-import qualified Data.FingerTree as F (
-    FingerTree,
-    Measured (..),
-    SearchResult (..),
-    ViewL (..),
-    empty,
-    null,
-    search,
-    singleton,
-    viewl,
-    (<|),
-    (><),
-    (|>),
- )
+import Data.ByteString qualified as B (ByteString)
+import Data.ByteString.Builder qualified as B
+    ( Builder
+    , hPutBuilder
+    , toLazyByteString
+    )
+import Data.ByteString.Lazy qualified as L
+    ( ByteString
+    , foldrChunks
+    , toStrict
+    )
+import Data.FingerTree qualified as F
+    ( FingerTree
+    , Measured (..)
+    , SearchResult (..)
+    , ViewL (..)
+    , empty
+    , null
+    , search
+    , singleton
+    , viewl
+    , (<|)
+    , (><)
+    , (|>)
+    )
 import Data.Foldable (foldl', toList)
 import Data.Hashable (Hashable, hashWithSalt)
 import Data.String (IsString (..))
-import qualified Data.Text as T (Text)
-import qualified Data.Text.Lazy as U (
-    Text,
-    foldrChunks,
-    fromChunks,
-    toStrict,
- )
-import qualified Data.Text.Lazy.Builder as U (
-    Builder,
-    fromText,
-    toLazyText,
- )
-import qualified Data.Text.Short as S (
-    ShortText,
-    any,
-    append,
-    empty,
-    findIndex,
-    fromByteString,
-    fromText,
-    length,
-    pack,
-    replicate,
-    singleton,
-    splitAt,
-    toBuilder,
-    toText,
-    uncons,
-    unpack,
- )
-import qualified Data.Text.Short.Unsafe as S (fromByteStringUnsafe)
+import Data.Text qualified as T (Text)
+import Data.Text.Lazy qualified as U
+    ( Text
+    , foldrChunks
+    , fromChunks
+    , toStrict
+    )
+import Data.Text.Lazy.Builder qualified as U
+    ( Builder
+    , fromText
+    , toLazyText
+    )
+import Data.Text.Short qualified as S
+    ( ShortText
+    , any
+    , append
+    , empty
+    , findIndex
+    , fromByteString
+    , fromText
+    , length
+    , pack
+    , replicate
+    , singleton
+    , splitAt
+    , toBuilder
+    , toText
+    , uncons
+    , unpack
+    )
+import Data.Text.Short.Unsafe qualified as S (fromByteStringUnsafe)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), emptyDoc)
 import System.IO (Handle)
@@ -308,7 +310,7 @@ hold /n/ references to the provided input text.
 replicateRope :: Int -> Rope -> Rope
 replicateRope count (Rope x) =
     let x' = foldr (\_ acc -> (F.><) x acc) F.empty [1 .. count]
-     in Rope x'
+    in  Rope x'
 
 {- |
 Repeat the input 'Char' @n@ times. This is a special case of 'replicateRope'
@@ -329,7 +331,7 @@ widthRope :: Rope -> Int
 widthRope text =
     let x = unRope text
         (Width w) = F.measure x
-     in w
+    in  w
 
 nullRope :: Rope -> Bool
 nullRope text = widthRope text == 0
@@ -344,7 +346,7 @@ returning 'Just' that character and the remainder of the text. Returns
 unconsRope :: Rope -> Maybe (Char, Rope)
 unconsRope text =
     let x = unRope text
-     in case F.viewl x of
+    in  case F.viewl x of
             F.EmptyL -> Nothing
             (F.:<) piece x' ->
                 case S.uncons piece of
@@ -378,11 +380,11 @@ splitRope :: Int -> Rope -> (Rope, Rope)
 splitRope i text@(Rope x) =
     let pos = Width i
         result = F.search (\w1 _ -> w1 >= pos) x
-     in case result of
+    in  case result of
             F.Position before piece after ->
                 let (Width w) = F.measure before
                     (one, two) = S.splitAt (i - w) piece
-                 in (Rope ((F.|>) before one), Rope ((F.<|) two after))
+                in  (Rope ((F.|>) before one), Rope ((F.<|) two after))
             F.OnLeft -> (Rope F.empty, text)
             F.OnRight -> (text, Rope F.empty)
             F.Nowhere -> error "Position not found in split. Probable cause: predicate function given not monotonic. This is supposed to be unreachable"
@@ -398,7 +400,7 @@ Take the first _n_ characters from the beginning of the Rope.
 takeRope :: Int -> Rope -> Rope
 takeRope i text =
     let (before, _) = splitRope i text
-     in before
+    in  before
 
 {- |
 Insert a new piece of text into an existing @Rope@ at the specified offset.
@@ -416,7 +418,7 @@ insertRope :: Int -> Rope -> Rope -> Rope
 insertRope 0 (Rope new) (Rope x) = Rope ((F.><) new x)
 insertRope i (Rope new) text =
     let (Rope before, Rope after) = splitRope i text
-     in Rope (mconcat [before, new, after])
+    in  Rope (mconcat [before, new, after])
 
 findIndexRope :: (Char -> Bool) -> Rope -> Maybe Int
 findIndexRope predicate = fst . foldl f (Nothing, 0) . unRope
@@ -447,7 +449,7 @@ instance Hashable Rope where
             piece = case F.viewl x' of
                 F.EmptyL -> S.empty
                 (F.:<) first _ -> first
-         in hashWithSalt salt piece
+        in  hashWithSalt salt piece
 
 {- |
 Copy the pieces underlying a 'Rope' into a single piece object.
@@ -455,11 +457,11 @@ Copy the pieces underlying a 'Rope' into a single piece object.
 /Warning/
 
 This function was necessary to have a reliable 'Hashable' instance. Currently
-constructing this new @Rope@ is quite inefficient if the number of pieces or
-their respective lengths are large. Usually, however, we're calling 'hash' so
-the value can be used as a key in a hash table and such keys are typically
-simple (or at least not ridiculously long), so this is not an issue in normal
-usage.
+constructing this new 'Rope' is quite inefficient if the number of pieces or
+their respective lengths are large. Usually, however, we're calling
+'Data.Hashable.hash' so the value can be used as a key in a hash table and
+such keys are typically simple (or at least not ridiculously long), so this is
+not an issue in normal usage.
 -}
 copyRope :: Rope -> Rope
 copyRope text@(Rope x) =
@@ -473,21 +475,21 @@ copyRope text@(Rope x) =
 
 {- |
 Machinery to interpret a type as containing valid Unicode that can be
-represented as a @Rope@ object.
+represented as a 'Rope' object.
 
 /Implementation notes/
 
-Given that @Rope@ is backed by a finger tree, 'append' is relatively
+Given that 'Rope' is backed by a finger tree, 'appendRope' is relatively
 inexpensive, plus whatever the cost of conversion is. There is a subtle trap,
 however: if adding small fragments of that were obtained by slicing (for
-example) a large ByteString we would end up holding on to a reference to the
-entire underlying block of memory. This module is optimized to reduce heap
-fragmentation by letting the Haskell runtime and garbage collector manage the
-memory, so instances are expected to /copy/ these substrings out of pinned
-memory.
+example) a large 'Data.ByteString.ByteString' we would end up holding on to a
+reference to the entire underlying block of memory. This module is optimized
+to reduce heap fragmentation by letting the Haskell runtime and garbage
+collector manage the memory, so instances are expected to /copy/ these
+substrings out of pinned memory.
 
-The @ByteString@ instance requires that its content be valid UTF-8. If not an
-empty @Rope@ will be returned.
+The 'Data.ByteString.ByteString' instance requires that its content be valid
+UTF-8. If not an empty 'Rope' will be returned.
 
 Several of the 'fromRope' implementations are expensive and involve a lot of
 intermediate allocation and copying. If you're ultimately writing to a handle
@@ -551,6 +553,20 @@ instance Textual B.ByteString where
         Just piece -> Rope ((F.|>) x piece)
         Nothing -> (Rope x) -- bad
 
+-- | from "Data.ByteString.Builder"
+instance Textual B.Builder where
+    fromRope = foldr g mempty . unRope
+      where
+        g piece built = (<>) (S.toBuilder piece) built
+    intoRope =
+        Rope
+            . ( L.foldrChunks
+                    ( (F.<|) . S.fromByteStringUnsafe
+                    )
+                    F.empty
+              )
+            . B.toLazyByteString
+
 -- | from "Data.ByteString.Lazy"
 instance Textual L.ByteString where
     fromRope = B.toLazyByteString . foldr g mempty . unRope
@@ -606,11 +622,9 @@ intermediate allocation and copying because we can go from the
 'Data.ByteString.Short.ShortByteString' to 'Data.ByteString.Builder.Builder'
 to the 'System.IO.Handle''s output buffer in one go.
 
-If you're working in the
-<https://hackage.haskell.org/package/core-program/docs/Core-Program-Execute.html#t:Program
-Program> monad, then
-<https://hackage.haskell.org/package/core-program/docs/Core-Program-Logging.html#v:write
-write> provides an efficient way to write a @Rope@ to @stdout@.
+If you're working in the __core-program__ 'Core.Program.Execute.Program' @τ@
+monad, then the 'Core.Program.Logging.write' function there provides an
+efficient way to write a 'Rope' to @stdout@.
 -}
 hWrite :: Handle -> Rope -> IO ()
 hWrite handle (Rope x) = B.hPutBuilder handle (foldr j mempty x)

@@ -1,5 +1,5 @@
 name: core-program
-version: 0.4.6.4
+version: 0.6.2.2
 synopsis: Opinionated Haskell Interoperability
 description: |
   A library to help build command-line programs, both tools and
@@ -7,7 +7,7 @@ description: |
   
   A description of this package, a list of features, and some background
   to its design is contained in the
-  <https://github.com/aesiniath/unbeliever/blob/master/README.markdown README>
+  <https://github.com/aesiniath/unbeliever/blob/master/README.md README>
   on GitHub.
   
   See "Core.Program.Execute" to get started.
@@ -18,7 +18,7 @@ license-file: LICENSE
 author: Andrew Cowie <istathar@gmail.com>
 maintainer: Andrew Cowie <istathar@gmail.com>
 copyright: © 2018-2022 Athae Eredh Siniath and Others
-tested-with: GHC == 8.10.7
+tested-with: GHC == 8.10.7, GHC == 9.2.4
 category: System
 ghc-options: -Wall -Wwarn -fwarn-tabs
 github: aesiniath/unbeliever
@@ -35,10 +35,8 @@ dependencies:
 
 library:
   dependencies:
-   - async
-   - core-text >= 0.3.7.0
-   - core-data >= 0.3.2.2
-   - chronologique
+   - core-text >= 0.3.8
+   - core-data >= 0.3.8
    - directory
    - exceptions
    - filepath
@@ -50,12 +48,14 @@ library:
    - terminal-size
    - transformers
    - unix
+   - unliftio-core
   source-dirs: lib
   exposed-modules:
    - Core.Program
    - Core.Program.Arguments
    - Core.Program.Context
    - Core.Program.Execute
+   - Core.Program.Exceptions
    - Core.Program.Logging
    - Core.Program.Metadata
    - Core.Program.Notify

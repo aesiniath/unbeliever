@@ -1,16 +1,16 @@
 name: core-telemetry
-version: 0.2.2.0
+version: 0.2.7.2
 synopsis: Advanced telemetry
 description: |
   This is part of a library to help build command-line programs, both tools and
   longer-running daemons.
-  
+
   This package in particular adds helpers for recording telemetry for
   subsequent analysis. You can instrument your code with tracing and spans,
   and also emit events carrying arbitrary metadata. Backends are provided for
   structured logs, sending traces to observability services, or even just
   outputting the telemetry to console.
-  
+
   See "Core.Telemetry.Observability" to get started.
 
 stability: provisional
@@ -32,11 +32,9 @@ dependencies:
 
 library:
   dependencies:
-   - async
-   - core-text >= 0.3.6.0
-   - core-data >= 0.3.2.2
-   - core-program >= 0.4.6.1
-   - chronologique
+   - core-text >= 0.3.7.1
+   - core-data >= 0.3.8.0
+   - core-program >= 0.6.2.2
    - exceptions
    - http-streams
    - io-streams
@@ -46,7 +44,10 @@ library:
    - safe-exceptions
    - scientific
    - stm
+   - time
    - unix
+   - uuid-types
+   - zlib
   source-dirs:
   - lib
   exposed-modules:
@@ -61,3 +62,5 @@ library:
 
 extra-doc-files:
   - HoneycombTraceExample.png
+  - honeycomb-sad-trace.png
+  - honeycomb-happy-trace.png

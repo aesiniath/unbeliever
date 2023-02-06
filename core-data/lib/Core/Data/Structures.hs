@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans -Wno-redundant-constraints #-}
 
@@ -8,47 +9,50 @@ Convenience wrappers around dictionary and collection types and tools
 facilitating conversion between them and various map and set types in
 common use in the Haskell ecosystem.
 -}
-module Core.Data.Structures (
-    -- * Map type
-    Map,
-    emptyMap,
-    singletonMap,
-    insertKeyValue,
-    containsKey,
-    lookupKeyValue,
+module Core.Data.Structures
+    ( -- * Map type
+      Map
+    , emptyMap
+    , singletonMap
+    , insertKeyValue
+    , containsKey
+    , lookupKeyValue
+    , removeKeyValue
 
-    -- * Conversions
-    Dictionary (K, V, fromMap, intoMap),
+      -- * Conversions
+    , Dictionary (K, V, fromMap, intoMap)
 
-    -- * Set type
-    Set,
-    emptySet,
-    singletonSet,
-    insertElement,
-    containsElement,
+      -- * Set type
+    , Set
+    , emptySet
+    , singletonSet
+    , insertElement
+    , containsElement
+    , removeElement
 
-    -- * Conversions
-    Collection (E, fromSet, intoSet),
+      -- * Conversions
+    , Collection (E, fromSet, intoSet)
 
-    -- * Internals
-    Key,
-    unMap,
-    unSet,
-) where
+      -- * Internals
+    , Key
+    , unMap
+    , unSet
+    ) where
 
+import Control.Concurrent qualified as Base (ThreadId)
 import Core.Text.Bytes (Bytes)
 import Core.Text.Rope (Rope)
 import Data.Bifoldable (Bifoldable)
-import qualified Data.ByteString as B (ByteString)
-import qualified Data.HashMap.Strict as HashMap
-import qualified Data.HashSet as HashSet
+import Data.ByteString qualified as B (ByteString)
+import Data.HashMap.Strict qualified as HashMap
+import Data.HashSet qualified as HashSet
 import Data.Hashable (Hashable)
 import Data.Kind (Type)
-import qualified Data.Map.Strict as OrdMap
-import qualified Data.Set as OrdSet
-import qualified Data.Text as T (Text)
-import qualified Data.Text.Lazy as U (Text)
-import qualified GHC.Exts as Exts (IsList (..))
+import Data.Map.Strict qualified as OrdMap
+import Data.Set qualified as OrdSet
+import Data.Text qualified as T (Text)
+import Data.Text.Lazy qualified as U (Text)
+import GHC.Exts qualified as Exts (IsList (..))
 
 -- Naming convention used throughout this file is (Thing u) where u is the
 -- underlying structure [from unordered-containers] wrapped in the Thing
@@ -108,6 +112,8 @@ instance Key Int
 
 instance Key B.ByteString
 
+instance Key Base.ThreadId
+
 instance Foldable (Map κ) where
     foldr f start (Map u) = HashMap.foldr f start u
     null (Map u) = HashMap.null u
@@ -146,7 +152,14 @@ Does the dictionary contain the specified key?
 containsKey :: Key κ => κ -> Map κ ν -> Bool
 containsKey k (Map u) = HashMap.member k u
 
--- |
+{- |
+Remove a key/value pair if present in the dictionary.
+
+@since 0.3.7
+-}
+removeKeyValue :: Key κ => κ -> Map κ ν -> Map κ ν
+removeKeyValue k (Map u) = Map (HashMap.delete k u)
+
 instance Key κ => Semigroup (Map κ ν) where
     (<>) (Map u1) (Map u2) = Map (HashMap.union u1 u2)
 
@@ -288,6 +301,14 @@ Does the collection contain the specified element?
 -}
 containsElement :: Key ε => ε -> Set ε -> Bool
 containsElement e (Set u) = HashSet.member e u
+
+{- |
+Remove an element from the collection if present.
+
+@since 0.3.7
+-}
+removeElement :: Key ε => ε -> Set ε -> Set ε
+removeElement e (Set u) = Set (HashSet.delete e u)
 
 {- |
 Types that represent collections of elements that can be converted to
