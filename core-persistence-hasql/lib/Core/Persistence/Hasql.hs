@@ -22,7 +22,7 @@ import Core.Telemetry.Observability
 import Core.Text.Rope
 import Data.Vector (Vector, toList)
 import GHC.Tuple (Solo (Solo), getSolo)
-import Hasql.Pool (Pool, UsageError (ConnectionUsageError, SessionUsageError), use)
+import Hasql.Pool (Pool, UsageError (AcquisitionTimeoutUsageError, ConnectionUsageError, SessionUsageError), use)
 import Hasql.Session (QueryError (QueryError), sql, statement)
 import Hasql.Statement (Statement)
 import qualified System.Timeout as Base (timeout)
@@ -33,6 +33,7 @@ this exception will be thrown.
 -}
 data DatabaseFailure
     = DatabaseConnectionFailed Rope
+    | DatabaseConnectionPool
     | DatabaseQueryFailed Rope
     | DatabaseQueryTimeout
     deriving (Show)
@@ -65,6 +66,7 @@ class Database δ where
 performQueryActual ::
     Database δ =>
     Functor f =>
+    Foldable f =>
     Rope ->
     (result -> α) ->
     params ->
@@ -91,7 +93,7 @@ performQueryActual label f values query = do
                 throwErrors label problem
             Just (Right rows) -> do
                 telemetry
-                    [ metric "result_count" (length rows :: Int)
+                    [ metric "result_count" (length rows)
                     ]
                 pure (fmap f rows)
 
@@ -114,6 +116,14 @@ throwErrors message result = do
                 [ metric "error" ("Database transaction failed: " <> intoRope (show commandError))
                 ]
             throw (DatabaseQueryFailed message)
+        AcquisitionTimeoutUsageError -> do
+            let unable = "Unable to get pool connection"
+            critical unable
+
+            telemetry
+                [ metric "error" unable
+                ]
+            throw DatabaseConnectionPool
 
 throwTimeout :: Program δ a
 throwTimeout = do
