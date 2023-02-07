@@ -591,11 +591,39 @@ present at the top-level when the program starts.
 While the original intent of providing an initial value of type @τ@ to
 'configure' was that your application state would be available at startup, an
 alternative pattern is to form the application state as the first actions that
-your program takes in the 'Program' @τ@ monad. This is especially true if you
+your program takes in the 'Program' @τ@ monad. This is especially common if you
 are processing command-line options. In that case, you may find it useful to
-initialize the program at type 'None' and then change to the application type
-you intend to run through the program with once the full settings object is
-available.
+initialize the program at type 'None', say, and then change to the 'Program'
+@υ@ monad you intend to run through the actual program with once the full
+settings object is available. You can do that using this function.
+
+For example:
+
+@
+main :: 'IO' ()
+main = do
+    context <- 'Core.Program.Execute.configure' \"1.0\" 'None' ('simpleConfig' ...)
+    'Core.Program.Execute.executeWith' context program1
+
+program1 :: 'Program' 'None' ()
+program1 = do
+    -- do things to form top-level application state
+    let settings =
+            Settings
+                { ...
+                }
+    
+    'changeProgram' settings program2
+
+program2 :: 'Program' Settings ()
+program2 = do
+    -- now carry on with application logic
+    ...
+@
+
+This allows your code do do 'queryOptionValue' and the like in @program1@ and
+then, once all the settings and initialization is complete, you can switch to
+the actual type you intend to run at in @program2@.
 
 @since 0.6.3
 -}
