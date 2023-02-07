@@ -118,6 +118,7 @@ import Control.Concurrent.MVar
     ( MVar
     , modifyMVar_
     , newEmptyMVar
+    , newMVar
     , putMVar
     , readMVar
     , tryPutMVar
@@ -602,7 +603,8 @@ changeProgram :: υ -> Program υ α -> Program τ α
 changeProgram user' program = do
     context1 <- ask
     liftIO $ do
-        context2 <- fmapContext (const user') context1
+        u <- newMVar user'
+        let context2 = context1 {applicationDataFrom = u}
         subProgram context2 program
 
 {- |
