@@ -332,7 +332,7 @@ description you supply alongside.
 
 @
         [ ...
-        , 'Remaining' "The files you wish to delete permanently."
+        , 'Remaining' \"The files you wish to delete permanently.\"
         , ...
         ]
 @
@@ -344,13 +344,25 @@ with an underscore:
 
 @
         [ ...
-        , 'Variable' \"CRAZY_MODE\" "Specify how many crazies to activate."
+        , 'Variable' \"CRAZY_MODE\" \"Specify how many crazies to activate.\"
         , ...
         ]
 @
+
+Finally, there is a 'Descriptive' constructor which allows you to put a piece
+of header text as a descriptive summary in help output before it starts
+enumerating the options and arguments.
+
+@
+        [ 'Descriptive' \"A program to evaluate just how crazy you are.\"
+        , ...
+        ]
+@
+
 -}
 data Options
-    = Option LongName (Maybe ShortName) ParameterValue Description
+    = Descriptive Description
+    | Option LongName (Maybe ShortName) ParameterValue Description
     | Argument LongName Description
     | Remaining Description
     | Variable LongName Description
