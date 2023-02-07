@@ -17,6 +17,7 @@ import Test.Hspec hiding (context)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar)
 import Core.Data.Clock
 import Core.Program
+import Core.Program.Context (Span (..), Trace (..))
 import Core.System
 import Core.Telemetry.Identifiers
 import Core.Text
