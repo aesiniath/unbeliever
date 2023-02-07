@@ -310,7 +310,8 @@ reason to use this; to access your top-level application data @τ@ within the
 getContext :: Program τ (Context τ)
 getContext = do
     context <- ask
-    return context
+    pure context
+{-# INLINABLE getContext #-}
 
 {- |
 Run a subprogram from within a lifted @IO@ block.
