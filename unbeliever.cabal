@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           unbeliever
-version:        0.11.3.1
+version:        0.11.3.2
 synopsis:       Opinionated Haskell Interoperability
 description:    A library to help build command-line programs, both tools and
                 longer-running daemons. Its @Program@ type provides unified ouptut &
@@ -34,7 +34,8 @@ description:    A library to help build command-line programs, both tools and
                 * __core-program__
                 * __core-telemetry__
                 * __core-webserver-warp__
-                * __core-webservver-servant__
+                * __core-webserver-servant__
+                * __core-effect-effectful__
                 .
                 with more forthcoming as we continue to add convenince and
                 interoperability wrappers around streaming, webservers, and database
@@ -45,7 +46,7 @@ homepage:       https://github.com/aesiniath/unbeliever#readme
 bug-reports:    https://github.com/aesiniath/unbeliever/issues
 author:         Andrew Cowie <istathar@gmail.com>
 maintainer:     Andrew Cowie <istathar@gmail.com>
-copyright:      © 2018-2022 Athae Eredh Siniath and Others
+copyright:      © 2018-2023 Athae Eredh Siniath and Others
 license:        MIT
 license-file:   LICENSE
 build-type:     Simple
