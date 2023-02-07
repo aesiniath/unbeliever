@@ -77,6 +77,7 @@ module Core.Program.Execute
     , getConsoleWidth
     , getApplicationState
     , setApplicationState
+    , changeProgram
 
       -- * Useful actions
     , outputEntire
@@ -581,6 +582,28 @@ setApplicationState user = do
     liftIO $ do
         let v = applicationDataFrom context
         modifyMVar_ v (\_ -> pure user)
+
+{- |
+Sometimes you need to change the type of the application state from what is
+present at the top-level when the program starts.
+
+While the original intent of providing an initial value of type @τ@ to
+'configure' was that your application state would be available at startup, an
+alternative pattern is to form the application state as the first actions that
+your program takes in the 'Program' @τ@ monad. This is especially true if you
+are processing command-line options. In that case, you may find it useful to
+initialize the program at type 'None' and then change to the application type
+you intend to run through the program with once the full settings object is
+available.
+
+@since 0.6.3
+-}
+changeProgram :: υ -> Program υ α -> Program τ α
+changeProgram user' program = do
+    context1 <- ask
+    liftIO $ do
+        context2 <- fmapContext (const user') context1
+        subProgram context2 program
 
 {- |
 Write the supplied @Bytes@ to the given @Handle@. Note that in contrast to
