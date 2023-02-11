@@ -82,7 +82,6 @@ module Core.Program.Execute
       -- * Useful actions
     , outputEntire
     , inputEntire
-    , execProcess
     , sleepThread
     , resetTimer
     , trap_
@@ -91,6 +90,10 @@ module Core.Program.Execute
     , catch
     , throw
     , try
+
+      -- * Running processes
+    , readProcess
+    , execProcess_
 
       -- * Internals
     , Context
@@ -104,6 +107,7 @@ module Core.Program.Execute
     , lookupOptionValue
     , lookupArgument
     , lookupEnvironmentValue
+    , execProcess
     )
 where
 
@@ -117,7 +121,6 @@ import Control.Concurrent
 import Control.Concurrent.MVar
     ( MVar
     , modifyMVar_
-    , newEmptyMVar
     , newMVar
     , putMVar
     , readMVar
@@ -176,8 +179,8 @@ import System.Directory
     )
 import System.Exit (ExitCode (..))
 import System.Posix.Internals (hostIsThreaded)
-import System.Posix.Process qualified as Posix (exitImmediately)
-import System.Process.Typed (nullStream, proc, readProcess, setStdin)
+import System.Posix.Process qualified as Posix (executeFile, exitImmediately)
+import System.Process.Typed qualified as Typed (nullStream, proc, readProcess, setStdin)
 import Prelude hiding (log)
 
 {- |
@@ -253,23 +256,23 @@ executeActual context0 program = do
     level <- handleVerbosityLevel context
 
     let quit = exitSemaphoreFrom context
-        out = outputChannelFrom context
-        tel = telemetryChannelFrom context
-        forwarder = telemetryForwarderFrom context
+    let vo = outputSemaphoreFrom context
+    let out = outputChannelFrom context
+    let vl = telemetrySemaphoreFrom context
+    let tel = telemetryChannelFrom context
+    let forwarder = telemetryForwarderFrom context
 
     -- set up signal handlers
     _ <- forkIO $ do
         setupSignalHandlers quit level
 
     -- set up standard output
-    vo <- newEmptyMVar
     _ <-
         forkFinally
             (processStandardOutput out)
             (\_ -> putMVar vo ())
 
     -- set up debug logger
-    vl <- newEmptyMVar
     _ <-
         forkFinally
             (processTelemetryMessages forwarder level out tel)
@@ -612,7 +615,7 @@ program1 = do
             Settings
                 { ...
                 }
-    
+
     'changeProgram' settings program2
 
 program2 :: 'Program' Settings ()
@@ -680,7 +683,7 @@ Keep in mind that this isn't invoking a shell; arguments and their values have
 to be enumerated separately:
 
 @
-    'execProcess' [\"\/usr\/bin\/ssh\", \"-l\", \"admin\", \"203.0.113.42\", \"\\\'remote command here\\\'\"]
+    'readProcess' [\"\/usr\/bin\/ssh\", \"-l\", \"admin\", \"203.0.113.42\", \"\\\'remote command here\\\'\"]
 @
 
 having to write out the individual options and arguments and deal with
@@ -691,15 +694,17 @@ and its entire @stderr@, if any. Note that this is not a streaming interface,
 so if you're doing something that returns huge amounts of output you'll want
 to use something like __io-streams__ instead.
 
-(this wraps __typed-process__'s 'readProcess')
+(this wraps __typed-process__'s 'System.Process.Typed.readProcess')
+
+@since 0.6.4
 -}
-execProcess :: [Rope] -> Program τ (ExitCode, Rope, Rope)
-execProcess [] = error "No command provided"
-execProcess (cmd : args) =
+readProcess :: [Rope] -> Program τ (ExitCode, Rope, Rope)
+readProcess [] = error "No command provided"
+readProcess (cmd : args) =
     let cmd' = fromRope cmd
         args' = fmap fromRope args
-        task = proc cmd' args'
-        task1 = setStdin nullStream task
+        task = Typed.proc cmd' args'
+        task1 = Typed.setStdin Typed.nullStream task
         command = mconcat (List.intersperse (singletonRope ' ') (cmd : args))
     in  do
             debug "command" command
@@ -711,9 +716,68 @@ execProcess (cmd : args) =
                     Safe.throw (CommandNotFound cmd)
                 Just _ -> do
                     (exit, out, err) <- liftIO $ do
-                        readProcess task1
+                        Typed.readProcess task1
 
                     pure (exit, intoRope out, intoRope err)
+
+execProcess :: [Rope] -> Program τ (ExitCode, Rope, Rope)
+execProcess = readProcess
+{-# DEPRECATED execProcess "Use readProcess intead" #-}
+
+{- |
+Execute a new external binary, replacing this Haskell program in memory and
+running the new binary in this program's place. The PID of the process does
+not change.
+
+This function does not return.
+
+As with 'readProcess' above, each of the arguments to the new process
+must be supplied as individual values in the list. The first argument is the
+name of the binary to be executed. The @PATH@ will be searched for the binary
+if an absolute path is not given; an exception will be thrown if it is not
+found.
+
+(this wraps __unix__'s 'executeFile' machinery, which results in an
+/execvp(3)/ standard library function call)
+
+@since 0.6.4
+-}
+execProcess_ :: [Rope] -> Program τ ()
+execProcess_ [] = error "No command provided"
+execProcess_ (cmd : args) = do
+    context <- ask
+    let cmd' = fromRope cmd
+    let args' = fmap fromRope args
+    let command = mconcat (List.intersperse (singletonRope ' ') (cmd : args))
+    let vo = outputSemaphoreFrom context
+    let out = outputChannelFrom context
+    let vl = telemetrySemaphoreFrom context
+    let tel = telemetryChannelFrom context
+
+    debug "command" command
+
+    probe <- liftIO $ do
+        findExecutable cmd'
+    case probe of
+        Nothing -> do
+            Safe.throw (CommandNotFound cmd)
+        Just _ -> do
+            liftIO $ do
+                atomically $ do
+                    writeTQueue tel Nothing
+                    writeTQueue out Nothing
+
+                _ <- forkIO $ do
+                    threadDelay 10000000
+                    putStrLn "error: Timeout"
+                    Safe.throw (ExitFailure 97)
+
+                readMVar vl
+                readMVar vo
+
+                -- does not return
+                _ <- Posix.executeFile cmd' True args' Nothing
+                pure ()
 
 {- |
 Reset the start time (used to calculate durations shown in event- and
