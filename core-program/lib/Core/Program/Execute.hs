@@ -92,8 +92,8 @@ module Core.Program.Execute
     , try
 
       -- * Running processes
-    , readExternalProcess
-    , execExternalProcess
+    , readProcess
+    , execProcess_
 
       -- * Internals
     , Context
@@ -126,10 +126,9 @@ import Control.Concurrent.MVar
     , readMVar
     , tryPutMVar
     )
-import Control.Concurrent.STM (atomically, retry)
+import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue
     ( TQueue
-    , isEmptyTQueue
     , readTQueue
     , tryReadTQueue
     , unGetTQueue
@@ -181,7 +180,7 @@ import System.Directory
 import System.Exit (ExitCode (..))
 import System.Posix.Internals (hostIsThreaded)
 import System.Posix.Process qualified as Posix (executeFile, exitImmediately)
-import System.Process.Typed (nullStream, proc, readProcess, setStdin)
+import System.Process.Typed qualified as Typed (nullStream, proc, readProcess, setStdin)
 import Prelude hiding (log)
 
 {- |
@@ -699,13 +698,13 @@ to use something like __io-streams__ instead.
 
 @since 0.6.4
 -}
-readExternalProcess :: [Rope] -> Program τ (ExitCode, Rope, Rope)
-readExternalProcess [] = error "No command provided"
-readExternalProcess (cmd : args) =
+readProcess :: [Rope] -> Program τ (ExitCode, Rope, Rope)
+readProcess [] = error "No command provided"
+readProcess (cmd : args) =
     let cmd' = fromRope cmd
         args' = fmap fromRope args
-        task = proc cmd' args'
-        task1 = setStdin nullStream task
+        task = Typed.proc cmd' args'
+        task1 = Typed.setStdin Typed.nullStream task
         command = mconcat (List.intersperse (singletonRope ' ') (cmd : args))
     in  do
             debug "command" command
@@ -717,13 +716,13 @@ readExternalProcess (cmd : args) =
                     Safe.throw (CommandNotFound cmd)
                 Just _ -> do
                     (exit, out, err) <- liftIO $ do
-                        readProcess task1
+                        Typed.readProcess task1
 
                     pure (exit, intoRope out, intoRope err)
 
 execProcess :: [Rope] -> Program τ (ExitCode, Rope, Rope)
-execProcess = readExternalProcess
-{-# DEPRECATED execProcess "Use readExternalProcess intead" #-}
+execProcess = readProcess
+{-# DEPRECATED execProcess "Use readProcess intead" #-}
 
 {- |
 Execute a new external binary, replacing this Haskell program in memory and
@@ -734,16 +733,18 @@ This function does not return.
 
 As with 'readProcessExternal' above, each of the arguments to the new process
 must be supplied as individual values in the list. The first argument is the
-name of the binary to be executed.
+name of the binary to be executed. The @PATH@ will be searched for the binary
+if an absolute path is not given; an exception will be thrown if it is not
+found.
 
 (this wraps __unix__'s 'executeFile' machinery, which results in an
-/execvp(2)/ system call)
+/execvp(3)/ standard library function call)
 
 @since 0.6.4
 -}
-execExternalProcess :: [Rope] -> Program τ ()
-execExternalProcess [] = error "No command provided"
-execExternalProcess (cmd : args) = do
+execProcess_ :: [Rope] -> Program τ ()
+execProcess_ [] = error "No command provided"
+execProcess_ (cmd : args) = do
     context <- ask
     let cmd' = fromRope cmd
     let args' = fmap fromRope args

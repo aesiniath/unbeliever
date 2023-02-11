@@ -19,4 +19,4 @@ main = execute $ do
             debugS "value" i
 
     warn "Executing new process"
-    execExternalProcess ["/bin/echo", "Hello World"]
+    execProcess_ ["echo", "Hello World"]
