@@ -683,7 +683,7 @@ Keep in mind that this isn't invoking a shell; arguments and their values have
 to be enumerated separately:
 
 @
-    'readProcessExternal' [\"\/usr\/bin\/ssh\", \"-l\", \"admin\", \"203.0.113.42\", \"\\\'remote command here\\\'\"]
+    'readProcess' [\"\/usr\/bin\/ssh\", \"-l\", \"admin\", \"203.0.113.42\", \"\\\'remote command here\\\'\"]
 @
 
 having to write out the individual options and arguments and deal with
@@ -694,7 +694,7 @@ and its entire @stderr@, if any. Note that this is not a streaming interface,
 so if you're doing something that returns huge amounts of output you'll want
 to use something like __io-streams__ instead.
 
-(this wraps __typed-process__'s 'readProcess')
+(this wraps __typed-process__'s 'System.Process.Typed.readProcess')
 
 @since 0.6.4
 -}
@@ -731,7 +731,7 @@ not change.
 
 This function does not return.
 
-As with 'readProcessExternal' above, each of the arguments to the new process
+As with 'readProcess' above, each of the arguments to the new process
 must be supplied as individual values in the list. The first argument is the
 name of the binary to be executed. The @PATH@ will be searched for the binary
 if an absolute path is not given; an exception will be thrown if it is not
