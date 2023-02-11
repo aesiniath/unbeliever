@@ -82,8 +82,6 @@ module Core.Program.Execute
       -- * Useful actions
     , outputEntire
     , inputEntire
-    , readExternalProcess
-    , execExternalProcess
     , sleepThread
     , resetTimer
     , trap_
@@ -92,6 +90,10 @@ module Core.Program.Execute
     , catch
     , throw
     , try
+
+      -- * Running processes
+    , readExternalProcess
+    , execExternalProcess
 
       -- * Internals
     , Context
@@ -694,6 +696,8 @@ so if you're doing something that returns huge amounts of output you'll want
 to use something like __io-streams__ instead.
 
 (this wraps __typed-process__'s 'readProcess')
+
+@since 0.6.4
 -}
 readExternalProcess :: [Rope] -> Program τ (ExitCode, Rope, Rope)
 readExternalProcess [] = error "No command provided"
@@ -732,7 +736,7 @@ As with 'readProcessExternal' above, each of the arguments to the new process
 must be supplied as individual values in the list. The first argument is the
 name of the binary to be executed.
 
-(this function wraps __unix__'s 'executeFile' machinery, which results in an
+(this wraps __unix__'s 'executeFile' machinery, which results in an
 /execvp(2)/ system call)
 
 @since 0.6.4
@@ -761,7 +765,6 @@ execExternalProcess (cmd : args) = do
                 atomically $ do
                     writeTQueue tel Nothing
                     writeTQueue out Nothing
-
 
                 _ <- forkIO $ do
                     threadDelay 10000000
