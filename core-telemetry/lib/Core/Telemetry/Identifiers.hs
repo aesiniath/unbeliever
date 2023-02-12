@@ -17,7 +17,9 @@ be globally unique and that spans be unique within a trace.
 -}
 module Core.Telemetry.Identifiers
     ( -- * Traces and Spans
-      getIdentifierTrace
+      Trace
+    , getIdentifierTrace
+    , Span
     , getIdentifierSpan
     , setIdentifierSpan
 

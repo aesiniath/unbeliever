@@ -175,7 +175,9 @@ data Context τ = Context
     , exitSemaphoreFrom :: MVar ExitCode
     , startTimeFrom :: MVar Time
     , verbosityLevelFrom :: MVar Verbosity
+    , outputSemaphoreFrom :: MVar ()
     , outputChannelFrom :: TQueue (Maybe Rope) -- communication channels
+    , telemetrySemaphoreFrom :: MVar ()
     , telemetryChannelFrom :: TQueue (Maybe Datum) -- machinery for telemetry
     , telemetryForwarderFrom :: Maybe Forwarder
     , currentScopeFrom :: TVar (Set ThreadId)
@@ -310,7 +312,8 @@ reason to use this; to access your top-level application data @τ@ within the
 getContext :: Program τ (Context τ)
 getContext = do
     context <- ask
-    return context
+    pure context
+{-# INLINABLE getContext #-}
 
 {- |
 Run a subprogram from within a lifted @IO@ block.
@@ -369,6 +372,8 @@ configure version t config = do
     columns <- getConsoleWidth
     coloured <- getConsoleColoured
     level <- newEmptyMVar
+    vo <- newEmptyMVar
+    vl <- newEmptyMVar
     out <- newTQueueIO
     tel <- newTQueueIO
 
@@ -388,7 +393,9 @@ configure version t config = do
             , exitSemaphoreFrom = q
             , startTimeFrom = i
             , verbosityLevelFrom = level -- will be filled in handleVerbosityLevel
+            , outputSemaphoreFrom = vo
             , outputChannelFrom = out
+            , telemetrySemaphoreFrom = vl
             , telemetryChannelFrom = tel
             , telemetryForwarderFrom = Nothing
             , currentScopeFrom = scope

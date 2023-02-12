@@ -1,4 +1,4 @@
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK not-home, prune #-}
 
 -- actually, they're there to group implementation too, but hey.
 
@@ -20,8 +20,7 @@ module Core.Program
       -- |
       -- A top-level Program type giving you unified access to logging, concurrency,
       -- and more.
-        module Core.Program.Context
-    , module Core.Program.Execute
+      module Core.Program.Execute
     , module Core.Program.Threads
     , module Core.Program.Unlift
     , module Core.Program.Metadata
@@ -49,7 +48,6 @@ module Core.Program
 where
 
 import Core.Program.Arguments
-import Core.Program.Context
 import Core.Program.Exceptions
 import Core.Program.Execute
 import Core.Program.Logging

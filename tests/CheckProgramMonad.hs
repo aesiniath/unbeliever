@@ -73,6 +73,24 @@ checkProgramMonad = do
                     user2 <- runProgram getApplicationState -- unlift!
                     user2 `shouldBe` user1
 
+        it "type of application state can be changed" $ do
+            context <- configure "0.1" None blankConfig
+            executeWith context $ do
+                user1 <- getApplicationState
+                liftIO $ do
+                    user1 `shouldBe` None
+
+                let truth = True
+                changeProgram truth $ do
+                    user' <- getApplicationState
+                    liftIO $ do
+                        user' `shouldBe` True
+
+                user2 <- getApplicationState
+                liftIO $ do
+                    user2 `shouldBe` None
+
+
         it "thrown Exceptions can be caught" $ do
             context <- configure "0.1" None blankConfig
             (subProgram context (throw Boom)) `shouldThrow` boom
@@ -110,4 +128,4 @@ checkProgramMonad = do
 
     describe "Package metadata" $ do
         it "the source location is accessible" $ do
-            render 80 __LOCATION__ `shouldBe` "tests/CheckProgramMonad.hs:113"
+            render 80 __LOCATION__ `shouldBe` "tests/CheckProgramMonad.hs:131"
