@@ -25,7 +25,9 @@ module Core.Program.Arguments
       Config
     , blankConfig
     , simpleConfig
+    , simpleConfig'
     , complexConfig
+    , complexConfig'
     , baselineOptions
     , Parameters (..)
     , ParameterValue (..)
@@ -115,8 +117,8 @@ a @Config@ with 'simpleConfig' or 'complexConfig', and pass it to
 -}
 data Config
     = Blank
-    | Simple [Options]
-    | Complex [Commands]
+    | Simple Description [Options]
+    | Complex Description [Commands]
 
 --
 -- Those constructors are not exposed [and functions wrapping them are] partly
@@ -200,7 +202,27 @@ see 'quote' in "Core.Text.Utilities".
 @since 0.2.9
 -}
 simpleConfig :: [Options] -> Config
-simpleConfig options = Simple (options ++ baselineOptions)
+simpleConfig options = Simple emptyRope (options ++ baselineOptions)
+
+{- |
+Declare a simple configuration as with 'simpleConfig', along with a
+descriptive precis that will be printed at the top of the @--help@ output.
+
+
+@
+\$ __./snippet --help__
+A small but very useful program.
+
+Usage:
+
+    snippet [OPTIONS] <filename>
+...
+@
+
+@since 0.6.5
+-}
+simpleConfig' :: Description -> [Options] -> Config
+simpleConfig' description options = Simple description (options ++ baselineOptions)
 
 {- |
 Declare a complex configuration (implying a larger tool with various
@@ -286,7 +308,20 @@ see 'quote' in "Core.Text.Utilities".
 @since 0.2.9
 -}
 complexConfig :: [Commands] -> Config
-complexConfig commands = Complex (commands ++ [Global baselineOptions])
+complexConfig commands = Complex emptyRope (commands ++ [Global baselineOptions])
+
+{- |
+Declare a complex configuration as with 'complexConfig', along with a
+descriptive precis that will be printed at the top of the @--help@ output when
+requesting help for the program as a whole.
+
+If help is requested for one of the sub commands, the description from the
+'Command' constructor will be used at the top of the output.
+
+@since 0.6.5
+-}
+complexConfig' :: Description -> [Commands] -> Config
+complexConfig' precis commands = Complex precis (commands ++ [Global baselineOptions])
 
 {- |
 Description of the command-line structure of a program which has
@@ -332,7 +367,7 @@ description you supply alongside.
 
 @
         [ ...
-        , 'Remaining' "The files you wish to delete permanently."
+        , 'Remaining' \"The files you wish to delete permanently.\"
         , ...
         ]
 @
@@ -344,7 +379,17 @@ with an underscore:
 
 @
         [ ...
-        , 'Variable' \"CRAZY_MODE\" "Specify how many crazies to activate."
+        , 'Variable' \"CRAZY_MODE\" \"Specify how many crazies to activate.\"
+        , ...
+        ]
+@
+
+Finally, there is a 'Descriptive' constructor which allows you to put a piece
+of header text as a descriptive summary in help output before it starts
+enumerating the options and arguments.
+
+@
+        [ 'Descriptive' \"A program to evaluate just how crazy you are.\"
         , ...
         ]
 @
@@ -360,8 +405,8 @@ appendOption :: Options -> Config -> Config
 appendOption option config =
     case config of
         Blank -> Blank
-        Simple options -> Simple (options ++ [option])
-        Complex commands -> Complex (commands ++ [Global [option]])
+        Simple precis options -> Simple precis (options ++ [option])
+        Complex precis commands -> Complex precis (commands ++ [Global [option]])
 
 {- |
 Individual parameters read in off the command-line can either have a value
@@ -550,11 +595,11 @@ initializing).
 parseCommandLine :: Config -> [String] -> Either InvalidCommandLine Parameters
 parseCommandLine config argv = case config of
     Blank -> return (Parameters Nothing emptyMap [] emptyMap)
-    Simple options -> do
+    Simple _ options -> do
         (params, remainder) <- extractor Nothing options argv
         checkRemainder options remainder
         return (Parameters Nothing params remainder emptyMap)
-    Complex commands ->
+    Complex _ commands ->
         let globalOptions = extractGlobalOptions commands
             modes = extractValidModes commands
         in  do
@@ -655,13 +700,13 @@ parseRequiredArguments needed argv = iter needed argv
                 Right (list, remainder) -> Right (((name, Value arg) : list), remainder)
 
 parseIndicatedCommand
-    :: Map LongName [Options]
+    :: Map LongName (Description, [Options])
     -> String
     -> Either InvalidCommandLine (LongName, [Options])
 parseIndicatedCommand modes first =
     let candidate = LongName first
     in  case lookupKeyValue candidate modes of
-            Just options -> Right (candidate, options)
+            Just (_, options) -> Right (candidate, options)
             Nothing -> Left (UnknownCommand first)
 
 --
@@ -702,12 +747,12 @@ extractGlobalOptions commands =
     j (Global options) valids = options ++ valids
     j _ valids = valids
 
-extractValidModes :: [Commands] -> Map LongName [Options]
+extractValidModes :: [Commands] -> Map LongName (Description, [Options])
 extractValidModes commands =
     List.foldl' k emptyMap commands
   where
-    k :: Map LongName [Options] -> Commands -> Map LongName [Options]
-    k modes (Command longname _ options) = insertKeyValue longname options modes
+    k :: Map LongName (Description, [Options]) -> Commands -> Map LongName (Description, [Options])
+    k modes (Command longname description options) = insertKeyValue longname (description, options) modes
     k modes _ = modes
 
 {-
@@ -740,8 +785,8 @@ splitCommandLine2 argv' =
 extractValidEnvironments :: Maybe LongName -> Config -> Set LongName
 extractValidEnvironments mode config = case config of
     Blank -> emptySet
-    Simple options -> extractVariableNames options
-    Complex commands ->
+    Simple _ options -> extractVariableNames options
+    Complex _ commands ->
         let globals = extractGlobalOptions commands
             variables1 = extractVariableNames globals
 
@@ -775,9 +820,10 @@ extractVariableNames options =
 buildUsage :: Config -> Maybe LongName -> Doc ann
 buildUsage config mode = case config of
     Blank -> emptyDoc
-    Simple options ->
+    Simple precis options ->
         let (o, a, v) = partitionParameters options
-        in  "Usage:"
+        in  formatPrecis precis
+                <> "Usage:"
                 <> hardline
                 <> hardline
                 <> indent
@@ -799,24 +845,28 @@ buildUsage config mode = case config of
                 <> formatParameters a
                 <> variablesHeading v
                 <> formatParameters v
-    Complex commands ->
+    Complex precis commands ->
         let globalOptions = extractGlobalOptions commands
             modes = extractValidModes commands
 
             (oG, _, vG) = partitionParameters globalOptions
-        in  "Usage:" <> hardline <> hardline <> case mode of
+        in  case mode of
                 Nothing ->
-                    indent
-                        2
-                        ( nest
-                            4
-                            ( fillCat
-                                [ pretty programName
-                                , globalSummary oG
-                                , commandSummary modes
-                                ]
+                    formatPrecis precis
+                        <> "Usage:"
+                        <> hardline
+                        <> hardline
+                        <> indent
+                            2
+                            ( nest
+                                4
+                                ( fillCat
+                                    [ pretty programName
+                                    , globalSummary oG
+                                    , commandSummary modes
+                                    ]
+                                )
                             )
-                        )
                         <> hardline
                         <> globalHeading oG
                         <> formatParameters oG
@@ -825,23 +875,27 @@ buildUsage config mode = case config of
                         <> variablesHeading vG
                         <> formatParameters vG
                 Just longname ->
-                    let (oL, aL, vL) = case lookupKeyValue longname modes of
-                            Just localOptions -> partitionParameters localOptions
+                    let (dL, (oL, aL, vL)) = case lookupKeyValue longname modes of
+                            Just (description, localOptions) -> (description, partitionParameters localOptions)
                             Nothing -> error "Illegal State"
-                    in  indent
-                            2
-                            ( nest
-                                4
-                                ( fillCat
-                                    [ pretty programName
-                                    , globalSummary oG
-                                    , commandSummary modes
-                                    , localSummary oL
-                                    , argumentsSummary aL
-                                    , remainingSummary aL
-                                    ]
+                    in  formatPrecis dL
+                            <> "Usage:"
+                            <> hardline
+                            <> hardline
+                            <> indent
+                                2
+                                ( nest
+                                    4
+                                    ( fillCat
+                                        [ pretty programName
+                                        , globalSummary oG
+                                        , commandSummary modes
+                                        , localSummary oL
+                                        , argumentsSummary aL
+                                        , remainingSummary aL
+                                        ]
+                                    )
                                 )
-                            )
                             <> hardline
                             <> localHeading oL
                             <> formatParameters oL
@@ -850,6 +904,11 @@ buildUsage config mode = case config of
                             <> variablesHeading vL
                             <> formatParameters vL
   where
+    formatPrecis :: Description -> Doc ann
+    formatPrecis precis = case widthRope precis of
+        0 -> emptyDoc
+        _ -> reflow (fromRope precis) <> hardline <> hardline
+
     partitionParameters :: [Options] -> ([Options], [Options], [Options])
     partitionParameters options = List.foldl' f ([], [], []) options
 
