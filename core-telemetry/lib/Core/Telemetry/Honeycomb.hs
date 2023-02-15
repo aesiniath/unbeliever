@@ -91,6 +91,8 @@ type Dataset = Rope
 
 type ApiKey = Rope
 
+type HoneycombHost = Rope
+
 {- |
 Configure your application to send telemetry in the form of spans and traces
 to the Honeycomb observability service.
@@ -133,13 +135,31 @@ setupHoneycombConfig config0 =
                     "The name of the dataset within your Honeycomb account that this program's telemetry will be written to."
                 )
                 config1
-    in  config2
+
+        config3 =
+            appendOption
+                ( Variable
+                    "HONEYCOMB_HOST_OVERRIDE"
+                    "A Honeycomb override host, in situations where the host needs an override, such as when using the Honeycomb Refinery."
+                )
+                config2
+    in  config3
 
 setupHoneycombAction :: Context τ -> IO Forwarder
 setupHoneycombAction context = do
     let params = commandLineFrom context
         pairs = environmentValuesFrom params
         possibleTeam = lookupKeyValue "HONEYCOMB_TEAM" pairs
+        possibleHoneycombHostOverride = lookupKeyValue "HONEYCOMB_HOST_OVERRIDE" pairs
+
+    let defaultHoneycombHost = "api.honeycomb.io"
+        honeycombHost = case possibleHoneycombHostOverride of
+            -- Use the default
+            Nothing -> defaultHoneycombHost
+            Just Empty -> defaultHoneycombHost
+            Just (Value "") -> defaultHoneycombHost
+            -- Use the override
+            Just (Value host) -> intoRope host
 
     apikey <- case possibleTeam of
         Nothing -> do
@@ -176,14 +196,14 @@ setupHoneycombAction context = do
 
     pure
         Forwarder
-            { telemetryHandlerFrom = process r apikey dataset
+            { telemetryHandlerFrom = process r honeycombHost apikey dataset
             }
 
 -- use partually applied
-process :: IORef (Maybe Connection) -> ApiKey -> Dataset -> [Datum] -> IO ()
-process r apikey dataset datums = do
+process :: IORef (Maybe Connection) -> HoneycombHost -> ApiKey -> Dataset -> [Datum] -> IO ()
+process r honeycombHost apikey dataset datums = do
     let json = JsonArray (fmap convertDatumToJson datums)
-    postEventToHoneycombAPI r apikey dataset json
+    postEventToHoneycombAPI r honeycombHost apikey dataset json
 
 -- implements the spec described at <https://docs.honeycomb.io/getting-data-in/tracing/send-trace-data/>
 convertDatumToJson :: Datum -> JsonValue
@@ -233,13 +253,13 @@ convertDatumToJson datum =
                 )
     in  point
 
-acquireConnection :: IORef (Maybe Connection) -> IO Connection
-acquireConnection r = do
+acquireConnection :: IORef (Maybe Connection) -> HoneycombHost -> IO Connection
+acquireConnection r honeycombHost = do
     possible <- readIORef r
     case possible of
         Nothing -> do
             ctx <- baselineContextSSL
-            c <- openConnectionSSL ctx "api.honeycomb.io" 443
+            c <- openConnectionSSL ctx (fromRope honeycombHost) 443
 
             writeIORef r (Just c)
             pure c
@@ -266,13 +286,13 @@ compressBody bytes o = do
     let b = Builder.lazyByteString x'
     Streams.write (Just b) o
 
-postEventToHoneycombAPI :: IORef (Maybe Connection) -> ApiKey -> Dataset -> JsonValue -> IO ()
-postEventToHoneycombAPI r apikey dataset json = attempt False
+postEventToHoneycombAPI :: IORef (Maybe Connection) -> HoneycombHost -> ApiKey -> Dataset -> JsonValue -> IO ()
+postEventToHoneycombAPI r honeycombHost apikey dataset json = attempt False
   where
     attempt retrying = do
         Safe.catch
             ( do
-                c <- acquireConnection r
+                c <- acquireConnection r honeycombHost
 
                 -- actually transmit telemetry to Honeycomb
                 sendRequest c q (compressBody (encodeToUTF8 json))
