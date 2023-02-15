@@ -22,6 +22,19 @@ If you annotate your program with spans, you can get a trace like this:
 
 ![Example Trace](HoneycombTraceExample.png)
 
+This library by default will upload telemetry information to the default
+Honeycomb endpoint at 'api.honeycomb.io'. However, it also offers support for
+the Honeycomb Refinery when specifying a host override, such as:
+
+@
+\$ __export HONEYCOMB_OVERRIDE_HOST=my-refinery-service.internal__
+@
+
+The library still assumes that the service is running on port 443 and
+behind SSL.
+
+More details on Refinery: <https://docs.honeycomb.io/manage-data-volume/refinery/>
+
 /Notice/
 
 This library is Open Source but the Honeycomb service is /not/. Honeycomb
