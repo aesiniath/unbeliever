@@ -105,8 +105,6 @@ type Dataset = Rope
 
 type ApiKey = Rope
 
-type HoneycombHost = Hostname
-
 {- |
 Configure your application to send telemetry in the form of spans and traces
 to the Honeycomb observability service.
@@ -214,7 +212,7 @@ setupHoneycombAction context = do
             }
 
 -- use partually applied
-process :: IORef (Maybe Connection) -> HoneycombHost -> ApiKey -> Dataset -> [Datum] -> IO ()
+process :: IORef (Maybe Connection) -> Hostname -> ApiKey -> Dataset -> [Datum] -> IO ()
 process r honeycombHost apikey dataset datums = do
     let json = JsonArray (fmap convertDatumToJson datums)
     postEventToHoneycombAPI r honeycombHost apikey dataset json
@@ -267,7 +265,7 @@ convertDatumToJson datum =
                 )
     in  point
 
-acquireConnection :: IORef (Maybe Connection) -> HoneycombHost -> IO Connection
+acquireConnection :: IORef (Maybe Connection) -> Hostname -> IO Connection
 acquireConnection r honeycombHost = do
     possible <- readIORef r
     case possible of
@@ -300,7 +298,7 @@ compressBody bytes o = do
     let b = Builder.lazyByteString x'
     Streams.write (Just b) o
 
-postEventToHoneycombAPI :: IORef (Maybe Connection) -> HoneycombHost -> ApiKey -> Dataset -> JsonValue -> IO ()
+postEventToHoneycombAPI :: IORef (Maybe Connection) -> Hostname -> ApiKey -> Dataset -> JsonValue -> IO ()
 postEventToHoneycombAPI r honeycombHost apikey dataset json = attempt False
   where
     attempt retrying = do
