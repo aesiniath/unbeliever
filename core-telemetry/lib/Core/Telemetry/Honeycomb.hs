@@ -24,10 +24,11 @@ If you annotate your program with spans, you can get a trace like this:
 
 This library by default will upload telemetry information to the default
 Honeycomb endpoint at 'api.honeycomb.io'. However, it also offers support for
-the Honeycomb Refinery when specifying a host override, such as:
+intermediate services (such as Honeycomb Refinery) when specifying a host
+explicitly, such as:
 
 @
-\$ __export HONEYCOMB_OVERRIDE_HOST=my-refinery-service.internal__
+\$ __export HONEYCOMB_HOST=my-intermediate-service.internal__
 @
 
 The library still assumes that the service is running on port 443 and
@@ -85,7 +86,7 @@ import Data.ByteString (ByteString)
 import Data.ByteString qualified as B (ByteString)
 import Data.ByteString.Builder (Builder)
 import Data.ByteString.Builder qualified as Builder (lazyByteString)
-import Data.ByteString.Char8 qualified as C (append, null, putStrLn)
+import Data.ByteString.Char8 qualified as C (append, null, pack, putStrLn)
 import Data.ByteString.Lazy qualified as L (ByteString)
 import Data.Fixed
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
@@ -104,7 +105,7 @@ type Dataset = Rope
 
 type ApiKey = Rope
 
-type HoneycombHost = Rope
+type HoneycombHost = Hostname
 
 {- |
 Configure your application to send telemetry in the form of spans and traces
@@ -152,8 +153,8 @@ setupHoneycombConfig config0 =
         config3 =
             appendOption
                 ( Variable
-                    "HONEYCOMB_HOST_OVERRIDE"
-                    "A Honeycomb override host, in situations where the host needs an override, such as when using the Honeycomb Refinery."
+                    "HONEYCOMB_HOST"
+                    "Override the default API endpoint for occasions where telemetry needs to be proxied through an intermediate service. Default: api.honeycomb.io"
                 )
                 config2
     in  config3
@@ -163,7 +164,7 @@ setupHoneycombAction context = do
     let params = commandLineFrom context
         pairs = environmentValuesFrom params
         possibleTeam = lookupKeyValue "HONEYCOMB_TEAM" pairs
-        possibleHoneycombHostOverride = lookupKeyValue "HONEYCOMB_HOST_OVERRIDE" pairs
+        possibleHoneycombHostOverride = lookupKeyValue "HONEYCOMB_HOST" pairs
 
     let defaultHoneycombHost = "api.honeycomb.io"
         honeycombHost = case possibleHoneycombHostOverride of
@@ -172,7 +173,7 @@ setupHoneycombAction context = do
             Just Empty -> defaultHoneycombHost
             Just (Value "") -> defaultHoneycombHost
             -- Use the override
-            Just (Value host) -> intoRope host
+            Just (Value host) -> C.pack host
 
     apikey <- case possibleTeam of
         Nothing -> do
@@ -272,7 +273,7 @@ acquireConnection r honeycombHost = do
     case possible of
         Nothing -> do
             ctx <- baselineContextSSL
-            c <- openConnectionSSL ctx (fromRope honeycombHost) 443
+            c <- openConnectionSSL ctx honeycombHost 443
 
             writeIORef r (Just c)
             pure c
