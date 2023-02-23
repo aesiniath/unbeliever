@@ -4,6 +4,7 @@ import CheckArgumentsParsing (checkArgumentsParsing)
 import CheckBytesBehaviour
 import CheckContainerBehaviour
 import CheckExternalizing (checkExternalizing)
+import CheckFromAesonInstance
 import CheckJsonWrapper
 import CheckProgramMonad
 import CheckRopeBehaviour (checkRopeBehaviour)
@@ -29,3 +30,4 @@ suite = do
     checkProgramMonad
     checkTelemetryMachinery
     checkWebserverIntegration
+    checkFromAesonInstance
