@@ -93,14 +93,12 @@ import Prettyprinter.Render.Text (renderLazy)
 Types which can be rendered "prettily", that is, formatted by a pretty printer
 and embossed with beautiful ANSI colours when printed to the terminal.
 
-Use 'render' to build text object for later use or
-<https://hackage.haskell.org/package/core-program/docs/Core-Program-Logging.html
-Control.Program.Logging>'s
-<https://hackage.haskell.org/package/core-program/docs/Core-Program-Logging.html#v:writeR
-writeR> if you're writing directly to console now.
+Use 'render' to build text object for later use, or
+"Control.Program.Logging"'s 'Core.Program.Logging.writeR' if you're writing
+directly to console now.
 -}
 class Render α where
-    -- | Which type are the annotations of your Doc going to be expressed in?
+    -- | Which type are the annotations of your 'Doc' going to be expressed in?
     type Token α :: Type
 
     -- | Convert semantic tokens to specific ANSI escape tokens
@@ -206,13 +204,13 @@ The obvious expectation is that the next thing you're going to do is send the
 Rope to console with:
 
 @
-    'Core.Program.Execute.write' ('render' 80 thing)
+    'Core.Program.Logging.write' ('render' 80 thing)
 @
 
 However, the /better/ thing to do is to instead use:
 
 @
-    'Core.Program.Execute.writeR' thing
+    'Core.Program.Logging.writeR' thing
 @
 
 which is able to pretty print the document text respecting the available width
