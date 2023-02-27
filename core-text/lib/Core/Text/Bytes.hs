@@ -135,7 +135,7 @@ Output the content of the 'Bytes' to the specified 'Handle'.
     hOutput h b
 @
 
-'Core.Program.Execute.output' provides a convenient way to write a @Bytes@ to
+'Core.Program.Execute.outputEntire' provides a convenient way to write a @Bytes@ to
 a file or socket handle from within the 'Core.Program.Execute.Program' monad.
 
 Don't use this function to write to @stdout@ if you are using any of the other
@@ -143,7 +143,7 @@ output or logging facililities of this libarary as you will corrupt the
 ordering of output on the user's terminal. Instead do:
 
 @
-    'Core.Program.Execute.write' ('Core.Text.Rope.intoRope' b)
+    'Core.Program.Logging.write' ('Core.Text.Rope.intoRope' b)
 @
 
 on the assumption that the bytes in question are UTF-8 (or plain ASCII)
