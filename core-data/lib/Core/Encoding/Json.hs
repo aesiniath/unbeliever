@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -57,6 +58,7 @@ module Core.Encoding.Json
     , encodeToRope
     , decodeFromUTF8
     , decodeFromRope
+    , fromAeson
     , JsonValue (..)
     , JsonKey (..)
 
@@ -104,7 +106,7 @@ import qualified Data.Aeson as Aeson
 import Data.Char (intToDigit)
 import Data.Coerce
 import Data.Hashable (Hashable)
-import qualified Data.List as List
+import qualified Data.List  as List
 import Data.Scientific
     ( FPFormat (..)
     , Scientific
@@ -215,7 +217,7 @@ decodeFromUTF8 :: Bytes -> Maybe JsonValue
 decodeFromUTF8 b =
     let x :: Maybe Aeson.Value
         x = Aeson.decodeStrict' (fromBytes b)
-    in  fmap fromAeson x
+    in  fmap fromAeson' x
 
 {- |
 Given an string that is full of a bunch of JSON, attempt to decode
@@ -225,7 +227,7 @@ decodeFromRope :: Rope -> Maybe JsonValue
 decodeFromRope text =
     let x :: Maybe Aeson.Value
         x = Aeson.decodeStrict' (fromRope text)
-    in  fmap fromAeson x
+    in  fmap fromAeson' x
 
 {- |
 A JSON value.
@@ -278,8 +280,8 @@ instance Textual JsonKey where
     intoRope x = coerce x
 
 {- FOURMOLU_DISABLE -}
-fromAeson :: Aeson.Value -> JsonValue
-fromAeson value = case value of
+fromAeson' :: Aeson.Value -> JsonValue
+fromAeson' value = case value of
 #if MIN_VERSION_aeson(2,0,1)
     Aeson.Object o ->
         let tvs = Aeson.toList o
@@ -288,7 +290,7 @@ fromAeson value = case value of
                     ( \(k, v) ->
                         ( JsonKey
                             (intoRope (Aeson.toText k))
-                        , fromAeson v
+                        , fromAeson' v
                         )
                     )
                     tvs
@@ -302,7 +304,7 @@ fromAeson value = case value of
                 fmap ( \(k, v) ->
                         ( JsonKey
                             (intoRope k)
-                        , fromAeson v
+                        , fromAeson' v
                         )
                     )
                     tvs
@@ -310,7 +312,7 @@ fromAeson value = case value of
             kvm = intoMap kvs
          in JsonObject kvm
 #endif
-    Aeson.Array v -> JsonArray (fmap fromAeson (V.toList v))
+    Aeson.Array v -> JsonArray (fmap fromAeson' (V.toList v))
     Aeson.String t -> JsonString (intoRope t)
     Aeson.Number n -> JsonNumber n
     Aeson.Bool x -> JsonBool x
@@ -448,3 +450,15 @@ escapeText text =
 instance FromJSON Rope where
     parseJSON (String text) = pure (intoRope text)
     parseJSON _ = fail "Can't parse this non-textual field as a Rope"
+
+{- |
+These are convenient when you need to interoperate between Aeson.Value
+and JsonValue. Very handy when you want to pretty print from Aeson.
+-}
+class FromAeson a where
+    {-# MINIMAL fromAeson #-}
+    fromAeson :: Value -> a
+
+instance FromAeson JsonValue where
+    fromAeson :: Value -> JsonValue
+    fromAeson = fromAeson'

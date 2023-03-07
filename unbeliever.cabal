@@ -119,6 +119,7 @@ test-suite check
       CheckRopeBehaviour
       CheckTelemetryMachinery
       CheckTimeStamp
+      CheckFromAesonInstance
       CheckWebserverIntegration
   hs-source-dirs:
       tests

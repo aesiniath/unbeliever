@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE ImportQualifiedPost #-}
@@ -53,6 +54,7 @@ import Data.Set qualified as OrdSet
 import Data.Text qualified as T (Text)
 import Data.Text.Lazy qualified as U (Text)
 import GHC.Exts qualified as Exts (IsList (..))
+import GHC.Generics (Generic)
 
 -- Naming convention used throughout this file is (Thing u) where u is the
 -- underlying structure [from unordered-containers] wrapped in the Thing
@@ -77,7 +79,7 @@ extract the key/value pairs in a list the list will be ordered according to
 the keys' 'Ord' instance)
 -}
 newtype Map κ ν = Map (HashMap.HashMap κ ν)
-    deriving (Show, Eq, Bifoldable)
+    deriving (Show, Eq, Bifoldable, Generic)
 
 unMap :: Map κ ν -> HashMap.HashMap κ ν
 unMap (Map u) = u
