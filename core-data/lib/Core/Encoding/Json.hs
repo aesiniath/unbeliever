@@ -100,11 +100,11 @@ import Core.Text.Utilities
     , breakRope
     )
 import Data.Aeson (FromJSON, Value (String))
-import qualified Data.Aeson as Aeson
+import Data.Aeson qualified as Aeson
 import Data.Char (intToDigit)
 import Data.Coerce
 import Data.Hashable (Hashable)
-import qualified Data.List as List
+import Data.List qualified as List
 import Data.Scientific
     ( FPFormat (..)
     , Scientific
@@ -112,8 +112,8 @@ import Data.Scientific
     , isFloating
     )
 import Data.String (IsString (..))
-import qualified Data.Text as T
-import qualified Data.Vector as V
+import Data.Text qualified as T
+import Data.Vector qualified as V
 import GHC.Generics
 import Prettyprinter
     ( Doc
@@ -134,7 +134,6 @@ import Prettyprinter
     , rbracket
     , sep
     , unAnnotate
-    , viaShow
     , vsep
     , (<+>)
     )
@@ -425,7 +424,12 @@ prettyValue value = case value of
         annotate QuoteToken dquote
             <> annotate StringToken (escapeText x)
             <> annotate QuoteToken dquote
-    JsonNumber x -> annotate NumberToken (viaShow x)
+    JsonNumber x ->
+        let num =
+                if isFloating x
+                    then pretty (formatScientific Generic Nothing x)
+                    else pretty (formatScientific Fixed (Just 0) x)
+        in  annotate NumberToken num
     JsonBool x -> case x of
         True -> annotate BooleanToken "true"
         False -> annotate BooleanToken "false"
