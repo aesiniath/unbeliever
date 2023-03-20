@@ -316,12 +316,12 @@ executeActual context0 program = do
     -- drain. Allow 10 seconds, then timeout, in case something has gone
     -- wrong and queues don't empty.
 
-    _ <- forkIO $ do
+    t2 <- forkIO $ do
         threadDelay 10000000
         putStrLn "error: Timeout"
-        Safe.throw (ExitFailure 99)
+        Safe.throw (ExitFailure 96)
 
-    _ <- forkIO $ do
+    t3 <- forkIO $ do
         let scope = currentScopeFrom context
         pointers <- readTVarIO scope
         forM_ pointers killThread
@@ -338,7 +338,12 @@ executeActual context0 program = do
 
     hFlush stdout
 
-    -- exiting this way avoids "Exception: ExitSuccess" noise in GHCi
+    -- exiting this way avoids "Exception: ExitSuccess" noise in GHCi, and
+    -- makes sure we don't have the timeout killer hanging around!
+
+    killThread t3
+    killThread t2
+
     if code == ExitSuccess
         then return ()
         else (Base.throwIO code)
