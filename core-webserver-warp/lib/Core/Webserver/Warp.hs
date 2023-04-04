@@ -115,6 +115,10 @@ import Network.Wai.Handler.WarpTLS qualified as Warp
 Given a WAI 'Application', run a Warp webserver on the specified port from
 within the 'Program' monad.
 
+@
+    'launchWebserver' 80 application
+@
+
 (this wraps the __warp__ package)
 -}
 launchWebserver :: Port -> Application -> Program τ ()
@@ -141,7 +145,7 @@ with a TLS connection.
 For the common case of supplying a certificate and private key, you can do:
 
 @
-    let crypto = 'tlsSettings' "/path/to/certificate.crt" "/path/to/private.key"
+    let crypto = 'tlsSettings' \"\/path\/to\/certificate.crt\" \"\/path\/to\/private.key\"
     'launchWebserverTLS' crypto 443 application
 @
 
