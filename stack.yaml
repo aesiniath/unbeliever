@@ -1,4 +1,4 @@
-resolver: lts-20.15
+resolver: lts-20.17
 compiler: ghc-9.2.5
 packages:
  - ./core-data
