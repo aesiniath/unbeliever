@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           core-webserver-warp
-version:        0.2.0.1
+version:        0.2.1.0
 synopsis:       Interoperability with Wai/Warp
 description:    This is part of a library to help build command-line programs, both tools and
                 longer-running daemons.
@@ -53,4 +53,5 @@ library
     , vault
     , wai
     , warp
+    , warp-tls
   default-language: Haskell2010

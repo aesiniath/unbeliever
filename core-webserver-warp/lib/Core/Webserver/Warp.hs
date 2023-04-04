@@ -69,6 +69,7 @@ observability service; this will be the root span of a trace.
 module Core.Webserver.Warp
     ( Port
     , launchWebserver
+    , launchWebserverTLS
     , requestContextKey
     , contextFromRequest
     , ContextNotFoundInRequest (..)
@@ -107,10 +108,18 @@ import Network.HTTP2.Frame
 import Network.Wai
 import Network.Wai.Handler.Warp (InvalidRequest, Port)
 import Network.Wai.Handler.Warp qualified as Warp
+import Network.Wai.Handler.WarpTLS (TLSSettings)
+import Network.Wai.Handler.WarpTLS qualified as Warp
 
 {- |
 Given a WAI 'Application', run a Warp webserver on the specified port from
 within the 'Program' monad.
+
+@
+    'launchWebserver' 80 application
+@
+
+(this wraps the __warp__ package)
 -}
 launchWebserver :: Port -> Application -> Program τ ()
 launchWebserver port application = do
@@ -122,6 +131,40 @@ launchWebserver port application = do
                 $ Warp.defaultSettings
     liftIO $ do
         Warp.runSettings
+            settings
+            ( loggingMiddleware
+                context
+                application
+            )
+
+{- |
+Given a WAI 'Application', run a Warp webserver on the specified port from
+within the 'Program' monad. This variant of 'launchWebserver' runs the server
+with a TLS connection.
+
+For the common case of supplying a certificate and private key, you can do:
+
+@
+    let crypto = 'tlsSettings' \"\/path\/to\/certificate.crt\" \"\/path\/to\/private.key\"
+    'launchWebserverTLS' crypto 443 application
+@
+
+(this wraps the __warp-tls__ package; for more complex certificate management
+requirements see the documentation for the 'TLSSettings' type there)
+
+@since 0.2.1
+-}
+launchWebserverTLS :: TLSSettings -> Port -> Application -> Program τ ()
+launchWebserverTLS crypto port application = do
+    context <- getContext
+    let settings =
+            Warp.setOnException
+                (onExceptionHandler context)
+                . Warp.setPort port
+                $ Warp.defaultSettings
+    liftIO $ do
+        Warp.runTLS
+            crypto
             settings
             ( loggingMiddleware
                 context
