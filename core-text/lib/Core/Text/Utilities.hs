@@ -94,8 +94,9 @@ Types which can be rendered "prettily", that is, formatted by a pretty printer
 and embossed with beautiful ANSI colours when printed to the terminal.
 
 Use 'render' to build text object for later use, or
-"Control.Program.Logging"'s 'Core.Program.Logging.writeR' if you're writing
-directly to console now.
+[Control.Program.Logging](https://hackage.haskell.org/package/core-program/docs/Core-Program-Logging.html)'s
+[writeR](https://hackage.haskell.org/package/core-program/docs/Core-Program-Logging.html#v:writeR)
+if you're writing directly to console right now.
 -}
 class Render α where
     -- | Which type are the annotations of your 'Doc' going to be expressed in?
