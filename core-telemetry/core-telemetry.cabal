@@ -5,7 +5,7 @@ cabal-version: 1.18
 -- see: https://github.com/sol/hpack
 
 name:           core-telemetry
-version:        0.2.8.0
+version:        0.2.9.0
 synopsis:       Advanced telemetry
 description:    This is part of a library to help build command-line programs, both tools and
                 longer-running daemons.
@@ -28,7 +28,7 @@ license:        MIT
 license-file:   LICENSE
 build-type:     Simple
 tested-with:
-    GHC == 8.10.7, GHC == 9.2.5
+    GHC == 8.10.7, GHC == 9.2.7
 extra-doc-files:
     HoneycombTraceExample.png
     honeycomb-sad-trace.png
