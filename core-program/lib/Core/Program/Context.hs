@@ -79,6 +79,7 @@ data Datum = Datum
     , spanNameFrom :: Rope
     , serviceNameFrom :: Maybe Rope
     , spanTimeFrom :: Time
+    , datasetFrom :: Maybe Rope
     , traceIdentifierFrom :: Maybe Trace
     , parentIdentifierFrom :: Maybe Span
     , durationFrom :: Maybe Int64
@@ -93,6 +94,7 @@ emptyDatum =
         , spanNameFrom = emptyRope
         , serviceNameFrom = Nothing
         , spanTimeFrom = epochTime
+        , datasetFrom = Nothing
         , traceIdentifierFrom = Nothing
         , parentIdentifierFrom = Nothing
         , durationFrom = Nothing
@@ -313,7 +315,7 @@ getContext :: Program τ (Context τ)
 getContext = do
     context <- ask
     pure context
-{-# INLINABLE getContext #-}
+{-# INLINEABLE getContext #-}
 
 {- |
 Run a subprogram from within a lifted @IO@ block.

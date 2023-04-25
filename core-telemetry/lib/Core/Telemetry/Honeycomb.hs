@@ -67,12 +67,15 @@ full trace will be visible.
 module Core.Telemetry.Honeycomb
     ( Dataset
     , honeycombExporter
+    , setDatasetName
     ) where
 
 import Codec.Compression.GZip qualified as GZip (compress)
+import Control.Concurrent.MVar (modifyMVar_)
 import Control.Exception.Safe qualified as Safe (catch, finally, throw)
+import Control.Monad (forM_)
 import Core.Data.Clock (Time, getCurrentTimeNanoseconds, unTime)
-import Core.Data.Structures (Map, fromMap, insertKeyValue, intoMap, lookupKeyValue)
+import Core.Data.Structures (Map, emptyMap, fromMap, insertKeyValue, intoMap, lookupKeyValue)
 import Core.Encoding.Json
 import Core.Program.Arguments
 import Core.Program.Context
@@ -122,6 +125,34 @@ honeycombExporter =
         , setupConfigFrom = setupHoneycombConfig
         , setupActionFrom = setupHoneycombAction
         }
+
+{- |
+Override the dataset being used for telemetry.
+
+Under normal circumstances this shouldn't be necessary. The default dataset
+for your program's telemetry is set by the infrastructure using the
+@--dataset=@ command-line option, and typically matches the single service
+name set by 'setServiceName'. For most applications this is sufficient. There
+are, however, times when you need to send events or spans to a /different/
+dataset. If there are two completely unrelated behaviours in a given
+application that occur with wildly different latency ranges then you /may/
+find it appropriate to segment the telemetry into two different datasets.
+
+This override will be inherited by any spans that come into scope below the
+one where this is called.
+
+@since 0.2.9
+-}
+setDatasetName :: Dataset -> Program τ ()
+setDatasetName dataset = do
+    context <- getContext
+
+    liftIO $ do
+        -- get the map out
+        let v = currentDatumFrom context
+        modifyMVar_
+            v
+            (\datum -> pure datum {datasetFrom = Just dataset})
 
 -- so this is annoying: we're _under_ (and indeed, before) the Program monad
 -- and in the guts of the library. So all the work we've done to provide
@@ -214,11 +245,30 @@ setupHoneycombAction context = do
 -- use partually applied
 process :: IORef (Maybe Connection) -> Hostname -> ApiKey -> Dataset -> [Datum] -> IO ()
 process r honeycombHost apikey dataset datums = do
-    let json = JsonArray (fmap convertDatumToJson datums)
-    postEventToHoneycombAPI r honeycombHost apikey dataset json
+    let targets = List.foldl' f emptyMap datums :: Map Dataset [JsonValue]
+    let pairs = fromMap targets :: [(Dataset, [JsonValue])]
+
+    forM_ pairs $ \(dataset', values') -> do
+        let json = JsonArray values'
+        postEventToHoneycombAPI r honeycombHost apikey dataset' json
+  where
+    f :: Map Dataset [JsonValue] -> Datum -> Map Dataset [JsonValue]
+    f acc datum =
+        let
+            (override, point) = convertDatumToJson datum
+
+            dataset' = case override of
+                Nothing -> dataset
+                Just value -> value
+
+            list' = case lookupKeyValue dataset' acc of
+                Nothing -> point : []
+                Just list -> point : list
+        in
+            insertKeyValue dataset' list' acc
 
 -- implements the spec described at <https://docs.honeycomb.io/getting-data-in/tracing/send-trace-data/>
-convertDatumToJson :: Datum -> JsonValue
+convertDatumToJson :: Datum -> (Maybe Dataset, JsonValue)
 convertDatumToJson datum =
     let spani = spanIdentifierFrom datum
         trace = traceIdentifierFrom datum
@@ -263,7 +313,9 @@ convertDatumToJson datum =
                     , (JsonKey "data", JsonObject meta6)
                     ]
                 )
-    in  point
+
+        override = datasetFrom datum
+    in  (override, point)
 
 acquireConnection :: IORef (Maybe Connection) -> Hostname -> IO Connection
 acquireConnection r honeycombHost = do
