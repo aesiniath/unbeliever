@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveLift #-}
+{-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -19,16 +21,21 @@ module Core.Program.Metadata
 
       -- * Source code
     , __LOCATION__
+    , Commit
+    , fromRepository
+    , gitHashFrom
     ) where
 
+import Control.Exception as Base
 import Core.Data
 import Core.System.Base (IOMode (..), withFile)
 import Core.System.Pretty
 import Core.Text
-import qualified Data.List as List (find, isSuffixOf)
+import Data.List qualified as List (find, isSuffixOf)
 import Data.Maybe (fromMaybe)
 import Data.String
 import GHC.Stack (HasCallStack, SrcLoc (..), callStack, getCallStack)
+import GitHash
 import Language.Haskell.TH (Q, runIO)
 import Language.Haskell.TH.Syntax (Exp (..), Lift)
 import System.Directory (listDirectory)
@@ -225,3 +232,33 @@ instance Render SrcLoc where
         pretty (srcLocFile loc)
             <> ":"
             <> pretty (show (srcLocStartLine loc))
+
+data Commit = Commit
+    { gitHashFrom :: String
+    }
+    deriving (Show, Lift)
+
+fromRepository :: Q Exp
+fromRepository = do
+    info <- runIO $ do
+        path <-
+            getGitRoot "." >>= \case
+                Left e -> Base.throw e
+                Right value -> pure value
+
+        getGitInfo path >>= \case
+            Left e -> Base.throw e
+            Right value -> pure value
+
+    let short = giDescribe info
+    let short' =
+            if giDirty info
+                then short ++ " (dirty)"
+                else short
+
+    let result =
+            Commit
+                { gitHashFrom = short'
+                }
+
+    [e|result|]
