@@ -31,7 +31,6 @@ import Core.System.Base (IOMode (..), withFile)
 import Core.System.Pretty
 import Core.Text
 import Data.List qualified as List (find, isSuffixOf)
-import Data.Maybe (fromMaybe)
 import Data.String
 import GHC.Stack (HasCallStack, SrcLoc (..), callStack, getCallStack)
 import GitHash
@@ -107,19 +106,44 @@ your project:
 @
 \{\-\# LANGUAGE TemplateHaskell \#\-\}
 
-version :: 'Version' version = $('fromPackage')
+version :: 'Version'
+version = $('fromPackage')
 
 main :: 'IO' ()
 main = do
     context <- 'Core.Program.Execute.configure' version 'Core.Program.Execute.None' ('Core.Program.Arguments.simpleConfig' ...
+    'Core.Program.Execute.executeWith' context program
+
+program :: 'Core.Program.Execute.Program' 'Core.Program.Execute.None' ()
+program = do
+    ...
 @
 
 In addition to metadata from the Haskell package, we also extract information
-from the Git repository the code was built within, if applicable.
+from the Git repository the code was built within, if applicable. When the
+program is built within a source code checkout (as is typical in continuous
+integration & continuous deployment systems) then the repository is queried
+for the SHA1 hash, branch name, and for whether the checkout is clean.
 
-(Using Template Haskell slows down compilation of this file, but the upside of
-this technique is that it avoids linking the Haskell build machinery into your
-executable, saving you about 10 MB in the size of the resultant binary)
+The resultant @--version@ output might look like the following:
+
+@
+\$ __ping --version__
+ip-utils v2.0.1.9, f18ec7b
+@
+
+If, on the other hand, you had been developing locally you'll see this:
+
+@
+\$ __ping --version__
+ip-utils v2.0.1.9, f18ec7b (dirty)
+@
+
+signifying that there are uncommitted files in your local tree.
+
+If you are building the program from a relese tarball, this mechanism will
+omit reporting any information about the state of a Git repository as it is
+not to hand.
 
 @since 0.6.7
 -}
