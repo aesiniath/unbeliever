@@ -127,9 +127,15 @@ fromPackage :: Q Exp
 fromPackage = do
     pairs <- readCabalFile
 
-    let name = fromMaybe "" . lookupKeyValue "name" $ pairs
-    let synopsis = fromMaybe "" . lookupKeyValue "synopsis" $ pairs
-    let version = fromMaybe "" . lookupKeyValue "version" $ pairs
+    let name = case lookupKeyValue "name" pairs of
+            Nothing -> ""
+            Just value -> value
+    let synopsis = case lookupKeyValue "synopsis" pairs of
+            Nothing -> ""
+            Just value -> value
+    let version = case lookupKeyValue "version" pairs of
+            Nothing -> ""
+            Just value -> "v" <> value
 
     possibleInfo <- readGitRepository
 
