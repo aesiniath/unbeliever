@@ -15,19 +15,18 @@ module Core.Program.Metadata
     , versionNumberFrom
     , projectNameFrom
     , projectSynopsisFrom
+    , gitHashFrom
+    , gitDescriptionFrom
+    , gitBranchFrom
 
       -- * Splice
     , fromPackage
 
       -- * Source code
     , __LOCATION__
-    , Commit
-    , fromRepository
-    , gitHashFrom
     ) where
 
-import Control.Exception as Base
-import Core.Data
+import Core.Data.Structures
 import Core.System.Base (IOMode (..), withFile)
 import Core.System.Pretty
 import Core.Text
@@ -61,16 +60,29 @@ main = do
 For more complex usage you can populate a 'Version' object using the
 'fromPackage' splice below. You can then call various accessors like
 'versionNumberFrom' to access individual fields.
+
+@since 0.6.7
 -}
 data Version = Version
     { projectNameFrom :: String
     , projectSynopsisFrom :: String
     , versionNumberFrom :: String
+    , gitHashFrom :: String
+    , gitDescriptionFrom :: String
+    , gitBranchFrom :: String
     }
     deriving (Show, Lift)
 
 emptyVersion :: Version
-emptyVersion = Version "" "" "0"
+emptyVersion =
+    Version
+        { projectNameFrom = ""
+        , projectSynopsisFrom = ""
+        , versionNumberFrom = "0"
+        , gitHashFrom = ""
+        , gitDescriptionFrom = ""
+        , gitBranchFrom = ""
+        }
 
 instance IsString Version where
     fromString x = emptyVersion {versionNumberFrom = x}
@@ -102,9 +114,14 @@ main = do
     context <- 'Core.Program.Execute.configure' version 'Core.Program.Execute.None' ('Core.Program.Arguments.simpleConfig' ...
 @
 
+In addition to metadata from the Haskell package, we also extract information
+from the Git repository the code was built within, if applicable.
+
 (Using Template Haskell slows down compilation of this file, but the upside of
 this technique is that it avoids linking the Haskell build machinery into your
 executable, saving you about 10 MB in the size of the resultant binary)
+
+@since 0.6.7
 -}
 fromPackage :: Q Exp
 fromPackage = do
@@ -114,11 +131,30 @@ fromPackage = do
     let synopsis = fromMaybe "" . lookupKeyValue "synopsis" $ pairs
     let version = fromMaybe "" . lookupKeyValue "version" $ pairs
 
+    possibleInfo <- readGitRepository
+
+    let full = case possibleInfo of
+            Nothing -> ""
+            Just info -> giHash info
+    let short = case possibleInfo of
+            Nothing -> ""
+            Just info ->
+                let short' = take 7 (giHash info)
+                in  if giDirty info
+                        then short' ++ " (dirty)"
+                        else short'
+    let branch = case possibleInfo of
+            Nothing -> ""
+            Just info -> giBranch info
+
     let result =
             Version
                 { projectNameFrom = fromRope name
                 , projectSynopsisFrom = fromRope synopsis
                 , versionNumberFrom = fromRope version
+                , gitHashFrom = full
+                , gitDescriptionFrom = short
+                , gitBranchFrom = branch
                 }
 
     --  I would have preferred
@@ -198,6 +234,8 @@ tests/Snipppet.hs:32
 This isn't the full stack trace, just information about the current line. If
 you want more comprehensive stack trace you need to add 'HasCallStack'
 constraints everywhere, and then...
+
+@since 0.4.3
 -}
 
 -- This works because the call stack has the most recent frame at the head of
@@ -233,32 +271,30 @@ instance Render SrcLoc where
             <> ":"
             <> pretty (show (srcLocStartLine loc))
 
-data Commit = Commit
-    { gitHashFrom :: String
-    }
-    deriving (Show, Lift)
+{- |
+Information about the revision from which this piece of software was built.
+The most useful field here is the \"short\", human-readable for via
+'gitShortFrom', which can be used augment telemetry, for example.
 
-fromRepository :: Q Exp
-fromRepository = do
-    info <- runIO $ do
-        path <-
-            getGitRoot "." >>= \case
-                Left e -> Base.throw e
-                Right value -> pure value
+@since 0.6.7
+-}
 
-        getGitInfo path >>= \case
-            Left e -> Base.throw e
-            Right value -> pure value
+{- |
+This is a splice which extracts a 'Commit' object based on the repository in
+which the build was run. Like the 'fromPackage' splice, this also uses the
+evil @TemplateHaskell@ extension.
 
-    let short = giDescribe info
-    let short' =
-            if giDirty info
-                then short ++ " (dirty)"
-                else short
+Note that if the application was compiled was done using a release tarball and
+not built from source the values returned will be empty placeholders.
 
-    let result =
-            Commit
-                { gitHashFrom = short'
-                }
-
-    [e|result|]
+@since 0.6.7
+-}
+readGitRepository :: Q (Maybe GitInfo)
+readGitRepository = do
+    runIO $ do
+        getGitRoot "." >>= \case
+            Left _ -> pure Nothing
+            Right path -> do
+                getGitInfo path >>= \case
+                    Left _ -> pure Nothing
+                    Right value -> pure (Just value)

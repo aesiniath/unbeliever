@@ -1003,7 +1003,14 @@ buildUsage config mode = case config of
 
 buildVersion :: Version -> Doc ann
 buildVersion version =
-    pretty (projectNameFrom version)
-        <+> "v"
-            <> pretty (versionNumberFrom version)
-            <> hardline
+    let
+        project = projectNameFrom version
+        number = versionNumberFrom version
+        description = gitDescriptionFrom version
+    in
+        pretty project
+            <+> "v"
+                <> pretty number
+                <> if null description
+                    then hardline
+                    else "," <+> pretty description <> hardline
