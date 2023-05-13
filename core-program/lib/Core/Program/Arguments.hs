@@ -1009,8 +1009,7 @@ buildVersion version =
         description = gitDescriptionFrom version
     in
         pretty project
-            <+> "v"
-                <> pretty number
+            <+> pretty number
                 <> if null description
                     then hardline
                     else "," <+> pretty description <> hardline
