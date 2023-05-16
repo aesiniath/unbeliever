@@ -784,7 +784,30 @@ execProcess_ (cmd : args) = do
                 -- does not return
                 _ <- Posix.executeFile cmd' True args' Nothing
                 pure ()
+{- |
+Execute an external child process and wait for it to finish. The command is
+specified first and and subsequent arguments as elements of the list. This
+helper then logs the command being executed to the debug output, which can be
+useful when you're trying to find out what exactly what program is being
+invoked.
 
+The output of the child process (its @stdout@) will go to the terminal console
+independently of your parent process's output. If your Haskell program does
+anything concurrently then anything it 'Core.Program.Logging.write's will be
+interleaved and probably make a mess of the child's output. So don't do that.
+
+See the similar 'readProcess' for an action which executes an external program
+but which returns its output.
+
+If the thread invoking 'callProcess' receives an interrupting asynchronous
+exception then it will terminate the child, waiting for it to exit.
+
+(this wraps __typed-process__'s 'System.Process.Typed.runProcess' but follows
+the naming convention of the underlying 'System.Process.callProcess' code from
+__process__.)
+
+@since 0.6.8
+-}
 callProcess :: [Rope] -> Program τ ExitCode
 callProcess [] = error "No command provided"
 callProcess (cmd : args) =
