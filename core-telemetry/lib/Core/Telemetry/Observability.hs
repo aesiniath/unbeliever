@@ -168,6 +168,7 @@ module Core.Telemetry.Observability
 import Control.Concurrent.MVar (modifyMVar_, newMVar, readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (writeTQueue)
+import Control.Exception qualified as Base (evaluate)
 import Control.Exception.Safe qualified as Safe
 import Core.Data.Clock
 import Core.Data.Structures (Map, emptyMap, insertKeyValue)
@@ -203,7 +204,7 @@ JSON values of type string, number, or boolean. You create these using the
 -- a bit specific to Honeycomb's very limited data model, but what else is
 -- there?
 data MetricValue
-    = MetricValue JsonKey JsonValue
+    = MetricValue !JsonKey !JsonValue
     deriving (Show)
 
 {- |
@@ -661,22 +662,21 @@ telemetry values = do
         modifyMVar_
             v
             ( \datum -> do
-                let meta = attachedMetadataFrom datum
+                let !meta = attachedMetadataFrom datum
 
                 -- update the map
-                let meta' = List.foldl' f meta values
+                let !meta' = List.foldl' f meta values
 
                 -- replace the map back into the Datum (and thereby back into the
                 -- Context), updating it
-                let datum' =
-                        datum
-                            { attachedMetadataFrom = meta'
-                            }
-                pure datum'
+                Base.evaluate
+                    datum
+                        { attachedMetadataFrom = meta'
+                        }
             )
   where
     f :: Map JsonKey JsonValue -> MetricValue -> Map JsonKey JsonValue
-    f acc (MetricValue k@(JsonKey text) v) =
+    f !acc (MetricValue !k@(JsonKey text) !v) =
         if nullRope text
             then error "Empty metric field name not allowed"
             else insertKeyValue k v acc
@@ -711,12 +711,13 @@ sendEvent label values = do
         let v = currentDatumFrom context
         datum <- readMVar v
 
-        let meta = attachedMetadataFrom datum
+        let !meta = attachedMetadataFrom datum
 
         -- update the map
-        let meta' = List.foldl' f meta values
+        let !meta' = List.foldl' f meta values
         -- replace the map back into the Datum and queue for sending
-        let datum' =
+        datum' <-
+            Base.evaluate
                 datum
                     { spanNameFrom = label
                     , spanIdentifierFrom = Nothing
@@ -730,7 +731,7 @@ sendEvent label values = do
             writeTQueue tel (Just datum')
   where
     f :: Map JsonKey JsonValue -> MetricValue -> Map JsonKey JsonValue
-    f acc (MetricValue k@(JsonKey text) v) =
+    f !acc (MetricValue !k@(JsonKey text) !v) =
         if nullRope text
             then error "Empty metric field name not allowed"
             else insertKeyValue k v acc
