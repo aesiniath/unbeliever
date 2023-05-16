@@ -168,6 +168,7 @@ module Core.Telemetry.Observability
 import Control.Concurrent.MVar (modifyMVar_, newMVar, readMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (writeTQueue)
+import Control.Exception qualified as Base (evaluate)
 import Control.Exception.Safe qualified as Safe
 import Core.Data.Clock
 import Core.Data.Structures (Map, emptyMap, insertKeyValue)
@@ -668,11 +669,10 @@ telemetry values = do
 
                 -- replace the map back into the Datum (and thereby back into the
                 -- Context), updating it
-                let !datum' =
-                        datum
-                            { attachedMetadataFrom = meta'
-                            }
-                pure datum'
+                Base.evaluate
+                    datum
+                        { attachedMetadataFrom = meta'
+                        }
             )
   where
     f :: Map JsonKey JsonValue -> MetricValue -> Map JsonKey JsonValue
@@ -716,7 +716,8 @@ sendEvent label values = do
         -- update the map
         let !meta' = List.foldl' f meta values
         -- replace the map back into the Datum and queue for sending
-        let !datum' =
+        datum' <-
+            Base.evaluate
                 datum
                     { spanNameFrom = label
                     , spanIdentifierFrom = Nothing
