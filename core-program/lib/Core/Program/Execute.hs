@@ -93,6 +93,7 @@ module Core.Program.Execute
 
       -- * Running processes
     , readProcess
+    , callProcess
     , execProcess_
 
       -- * Internals
@@ -180,7 +181,7 @@ import System.Directory
 import System.Exit (ExitCode (..))
 import System.Posix.Internals (hostIsThreaded)
 import System.Posix.Process qualified as Posix (executeFile, exitImmediately)
-import System.Process.Typed qualified as Typed (nullStream, proc, readProcess, setStdin)
+import System.Process.Typed qualified as Typed (nullStream, proc, readProcess, runProcess, setStdin)
 import Prelude hiding (log)
 
 {- |
@@ -783,6 +784,28 @@ execProcess_ (cmd : args) = do
                 -- does not return
                 _ <- Posix.executeFile cmd' True args' Nothing
                 pure ()
+
+callProcess :: [Rope] -> Program τ ExitCode
+callProcess [] = error "No command provided"
+callProcess (cmd : args) =
+    let cmd' = fromRope cmd
+        args' = fmap fromRope args
+        task = Typed.proc cmd' args'
+        task1 = Typed.setStdin Typed.nullStream task
+        command = mconcat (List.intersperse (singletonRope ' ') (cmd : args))
+    in  do
+            debug "command" command
+
+            probe <- liftIO $ do
+                findExecutable cmd'
+            case probe of
+                Nothing -> do
+                    Safe.throw (CommandNotFound cmd)
+                Just _ -> do
+                    exit <- liftIO $ do
+                        Typed.runProcess task1
+
+                    pure exit
 
 {- |
 Reset the start time (used to calculate durations shown in event- and
