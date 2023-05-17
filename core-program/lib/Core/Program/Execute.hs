@@ -181,6 +181,15 @@ import System.Directory
 import System.Exit (ExitCode (..))
 import System.Posix.Internals (hostIsThreaded)
 import System.Posix.Process qualified as Posix (executeFile, exitImmediately)
+import System.IO qualified as Base (hClose)
+import System.Process qualified as Base
+    ( CreateProcess (std_in)
+    , ProcessHandle
+    , StdStream (CreatePipe)
+    , createProcess
+    , proc
+    , waitForProcess
+    )
 import System.Process.Typed qualified as Typed (nullStream, proc, readProcess, runProcess, setStdin)
 import Prelude hiding (log)
 
@@ -784,6 +793,7 @@ execProcess_ (cmd : args) = do
                 -- does not return
                 _ <- Posix.executeFile cmd' True args' Nothing
                 pure ()
+
 {- |
 Execute an external child process and wait for it to finish. The command is
 specified first and and subsequent arguments as elements of the list. This
@@ -810,25 +820,30 @@ __process__.)
 -}
 callProcess :: [Rope] -> Program τ ExitCode
 callProcess [] = error "No command provided"
-callProcess (cmd : args) =
+callProcess (cmd : args) = do
     let cmd' = fromRope cmd
-        args' = fmap fromRope args
-        task = Typed.proc cmd' args'
-        task1 = Typed.setStdin Typed.nullStream task
-        command = mconcat (List.intersperse (singletonRope ' ') (cmd : args))
-    in  do
-            debug "command" command
+    let args' = fmap fromRope args
+    let task1 = Base.proc cmd' args'
+    let task2 =
+            task1
+                { Base.std_in = Base.CreatePipe
+                }
 
-            probe <- liftIO $ do
-                findExecutable cmd'
-            case probe of
-                Nothing -> do
-                    Safe.throw (CommandNotFound cmd)
-                Just _ -> do
-                    exit <- liftIO $ do
-                        Typed.runProcess task1
+    let command = mconcat (List.intersperse (singletonRope ' ') (cmd : args))
+    debug "command" command
 
-                    pure exit
+    probe <- liftIO $ do
+        findExecutable cmd'
+
+    case probe of
+        Nothing -> do
+            Safe.throw (CommandNotFound cmd)
+        Just _ -> do
+            liftIO $ do
+                (Just i, _, _, p) <- Base.createProcess task2
+                exit <- Base.waitForProcess p
+                Base.hClose i
+                pure exit
 
 {- |
 Reset the start time (used to calculate durations shown in event- and

@@ -28,28 +28,29 @@ dependencies:
  - bytestring
  - hashable >= 1.2
  - prettyprinter >= 1.6.2
+ - directory
+ - exceptions
+ - filepath
+ - fsnotify
+ - githash
+ - hourglass
+ - mtl
+ - process
+ - safe-exceptions
+ - stm
  - template-haskell >= 2.14 && < 3
+ - terminal-size
  - text
  - text-short
+ - transformers
  - typed-process
+ - unix
+ - unliftio-core
 
 library:
   dependencies:
    - core-text >= 0.3.8
    - core-data >= 0.3.8
-   - directory
-   - exceptions
-   - filepath
-   - fsnotify
-   - githash
-   - hourglass
-   - mtl
-   - safe-exceptions
-   - stm
-   - terminal-size
-   - transformers
-   - unix
-   - unliftio-core
   source-dirs: lib
   exposed-modules:
    - Core.Program
