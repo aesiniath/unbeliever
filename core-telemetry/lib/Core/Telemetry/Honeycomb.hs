@@ -368,7 +368,6 @@ postEventToHoneycombAPI r honeycombHost apikey dataset json = attempt False
                 cleanupConnection r
                 case retrying of
                     False -> do
-                        putStrLn "internal: Reconnecting to Honeycomb"
                         attempt True
                     True -> do
                         putStrLn "internal: Failed to re-establish connection to Honeycomb"

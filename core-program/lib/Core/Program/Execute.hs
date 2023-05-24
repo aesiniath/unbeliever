@@ -93,6 +93,7 @@ module Core.Program.Execute
 
       -- * Running processes
     , readProcess
+    , callProcess
     , execProcess_
 
       -- * Internals
@@ -140,6 +141,7 @@ import Control.Concurrent.STM.TVar
 import Control.Exception qualified as Base (throwIO)
 import Control.Exception.Safe qualified as Safe
     ( catch
+    , onException
     , throw
     )
 import Control.Monad
@@ -178,8 +180,17 @@ import System.Directory
     ( findExecutable
     )
 import System.Exit (ExitCode (..))
+import System.IO qualified as Base (IOMode (ReadMode), hClose, openFile)
 import System.Posix.Internals (hostIsThreaded)
 import System.Posix.Process qualified as Posix (executeFile, exitImmediately)
+import System.Process qualified as Base
+    ( CreateProcess (std_err, std_in, std_out)
+    , StdStream (Inherit, UseHandle)
+    , createProcess
+    , proc
+    , terminateProcess
+    , waitForProcess
+    )
 import System.Process.Typed qualified as Typed (nullStream, proc, readProcess, setStdin)
 import Prelude hiding (log)
 
@@ -783,6 +794,79 @@ execProcess_ (cmd : args) = do
                 -- does not return
                 _ <- Posix.executeFile cmd' True args' Nothing
                 pure ()
+
+{- |
+Execute an external child process and wait for it to finish. The command is
+specified first and and subsequent arguments as elements of the list. This
+helper then logs the command being executed to the debug output, which can be
+useful when you're trying to find out what exactly what program is being
+invoked.
+
+The output of the child process (its @stdout@) will go to the terminal console
+independently of your parent process's output. If your Haskell program does
+anything concurrently then anything it 'Core.Program.Logging.write's will be
+interleaved and probably make a mess of the child's output. So don't do that.
+
+See the similar 'readProcess' for an action which executes an external program
+but which returns its output.
+
+If the thread invoking 'callProcess' receives an interrupting asynchronous
+exception then it will terminate the child, waiting for it to exit.
+
+(this wraps __typed-process__'s 'System.Process.Typed.runProcess' but follows
+the naming convention of the underlying 'System.Process.callProcess' code from
+__process__.)
+
+@since 0.6.8
+-}
+callProcess :: [Rope] -> Program τ ExitCode
+callProcess [] = error "No command provided"
+callProcess (cmd : args) = do
+    let cmd' = fromRope cmd
+    let args' = fmap fromRope args
+    let task1 = Base.proc cmd' args'
+
+    let command = mconcat (List.intersperse (singletonRope ' ') (cmd : args))
+    debug "command" command
+
+    probe <- liftIO $ do
+        findExecutable cmd'
+
+    case probe of
+        Nothing -> do
+            Safe.throw (CommandNotFound cmd)
+        Just _ -> do
+            liftIO $ do
+                i <- Base.openFile "/dev/null" Base.ReadMode
+
+                let task2 =
+                        task1
+                            { Base.std_in = Base.UseHandle i
+                            , Base.std_out = Base.Inherit
+                            , Base.std_err = Base.Inherit
+                            }
+
+                (_, _, _, p) <- Base.createProcess task2
+
+                Safe.onException
+                    ( do
+                        exit <- Base.waitForProcess p
+                        Base.hClose i
+                        pure exit
+                    )
+                    ( do
+                        --
+                        -- To avoid defunct zombie processes, you have to
+                        -- wait() on the process and read its exit code. In
+                        -- normal circumstances this happens because we are
+                        -- _waiting_ but in abnormal circumstances where we
+                        -- are forcing the child, we have to wait for the OS
+                        -- to give us an exit code.
+                        --
+                        Base.terminateProcess p
+                        _ <- Base.waitForProcess p
+                        Base.hClose i
+                    )
 
 {- |
 Reset the start time (used to calculate durations shown in event- and

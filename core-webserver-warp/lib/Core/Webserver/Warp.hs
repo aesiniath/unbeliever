@@ -40,7 +40,7 @@ You can then describe your webservice 'Application', for example
 @
 application :: 'Application'
 application = request sendResponse =
-    sendResponse ('Network.WAI.responseLBS' 'Network.HTTP.Types.status200' [] \"Hello World\")
+    sendResponse ('Network.Wai.responseLBS' 'Network.HTTP.Types.status200' [] \"Hello World\")
 @
 
 performs the heroic duty of replying to you with the given string. In
