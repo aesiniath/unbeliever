@@ -141,6 +141,7 @@ import Control.Concurrent.STM.TVar
 import Control.Exception qualified as Base (throwIO)
 import Control.Exception.Safe qualified as Safe
     ( catch
+    , onException
     , throw
     )
 import Control.Monad
@@ -179,18 +180,18 @@ import System.Directory
     ( findExecutable
     )
 import System.Exit (ExitCode (..))
+import System.IO qualified as Base (IOMode (ReadMode), hClose, openFile)
 import System.Posix.Internals (hostIsThreaded)
 import System.Posix.Process qualified as Posix (executeFile, exitImmediately)
-import System.IO qualified as Base (hClose)
 import System.Process qualified as Base
-    ( CreateProcess (std_in)
-    , ProcessHandle
-    , StdStream (CreatePipe)
+    ( CreateProcess (std_err, std_in, std_out)
+    , StdStream (Inherit, UseHandle)
     , createProcess
     , proc
+    , terminateProcess
     , waitForProcess
     )
-import System.Process.Typed qualified as Typed (nullStream, proc, readProcess, runProcess, setStdin)
+import System.Process.Typed qualified as Typed (nullStream, proc, readProcess, setStdin)
 import Prelude hiding (log)
 
 {- |
@@ -824,10 +825,6 @@ callProcess (cmd : args) = do
     let cmd' = fromRope cmd
     let args' = fmap fromRope args
     let task1 = Base.proc cmd' args'
-    let task2 =
-            task1
-                { Base.std_in = Base.CreatePipe
-                }
 
     let command = mconcat (List.intersperse (singletonRope ' ') (cmd : args))
     debug "command" command
@@ -840,10 +837,36 @@ callProcess (cmd : args) = do
             Safe.throw (CommandNotFound cmd)
         Just _ -> do
             liftIO $ do
-                (Just i, _, _, p) <- Base.createProcess task2
-                exit <- Base.waitForProcess p
-                Base.hClose i
-                pure exit
+                i <- Base.openFile "/dev/null" Base.ReadMode
+
+                let task2 =
+                        task1
+                            { Base.std_in = Base.UseHandle i
+                            , Base.std_out = Base.Inherit
+                            , Base.std_err = Base.Inherit
+                            }
+
+                (_, _, _, p) <- Base.createProcess task2
+
+                Safe.onException
+                    ( do
+                        exit <- Base.waitForProcess p
+                        Base.hClose i
+                        pure exit
+                    )
+                    ( do
+                        --
+                        -- To avoid defunct zombie processes, you have to
+                        -- wait() on the process and read its exit code. In
+                        -- normal circumstances this happens because we are
+                        -- _waiting_ but in abnormal circumstances where we
+                        -- are forcing the child, we have to wait for the OS
+                        -- to give us an exit code.
+                        --
+                        Base.terminateProcess p
+                        _ <- Base.waitForProcess p
+                        Base.hClose i
+                    )
 
 {- |
 Reset the start time (used to calculate durations shown in event- and

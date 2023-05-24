@@ -44,10 +44,11 @@ module Core.Program.Threads
       -- * Internals
     , Thread
     , unThread
+    , Terminator (..)
     ) where
 
 import Control.Concurrent (ThreadId, forkIO, killThread)
-import Control.Concurrent.MVar (MVar, newEmptyMVar, newMVar, putMVar, readMVar)
+import Control.Concurrent.MVar (MVar, newEmptyMVar, newMVar, putMVar, readMVar, tryPutMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TVar (modifyTVar', newTVarIO, readTVarIO)
 import Control.Exception.Safe qualified as Safe (catch, finally, onException, throw)
@@ -354,6 +355,14 @@ waitThreads' threads = do
 {- |
 Cancel a thread.
 
+Be careful when using this. If you are planning cancel a worker thread then
+the main thread that is 'waitThread'ing on it will /throw an exception/,
+specifically 'ThreadCancelled' (unless something else has already thrown an
+exception in which case /that/ will be thrown instead). In this scenario you
+will need to 'Core.Program.Exceptions.catch' around your waiting function
+otherwise the uncaught exception will continue to unwind your execution stack
+and probably end your program.
+
 (this wraps __base__\'s 'Control.Concurrent.killThread'. The underlying
 mechanism used is to throw the 'GHC.Conc.ThreadKilled' exception to the other
 thread. That exception is asynchronous, so will not be trapped by a
@@ -365,7 +374,40 @@ receiving the exception to come to an end)
 cancelThread :: Thread α -> Program τ ()
 cancelThread thread = do
     liftIO $ do
-        killThread (threadPointerOf thread)
+        --
+        -- There are some curiosities about what happens here. Someone
+        -- waitThread'ing on a Thread is blocked on reading the outcome MVar.
+        -- so to break that wait we put the Left value in. If the thread was
+        -- already dead this has no effect, but if not, then this will
+        -- initiate it rapidly being killing off.
+        --
+        let outcome = threadOutcomeOf thread
+        result <- tryPutMVar outcome (Left (toException ThreadCancelled))
+        case result of
+            False -> do
+                pure ()
+            True -> do
+                killThread (threadPointerOf thread)
+
+{- |
+When a thread is aborted with 'cancelThread' this value is used to mark a
+failed computation inside the 'Thread'. Although it is not the mechanism used
+internally to kill the computation, it /is/ the exception that is subsequently
+rethrown from 'waitThread' if you are waiting on that thread to finish,
+allowing you to 'Core.Program.Exceptions.catch' the case of a thread being
+cancelled if necessary.
+
+This is mostly here to differentiate from 'Control.Exception.ThreadKilled',
+giving you some knowledge as to whether it was your explicit 'cancelThread'
+that ended the thread, or something else. You need to handle it either way,
+but sometimes you want to know the difference.
+
+@since 0.6.8
+-}
+data Terminator = ThreadCancelled
+    deriving (Show)
+
+instance Exception Terminator
 
 {- |
 Fork two threads and wait for both to finish. The return value is the pair of
