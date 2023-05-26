@@ -96,14 +96,8 @@ import Network.HTTP.Types
     ( Status
     , hContentType
     , status400
-    , status413
-    , status431
     , status500
     , statusCode
-    )
-import Network.HTTP2.Frame
-    ( ErrorCodeId (UnknownErrorCode)
-    , HTTP2Error (ConnectionError)
     )
 import Network.Wai
 import Network.Wai.Handler.Warp (InvalidRequest, Port)
@@ -253,12 +247,6 @@ assignException e
     | Just (_ :: InvalidRequest) <-
         fromException e =
         (status400, intoRope (displayException e))
-    | Just (ConnectionError (UnknownErrorCode 413) t) <-
-        fromException e =
-        (status413, intoRope t)
-    | Just (ConnectionError (UnknownErrorCode 431) t) <-
-        fromException e =
-        (status431, intoRope t)
     | otherwise =
         (status500, "Internal Server Error")
 
