@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE ImportQualifiedPost #-}
@@ -71,7 +72,9 @@ module Core.Telemetry.Honeycomb
     ) where
 
 import Codec.Compression.GZip qualified as GZip (compress)
+import Control.Concurrent (threadDelay)
 import Control.Concurrent.MVar (modifyMVar_)
+import Control.Exception.Base (Exception)
 import Control.Exception.Safe qualified as Safe (catch, finally, throw)
 import Control.Monad (forM_)
 import Core.Data.Clock (Time, getCurrentTimeNanoseconds, unTime)
@@ -350,10 +353,15 @@ compressBody bytes o = do
     let b = Builder.lazyByteString x'
     Streams.write (Just b) o
 
+data HoneycombProblem = TransientRetry
+    deriving (Show)
+
+instance Exception HoneycombProblem
+
 postEventToHoneycombAPI :: IORef (Maybe Connection) -> Hostname -> ApiKey -> Dataset -> JsonValue -> IO ()
-postEventToHoneycombAPI r honeycombHost apikey dataset json = attempt False
+postEventToHoneycombAPI r honeycombHost apikey dataset json = attempt (0 :: Int)
   where
-    attempt retrying = do
+    attempt !retry = do
         Safe.catch
             ( do
                 c <- acquireConnection r honeycombHost
@@ -363,12 +371,15 @@ postEventToHoneycombAPI r honeycombHost apikey dataset json = attempt False
                 receiveResponse c handler
             )
             ( \(e :: SomeException) -> do
-                -- ideally we don't get here, but if the SSL connection collapses
-                -- we will. We retry /once/, and otherwise throw the exception out.
+                -- ideally we don't get here, but if the SSL connection
+                -- collapses we will, or if Honeycomb is having an outage we
+                -- will. We retry a maxium of 9 times (for a total backoff of
+                -- 1022 seconds plus individual connection durations).
                 cleanupConnection r
-                case retrying of
+                case retry > 9 of
                     False -> do
-                        attempt True
+                        threadDelay (2 ^ retry * 1000000)
+                        attempt (retry + 1)
                     True -> do
                         putStrLn "internal: Failed to re-establish connection to Honeycomb"
                         Safe.throw e
@@ -402,14 +413,24 @@ postEventToHoneycombAPI r honeycombHost apikey dataset json = attempt False
                                 Just (JsonNumber 202) -> do
                                     -- normal response
                                     pure ()
+                                Just (JsonNumber 500) -> do
+                                    -- Honeycomb is experiencing a problem.
+                                    -- Note that this was a "500" /inside/ the
+                                    -- valid HTTP 200 payload.
+                                    putStrLn "internal: 500 returned from Honeycomb, retrying"
+                                    Safe.throw TransientRetry
+                                Just (JsonNumber codeN) -> do
+                                    -- this is more serious
+                                    putStrLn ("internal: " ++ show codeN ++ " returned from Honeycomb, discarding")
+                                    C.putStrLn body
                                 _ -> do
                                     -- some other status!
-                                    putStrLn "internal: Unexpected status returned;"
+                                    putStrLn "internal: Entirely unexpected response returned, discarding"
                                     C.putStrLn body
                             _ -> putStrLn "internal: wtf?"
                     _ -> do
-                        putStrLn "internal: Unexpected response from Honeycomb"
+                        putStrLn "internal: Completely unknown response from Honeycomb, discarding"
                         C.putStrLn body
             _ -> do
-                putStrLn "internal: Failed to post to Honeycomb"
+                putStrLn "internal: Utterly failed to post to Honeycomb"
                 debugHandler p i
