@@ -359,7 +359,7 @@ data HoneycombProblem = TransientRetry
 instance Exception HoneycombProblem
 
 postEventToHoneycombAPI :: IORef (Maybe Connection) -> Hostname -> ApiKey -> Dataset -> JsonValue -> IO ()
-postEventToHoneycombAPI r honeycombHost apikey dataset json = attempt (1 :: Int)
+postEventToHoneycombAPI r honeycombHost apikey dataset json = attempt (0 :: Int)
   where
     attempt !retry = do
         Safe.catch
@@ -373,12 +373,12 @@ postEventToHoneycombAPI r honeycombHost apikey dataset json = attempt (1 :: Int)
             ( \(e :: SomeException) -> do
                 -- ideally we don't get here, but if the SSL connection
                 -- collapses we will, or if Honeycomb is having an outage we
-                -- will. We retry an arbitrarily chosen 1000 times but then
-                -- give up trying to send this frame.
+                -- will. We retry a maxium of 9 times (for a total backoff of
+                -- 1022 seconds plus individual connection durations).
                 cleanupConnection r
-                case retry > 1000 of
+                case retry > 9 of
                     False -> do
-                        threadDelay 1000000
+                        threadDelay (2 ^ retry * 1000000)
                         attempt (retry + 1)
                     True -> do
                         putStrLn "internal: Failed to re-establish connection to Honeycomb"
