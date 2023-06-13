@@ -415,7 +415,7 @@ postEventToHoneycombAPI r honeycombHost apikey dataset json = attempt (1 :: Int)
                                     pure ()
                                 Just (JsonNumber 500) -> do
                                     -- Honeycomb is experiencing a problem.
-                                    -- Not that this was a "500" /inside/ the
+                                    -- Note that this was a "500" /inside/ the
                                     -- valid HTTP 200 payload.
                                     putStrLn "internal: 500 returned from Honeycomb, retrying"
                                     Safe.throw TransientRetry
@@ -425,7 +425,7 @@ postEventToHoneycombAPI r honeycombHost apikey dataset json = attempt (1 :: Int)
                                     C.putStrLn body
                                 _ -> do
                                     -- some other status!
-                                    putStrLn "internal: Untirely unexpected response returned, discarding"
+                                    putStrLn "internal: Entirely unexpected response returned, discarding"
                                     C.putStrLn body
                             _ -> putStrLn "internal: wtf?"
                     _ -> do
