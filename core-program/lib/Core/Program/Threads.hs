@@ -40,6 +40,8 @@ module Core.Program.Threads
     , concurrentThreads_
     , raceThreads
     , raceThreads_
+    , timeoutThread
+    , Timeout
 
       -- * Internals
     , Thread
@@ -60,6 +62,7 @@ import Control.Monad
 import Control.Monad.Reader.Class (MonadReader (ask))
 import Core.Data.Structures
 import Core.Program.Context
+import Core.Program.Execute
 import Core.Program.Logging
 import Core.System.Base
 import Core.Text.Rope
@@ -511,3 +514,29 @@ raceThreads_ one two = void (raceThreads one two)
 linkThread :: Thread α -> Program τ ()
 linkThread _ = pure ()
 {-# DEPRECATED linkThread "Exceptions are bidirectional so linkThread no longer needed" #-}
+
+data Timeout = Timeout deriving (Show)
+
+instance Exception Timeout
+
+{- |
+Run a program that needs to complete before the given number of seconds have
+elapsed. This will return the result of the sub program or throw the 'Timeout'
+exception if the limit is exceeded.
+
+@since 0.6.9
+-}
+timeoutThread :: Rational -> Program τ α -> Program τ α
+timeoutThread seconds program = do
+    result <-
+        raceThreads
+            ( do
+                sleepThread seconds
+                pure Timeout
+            )
+            ( do
+                program
+            )
+    case result of
+        Left e -> throw e
+        Right a -> pure a
