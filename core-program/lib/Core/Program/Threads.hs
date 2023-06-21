@@ -41,12 +41,12 @@ module Core.Program.Threads
     , raceThreads
     , raceThreads_
     , timeoutThread
-    , Timeout
 
       -- * Internals
     , Thread
     , unThread
     , Terminator (..)
+    , Timeout (..)
     ) where
 
 import Control.Concurrent (ThreadId, forkIO, killThread)
@@ -515,6 +515,11 @@ linkThread :: Thread α -> Program τ ()
 linkThread _ = pure ()
 {-# DEPRECATED linkThread "Exceptions are bidirectional so linkThread no longer needed" #-}
 
+{-|
+If a timeout is exceeded this exception will be thrown by 'timeoutThread'.
+
+@since 0.6.8
+-}
 data Timeout = Timeout deriving (Show)
 
 instance Exception Timeout
