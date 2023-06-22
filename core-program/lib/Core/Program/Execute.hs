@@ -77,6 +77,7 @@ module Core.Program.Execute
     , getConsoleWidth
     , getApplicationState
     , setApplicationState
+    , modifyApplicationState
     , changeProgram
 
       -- * Useful actions
@@ -602,6 +603,44 @@ setApplicationState user = do
     liftIO $ do
         let v = applicationDataFrom context
         modifyMVar_ v (\_ -> pure user)
+
+{- |
+Modify the user supplied top-level application state in a single atomic action
+combining getting the value and replacing it. Following the pattern of other
+@modify@ functions in the Haskell ecosystem, this takes a function which
+allows you to take limited actions with the existing value, returning the new
+value that should be stored.
+
+@
+
+    'modifyApplicationState'
+        ( \settings{answer = a} ->
+            'pure'
+                (settings
+                    { answer = a + 1
+                    }
+                )
+        )
+@
+
+While the function you need to supply is in 'Program' @τ@ and so able to do
+general work if necessary, some care should be taken to return from the action
+as quickly as possible; this call will be blocking other consumers of the
+top-level application state until it returns.
+
+@since 0.6.9
+-}
+modifyApplicationState :: (τ -> Program τ τ) -> Program τ ()
+modifyApplicationState program = do
+    context <- ask
+    liftIO $ do
+        let v = applicationDataFrom context
+        modifyMVar_
+            v
+            ( \user -> do
+                user' <- subProgram context (program user)
+                pure user'
+            )
 
 {- |
 Sometimes you need to change the type of the application state from what is
