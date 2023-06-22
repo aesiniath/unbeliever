@@ -186,7 +186,7 @@ setupHoneycombConfig config0 =
             appendOption
                 ( Variable
                     "HONEYCOMB_HOST"
-                    "Override the default API endpoint for occasions where telemetry needs to be proxied through an intermediate service. Default: api.honeycomb.io"
+                    "Endpoint where telemetry will be sent (defaults to \"api.honeycomb.io\")."
                 )
                 config2
     in  config3
