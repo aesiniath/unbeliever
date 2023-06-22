@@ -518,7 +518,7 @@ linkThread _ = pure ()
 {-|
 If a timeout is exceeded this exception will be thrown by 'timeoutThread'.
 
-@since 0.6.8
+@since 0.6.9
 -}
 data Timeout = Timeout deriving (Show)
 
