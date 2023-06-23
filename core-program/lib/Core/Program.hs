@@ -22,6 +22,7 @@ module Core.Program
       -- and more.
       module Core.Program.Execute
     , module Core.Program.Threads
+    , module Core.Program.Workers
     , module Core.Program.Unlift
     , module Core.Program.Metadata
     , module Core.Program.Exceptions
@@ -55,3 +56,4 @@ import Core.Program.Metadata
 import Core.Program.Notify
 import Core.Program.Threads
 import Core.Program.Unlift
+import Core.Program.Workers
