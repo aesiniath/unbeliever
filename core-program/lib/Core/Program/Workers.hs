@@ -12,11 +12,12 @@
 Utility functions for building programs which consume work off of a queue.
 -}
 module Core.Program.Workers
-    ( -- * Concurrency
+    ( -- * Worker Threads
       runWorkers_
     , mapWorkers
 
       -- * Internals
+    , getMachineSize
     ) where
 
 import Control.Concurrent.STM (atomically)
@@ -27,6 +28,19 @@ import Control.Monad
 import Core.Program.Context
 import Core.Program.Threads
 import Core.System.Base
+import GHC.Conc (getNumCapabilities)
+
+{- |
+Report back the number of processor cores that are available as Haskell
+"capabilities" (this was set when you launched the program with
+'Core.Program.Execute.execute'). This can best be used to set the number of
+concurrent worker threads when running 'runWorkers_' or 'mapWorkers'.
+
+@since 0.6.9
+-}
+getMachineSize :: Program τ Int
+getMachineSize = liftIO $ do
+    getNumCapabilities
 
 {-
 -- or perhaps Foldable?
@@ -49,17 +63,21 @@ and
 @
     queue :: 'TQueue' ('Maybe' Thing) <- 'liftIO' $ do
         'newTQueueIO'
-
-    runWorkers_ 16 worker queue
 @
 
-If this was a queue of @α@s then it would never return. Instead it's a queue
+which you can then use to feed worker threads, 16 total in this example:
+
+@
+    'runWorkers_' 16 worker queue
+@
+
+(If this was a queue of @α@s then it would never return. Instead it's a queue
 of 'Maybe' @α@s so that you can signal end-of-work by writing a 'Nothing' down
-the pipeline when you're finished generating input.
+the pipeline when you're finished generating input)
 
 It is assumed that the workers have a way of communicating their results
-onwards (either because they are side-effecting in the real world themselves,
-or because you have passed in some queue to collect the results, for example).
+onwards, either because they are side-effecting in the real world themselves,
+or because you have passed in some queue to collect the results.
 
 @since 0.6.9
 -}
@@ -105,7 +123,7 @@ limitations—then you are better off using this function.
 (this was originally modelled on __async__\'s
 'Control.Concurrent.Async.mapConcurrently'. That function has the drawback
 that the number of threads created is set by the size of the structure being
-traversed)
+traversed. Here we set the amount of concurrency explicitly.)
 
 @since 0.6.9
 -}
