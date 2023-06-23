@@ -104,7 +104,7 @@ Add a list of items to the queue.
 
 @since 0.6.9
 -}
-writeQueue' :: Queue α -> [α] -> Program τ ()
+writeQueue' :: Foldable ω => Queue α -> ω α -> Program τ ()
 writeQueue' (Queue queue) items = do
     liftIO $ do
         atomically $ do
