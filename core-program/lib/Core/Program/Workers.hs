@@ -11,27 +11,32 @@
 {- |
 Utility functions for building programs which consume work off of a queue.
 
-We make use of the STM 'TQueue' type, so you'll want the following imports:
+Frequently you need to receive items from an external system and perform work
+on them. One way to structure such a program is to feed the items into a queue
+and then consume those items one at a time. That, of course, is
+slow—especially when then worker has to itself carry out computationally
+intensive tasks or interact itself with external systems. So we want to have
+multiple workers running, but only to an extent limited by the number of cores
+available, the number of external connections allowed, or some other
+constraint.
 
-@
-import "Control.Concurrent.STM" ('atomically')
-import "Control.Concurrent.STM.TQueue" ('TQueue', 'newTQueueIO', 'writeTQueue')
-@
-
-You create the work queue of items by initializing a queue of 'Maybe' @α@ with
-this:
-
-@
-    queue :: 'TQueue' ('Maybe' Thing) <- 'liftIO' $ do
-        'newTQueueIO'
-@
+This library allows you to add items to a queue, then launch worker threads to
+consume those items at up to a specified maximum amount of concurrency.
 -}
 module Core.Program.Workers
-    ( -- * Worker Threads
-      runWorkers_
+    ( -- * Work Queue
+      newQueue
+    , writeQueue
+    , writeQueue'
+    , finishQueue
+
+      -- * Worker Threads
+    , runWorkers_
     , mapWorkers
 
       -- * Internals
+    , Queue
+    , unQueue
     , getMachineSize
     ) where
 
@@ -64,9 +69,77 @@ runConcurrentThreads :: Limit -> (α -> Program τ β) -> [α] -> Program τ [β
 -}
 
 {- |
-Run a pool of worker threads which consume items off a queue.
+A queue which has an end, someday.
 
-If you have an action that enqueues items:
+(this is a thin wrapper over the __stm__ 'TQueue' type)
+
+@since 0.6.9
+-}
+newtype Queue α = Queue (TQueue (Maybe α))
+
+{- |
+Initialize a new queue.
+
+@since 0.6.9
+-}
+newQueue :: Program τ (Queue α)
+newQueue = do
+    queue <- liftIO $ do
+        newTQueueIO
+    pure (Queue queue)
+
+{- |
+Add an item to the queue.
+
+@since 0.6.9
+-}
+writeQueue :: Queue α -> α -> Program τ ()
+writeQueue (Queue queue) item = do
+    liftIO $ do
+        atomically $ do
+            writeTQueue queue (Just item)
+
+{- |
+Add a list of items to the queue.
+
+@since 0.6.9
+-}
+writeQueue' :: Queue α -> [α] -> Program τ ()
+writeQueue' (Queue queue) items = do
+    liftIO $ do
+        atomically $ do
+            mapM_
+                ( \item ->
+                    writeTQueue queue (Just item)
+                )
+                items
+
+{- |
+Indicate that you are finished adding queue, thereby allowing the worker
+threads consuming from the queue to complete and return.
+
+Remember that you can call at any time, even before you have launched the
+worker threads with 'runWorkers_'.
+
+@since 0.6.9
+-}
+finishQueue :: Queue α -> Program τ ()
+finishQueue (Queue queue) = do
+    liftIO $ do
+        atomically $ do
+            writeTQueue queue Nothing
+
+{- |
+Access the underlying queue. We make use of the STM 'TQueue' type, so you'll
+want the following imports:
+
+@
+import "Control.Concurrent.STM" ('atomically')
+import "Control.Concurrent.STM.TQueue" ('TQueue', 'writeTQueue')
+@
+
+Having accessed the underlying queue you can write items, wrapped in 'Just', to
+it directly:
 
 @
     'liftIO' $ do
@@ -74,24 +147,35 @@ If you have an action that enqueues items:
             'writeTQueue' queue ('Just' item)
 @
 
-which you can then use to feed worker threads, 16 total in this example:
+A 'Nothing' written to the underlying queue will signal the worker threads
+that the end of input has been reached and they can safely return.
+
+@since 0.6.9
+-}
+unQueue :: Queue α -> TQueue (Maybe α)
+unQueue (Queue queue) = queue
+
+{- |
+Run a pool of worker threads which consume items off the work queue.
+
+Once you have an action that enqueues items with 'writeQueue' you can then
+launch the worker threads:
 
 @
     'runWorkers_' 16 worker queue
 @
 
-(If this was a queue of @α@s then it would never return. Instead it's a queue
-of 'Maybe' @α@s so that you can signal end-of-work by writing a 'Nothing' down
-the pipeline when you're finished generating input)
+consuming 16 items at a time concurrently in this example.
 
 It is assumed that the workers have a way of communicating their results
 onwards, either because they are side-effecting in the real world themselves,
-or because you have passed in some queue to collect the results.
+or because you have passed in some  'Control.Concurrent.MVar' or 'TQueue' to
+collect the results.
 
 @since 0.6.9
 -}
-runWorkers_ :: Int -> (α -> Program τ ()) -> TQueue (Maybe α) -> Program τ ()
-runWorkers_ n action queue = do
+runWorkers_ :: Int -> (α -> Program τ ()) -> Queue α -> Program τ ()
+runWorkers_ n action (Queue queue) = do
     createScope $ do
         ts <- forM [1 .. n] $ \_ -> do
             forkThread $ do
@@ -127,22 +211,22 @@ machinery is, and in this library can be achieved by 'Control.Monad.forM'ing
 'forkThread' over a list of items. But if you need tighter control over the
 amount of concurrency—as is often the case when doing something
 computationally heavy or making requests of an external service with known
-limitations—then you are better off using this function.
+limitations—then you are better off using this convenience function.
 
 (this was originally modelled on __async__\'s
-'Control.Concurrent.Async.mapConcurrently'. That function has the drawback
-that the number of threads created is set by the size of the structure being
-traversed. Here we set the amount of concurrency explicitly.)
+'Control.Concurrent.Async.mapConcurrently'. That implementation has the
+drawback that the number of threads created is set by the size of the
+structure being traversed. Here we set the amount of concurrency explicitly.)
 
-Be aware that the order of items in the output list will depend on the order
-that the action function completes, not the order of items in the input.
+Be aware that the order of items in the output list is non-deterministic and
+will depend on the order that the action function completes, not the order of
+items in the input.
 
 @since 0.6.9
 -}
 mapWorkers :: Int -> (α -> Program τ β) -> [α] -> Program τ [β]
-mapWorkers n action list = do
-    inputs <- liftIO $ do
-        newTQueueIO :: IO (TQueue (Maybe α))
+mapWorkers n action items = do
+    inputs <- newQueue
 
     outputs <- liftIO $ do
         newTQueueIO :: IO (TQueue β)
@@ -151,14 +235,8 @@ mapWorkers n action list = do
     -- Load the input list into a queue followed by a terminator.
     --
 
-    liftIO $ do
-        atomically $ do
-            mapM_
-                ( \item ->
-                    writeTQueue inputs (Just item)
-                )
-                list
-            writeTQueue inputs Nothing
+    writeQueue' inputs items
+    finishQueue inputs
 
     --
     -- Invoke the general concurrent workers tool above to process the queue.
@@ -176,6 +254,7 @@ mapWorkers n action list = do
 
     --
     -- Convert the results back to a list.
+    --
 
     liftIO $ do
         atomically $ do
