@@ -62,12 +62,6 @@ getMachineSize :: Program τ Int
 getMachineSize = liftIO $ do
     getNumCapabilities
 
-{-
--- or perhaps Foldable?
-runConcurrentThreads :: Traversable ω => Int -> (α -> Program τ β) -> ω α -> Program τ (ω β)
-runConcurrentThreads :: Limit -> (α -> Program τ β) -> [α] -> Program τ [β]
--}
-
 {- |
 A queue which has an end, someday.
 
