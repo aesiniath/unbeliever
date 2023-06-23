@@ -10,6 +10,21 @@
 
 {- |
 Utility functions for building programs which consume work off of a queue.
+
+We make use of the STM 'TQueue' type, so you'll want the following imports:
+
+@
+import "Control.Concurrent.STM" ('atomically')
+import "Control.Concurrent.STM.TQueue" ('TQueue', 'newTQueueIO', 'writeTQueue')
+@
+
+You create the work queue of items by initializing a queue of 'Maybe' @α@ with
+this:
+
+@
+    queue :: 'TQueue' ('Maybe' Thing) <- 'liftIO' $ do
+        'newTQueueIO'
+@
 -}
 module Core.Program.Workers
     ( -- * Worker Threads
@@ -51,18 +66,12 @@ runConcurrentThreads :: Limit -> (α -> Program τ β) -> [α] -> Program τ [β
 {- |
 Run a pool of worker threads which consume items off a queue.
 
-You create the work queue of items by initializing a queue of 'Maybe' @α@ with
-this:
+If you have an action that enqueues items:
 
 @
-import "Control.Concurrent.STM.TQueue" (TQueue, newTQueueIO)
-@
-
-and
-
-@
-    queue :: 'TQueue' ('Maybe' Thing) <- 'liftIO' $ do
-        'newTQueueIO'
+    'liftIO' $ do
+        'atomically' $ do
+            'writeTQueue' queue ('Just' item)
 @
 
 which you can then use to feed worker threads, 16 total in this example:
@@ -124,6 +133,9 @@ limitations—then you are better off using this function.
 'Control.Concurrent.Async.mapConcurrently'. That function has the drawback
 that the number of threads created is set by the size of the structure being
 traversed. Here we set the amount of concurrency explicitly.)
+
+Be aware that the order of items in the output list will depend on the order
+that the action function completes, not the order of items in the input.
 
 @since 0.6.9
 -}
