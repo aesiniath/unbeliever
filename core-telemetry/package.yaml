@@ -19,7 +19,7 @@ license-file: LICENSE
 author: Andrew Cowie <istathar@gmail.com>
 maintainer: Andrew Cowie <istathar@gmail.com>
 copyright: © 2021-2023 Athae Eredh Siniath and Others
-tested-with: GHC == 8.10.7, GHC == 9.2.7
+tested-with: GHC == 8.10.7, GHC == 9.2.7, GHC == 9.4.5
 category: System
 ghc-options: -Wall -Wwarn -fwarn-tabs
 github: aesiniath/unbeliever
