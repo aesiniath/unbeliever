@@ -935,7 +935,7 @@ buildUsage config mode = case config of
         Nothing -> "COMMAND..."
 
     argumentsSummary :: [Options] -> Doc ann
-    argumentsSummary as = " " <> fillSep (fmap (\x -> "<" <> pretty x <> ">") (extractRequiredArguments as))
+    argumentsSummary as = " " <> fillSep (fmap (\x -> "<" <> pretty x <> ">") (reverse (extractRequiredArguments as)))
 
     argumentsHeading as = if length as > 0 then hardline <> "Required arguments:" <> hardline else emptyDoc
 
