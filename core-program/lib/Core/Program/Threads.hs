@@ -62,6 +62,7 @@ import Control.Monad
 import Control.Monad.Reader.Class (MonadReader (ask))
 import Core.Data.Structures
 import Core.Program.Context
+import Core.Program.Exceptions
 import Core.Program.Execute
 import Core.Program.Logging
 import Core.System.Base
@@ -479,18 +480,36 @@ raceThreads one two = do
         outcome <- liftIO $ do
             newEmptyMVar
 
-        _ <- forkThread $ do
-            !result1 <- one
-            liftIO $ do
-                putMVar outcome (Left result1)
+        t1 <- forkThread $ do
+            finally
+                ( do
+                    one
+                )
+                ( do
+                    liftIO $ do
+                        putMVar outcome (Left ())
+                )
 
-        _ <- forkThread $ do
-            !result2 <- two
-            liftIO $ do
-                putMVar outcome (Right result2)
+        t2 <- forkThread $ do
+            finally
+                ( do
+                    two
+                )
+                ( do
+                    liftIO $ do
+                        putMVar outcome (Right ())
+                )
 
-        liftIO $ do
+        result <- liftIO $ do
             readMVar outcome
+
+        case result of
+            Left _ -> do
+                result1 <- waitThread t1
+                pure (Left result1)
+            Right _ -> do
+                result2 <- waitThread t2
+                pure (Right result2)
 
 {- |
 Fork two threads and race them against each other. When one action completes
@@ -515,7 +534,7 @@ linkThread :: Thread α -> Program τ ()
 linkThread _ = pure ()
 {-# DEPRECATED linkThread "Exceptions are bidirectional so linkThread no longer needed" #-}
 
-{-|
+{- |
 If a timeout is exceeded this exception will be thrown by 'timeoutThread'.
 
 @since 0.6.9
