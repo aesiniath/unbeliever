@@ -34,8 +34,8 @@ import Data.List qualified as List (find, isSuffixOf)
 import Data.String
 import GHC.Stack (HasCallStack, SrcLoc (..), callStack, getCallStack)
 import GitHash
-import Language.Haskell.TH (Q, runIO)
-import Language.Haskell.TH.Syntax (Exp (..), Lift)
+import Language.Haskell.TH (Code, Q, bindCode, runIO)
+import Language.Haskell.TH.Syntax (Lift (..), addDependentFile)
 import System.Directory (listDirectory)
 
 {- |
@@ -147,54 +147,51 @@ not to hand.
 
 @since 0.6.7
 -}
-fromPackage :: Q Exp
-fromPackage = do
-    pairs <- readCabalFile
+fromPackage :: Code Q Version
+fromPackage =
+    bindCode
+        ( do
+            pairs <- readCabalFile
 
-    let name = case lookupKeyValue "name" pairs of
-            Nothing -> ""
-            Just value -> value
-    let synopsis = case lookupKeyValue "synopsis" pairs of
-            Nothing -> ""
-            Just value -> value
-    let version = case lookupKeyValue "version" pairs of
-            Nothing -> ""
-            Just value -> "v" <> value
+            let name = case lookupKeyValue "name" pairs of
+                    Nothing -> ""
+                    Just value -> value
+            let synopsis = case lookupKeyValue "synopsis" pairs of
+                    Nothing -> ""
+                    Just value -> value
+            let version = case lookupKeyValue "version" pairs of
+                    Nothing -> ""
+                    Just value -> "v" <> value
 
-    possibleInfo <- readGitRepository
+            possibleInfo <- readGitRepository
 
-    let full = case possibleInfo of
-            Nothing -> ""
-            Just info -> giHash info
-    let short = case possibleInfo of
-            Nothing -> ""
-            Just info ->
-                let short' = take 7 (giHash info)
-                in  if giDirty info
-                        then short' ++ " (dirty)"
-                        else short'
-    let branch = case possibleInfo of
-            Nothing -> ""
-            Just info -> giBranch info
+            let full = case possibleInfo of
+                    Nothing -> ""
+                    Just info -> giHash info
+            let short = case possibleInfo of
+                    Nothing -> ""
+                    Just info ->
+                        let short' = take 7 (giHash info)
+                        in  if giDirty info
+                                then short' ++ " (dirty)"
+                                else short'
+            let branch = case possibleInfo of
+                    Nothing -> ""
+                    Just info -> giBranch info
 
-    let result =
-            Version
-                { projectNameFrom = fromRope name
-                , projectSynopsisFrom = fromRope synopsis
-                , versionNumberFrom = fromRope version
-                , gitHashFrom = full
-                , gitDescriptionFrom = short
-                , gitBranchFrom = branch
-                }
+            let result =
+                    Version
+                        { projectNameFrom = fromRope name
+                        , projectSynopsisFrom = fromRope synopsis
+                        , versionNumberFrom = fromRope version
+                        , gitHashFrom = full
+                        , gitDescriptionFrom = short
+                        , gitBranchFrom = branch
+                        }
 
-    --  I would have preferred
-    --
-    --  let e = AppE (VarE ...
-    --  return e
-    --
-    --  but that's not happening. So more voodoo TH nonsense instead.
-
-    [e|result|]
+            pure result
+        )
+        liftTyped
 
 {-
 Locate the .cabal file in the present working directory (assumed to be the
@@ -211,15 +208,17 @@ findCabalFile = do
         Nothing -> error "No .cabal file found"
 
 readCabalFile :: Q (Map Rope Rope)
-readCabalFile = runIO $ do
+readCabalFile = do
     -- Find .cabal file
-    file <- findCabalFile
+    file <- runIO findCabalFile
+    addDependentFile file
 
     -- Parse .cabal file
-    contents <- withFile file ReadMode hInput
-    let pairs = parseCabalFile contents
-    -- pass to calling program
-    return pairs
+    runIO $ do
+        contents <- withFile file ReadMode hInput
+        let pairs = parseCabalFile contents
+        -- pass to calling program
+        return pairs
 
 -- TODO this could be improved; we really only need the data from the first
 -- block of lines, with colons in them! We're probably reached the point where
@@ -272,7 +271,7 @@ constraints everywhere, and then...
 -- the list. Huge credit to Matt Parsons for having pointed out this technique
 -- at <https://twitter.com/mattoflambda/status/1460769133923028995>
 
-__LOCATION__ :: HasCallStack => SrcLoc
+__LOCATION__ :: (HasCallStack) => SrcLoc
 __LOCATION__ =
     case getCallStack callStack of
         (_, srcLoc) : _ -> srcLoc
@@ -321,10 +320,13 @@ not built from source the values returned will be empty placeholders.
 -}
 readGitRepository :: Q (Maybe GitInfo)
 readGitRepository = do
-    runIO $ do
-        getGitRoot "." >>= \case
-            Left _ -> pure Nothing
-            Right path -> do
-                getGitInfo path >>= \case
-                    Left _ -> pure Nothing
-                    Right value -> pure (Just value)
+    runIO (getGitRoot ".") >>= \case
+        Left _ -> pure Nothing
+        Right path -> do
+            runIO (getGitInfo path) >>= \case
+                Left _ -> pure Nothing
+                Right value -> do
+                    runIO $ print (giFiles value)
+                    addDependentFile "/home/juan/lol"
+                    mapM_ addDependentFile (giFiles value)
+                    pure (Just value)
