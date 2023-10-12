@@ -155,9 +155,9 @@ happens.
 /Concerning telemetry/
 
 Note that threads inherit the telemetry state from their parent. If you are
-using the tracing features from __core-telemetry__ any telemetry
-registered in that side task will be included in the enclosing span active in the thread
-that spawned the thread:
+using the tracing features from __core-telemetry__ any telemetry registered in
+that side task will be included in the enclosing span active in the parent
+thread that spawned the thread:
 
 @
     t2 <- 'forkThread' $ do
@@ -169,9 +169,9 @@ that spawned the thread:
 
 @
 
-In this case the @\"counter\"@ field in the parent span will get the value
-@42@. This is appropriate for the common case where you are doing small side
-tasks concurrently to accelerate a larger computation.
+In this case the @\"counter\"@ field in the parent thread's current span will
+get the value @42@. This is appropriate for the common case where you are doing
+small side tasks concurrently to accelerate a larger computation.
 
 But at other times you are launching off a fully independent control flow and
 want it to have its own telemetry. In those cases, you'll want to start a new
