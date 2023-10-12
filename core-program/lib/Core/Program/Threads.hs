@@ -135,6 +135,8 @@ exception will kill the thread. Threads dying without telling anyone is a bit
 of an anti-pattern, so this library logs a warning-level log message if this
 happens.
 
+Note that threads inherit the telemetry state of their parent.
+
 (this wraps __base__'s 'Control.Concurrent.forkIO')
 
 @since 0.2.7
@@ -143,7 +145,6 @@ forkThread :: Program τ α -> Program τ (Thread α)
 forkThread program = do
     context <- ask
     let i = startTimeFrom context
-    let v = currentDatumFrom context
     let scope = currentScopeFrom context
 
     liftIO $ do
@@ -154,18 +155,9 @@ forkThread program = do
         start <- readMVar i
         i' <- newMVar start
 
-        -- we also need to fork the current Datum, in the same way that we do
-        -- when we create a nested span. We do this simply by creating a new
-        -- MVar so that when the new thread updates the attached metadata
-        -- it'll be evolving a different object.
-
-        datum <- readMVar v
-        v' <- newMVar datum
-
         let context' =
                 context
                     { startTimeFrom = i'
-                    , currentDatumFrom = v'
                     }
 
         -- fork, and run nested program
