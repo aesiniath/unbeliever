@@ -98,7 +98,7 @@ program = do
     info "Brr! It's cold"
 
 version :: Version
-version = $(fromPackage)
+version = $$fromPackage
 
 main :: IO ()
 main = do

@@ -1,12 +1,13 @@
-resolver: lts-21.0
-compiler: ghc-9.4.5
+resolver: lts-21.9
+compiler: ghc-9.4.6
 packages:
- - ./core-data
- - ./core-effect-effectful
- - ./core-text
- - ./core-program
- - ./core-telemetry
- - ./core-webserver-servant
- - ./core-webserver-warp
- - .
-extra-deps: []
+- ./core-data
+- ./core-effect-effectful
+- ./core-text
+- ./core-program
+- ./core-telemetry
+- ./core-webserver-servant
+- ./core-webserver-warp
+- .
+extra-deps:
+- githash-0.1.7.0
