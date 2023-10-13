@@ -126,8 +126,23 @@ Fork a thread. The child thread will run in the same 'Context' as the calling
 'Program', including sharing the user-defined application state value.
 
 If you want to find out what the result of a thread was use 'waitThread' on
-the 'Thread' object returned from this function. If you don't need the
-result, use 'forkThread_' instead.
+the 'Thread' object returned from this function. For example:
+
+@
+    t1 <- 'forkThread' $ do
+        'Core.Program.Logging.info' \"Doing interesting stuff concurrently\"
+        'pure' True
+
+    ...
+
+    result <- 'waitThread' t1
+
+    if result
+        then -- expected
+        else -- not good
+@
+
+If you don't need the result, you can use 'forkThread_' instead.
 
 Threads that are launched off as children are on their own! If the code in the
 child thread throws an exception that is /not/ caught within that thread, the
@@ -135,7 +150,41 @@ exception will kill the thread. Threads dying without telling anyone is a bit
 of an anti-pattern, so this library logs a warning-level log message if this
 happens.
 
-(this wraps __base__'s 'Control.Concurrent.forkIO')
+(this function wraps __base__'s 'Control.Concurrent.forkIO')
+
+/Concerning telemetry/
+
+Note that threads inherit the telemetry state from their parent. If you are
+using the tracing features from __core-telemetry__ any telemetry registered in
+that side task will be included in the enclosing span active in the parent
+thread that spawned the thread:
+
+@
+    t2 <- 'forkThread' $ do
+        'Core.Program.Logging.info' \"Performing quick side task\"
+        'Core.Telemetry.Observability.telemetry'
+            [ ''Core.Telemetry.Observability.metric' \"counter\" 42
+            ]
+        ...
+
+@
+
+In this case the @\"counter\"@ field in the parent thread's current span will
+get the value @42@. This is appropriate for the common case where you are doing
+small side tasks concurrently to accelerate a larger computation.
+
+But at other times you are launching off a fully independent control flow and
+want it to have its own telemetry. In those cases, you'll want to start a new
+span (or even a new trace) immediately after forking the thread:
+
+@
+    'forkThread_' $ do
+        'Core.Telemetry.Observability.encloseSpan' \"subTask\" $ do
+            ...
+@
+
+any telemetry from this worker thread will be appropriately nested in a new
+child span called @\"subTask\"@.
 
 @since 0.2.7
 -}
@@ -143,7 +192,6 @@ forkThread :: Program τ α -> Program τ (Thread α)
 forkThread program = do
     context <- ask
     let i = startTimeFrom context
-    let v = currentDatumFrom context
     let scope = currentScopeFrom context
 
     liftIO $ do
@@ -154,18 +202,9 @@ forkThread program = do
         start <- readMVar i
         i' <- newMVar start
 
-        -- we also need to fork the current Datum, in the same way that we do
-        -- when we create a nested span. We do this simply by creating a new
-        -- MVar so that when the new thread updates the attached metadata
-        -- it'll be evolving a different object.
-
-        datum <- readMVar v
-        v' <- newMVar datum
-
         let context' =
                 context
                     { startTimeFrom = i'
-                    , currentDatumFrom = v'
                     }
 
         -- fork, and run nested program

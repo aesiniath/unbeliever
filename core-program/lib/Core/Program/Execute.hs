@@ -177,6 +177,7 @@ import Data.ByteString.Char8 qualified as C (singleton)
 import Data.List qualified as List (intersperse)
 import GHC.Conc (getNumProcessors, numCapabilities, setNumCapabilities)
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
+import GHC.Stack (HasCallStack)
 import System.Directory
     ( findExecutable
     )
@@ -1120,7 +1121,7 @@ type annotation somewhere.
 
 @since 0.5.1
 -}
-queryOptionValue' :: Externalize ξ => LongName -> Program τ (Maybe ξ)
+queryOptionValue' :: (Externalize ξ) => LongName -> Program τ (Maybe ξ)
 queryOptionValue' name = do
     context <- ask
     let params = commandLineFrom context
@@ -1189,7 +1190,7 @@ If the attempt to parse the supplied value fails an exception will be thrown.
 
 @since 0.6.2
 -}
-queryEnvironmentValue' :: Externalize ξ => LongName -> Program τ (Maybe ξ)
+queryEnvironmentValue' :: (Externalize ξ) => LongName -> Program τ (Maybe ξ)
 queryEnvironmentValue' name = do
     context <- ask
     let params = commandLineFrom context
@@ -1229,8 +1230,22 @@ queryCommandName = do
         Nothing -> error "Attempted lookup of command but not a Complex Config"
 
 {- |
+Exception thrown by 'invalid'. It's not meant to be caught and so is not
+exposed publicly.
+
+@since 0.6.10
+-}
+data InvalidState = InvalidState
+    deriving (Show)
+
+instance Exception InvalidState
+
+{- |
 Illegal internal state resulting from what should be unreachable code or
 otherwise a programmer error.
 -}
-invalid :: Program τ α
-invalid = error "Invalid State"
+invalid :: (HasCallStack) => Program τ α
+invalid = do
+    critical "Invalid state reached"
+    write "error: invalid state"
+    terminate 99
