@@ -4,6 +4,7 @@ packages:
  - ./core-data
  - ./core-effect-effectful
  - ./core-text
+ - ./core-persistence-hasql
  - ./core-program
  - ./core-telemetry
  - ./core-webserver-servant
