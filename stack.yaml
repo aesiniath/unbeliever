@@ -1,5 +1,5 @@
-resolver: lts-21.0
-compiler: ghc-9.4.5
+resolver: lts-21.23
+compiler: ghc-9.4.8
 packages:
  - ./core-data
  - ./core-effect-effectful
