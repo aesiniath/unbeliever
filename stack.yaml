@@ -1,4 +1,4 @@
-resolver: lts-21.23
+resolver: lts-21.25
 compiler: ghc-9.4.8
 packages:
  - ./core-data
