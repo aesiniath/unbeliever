@@ -285,7 +285,7 @@ makeApplication trie request sendResponse = do
                 let prefix = intoRope prefix'
                 let remainder = intoRope remainder'
                 telemetry
-                    [ metric "request.route" prefix
+                    [ metric "http.request.route" prefix
                     ]
 
                 handler prefix remainder request
