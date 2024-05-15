@@ -9,3 +9,6 @@ packages:
  - ./core-webserver-warp
  - .
 extra-deps: []
+
+ghc-options:
+  HsOpenSSL: -optc=-Wno-incompatible-pointer-types
