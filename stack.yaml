@@ -3,6 +3,7 @@ compiler: ghc-9.6.5
 packages:
  - ./core-data
  - ./core-text
+ - ./core-persistence-hasql
  - ./core-program
  - ./core-telemetry
  - ./core-webserver-servant
