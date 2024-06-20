@@ -208,10 +208,10 @@ loggingMiddleware (context0 :: Context τ) application request sendResponse = do
 
                             subProgram context1 $ do
                                 telemetry
-                                    [ metric "request.method" method
-                                    , metric "request.path" path
-                                    , if nullRope query then metric "request.query" () else metric "request.query" query
-                                    , metric "response.status_code" code
+                                    [ metric "http.request.method" method
+                                    , metric "http.request.path" path
+                                    , if nullRope query then metric "http.request.query" () else metric "http.request.query" query
+                                    , metric "http.response.status_code" code
                                     ]
 
                             -- actually handle the request
@@ -227,10 +227,10 @@ loggingMiddleware (context0 :: Context τ) application request sendResponse = do
                                 warn "Trapped internal exception"
                                 debug "e" text
                                 telemetry
-                                    [ metric "request.method" method
-                                    , metric "request.path" path
-                                    , if nullRope query then metric "request.query" () else metric "request.query" query
-                                    , metric "response.status_code" code
+                                    [ metric "http.request.method" method
+                                    , metric "http.request.path" path
+                                    , if nullRope query then metric "http.request.query" () else metric "http.request.query" query
+                                    , metric "http.response.status_code" code
                                     , metric "error" text
                                     ]
 
